@@ -1115,3 +1115,54 @@
     padding:9px 11px;
   }
 }
+
+
+/* AITradeX Phase 2.6 dynamic trade feed */
+.trade-feed-list{
+  display:grid;
+  gap:9px;
+  margin-top:12px;
+}
+.trade-feed-list article{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.045);
+  border-radius:16px;
+  padding:12px;
+}
+.trade-feed-list article.active{
+  border-color:rgba(21,229,211,.48);
+  background:rgba(21,229,211,.08);
+  box-shadow:inset 0 0 0 1px rgba(21,229,211,.12);
+}
+.trade-feed-list b{
+  display:block;
+  font-size:14px;
+}
+.trade-feed-list span{
+  display:block;
+  color:var(--muted);
+  font-size:12px;
+  margin-top:3px;
+}
+.trade-feed-list strong{
+  display:block;
+  text-align:right;
+  font-size:13px;
+}
+.trade-feed-list em{
+  display:block;
+  text-align:right;
+  font-style:normal;
+  font-weight:1000;
+  font-size:12px;
+  margin-top:4px;
+}
+@media(max-width:620px){
+  .trade-feed-list article{
+    padding:10px;
+  }
+}

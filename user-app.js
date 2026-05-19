@@ -56,6 +56,24 @@
     return [...marketPairs.CRYPTO, ...marketPairs.FOREX];
   }
 
+  function tradeFeedForMarket() {
+    if (selectedMarket === "FOREX") {
+      return [
+        { pair: "EUR/USD", action: "BUY Signal", size: "₹18,000", lev: "50x", change: "+0.18%", mood: "up", time: "Now" },
+        { pair: "GBP/USD", action: "SELL Watch", size: "₹12,000", lev: "25x", change: "-0.11%", mood: "down", time: "1m" },
+        { pair: "USD/JPY", action: "BUY Setup", size: "₹15,500", lev: "100x", change: "+0.32%", mood: "up", time: "3m" },
+        { pair: "XAU/USD", action: "BUY Signal", size: "₹25,000", lev: "20x", change: "+0.74%", mood: "up", time: "5m" }
+      ];
+    }
+
+    return [
+      { pair: "BTC/USDT", action: "BUY Signal", size: "₹22,000", lev: "20x", change: "+2.84%", mood: "up", time: "Now" },
+      { pair: "ETH/USDT", action: "SELL Watch", size: "₹14,000", lev: "10x", change: "-1.04%", mood: "down", time: "1m" },
+      { pair: "SOL/USDT", action: "BUY Setup", size: "₹9,500", lev: "50x", change: "+1.20%", mood: "up", time: "2m" },
+      { pair: "DOGE/USDT", action: "SELL Watch", size: "₹5,000", lev: "100x", change: "-0.88%", mood: "down", time: "4m" }
+    ];
+  }
+
   const leverageOptions = [1, 5, 10, 20, 50, 100, 200, 500, 1000, 2000];
 
   function user() {
@@ -590,6 +608,27 @@
           <b class="loss-text">${selectedMarket === "CRYPTO" ? "$77,104.78" : pair.price}</b><b>${selectedMarket === "CRYPTO" ? "0.2684" : pair.price}</b><b>0.03%</b>
           <b class="profit-text">${selectedMarket === "CRYPTO" ? "$76,737.55" : pair.price}</b><b>${selectedMarket === "CRYPTO" ? "0.8940" : pair.price}</b><b>0.01%</b>
           <b class="profit-text">${selectedMarket === "CRYPTO" ? "$76,612.11" : pair.price}</b><b>${selectedMarket === "CRYPTO" ? "2.1180" : pair.price}</b><b>0.02%</b>
+        </div>
+      </section>
+
+      <section class="premium-card trade-feed-card">
+        <div class="card-row">
+          <div><p>TRADE FEED</p><h2>${selectedMarket === "CRYPTO" ? "Crypto Activity" : "Forex Activity"}</h2></div>
+          <span class="history-mode">${selectedMarket}</span>
+        </div>
+        <div class="trade-feed-list">
+          ${tradeFeedForMarket().map(item => `
+            <article class="${item.pair === selectedPair ? "active" : ""}">
+              <div>
+                <b>${item.pair}</b>
+                <span>${item.action} · ${item.lev} · ${item.time}</span>
+              </div>
+              <div>
+                <strong>${item.size}</strong>
+                <em class="${changeClass(item.change)}">${item.change}</em>
+              </div>
+            </article>
+          `).join("")}
         </div>
       </section>
 

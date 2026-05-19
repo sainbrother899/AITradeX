@@ -191,3 +191,12 @@ Phase 2.5 Trade Header Cleanup:
 - Account mode and available balance moved inside Order Ticket.
 - Market switch remains compact.
 - Admin side untouched.
+
+
+Phase 2.6 Dynamic Trade Feed:
+- user-app.js updated with dynamic Trade Feed.
+- Trade Feed changes automatically when user switches Crypto / Forex market.
+- Selected pair is highlighted in Trade Feed if present.
+- No separate user action is needed for Trade Feed.
+- styles.css updated for Trade Feed cards.
+- Admin side untouched.
