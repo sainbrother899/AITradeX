@@ -130,3 +130,15 @@ Phase 1.9 All Popular Market Rates:
 - Negative percentage values are red.
 - Pair-rate list changes with Crypto / Forex market selector.
 - Admin side untouched.
+
+
+Phase 2.0 App-Style Selectors:
+- user-app.js updated for app-style pair/leverage selectors.
+- styles.css updated for selector bottom sheets.
+- Native large pair dropdown removed.
+- Native large leverage dropdown removed.
+- Pair opens in compact app-style bottom sheet.
+- Leverage opens in compact chips bottom sheet.
+- Rate percentage on top selected pair card/header uses green for plus and red for minus.
+- Trade section made cleaner and less browser-default.
+- Admin side untouched.

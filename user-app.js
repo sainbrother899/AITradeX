@@ -13,6 +13,7 @@
   let selectedPair = localStorage.getItem("AITradeX_SELECTED_PAIR") || "BTC/USDT";
   let tradeAmountPreview = Number(localStorage.getItem("AITradeX_TRADE_AMOUNT_PREVIEW") || 1000);
   let tradeLeveragePreview = Number(localStorage.getItem("AITradeX_TRADE_LEVERAGE_PREVIEW") || 10);
+  let selectorSheet = null;
 
   const marketPairs = {
     CRYPTO: [
@@ -91,6 +92,54 @@
       selectedPair = list[0].pair;
       localStorage.setItem("AITradeX_SELECTED_PAIR", selectedPair);
     }
+  }
+
+  function changeClass(value) {
+    return String(value || "").trim().startsWith("-") ? "loss-text" : "profit-text";
+  }
+
+  function selectorSheetHtml() {
+    if (!selectorSheet) return "";
+
+    if (selectorSheet === "pair") {
+      return `
+        <div class="sheet-backdrop" onclick="AITradeXUser.closeSheet()"></div>
+        <section class="selector-sheet">
+          <div class="sheet-handle"></div>
+          <div class="sheet-title">
+            <div><p>${selectedMarket}</p><h3>Select Pair</h3></div>
+            <button onclick="AITradeXUser.closeSheet()">×</button>
+          </div>
+          <div class="sheet-grid pair-sheet-grid">
+            ${pairsForMarket().map(p => `
+              <button class="${selectedPair === p.pair ? "active" : ""}" onclick="AITradeXUser.selectPair('${p.pair}')">
+                <b>${p.pair}</b>
+                <span>${p.price}</span>
+                <em class="${changeClass(p.change)}">${p.change}</em>
+              </button>
+            `).join("")}
+          </div>
+        </section>`;
+    }
+
+    if (selectorSheet === "leverage") {
+      return `
+        <div class="sheet-backdrop" onclick="AITradeXUser.closeSheet()"></div>
+        <section class="selector-sheet compact-sheet">
+          <div class="sheet-handle"></div>
+          <div class="sheet-title">
+            <div><p>LEVERAGE</p><h3>Select Leverage</h3></div>
+            <button onclick="AITradeXUser.closeSheet()">×</button>
+          </div>
+          <div class="sheet-grid leverage-sheet-grid">
+            ${leverageOptions.map(x => `
+              <button class="${tradeLeveragePreview === x ? "active" : ""}" onclick="AITradeXUser.setTradeLeverage(${x});AITradeXUser.closeSheet();">${x}x</button>
+            `).join("")}
+          </div>
+        </section>`;
+    }
+
+    return "";
   }
 
   function avatar(name) {
@@ -176,6 +225,7 @@
       <div class="aitx-app">
         ${appHeader()}
         <main class="app-content">${content}</main>
+        ${selectorSheetHtml()}
         ${bottomNav()}
       </div>`;
   }
@@ -266,7 +316,7 @@
           <article class="ticker-card ${p.mood} ${selectedPair === p.pair ? "selected" : ""}" onclick="AITradeXUser.selectPair('${p.pair}')">
             <div><h3>${p.pair}</h3><small>${p.inr}</small></div>
             <strong>${p.price}</strong>
-            <span class="${p.mood === 'up' ? 'profit-text' : 'loss-text'}">${p.change}</span>
+            <span class="${changeClass(p.change)}">${p.change}</span>
           </article>`).join("")}
       </section>
 
@@ -323,23 +373,22 @@
         <div>
           <p>${accountMode} ACCOUNT · ${selectedMarket}</p>
           <h1>${selectedPair}</h1>
-          <span>${pair.price} · ${pair.inr} · ${pair.change}</span>
+          <span>${pair.price} · ${pair.inr} · <em class="${changeClass(pair.change)}">${pair.change}</em></span>
           <small>TradingView symbol: ${pair.symbol}</small>
         </div>
         <div class="trade-live">LIVE</div>
       </section>
 
-      <section class="trade-select-bar">
+      <section class="trade-select-bar app-selector-bar">
         <div class="market-switch">
           <button class="${selectedMarket === "CRYPTO" ? "active" : ""}" onclick="AITradeXUser.setMarket('CRYPTO')">Crypto</button>
           <button class="${selectedMarket === "FOREX" ? "active" : ""}" onclick="AITradeXUser.setMarket('FOREX')">Forex</button>
         </div>
-        <label>
-          Pair
-          <select onchange="AITradeXUser.selectPair(this.value)">
-            ${pairsForMarket().map(p => `<option ${selectedPair === p.pair ? "selected" : ""}>${p.pair}</option>`).join("")}
-          </select>
-        </label>
+        <button class="app-select-btn" onclick="AITradeXUser.openSheet('pair')">
+          <span>Pair</span>
+          <b>${selectedPair}</b>
+          <em class="${changeClass(pair.change)}">${pair.change}</em>
+        </button>
       </section>
 
       <section class="pair-rate-list">
@@ -347,7 +396,7 @@
           <button class="${selectedPair === p.pair ? "active" : ""}" onclick="AITradeXUser.selectPair('${p.pair}')">
             <b>${p.pair}</b>
             <span>${p.price}</span>
-            <em class="${p.mood === "up" ? "profit-text" : "loss-text"}">${p.change}</em>
+            <em class="${changeClass(p.change)}">${p.change}</em>
           </button>
         `).join("")}
       </section>
@@ -382,11 +431,13 @@
 
         <div class="form-row">
           <label>Order Type<select><option>Market</option><option>Limit</option></select></label>
-          <label>Leverage
-            <select onchange="AITradeXUser.setTradeLeverage(this.value)">
-              ${leverageOptions.map(x => `<option value="${x}" ${tradeLeveragePreview === x ? "selected" : ""}>${x}x</option>`).join("")}
-            </select>
-          </label>
+          <div class="app-field">
+            <span>Leverage</span>
+            <button class="app-select-btn full" onclick="AITradeXUser.openSheet('leverage')">
+              <b>${tradeLeveragePreview}x</b>
+              <em>Change</em>
+            </button>
+          </div>
         </div>
 
         <label>Margin Amount
@@ -646,6 +697,14 @@
       localStorage.setItem("AITradeX_ACCOUNT_MODE", accountMode);
       render();
     },
+    openSheet(type) {
+      selectorSheet = type;
+      render();
+    },
+    closeSheet() {
+      selectorSheet = null;
+      render();
+    },
     setTradeAmount(value) {
       tradeAmountPreview = Math.max(0, Number(value || 0));
       localStorage.setItem("AITradeX_TRADE_AMOUNT_PREVIEW", String(tradeAmountPreview));
@@ -662,6 +721,7 @@
       const list = pairsForMarket();
       selectedPair = list[0].pair;
       localStorage.setItem("AITradeX_SELECTED_PAIR", selectedPair);
+      selectorSheet = null;
       render();
     },
     selectPair(pair) {
@@ -672,6 +732,7 @@
         localStorage.setItem("AITradeX_SELECTED_MARKET", selectedMarket);
       }
       localStorage.setItem("AITradeX_SELECTED_PAIR", selectedPair);
+      selectorSheet = null;
       render();
     },
     setAutoPercent(value) {
