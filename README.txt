@@ -59,3 +59,15 @@ Phase 1.3 Real App User Polish:
 - Trade page made more exchange-style.
 - P/L and History pages no longer feel empty.
 - Admin side untouched.
+
+
+Phase 1.4 Selected Account + Compact Polish:
+- user-app.js updated by replacing the relevant full UI blocks.
+- styles.css updated for compact premium real-app feel.
+- Home now shows only selected account balance.
+- If Demo is selected, Real balance is not shown on Home selected account card.
+- If Real is selected, Demo balance is not shown on Home selected account card.
+- Trade page account switch removed from order ticket to avoid confusion.
+- Account switch remains in the top header/Home account card.
+- UI spacing/cards reduced for less bulky feel.
+- Admin side untouched.

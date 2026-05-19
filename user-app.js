@@ -197,16 +197,16 @@
       <section class="account-overview-card ${accountMode.toLowerCase()}">
         <div class="overview-top">
           <div>
-            <p>${accountMode} ACCOUNT</p>
+            <p>${accountMode === "REAL" ? "REAL ACCOUNT" : "DEMO ACCOUNT"}</p>
             <h1>${App.money(balance)}</h1>
-            <span>${accountMode === "REAL" ? "Available real equity" : "Practice equity"}</span>
+            <span>${accountMode === "REAL" ? "Available real equity" : "Practice balance for learning"}</span>
           </div>
           ${accountSwitch()}
         </div>
-        <div class="overview-mini">
-          <article><span>Real</span><b>${App.money(realBalance())}</b></article>
-          <article><span>Demo</span><b>${App.money(demoBalance())}</b></article>
+        <div class="overview-mini single-mode">
+          <article><span>${accountMode === "REAL" ? "Real Wallet" : "Demo Wallet"}</span><b>${App.money(balance)}</b></article>
           <article><span>Today P/L</span><b class="${pnl >= 0 ? "green" : "red"}">${App.money(pnl)}</b></article>
+          <article><span>Mode</span><b>${accountMode === "REAL" ? "Live" : "Practice"}</b></article>
         </div>
       </section>
 
@@ -283,8 +283,7 @@
 
       <section class="premium-card order-ticket">
         <div class="card-row">
-          <div><p>ORDER TICKET</p><h2>Place Order</h2></div>
-          ${accountSwitch(true)}
+          <div><p>ORDER TICKET</p><h2>Place Order</h2><span class="ticket-mode">${accountMode} account selected from Home header</span></div>
         </div>
         <label>Coin Pair<select onchange="AITradeXUser.selectPair(this.value)">${pairs.map(p => `<option ${selectedPair === p.pair ? "selected" : ""}>${p.pair}</option>`).join("")}</select></label>
         <div class="form-row">
