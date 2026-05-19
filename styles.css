@@ -533,3 +533,93 @@
     height:58vh!important;
   }
 }
+
+
+/* AITradeX Phase 1.9 all market rates + green/red change */
+.market-ticker{
+  display:flex!important;
+  overflow-x:auto!important;
+  gap:10px!important;
+  padding-bottom:10px!important;
+  scroll-snap-type:x mandatory;
+}
+.market-ticker::-webkit-scrollbar{display:none}
+.ticker-card{
+  min-width:150px!important;
+  scroll-snap-align:start;
+}
+.ticker-card .profit-text,
+.pair-rate-list .profit-text{
+  color:var(--green)!important;
+}
+.ticker-card .loss-text,
+.pair-rate-list .loss-text{
+  color:var(--red)!important;
+}
+.pair-rate-list{
+  display:flex;
+  gap:8px;
+  overflow-x:auto;
+  padding:2px 2px 10px;
+  margin-bottom:8px;
+  scroll-snap-type:x mandatory;
+}
+.pair-rate-list::-webkit-scrollbar{display:none}
+.pair-rate-list button{
+  min-width:132px;
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.045);
+  color:#fff;
+  border-radius:16px;
+  padding:10px;
+  text-align:left;
+  scroll-snap-align:start;
+}
+.pair-rate-list button.active{
+  border-color:rgba(21,229,211,.5);
+  box-shadow:inset 0 0 0 1px rgba(21,229,211,.16);
+  background:rgba(21,229,211,.08);
+}
+.pair-rate-list b{
+  display:block;
+  font-size:13px;
+}
+.pair-rate-list span{
+  display:block;
+  color:#dfe8f7;
+  font-size:12px;
+  margin-top:5px;
+}
+.pair-rate-list em{
+  display:block;
+  font-style:normal;
+  font-size:12px;
+  font-weight:1000;
+  margin-top:4px;
+}
+@media(min-width:900px){
+  .market-ticker{
+    display:grid!important;
+    grid-template-columns:repeat(6,1fr);
+    overflow:visible!important;
+  }
+  .ticker-card{
+    min-width:0!important;
+  }
+  .pair-rate-list{
+    display:grid;
+    grid-template-columns:repeat(6,1fr);
+    overflow:visible;
+  }
+  .pair-rate-list button{
+    min-width:0;
+  }
+}
+@media(max-width:620px){
+  .ticker-card{
+    min-width:142px!important;
+  }
+  .pair-rate-list button{
+    min-width:126px;
+  }
+}

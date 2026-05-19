@@ -120,3 +120,13 @@ Phase 1.8 Professional Trade Section:
 - TradingView symbol area improved.
 - Buy/Sell confirmation summary shell added.
 - Admin side untouched.
+
+
+Phase 1.9 All Popular Market Rates:
+- user-app.js updated with final popular crypto and forex pairs.
+- Home now shows all selected popular crypto + forex rates in market ticker.
+- Trade page shows selected market pair-rate list.
+- Positive percentage values are green.
+- Negative percentage values are red.
+- Pair-rate list changes with Crypto / Forex market selector.
+- Admin side untouched.
