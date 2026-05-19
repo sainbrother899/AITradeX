@@ -188,7 +188,7 @@
     if (!container) return;
 
     container.innerHTML = `
-      <div class="chart-loading-state">
+      <div class="chart-loading-state" id="aitx_chart_loader">
         <div class="chart-spinner"></div>
         <b>${symbol}</b>
         <span>Loading TradingView chart...</span>
@@ -202,7 +202,13 @@
     setTimeout(() => {
       const freshContainer = document.getElementById("tradingview_chart_container");
       if (!freshContainer) return;
-      freshContainer.innerHTML = "";
+
+      freshContainer.innerHTML = `
+        <div class="chart-loading-state" id="aitx_chart_loader">
+          <div class="chart-spinner"></div>
+          <b>${symbol}</b>
+          <span>Loading TradingView chart...</span>
+        </div>`;
 
       new window.TradingView.widget({
         autosize: true,
@@ -223,6 +229,27 @@
         support_host: "https://www.tradingview.com",
         container_id: "tradingview_chart_container"
       });
+
+      const revealChart = () => {
+        const frame = freshContainer.querySelector("iframe");
+        const loader = document.getElementById("aitx_chart_loader");
+        if (frame) {
+          frame.classList.add("aitx-tv-ready");
+          if (loader) loader.classList.add("hide-loader");
+          setTimeout(() => loader?.remove(), 450);
+          return true;
+        }
+        return false;
+      };
+
+      const watch = setInterval(() => {
+        if (revealChart()) clearInterval(watch);
+      }, 120);
+
+      setTimeout(() => {
+        clearInterval(watch);
+        revealChart();
+      }, 4500);
     }, 80);
   }
 

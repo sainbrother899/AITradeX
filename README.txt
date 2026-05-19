@@ -173,3 +173,11 @@ Phase 2.3 TradingView Loader/Flicker Fix:
 - White loading flash reduced by forcing dark chart container background.
 - Old placeholder chart effect no longer appears on TradingView chart frame.
 - Admin side untouched.
+
+
+Phase 2.4 Black Chart Loading:
+- user-app.js updated to hide TradingView iframe until it is mounted.
+- styles.css updated to keep chart area black/dark during loading.
+- White flash is covered by dark loader overlay.
+- iframe fades in after TradingView loads.
+- Admin side untouched.

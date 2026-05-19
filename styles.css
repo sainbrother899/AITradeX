@@ -1004,3 +1004,42 @@
 .responsive-chart.tradingview-widget-frame:before{
   display:none!important;
 }
+
+
+/* AITradeX Phase 2.4 black chart loading overlay */
+.tradingview-chart-container{
+  background:#050814!important;
+  position:relative!important;
+}
+.tradingview-chart-container iframe{
+  opacity:0!important;
+  background:#050814!important;
+  transition:opacity .35s ease!important;
+}
+.tradingview-chart-container iframe.aitx-tv-ready{
+  opacity:1!important;
+}
+.chart-loading-state{
+  background:#050814!important;
+  z-index:5!important;
+}
+.chart-loading-state:before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(circle at 50% 45%,rgba(21,229,211,.10),transparent 34%),
+    linear-gradient(180deg,#07101f,#050814 58%,#040611);
+  z-index:-1;
+}
+.chart-loading-state.hide-loader{
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .35s ease;
+}
+.tradingview-widget-frame,
+.responsive-chart.tradingview-widget-frame,
+.chart-shell,
+#tradingview_chart_container{
+  background:#050814!important;
+}
