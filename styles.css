@@ -835,3 +835,106 @@
     height:clamp(620px,78vh,1080px)!important;
   }
 }
+
+
+/* AITradeX Phase 2.2 chart controls + bigger chart */
+.chart-shell{
+  padding:8px!important;
+  border-radius:18px!important;
+}
+.working-timeframes{
+  display:flex;
+  gap:6px;
+  align-items:center;
+  padding:0 0 8px!important;
+  overflow-x:auto;
+}
+.working-timeframes::-webkit-scrollbar{display:none}
+.working-timeframes button{
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.045);
+  color:#dfe8f7;
+  border-radius:999px;
+  padding:8px 10px;
+  font-size:12px;
+  font-weight:1000;
+  white-space:nowrap;
+}
+.working-timeframes button.active{
+  background:linear-gradient(135deg,var(--cyan),#1bd0ee);
+  color:#07111f;
+  border-color:rgba(21,229,211,.35);
+}
+.working-timeframes .chart-settings-btn{
+  margin-left:auto;
+  min-width:38px;
+  text-align:center;
+  background:rgba(248,189,122,.10);
+  color:#ffd89c;
+}
+.tradingview-widget-frame{
+  height:clamp(640px,78vh,1160px)!important;
+  min-height:640px;
+  border-radius:14px!important;
+}
+.tradingview-chart-container{
+  border-radius:14px;
+  overflow:hidden;
+}
+.chart-settings-sheet .settings-block{
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.04);
+  border-radius:18px;
+  padding:14px;
+  margin-bottom:10px;
+}
+.chart-settings-sheet .settings-block>span{
+  display:block;
+  color:var(--muted);
+  font-size:12px;
+  font-weight:1000;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  margin-bottom:10px;
+}
+.settings-chips{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+}
+.settings-chips button{
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.055);
+  color:#fff;
+  border-radius:14px;
+  min-height:44px;
+  font-weight:1000;
+}
+.settings-chips button.active{
+  background:rgba(21,229,211,.18);
+  border-color:rgba(21,229,211,.48);
+  color:var(--cyan);
+}
+@media(max-width:620px){
+  .chart-shell{
+    margin-left:-6px!important;
+    margin-right:-6px!important;
+    padding:6px!important;
+  }
+  .tradingview-widget-frame{
+    height:78vh!important;
+    min-height:560px;
+  }
+  .working-timeframes button{
+    padding:7px 9px;
+    font-size:11px;
+  }
+  .settings-chips{
+    grid-template-columns:1fr 1fr;
+  }
+}
+@media(min-width:900px){
+  .tradingview-widget-frame{
+    height:clamp(760px,86vh,1220px)!important;
+  }
+}

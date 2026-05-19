@@ -14,6 +14,10 @@
   let tradeAmountPreview = Number(localStorage.getItem("AITradeX_TRADE_AMOUNT_PREVIEW") || 1000);
   let tradeLeveragePreview = Number(localStorage.getItem("AITradeX_TRADE_LEVERAGE_PREVIEW") || 10);
   let selectorSheet = null;
+  let chartInterval = localStorage.getItem("AITradeX_CHART_INTERVAL") || "15";
+  let chartStyle = localStorage.getItem("AITradeX_CHART_STYLE") || "1";
+  let chartTheme = localStorage.getItem("AITradeX_CHART_THEME") || "dark";
+  let chartToolbar = localStorage.getItem("AITradeX_CHART_TOOLBAR") !== "false";
 
   const marketPairs = {
     CRYPTO: [
@@ -139,6 +143,43 @@
         </section>`;
     }
 
+    if (selectorSheet === "chart-settings") {
+      return `
+        <div class="sheet-backdrop" onclick="AITradeXUser.closeSheet()"></div>
+        <section class="selector-sheet compact-sheet chart-settings-sheet">
+          <div class="sheet-handle"></div>
+          <div class="sheet-title">
+            <div><p>CHART</p><h3>Chart Settings</h3></div>
+            <button onclick="AITradeXUser.closeSheet()">×</button>
+          </div>
+
+          <div class="settings-block">
+            <span>Chart Type</span>
+            <div class="settings-chips">
+              <button class="${chartStyle === "1" ? "active" : ""}" onclick="AITradeXUser.setChartStyle('1')">Candles</button>
+              <button class="${chartStyle === "2" ? "active" : ""}" onclick="AITradeXUser.setChartStyle('2')">Line</button>
+              <button class="${chartStyle === "3" ? "active" : ""}" onclick="AITradeXUser.setChartStyle('3')">Area</button>
+            </div>
+          </div>
+
+          <div class="settings-block">
+            <span>Theme</span>
+            <div class="settings-chips">
+              <button class="${chartTheme === "dark" ? "active" : ""}" onclick="AITradeXUser.setChartTheme('dark')">Dark</button>
+              <button class="${chartTheme === "light" ? "active" : ""}" onclick="AITradeXUser.setChartTheme('light')">Light</button>
+            </div>
+          </div>
+
+          <div class="settings-block">
+            <span>TradingView Toolbar</span>
+            <div class="settings-chips">
+              <button class="${chartToolbar ? "active" : ""}" onclick="AITradeXUser.setChartToolbar(true)">Show</button>
+              <button class="${!chartToolbar ? "active" : ""}" onclick="AITradeXUser.setChartToolbar(false)">Hide</button>
+            </div>
+          </div>
+        </section>`;
+    }
+
     return "";
   }
 
@@ -161,18 +202,18 @@
     new window.TradingView.widget({
       autosize: true,
       symbol,
-      interval: "15",
+      interval: chartInterval,
       timezone: "Asia/Kolkata",
-      theme: "dark",
-      style: "1",
+      theme: chartTheme,
+      style: chartStyle,
       locale: "en",
-      toolbar_bg: "#050814",
+      toolbar_bg: chartTheme === "dark" ? "#050814" : "#ffffff",
       enable_publishing: false,
-      hide_top_toolbar: false,
-      hide_side_toolbar: false,
+      hide_top_toolbar: !chartToolbar,
+      hide_side_toolbar: !chartToolbar,
       allow_symbol_change: false,
       save_image: false,
-      withdateranges: true,
+      withdateranges: chartToolbar,
       calendar: false,
       support_host: "https://www.tradingview.com",
       container_id: "tradingview_chart_container"
@@ -450,8 +491,17 @@
       </section>
 
       <section class="chart-shell tradingview-shell">
-        <div class="chart-toolbar">
-          <span>1m</span><span>5m</span><span>30m</span><span>1h</span><span>4h</span><span>1D</span><button>⚙</button>
+        <div class="chart-toolbar working-timeframes">
+          ${[
+            ["1", "1m"],
+            ["5", "5m"],
+            ["15", "15m"],
+            ["30", "30m"],
+            ["60", "1h"],
+            ["240", "4h"],
+            ["D", "1D"]
+          ].map(([value, label]) => `<button class="${chartInterval === value ? "active" : ""}" onclick="AITradeXUser.setChartInterval('${value}')">${label}</button>`).join("")}
+          <button class="chart-settings-btn" onclick="AITradeXUser.openSheet('chart-settings')">⚙</button>
         </div>
         <div class="responsive-chart tradingview-widget-frame">
           <div id="tradingview_chart_container" class="tradingview-chart-container"></div>
@@ -736,6 +786,29 @@
     setAccountMode(mode) {
       accountMode = mode === "DEMO" ? "DEMO" : "REAL";
       localStorage.setItem("AITradeX_ACCOUNT_MODE", accountMode);
+      render();
+    },
+    setChartInterval(value) {
+      chartInterval = value;
+      localStorage.setItem("AITradeX_CHART_INTERVAL", chartInterval);
+      render();
+    },
+    setChartStyle(value) {
+      chartStyle = value;
+      localStorage.setItem("AITradeX_CHART_STYLE", chartStyle);
+      selectorSheet = null;
+      render();
+    },
+    setChartTheme(value) {
+      chartTheme = value;
+      localStorage.setItem("AITradeX_CHART_THEME", chartTheme);
+      selectorSheet = null;
+      render();
+    },
+    setChartToolbar(value) {
+      chartToolbar = !!value;
+      localStorage.setItem("AITradeX_CHART_TOOLBAR", String(chartToolbar));
+      selectorSheet = null;
       render();
     },
     openSheet(type) {

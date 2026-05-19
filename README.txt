@@ -152,3 +152,16 @@ Phase 2.1 TradingView Chart:
 - Chart is dark theme and responsive.
 - Chart uses viewport-based height and is not cut into a small fixed box.
 - Admin side untouched.
+
+
+Phase 2.2 Chart Controls:
+- user-app.js updated with working timeframe controls.
+- styles.css updated for bigger chart and settings UI.
+- 1m, 5m, 15m, 30m, 1h, 4h, 1D buttons reload TradingView chart.
+- Selected timeframe gets active highlight.
+- Settings button opens chart settings bottom sheet.
+- Settings support Candles / Line / Area chart style.
+- Settings support Dark / Light theme.
+- Settings support TradingView toolbar Show / Hide.
+- Chart area is larger with reduced side padding.
+- Admin side untouched.
