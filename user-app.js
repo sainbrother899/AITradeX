@@ -480,31 +480,22 @@
     const pair = selectedPairData();
     const balance = currentBalance();
     const positionSize = tradeAmountPreview * tradeLeveragePreview;
-    const modeNote = accountMode === "REAL"
-      ? "Real wallet balance will be used for this order."
-      : "Demo balance will be used for practice only.";
 
     shell(`
-      <section class="trade-command pro-trade-command">
+      <section class="trade-command clean-pair-card">
         <div>
-          <p>${accountMode} ACCOUNT · ${selectedMarket}</p>
+          <p>${selectedMarket} MARKET</p>
           <h1>${selectedPair}</h1>
           <span>${pair.price} · ${pair.inr} · <em class="${changeClass(pair.change)}">${pair.change}</em></span>
-          <small>TradingView symbol: ${pair.symbol}</small>
         </div>
-        <div class="trade-live">LIVE</div>
+        <button class="change-pair-btn" onclick="AITradeXUser.openSheet('pair')">Change Pair</button>
       </section>
 
-      <section class="trade-select-bar app-selector-bar">
+      <section class="trade-select-bar app-selector-bar market-only-bar">
         <div class="market-switch">
           <button class="${selectedMarket === "CRYPTO" ? "active" : ""}" onclick="AITradeXUser.setMarket('CRYPTO')">Crypto</button>
           <button class="${selectedMarket === "FOREX" ? "active" : ""}" onclick="AITradeXUser.setMarket('FOREX')">Forex</button>
         </div>
-        <button class="app-select-btn" onclick="AITradeXUser.openSheet('pair')">
-          <span>Pair</span>
-          <b>${selectedPair}</b>
-          <em class="${changeClass(pair.change)}">${pair.change}</em>
-        </button>
       </section>
 
       <section class="pair-rate-list">
@@ -515,12 +506,6 @@
             <em class="${changeClass(p.change)}">${p.change}</em>
           </button>
         `).join("")}
-      </section>
-
-      <section class="trade-mode-notice ${accountMode.toLowerCase()}">
-        <b>${accountMode} MODE</b>
-        <span>${modeNote}</span>
-        <strong>Available: ${App.money(balance)}</strong>
       </section>
 
       <section class="chart-shell tradingview-shell">
@@ -549,6 +534,11 @@
             <span class="ticket-mode">${accountMode} account selected from Home</span>
           </div>
           <span class="ticket-chip">${selectedMarket}</span>
+        </div>
+
+        <div class="trade-account-mini ${accountMode.toLowerCase()}">
+          <div><span>Account</span><b>${accountMode}</b></div>
+          <div><span>Available</span><b>${App.money(balance)}</b></div>
         </div>
 
         <div class="form-row">
@@ -596,10 +586,10 @@
         </div>
         <div class="depth-table">
           <span>${selectedMarket === "CRYPTO" ? "Price" : "Bid"}</span><span>${selectedMarket === "CRYPTO" ? "Qty" : "Ask"}</span><span>Spread</span>
-          <b class="red">${selectedMarket === "CRYPTO" ? "$77,147.07" : pair.price}</b><b>${selectedMarket === "CRYPTO" ? "1.5562" : pair.price}</b><b>0.02%</b>
-          <b class="red">${selectedMarket === "CRYPTO" ? "$77,104.78" : pair.price}</b><b>${selectedMarket === "CRYPTO" ? "0.2684" : pair.price}</b><b>0.03%</b>
-          <b class="green">${selectedMarket === "CRYPTO" ? "$76,737.55" : pair.price}</b><b>${selectedMarket === "CRYPTO" ? "0.8940" : pair.price}</b><b>0.01%</b>
-          <b class="green">${selectedMarket === "CRYPTO" ? "$76,612.11" : pair.price}</b><b>${selectedMarket === "CRYPTO" ? "2.1180" : pair.price}</b><b>0.02%</b>
+          <b class="loss-text">${selectedMarket === "CRYPTO" ? "$77,147.07" : pair.price}</b><b>${selectedMarket === "CRYPTO" ? "1.5562" : pair.price}</b><b>0.02%</b>
+          <b class="loss-text">${selectedMarket === "CRYPTO" ? "$77,104.78" : pair.price}</b><b>${selectedMarket === "CRYPTO" ? "0.2684" : pair.price}</b><b>0.03%</b>
+          <b class="profit-text">${selectedMarket === "CRYPTO" ? "$76,737.55" : pair.price}</b><b>${selectedMarket === "CRYPTO" ? "0.8940" : pair.price}</b><b>0.01%</b>
+          <b class="profit-text">${selectedMarket === "CRYPTO" ? "$76,612.11" : pair.price}</b><b>${selectedMarket === "CRYPTO" ? "2.1180" : pair.price}</b><b>0.02%</b>
         </div>
       </section>
 

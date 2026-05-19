@@ -181,3 +181,13 @@ Phase 2.4 Black Chart Loading:
 - White flash is covered by dark loader overlay.
 - iframe fades in after TradingView loads.
 - Admin side untouched.
+
+
+Phase 2.5 Trade Header Cleanup:
+- user-app.js updated to remove developer-facing TradingView symbol text from top trade card.
+- Top pair card now has Change Pair button.
+- Scrollable pair-rate cards remain visible.
+- Real/Demo notice removed from above chart.
+- Account mode and available balance moved inside Order Ticket.
+- Market switch remains compact.
+- Admin side untouched.
