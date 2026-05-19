@@ -54,7 +54,22 @@
   }
 
   function avatar(name) {
+    const u = user();
+    const avatarData = u ? localStorage.getItem(`AITradeX_AVATAR_${u.id}`) : "";
+    if (avatarData) {
+      return `<span class="avatar image-avatar"><img src="${avatarData}" alt="Avatar"/></span>`;
+    }
     return `<span class="avatar">${String(name || "A").trim().charAt(0).toUpperCase()}</span>`;
+  }
+
+  function displayName() {
+    const u = user();
+    if (!u) return "User";
+    return localStorage.getItem(`AITradeX_DISPLAY_NAME_${u.id}`) || u.name || "User";
+  }
+
+  function profileNameChip() {
+    return `<button class="profile-chip visible-profile" onclick="AITradeXUser.go('profile')"><b>${App.escapeHtml(displayName())}</b>${avatar(displayName())}</button>`;
   }
 
   function accountSwitch(compact = false) {
@@ -73,7 +88,7 @@
         <div class="app-brand">
           <b>AITradeX</b>
         </div>
-        <button class="profile-chip" onclick="AITradeXUser.toggleDrawer()">${avatar(u.name)}</button>
+        ${profileNameChip()}
       </header>
       ${drawerOpen ? menuDrawer() : ""}`;
   }
@@ -84,9 +99,9 @@
       <div class="drawer-backdrop" onclick="AITradeXUser.toggleDrawer(false)"></div>
       <aside class="side-drawer">
         <div class="drawer-head">
-          ${avatar(u.name)}
+          ${avatar(displayName())}
           <div>
-            <b>${App.escapeHtml(u.name || "AITradeX User")}</b>
+            <b>${App.escapeHtml(displayName() || "AITradeX User")}</b>
             <span>${accountMode} account active</span>
           </div>
         </div>
@@ -409,7 +424,44 @@
 
   function profilePage() {
     const u = user();
-    shell(`<section class="premium-card"><p>PROFILE</p><h2>${App.escapeHtml(u.name)}</h2><div class="empty-state">${App.escapeHtml(u.email)}<br/>${App.escapeHtml(u.mobile || "")}</div></section>`);
+    const savedName = displayName();
+    const avatarData = localStorage.getItem(`AITradeX_AVATAR_${u.id}`) || "";
+
+    shell(`
+      <section class="premium-card profile-editor-card">
+        <p>PROFILE</p>
+        <h2>Edit Profile</h2>
+
+        <div class="profile-preview">
+          ${avatar(savedName)}
+          <div>
+            <b>${App.escapeHtml(savedName)}</b>
+            <span>${App.escapeHtml(u.email)}</span>
+          </div>
+        </div>
+
+        <div class="profile-form">
+          <label>Display Name<input id="profileNameInput" value="${App.escapeHtml(savedName)}" placeholder="Your display name"/></label>
+          <label>Avatar Image<input id="profileAvatarInput" type="file" accept="image/*"/></label>
+          <button class="save-profile-btn" onclick="AITradeXUser.saveProfile()">Save Profile</button>
+        </div>
+
+        <div class="profile-note">
+          Avatar अभी browser में save होगा. बाद में इसे Supabase Storage से connect करेंगे.
+        </div>
+      </section>
+
+      <section class="premium-card">
+        <p>ACCOUNT DETAILS</p>
+        <h2>Basic Information</h2>
+        <div class="profile-info-grid">
+          <article><span>Email</span><b>${App.escapeHtml(u.email)}</b></article>
+          <article><span>Mobile</span><b>${App.escapeHtml(u.mobile || "-")}</b></article>
+          <article><span>Account Mode</span><b>${accountMode}</b></article>
+          <article><span>Referral Code</span><b>${App.escapeHtml(u.referralCode || "-")}</b></article>
+        </div>
+      </section>
+    `);
   }
 
   function supportPage() {
@@ -501,6 +553,35 @@
       autoTradeOn = !autoTradeOn;
       localStorage.setItem("AITradeX_AUTO_ON", String(autoTradeOn));
       render();
+    },
+    saveProfile() {
+      const u = user();
+      if (!u) return;
+
+      const nameInput = document.getElementById("profileNameInput");
+      const fileInput = document.getElementById("profileAvatarInput");
+      const nextName = String(nameInput?.value || "").trim();
+
+      if (!nextName) {
+        App.toast("Display name required.");
+        return;
+      }
+
+      localStorage.setItem(`AITradeX_DISPLAY_NAME_${u.id}`, nextName);
+
+      const file = fileInput?.files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          localStorage.setItem(`AITradeX_AVATAR_${u.id}`, reader.result);
+          App.toast("Profile updated.");
+          render();
+        };
+        reader.readAsDataURL(file);
+      } else {
+        App.toast("Profile updated.");
+        render();
+      }
     },
     logout() {
       App.clearSession();

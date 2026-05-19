@@ -212,3 +212,121 @@
     height:clamp(540px,68vh,920px)!important;
   }
 }
+
+
+/* AITradeX Phase 1.6 avatar/profile editor */
+.profile-chip.visible-profile{
+  display:flex!important;
+  align-items:center!important;
+  gap:7px!important;
+  min-height:40px!important;
+  border:1px solid rgba(255,255,255,.10)!important;
+  background:rgba(255,255,255,.055)!important;
+  border-radius:999px!important;
+  padding:3px 4px 3px 10px!important;
+  color:#fff!important;
+  font-weight:1000!important;
+}
+.profile-chip.visible-profile b{
+  max-width:92px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  font-size:13px;
+}
+.image-avatar{
+  overflow:hidden!important;
+  padding:0!important;
+}
+.image-avatar img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+}
+.profile-editor-card .avatar{
+  width:76px!important;
+  height:76px!important;
+  font-size:28px!important;
+}
+.profile-preview{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.045);
+  border-radius:20px;
+  padding:14px;
+  margin:12px 0;
+}
+.profile-preview b{
+  display:block;
+  font-size:20px;
+}
+.profile-preview span{
+  color:var(--muted);
+  font-size:13px;
+}
+.profile-form{
+  display:grid;
+  gap:12px;
+}
+.profile-form label{
+  display:grid;
+  gap:8px;
+  color:var(--muted);
+  font-size:13px;
+}
+.save-profile-btn{
+  border:0;
+  border-radius:16px;
+  min-height:52px;
+  background:linear-gradient(135deg,var(--cyan),#1bd0ee);
+  color:#07111f;
+  font-weight:1000;
+}
+.profile-note{
+  margin-top:12px;
+  border:1px solid rgba(248,189,122,.20);
+  background:rgba(248,189,122,.08);
+  color:#ffd89c;
+  border-radius:16px;
+  padding:12px;
+  font-size:13px;
+}
+.profile-info-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+.profile-info-grid article{
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.045);
+  border-radius:16px;
+  padding:12px;
+}
+.profile-info-grid span{
+  display:block;
+  color:var(--muted);
+  font-size:12px;
+  margin-bottom:6px;
+}
+.profile-info-grid b{
+  word-break:break-word;
+}
+@media(max-width:620px){
+  .profile-chip.visible-profile{
+    display:flex!important;
+    padding-left:8px!important;
+  }
+  .profile-chip.visible-profile b{
+    max-width:72px;
+    font-size:12px;
+  }
+  .compact-header .profile-chip{
+    display:flex!important;
+  }
+  .profile-info-grid{
+    grid-template-columns:1fr;
+  }
+}

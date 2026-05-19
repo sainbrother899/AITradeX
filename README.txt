@@ -85,3 +85,13 @@ Phase 1.5 Nav + History + Profit/Loss Color:
 - Loss values use red styling.
 - Bottom nav and top header made compact.
 - Admin side untouched.
+
+
+Phase 1.6 Avatar + Profile Edit:
+- user-app.js updated for header avatar/name and profile editor.
+- styles.css updated for avatar/profile UI.
+- Header shows round avatar and user name on right side.
+- Profile page includes avatar upload and display name edit.
+- Avatar and display name currently save in browser localStorage.
+- Supabase Storage can be connected later for production avatar upload.
+- Admin side untouched.
