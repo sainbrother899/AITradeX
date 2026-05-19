@@ -28,3 +28,9 @@ Phase 2: KYC + payment methods
 Phase 3: wallet deposit/withdrawal
 Phase 4: trading page with TradingView + buy/sell + real/demo
 Phase 5: subscriptions + referral first deposit 10%
+
+
+Root Files Version:
+- Removed js/ folder.
+- core.js, auth.js, user-app.js, admin-app.js are now in root.
+- index.html and admin.html script paths updated.
