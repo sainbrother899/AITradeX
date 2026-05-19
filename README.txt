@@ -107,3 +107,16 @@ Phase 1.7 Crypto + Forex Markets:
 - History tables include Market column.
 - User balance and P/L remain INR-based.
 - Admin side untouched.
+
+
+Phase 1.8 Professional Trade Section:
+- user-app.js fully updated for trade page improvements.
+- styles.css updated for trade page layout.
+- Market + pair selector moved into compact top bar.
+- Real/Demo mode notice added.
+- Available balance shown on trade page.
+- Position size preview added: amount x leverage.
+- Market Feed replaces static crypto-only order book.
+- TradingView symbol area improved.
+- Buy/Sell confirmation summary shell added.
+- Admin side untouched.

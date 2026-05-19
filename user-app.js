@@ -11,6 +11,8 @@
   let autoTradeOn = localStorage.getItem("AITradeX_AUTO_ON") === "true";
   let selectedMarket = localStorage.getItem("AITradeX_SELECTED_MARKET") || "CRYPTO";
   let selectedPair = localStorage.getItem("AITradeX_SELECTED_PAIR") || "BTC/USDT";
+  let tradeAmountPreview = Number(localStorage.getItem("AITradeX_TRADE_AMOUNT_PREVIEW") || 1000);
+  let tradeLeveragePreview = Number(localStorage.getItem("AITradeX_TRADE_LEVERAGE_PREVIEW") || 10);
 
   const marketPairs = {
     CRYPTO: [
@@ -298,73 +300,121 @@
 
   function tradePage() {
     const pair = selectedPairData();
+    const balance = currentBalance();
+    const positionSize = tradeAmountPreview * tradeLeveragePreview;
+    const modeNote = accountMode === "REAL"
+      ? "Real wallet balance will be used for this order."
+      : "Demo balance will be used for practice only.";
 
     shell(`
-      <section class="trade-command">
+      <section class="trade-command pro-trade-command">
         <div>
           <p>${accountMode} ACCOUNT · ${selectedMarket}</p>
           <h1>${selectedPair}</h1>
           <span>${pair.price} · ${pair.inr} · ${pair.change}</span>
-          <small>Chart symbol: ${pair.symbol}</small>
+          <small>TradingView symbol: ${pair.symbol}</small>
         </div>
         <div class="trade-live">LIVE</div>
       </section>
 
-      <section class="market-switch-card">
+      <section class="trade-select-bar">
         <div class="market-switch">
           <button class="${selectedMarket === "CRYPTO" ? "active" : ""}" onclick="AITradeXUser.setMarket('CRYPTO')">Crypto</button>
           <button class="${selectedMarket === "FOREX" ? "active" : ""}" onclick="AITradeXUser.setMarket('FOREX')">Forex</button>
         </div>
+        <label>
+          Pair
+          <select onchange="AITradeXUser.selectPair(this.value)">
+            ${pairsForMarket().map(p => `<option ${selectedPair === p.pair ? "selected" : ""}>${p.pair}</option>`).join("")}
+          </select>
+        </label>
       </section>
 
-      <section class="chart-shell">
+      <section class="trade-mode-notice ${accountMode.toLowerCase()}">
+        <b>${accountMode} MODE</b>
+        <span>${modeNote}</span>
+        <strong>Available: ${App.money(balance)}</strong>
+      </section>
+
+      <section class="chart-shell tradingview-shell">
         <div class="chart-toolbar">
           <span>1m</span><span>5m</span><span>30m</span><span>1h</span><span>4h</span><span>1D</span><button>⚙</button>
         </div>
         <div class="responsive-chart">
-          <div class="chart-watermark">${pair.symbol}</div>
+          <div class="chart-watermark">
+            <b>${pair.symbol}</b>
+            <small>TradingView widget will load here</small>
+          </div>
         </div>
       </section>
 
-      <section class="premium-card order-ticket">
+      <section class="premium-card order-ticket pro-order-ticket">
         <div class="card-row">
-          <div><p>ORDER TICKET</p><h2>Place Order</h2><span class="ticket-mode">${accountMode} account selected from Home</span></div>
+          <div>
+            <p>ORDER TICKET</p>
+            <h2>Buy / Sell Order</h2>
+            <span class="ticket-mode">${accountMode} account selected from Home</span>
+          </div>
+          <span class="ticket-chip">${selectedMarket}</span>
         </div>
-        <label>Coin Pair<select onchange="AITradeXUser.selectPair(this.value)">${pairsForMarket().map(p => `<option ${selectedPair === p.pair ? "selected" : ""}>${p.pair}</option>`).join("")}</select></label>
+
         <div class="form-row">
           <label>Order Type<select><option>Market</option><option>Limit</option></select></label>
-          <label>Leverage<select>${leverageOptions.map(x => `<option>${x}x</option>`).join("")}</select></label>
+          <label>Leverage
+            <select onchange="AITradeXUser.setTradeLeverage(this.value)">
+              ${leverageOptions.map(x => `<option value="${x}" ${tradeLeveragePreview === x ? "selected" : ""}>${x}x</option>`).join("")}
+            </select>
+          </label>
         </div>
-        <label>Margin Amount<input type="number" placeholder="Enter INR amount"/></label>
+
+        <label>Margin Amount
+          <input type="number" value="${tradeAmountPreview}" min="1" oninput="AITradeXUser.setTradeAmount(this.value)" placeholder="Enter INR amount"/>
+        </label>
+
+        <div class="trade-preview-grid">
+          <article><span>Available</span><b>${App.money(balance)}</b></article>
+          <article><span>Margin</span><b>${App.money(tradeAmountPreview)}</b></article>
+          <article><span>Leverage</span><b>${tradeLeveragePreview}x</b></article>
+          <article><span>Position Size</span><b>${App.money(positionSize)}</b></article>
+        </div>
+
         <div class="form-row">
           <label>Take Profit Optional<input placeholder="TP price"/></label>
           <label>Stop Loss Optional<input placeholder="SL price"/></label>
         </div>
+
         <div class="buy-sell-row">
           <button class="buy-btn">BUY / LONG</button>
           <button class="sell-btn">SELL / SHORT</button>
         </div>
+
+        <div class="confirm-summary">
+          <b>Order Summary</b>
+          <span>${selectedMarket} · ${selectedPair} · ${accountMode} · Margin ${App.money(tradeAmountPreview)} · Position ${App.money(positionSize)}</span>
+        </div>
       </section>
 
-      <section class="premium-card depth-card">
-        <div class="card-row"><div><p>MARKET DEPTH</p><h2>Order Book</h2></div><span class="mini-live">LIVE</span></div>
+      <section class="premium-card market-feed-card">
+        <div class="card-row">
+          <div><p>MARKET FEED</p><h2>${selectedMarket === "CRYPTO" ? "Crypto Depth" : "Forex Bid / Ask"}</h2></div>
+          <span class="mini-live">LIVE</span>
+        </div>
         <div class="depth-table">
-          <span>Price</span><span>Qty</span><span>Total</span>
-          <b class="red">$77,147.07</b><b>1.5562</b><b>$120,057</b>
-          <b class="red">$77,104.78</b><b>0.2684</b><b>$20,691</b>
-          <b class="green">$76,737.55</b><b>0.8940</b><b>$68,603</b>
-          <b class="green">$76,612.11</b><b>2.1180</b><b>$162,279</b>
+          <span>${selectedMarket === "CRYPTO" ? "Price" : "Bid"}</span><span>${selectedMarket === "CRYPTO" ? "Qty" : "Ask"}</span><span>Spread</span>
+          <b class="red">${selectedMarket === "CRYPTO" ? "$77,147.07" : pair.price}</b><b>${selectedMarket === "CRYPTO" ? "1.5562" : pair.price}</b><b>0.02%</b>
+          <b class="red">${selectedMarket === "CRYPTO" ? "$77,104.78" : pair.price}</b><b>${selectedMarket === "CRYPTO" ? "0.2684" : pair.price}</b><b>0.03%</b>
+          <b class="green">${selectedMarket === "CRYPTO" ? "$76,737.55" : pair.price}</b><b>${selectedMarket === "CRYPTO" ? "0.8940" : pair.price}</b><b>0.01%</b>
+          <b class="green">${selectedMarket === "CRYPTO" ? "$76,612.11" : pair.price}</b><b>${selectedMarket === "CRYPTO" ? "2.1180" : pair.price}</b><b>0.02%</b>
         </div>
       </section>
 
       <section class="premium-card">
         <p>OPEN POSITIONS</p>
-        <h2>Active AI Trades</h2>
+        <h2>Active ${accountMode} Trades</h2>
         <div class="empty-state">No active ${accountMode.toLowerCase()} positions yet.</div>
       </section>
     `);
   }
-
   function walletPage() {
     const u = user();
     const balance = currentBalance();
@@ -572,6 +622,16 @@
     setAccountMode(mode) {
       accountMode = mode === "DEMO" ? "DEMO" : "REAL";
       localStorage.setItem("AITradeX_ACCOUNT_MODE", accountMode);
+      render();
+    },
+    setTradeAmount(value) {
+      tradeAmountPreview = Math.max(0, Number(value || 0));
+      localStorage.setItem("AITradeX_TRADE_AMOUNT_PREVIEW", String(tradeAmountPreview));
+      render();
+    },
+    setTradeLeverage(value) {
+      tradeLeveragePreview = Math.max(1, Number(String(value).replace("x", "") || 1));
+      localStorage.setItem("AITradeX_TRADE_LEVERAGE_PREVIEW", String(tradeLeveragePreview));
       render();
     },
     setMarket(market) {
