@@ -142,6 +142,48 @@
     return "";
   }
 
+  function renderTradingViewChart(symbol) {
+    const container = document.getElementById("tradingview_chart_container");
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    if (!window.TradingView || !window.TradingView.widget) {
+      container.innerHTML = `
+        <div class="chart-fallback">
+          <b>${symbol}</b>
+          <span>TradingView library loading...</span>
+        </div>`;
+      setTimeout(() => renderTradingViewChart(symbol), 800);
+      return;
+    }
+
+    new window.TradingView.widget({
+      autosize: true,
+      symbol,
+      interval: "15",
+      timezone: "Asia/Kolkata",
+      theme: "dark",
+      style: "1",
+      locale: "en",
+      toolbar_bg: "#050814",
+      enable_publishing: false,
+      hide_top_toolbar: false,
+      hide_side_toolbar: false,
+      allow_symbol_change: false,
+      save_image: false,
+      withdateranges: true,
+      calendar: false,
+      support_host: "https://www.tradingview.com",
+      container_id: "tradingview_chart_container"
+    });
+  }
+
+  function scheduleTradingViewChart() {
+    const pair = selectedPairData();
+    setTimeout(() => renderTradingViewChart(pair.symbol), 80);
+  }
+
   function avatar(name) {
     const u = user();
     const avatarData = u ? localStorage.getItem(`AITradeX_AVATAR_${u.id}`) : "";
@@ -411,11 +453,8 @@
         <div class="chart-toolbar">
           <span>1m</span><span>5m</span><span>30m</span><span>1h</span><span>4h</span><span>1D</span><button>⚙</button>
         </div>
-        <div class="responsive-chart">
-          <div class="chart-watermark">
-            <b>${pair.symbol}</b>
-            <small>TradingView widget will load here</small>
-          </div>
+        <div class="responsive-chart tradingview-widget-frame">
+          <div id="tradingview_chart_container" class="tradingview-chart-container"></div>
         </div>
       </section>
 
@@ -487,6 +526,8 @@
         <div class="empty-state">No active ${accountMode.toLowerCase()} positions yet.</div>
       </section>
     `);
+
+    scheduleTradingViewChart();
   }
   function walletPage() {
     const u = user();

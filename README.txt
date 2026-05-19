@@ -142,3 +142,13 @@ Phase 2.0 App-Style Selectors:
 - Rate percentage on top selected pair card/header uses green for plus and red for minus.
 - Trade section made cleaner and less browser-default.
 - Admin side untouched.
+
+
+Phase 2.1 TradingView Chart:
+- index.html now loads TradingView tv.js for user side chart.
+- user-app.js renders actual TradingView widget in Trade page.
+- Selected crypto/forex pair maps to TradingView symbol.
+- Pair or market change reloads the chart automatically.
+- Chart is dark theme and responsive.
+- Chart uses viewport-based height and is not cut into a small fixed box.
+- Admin side untouched.
