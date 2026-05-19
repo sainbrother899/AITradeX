@@ -187,37 +187,43 @@
     const container = document.getElementById("tradingview_chart_container");
     if (!container) return;
 
-    container.innerHTML = "";
+    container.innerHTML = `
+      <div class="chart-loading-state">
+        <div class="chart-spinner"></div>
+        <b>${symbol}</b>
+        <span>Loading TradingView chart...</span>
+      </div>`;
 
     if (!window.TradingView || !window.TradingView.widget) {
-      container.innerHTML = `
-        <div class="chart-fallback">
-          <b>${symbol}</b>
-          <span>TradingView library loading...</span>
-        </div>`;
       setTimeout(() => renderTradingViewChart(symbol), 800);
       return;
     }
 
-    new window.TradingView.widget({
-      autosize: true,
-      symbol,
-      interval: chartInterval,
-      timezone: "Asia/Kolkata",
-      theme: chartTheme,
-      style: chartStyle,
-      locale: "en",
-      toolbar_bg: chartTheme === "dark" ? "#050814" : "#ffffff",
-      enable_publishing: false,
-      hide_top_toolbar: !chartToolbar,
-      hide_side_toolbar: !chartToolbar,
-      allow_symbol_change: false,
-      save_image: false,
-      withdateranges: chartToolbar,
-      calendar: false,
-      support_host: "https://www.tradingview.com",
-      container_id: "tradingview_chart_container"
-    });
+    setTimeout(() => {
+      const freshContainer = document.getElementById("tradingview_chart_container");
+      if (!freshContainer) return;
+      freshContainer.innerHTML = "";
+
+      new window.TradingView.widget({
+        autosize: true,
+        symbol,
+        interval: chartInterval,
+        timezone: "Asia/Kolkata",
+        theme: chartTheme,
+        style: chartStyle,
+        locale: "en",
+        toolbar_bg: chartTheme === "dark" ? "#050814" : "#ffffff",
+        enable_publishing: false,
+        hide_top_toolbar: !chartToolbar,
+        hide_side_toolbar: !chartToolbar,
+        allow_symbol_change: false,
+        save_image: false,
+        withdateranges: chartToolbar,
+        calendar: false,
+        support_host: "https://www.tradingview.com",
+        container_id: "tradingview_chart_container"
+      });
+    }, 80);
   }
 
   function scheduleTradingViewChart() {

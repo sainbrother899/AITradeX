@@ -165,3 +165,11 @@ Phase 2.2 Chart Controls:
 - Settings support TradingView toolbar Show / Hide.
 - Chart area is larger with reduced side padding.
 - Admin side untouched.
+
+
+Phase 2.3 TradingView Loader/Flicker Fix:
+- user-app.js updated so TradingView chart shows a dark loading state before widget mount.
+- styles.css updated to disable old fake chart pseudo background on TradingView container.
+- White loading flash reduced by forcing dark chart container background.
+- Old placeholder chart effect no longer appears on TradingView chart frame.
+- Admin side untouched.
