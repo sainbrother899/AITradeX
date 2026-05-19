@@ -36,3 +36,26 @@ Root Files Version:
 - index.html and admin.html script paths updated.
 
 Phase 1.1: user-app.js and styles.css fully replaced. Leverage up to 2000x. Responsive full-height chart area. No old-code patching.
+
+
+Phase 1.2 Premium User Polish:
+- user-app.js fully replaced.
+- styles.css fully replaced.
+- Real/Demo switch changed to clear segmented switch.
+- Real account selection fixed and visible.
+- User dashboard polished with premium trading app style.
+- Chart remains responsive with viewport-based height.
+- Admin files untouched.
+
+
+Phase 1.3 Real App User Polish:
+- user-app.js fully replaced.
+- styles.css fully replaced.
+- No patch blocks added.
+- Header now shows selected account and balance.
+- Home is more compact and trading-app-like.
+- Market cards use swipe ticker style on mobile.
+- Wallet shell includes professional deposit step preview.
+- Trade page made more exchange-style.
+- P/L and History pages no longer feel empty.
+- Admin side untouched.

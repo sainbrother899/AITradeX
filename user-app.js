@@ -1,29 +1,508 @@
-
 (() => {
-  const App = window.AITradeX, Auth = window.AITradeXAuth, root = document.getElementById("app");
-  let page = "home", authMode = "login", accountMode = localStorage.getItem("AITradeX_ACCOUNT_MODE") || "REAL";
-  let drawerOpen = false, autoPercent = Number(localStorage.getItem("AITradeX_AUTO_PERCENT") || 25);
+  const App = window.AITradeX;
+  const Auth = window.AITradeXAuth;
+  const root = document.getElementById("app");
+
+  let page = localStorage.getItem("AITradeX_ACTIVE_PAGE") || "home";
+  let authMode = "login";
+  let accountMode = localStorage.getItem("AITradeX_ACCOUNT_MODE") || "REAL";
+  let drawerOpen = false;
+  let autoPercent = Number(localStorage.getItem("AITradeX_AUTO_PERCENT") || 25);
   let autoTradeOn = localStorage.getItem("AITradeX_AUTO_ON") === "true";
-  const pairs = [{p:"BTC/USDT",r:"$76,737.55",c:"-0.69%"},{p:"ETH/USDT",r:"$2,111.72",c:"-1.04%"},{p:"SOL/USDT",r:"$84.46",c:"-0.60%"},{p:"BNB/USDT",r:"$639.82",c:"-0.28%"}];
-  const lev = [1,5,10,20,50,100,200,500,1000,2000];
-  const bal = () => { const u=App.currentUser(); return !u?0:(accountMode==="DEMO"?App.demoBalance(u.id):App.realBalance(u.id)); };
-  const pnl = () => { const u=App.currentUser(); return !u?0:App.state.trades.filter(t=>t.userId===u.id && t.accountType===accountMode && t.status==="CLOSED").reduce((s,t)=>s+Number(t.pnl||0),0); };
-  const av = n => `<span class="avatar">${String(n||"A").trim().charAt(0).toUpperCase()}</span>`;
-  const st = (t,s="") => `<div class="mobile-section-title"><p>${s}</p><h2>${t}</h2></div>`;
-  function header(u){return `<header class="app-topbar"><button class="menu-btn" onclick="AITradeXUser.toggleDrawer()">☰</button><div class="app-brand">AITradeX</div><div class="top-actions"><button class="account-switch ${accountMode.toLowerCase()}" onclick="AITradeXUser.toggleAccountMode()">${accountMode==="REAL"?"Real":"Demo"}</button><button class="profile-chip" onclick="AITradeXUser.toggleDrawer()">${av(u.name)}<b>${App.escapeHtml(u.name||"User")}</b></button></div></header>${drawerOpen?drawer(u):""}`;}
-  function drawer(){return `<div class="drawer-backdrop" onclick="AITradeXUser.toggleDrawer(false)"></div><aside class="side-drawer"><button onclick="AITradeXUser.go('profile')" class="drawer-item">👤 Profile</button><button onclick="AITradeXUser.go('kyc')" class="drawer-item">🛡️ KYC Verification</button><button onclick="AITradeXUser.go('referral')" class="drawer-item">🎁 Referral</button><button onclick="AITradeXUser.go('payments')" class="drawer-item">💳 My Payment Methods</button><button onclick="AITradeXUser.go('support')" class="drawer-item">🎧 Support</button><button onclick="AITradeXUser.logout()" class="drawer-item danger">🚪 Logout</button></aside>`;}
-  function nav(){return `<nav class="bottom-nav">${[["home","⌂","Home"],["trade","⇅","Trade"],["wallet","▣","Wallet"],["pnl","↗","PnL"],["history","☰","History"]].map(x=>`<button class="${page===x[0]?"active":""}" onclick="AITradeXUser.go('${x[0]}')"><i>${x[1]}</i><span>${x[2]}</span></button>`).join("")}</nav>`;}
-  function shell(c){const u=App.currentUser(); root.innerHTML=`<div class="mobile-app">${header(u)}<main class="mobile-content">${c}</main>${nav()}</div>`;}
-  function landing(){root.innerHTML=`<main class="public-wrap"><nav class="public-nav"><div class="brand"><span>AI</span><b>AITradeX</b></div><div class="public-actions"><a href="#plans">Plans</a><a href="#security">Security</a><button onclick="AITradeXUser.scrollAuth()" class="btn small">Get Started</button></div></nav><section class="hero-section"><div class="hero-copy"><p class="eyebrow">AI Real Trading Platform</p><h1>AI powered trading experience with secure INR wallet.</h1><p class="hero-text">AITradeX combines a premium trading dashboard, TradingView style charts, real and demo account modes, KYC verification, subscriptions, referrals and a clean wallet ledger.</p><div class="hero-buttons"><button onclick="AITradeXUser.scrollAuth()" class="btn">Create Account</button><button onclick="AITradeXUser.setAuthMode('login')" class="btn ghost">User Login</button></div><div class="trust-pills"><span>KYC Verified</span><span>INR Wallet</span><span>Real + Demo</span></div></div><div class="hero-terminal"><div class="terminal-head"><div><span>BTC/USDT</span><strong>₹58,42,210</strong></div><em>+2.84%</em></div><div class="fake-chart"></div><div class="terminal-grid"><div><span>AI Signal</span><b>BUY</b></div><div><span>Leverage</span><b>2000x</b></div><div><span>Risk</span><b>Adaptive</b></div></div></div></section><section id="plans" class="landing-grid"><article><i>💰</i><h3>Secure Wallet</h3><p>Deposit, withdrawal, pending funds and ledger-based balance.</p></article><article><i>📈</i><h3>AI Trading</h3><p>Buy/Sell, pairs, amount, leverage up to 2000x, real and demo accounts.</p></article><article><i>🤝</i><h3>Referral</h3><p>10% one-time commission only on first approved deposit.</p></article></section><section id="authBox" class="auth-section"><div class="auth-copy"><p class="eyebrow">User Access</p><h2>${authMode==="login"?"Login to AITradeX":"Create AITradeX account"}</h2><p>User panel is fully separate from the control center. No control wording is shown here.</p></div><div class="auth-card"><div class="auth-tabs"><button class="${authMode==="login"?"active":""}" onclick="AITradeXUser.setAuthMode('login')">Login</button><button class="${authMode==="register"?"active":""}" onclick="AITradeXUser.setAuthMode('register')">Register</button></div>${authMode==="login"?loginForm():registerForm()}</div></section><section id="security" class="security-note"><b>AITradeX Security:</b> KYC approval and verified payment methods help reduce fraud risk before withdrawals.</section></main>`;}
-  function loginForm(){return `<form onsubmit="AITradeXUser.login(event)" class="form-grid"><label>Email<input id="loginEmail" type="email" required placeholder="you@example.com"/></label><label>Password<input id="loginPassword" type="password" required placeholder="Password"/></label><button class="btn">Login</button></form>`;}
-  function registerForm(){return `<form onsubmit="AITradeXUser.register(event)" class="form-grid"><label>Full Name<input id="regName" required placeholder="Your name"/></label><label>Email<input id="regEmail" type="email" required placeholder="you@example.com"/></label><label>Mobile<input id="regMobile" required placeholder="10 digit mobile"/></label><label>Password<input id="regPassword" type="password" required placeholder="Create password"/></label><label>Referral Code <small>Optional</small><input id="regReferral" placeholder="Referral code"/></label><button class="btn">Create Account</button></form>`;}
-  function home(){const u=App.currentUser(), amount=bal()*autoPercent/100; shell(`<section class="welcome-card"><div><p>WELCOME BACK</p><h1>Hello, ${App.escapeHtml(u.name||"User")}</h1></div>${av(u.name)}<div class="account-boxes"><article><span>Demo Account</span><b>${App.money(App.demoBalance(u.id))}</b></article><article class="active"><span>Real Account</span><b>${App.money(App.realBalance(u.id))}</b></article></div></section><section class="coin-grid">${pairs.map(p=>`<article class="coin-card"><h3>${p.p}</h3><b>${p.r}</b><span>${p.c}</span></article>`).join("")}</section><section class="coin-grid"><article class="coin-card stat"><span>Today PnL</span><strong>${App.money(pnl())}</strong></article><article class="coin-card stat"><span>Win Rate</span><strong>0%</strong></article><article class="coin-card stat"><span>Market Mood</span><strong>Neutral</strong></article><article class="coin-card stat"><span>Active Signal</span><strong>BUY</strong></article></section><section class="signal-card"><div class="signal-dot"></div><p>AI SIGNAL LIVE</p><h2>BUY BTC/USDT</h2><h4>AI trend confirmation active.</h4><div class="signal-percent">82%</div><div class="signal-grid"><article><span>Entry</span><b>Market</b></article><article><span>Target</span><b>-</b></article><article><span>Stop Loss</span><b>-</b></article><article><span>Expires</span><b>30m</b></article></div></section><section class="signal-card auto-card"><p>AI TRADE CONTROL</p><h2>AI Auto Trade Amount</h2><h4>AITradeX selected ${accountMode} balance ke percentage se trade karega.</h4><div class="percent-grid">${[25,50,75,100].map(v=>`<button class="${autoPercent===v?"active":""}" onclick="AITradeXUser.setAutoPercent(${v})">${v}%</button>`).join("")}</div><div class="selected-box"><span>Selected</span><b>${autoPercent}%</b><p>AI trade amount: ${App.money(amount)}</p></div><div class="toggle-row"><div><b>Auto AI Trade</b><span>Allow AI trades from platform signals</span></div><button class="toggle ${autoTradeOn?"on":""}" onclick="AITradeXUser.toggleAutoTrade()"><i></i></button></div></section>`);}
-  function trade(){shell(`${st("BTC/USDT",accountMode+" ACCOUNT · TRADING")}<section class="chart-panel"><div class="live-badge">LIVE</div><div class="full-chart-frame"><div class="chart-toolbar">1m&nbsp;&nbsp; 30m&nbsp;&nbsp; 1h&nbsp;&nbsp; ⚙ &nbsp;&nbsp; +</div><div class="candle-chart"></div></div></section><section class="order-card"><p>ORDER TICKET</p><h2>Place Buy/Sell Order</h2><label>Coin<select><option>BTC/USDT</option><option>ETH/USDT</option><option>SOL/USDT</option><option>BNB/USDT</option></select></label><div class="form-row"><label>Order Type<select><option>Market</option><option>Limit</option></select></label><label>Leverage<select>${lev.map(x=>`<option>${x}x</option>`).join("")}</select></label></div><label>Margin Amount<input type="number" placeholder="100"/></label><div class="form-row"><label>Take Profit Optional<input placeholder="TP price"/></label><label>Stop Loss Optional<input placeholder="SL price"/></label></div><div class="buy-sell-row"><button class="buy-btn">BUY / LONG</button><button class="sell-btn">SELL / SHORT</button></div></section><section class="order-card"><p>ORDER BOOK</p><h2>BTC/USDT Depth</h2><span class="mini-live">LIVE</span><div class="order-table"><span>Price</span><span>Qty</span><span>Total</span><b class="red">$77,147.07</b><b>1.5562</b><b>$120,057.35</b><b class="red">$77,104.78</b><b>0.2684</b><b>$20,691.43</b><b class="red">$77,062.49</b><b>0.3581</b><b>$27,594.27</b></div></section><section class="order-card"><p>LIVE TRADES</p><h2>Open Positions</h2><div class="empty-box">No open positions.</div></section>`);}
-  function wallet(){const u=App.currentUser(),real=App.realBalance(u.id),cur=accountMode==="REAL"?real:App.demoBalance(u.id); shell(`<section class="wallet-hero"><p>WALLET</p><h1>${accountMode==="REAL"?"Real Wallet Equity":"Demo Wallet Equity"}</h1><strong>${App.money(cur)}</strong><span>LIVE</span></section><section class="wallet-grid"><article><span>💰 Available Balance</span><b>${App.money(cur)}</b><p>Funds ready for trade</p></article><article><span>🏦 Withdrawable Balance</span><b>${accountMode==="REAL"?App.money(real):"Not available"}</b><p>Available for withdrawal</p></article><article><span>⏳ Pending Deposit</span><b>${App.money(App.pendingDeposit(u.id))}</b><p>Waiting for approval</p></article><article><span>⏳ Pending Withdrawal</span><b>${App.money(App.pendingWithdrawal(u.id))}</b><p>Under review</p></article></section>${accountMode==="REAL"?`<section class="wallet-actions"><button>Deposit</button><button>Withdrawal</button><button>History</button></section><section class="order-card"><p>ADD FUNDS</p><h2>Deposit Step Flow</h2><div class="empty-box">Step 1 Amount → Step 2 Mode → Step 3 Pay with UPI QR/Bank → Step 4 UTR</div></section>`:`<section class="order-card"><p>DEMO WALLET</p><h2>Practice Mode</h2><div class="empty-box">Demo wallet is for practice trading only. Deposit and withdrawal are available in Real Account.</div></section>`}`);}
-  function simple(t,sub,body){shell(`<section class="order-card"><p>${sub}</p><h2>${t}</h2><div class="empty-box">${body}</div></section>`);}
-  function pnlPage(){shell(`<section class="coin-grid"><article class="coin-card stat"><span>Total Trades</span><strong>0</strong></article><article class="coin-card stat"><span>Total PnL</span><strong>${App.money(pnl())}</strong></article><article class="coin-card stat"><span>Win Rate</span><strong>0%</strong></article><article class="coin-card stat"><span>Referral Bonus</span><strong>₹0</strong></article></section><section class="order-card"><p>PNL ANALYTICS</p><h2>Performance Overview</h2><div class="empty-box">PnL graph and analytics will be connected in next phases.</div></section>`);}
-  function history(){shell(`<section class="order-card"><p>AI / AI TRADES</p><h2>Closed AI Trade History</h2><div class="history-card"><span>Coin</span><b>BTC/USDT</b><span>Side</span><b>BUY</b><span>Amount</span><b>₹10,000</b><span>Entry</span><b>$76,828</b><span>Close</span><b>$76,838</b><span>PnL</span><b class="green">₹1.3</b><span>Status</span><b>CLOSED</b></div></section><section class="order-card"><p>MANUAL TRADES</p><h2>Your Manual Trade History</h2><div class="empty-box">Manual open and closed trades will appear here.</div></section>`);}
-  function render(){const u=App.currentUser(); if(!u||u.role!=="user")return landing(); if(page==="home")return home(); if(page==="trade")return trade(); if(page==="wallet")return wallet(); if(page==="pnl")return pnlPage(); if(page==="history")return history(); if(page==="kyc")return simple("4 Step Verification","KYC VERIFICATION","Step 1 Personal → Step 2 ID Details → Step 3 ID Card + Selfie Upload → Step 4 Review"); if(page==="payments")return simple("My Payment Methods","PAYMENT METHODS","Holder name will auto-fill from approved KYC. Max 2 UPI and 2 Bank accounts."); if(page==="referral")return simple("Invite & Earn","REFERRAL",`Your referral code: <b>${u.referralCode||"-"}</b><br/>10% commission only on first approved deposit.`); if(page==="profile")return simple(App.escapeHtml(u.name),"PROFILE",`${App.escapeHtml(u.email)}<br/>${App.escapeHtml(u.mobile||"")}`); if(page==="support")return simple("Help Center","SUPPORT","Support tickets will be connected in later phase."); return home();}
-  window.AITradeXUser={setAuthMode(m){authMode=m;landing();setTimeout(()=>document.getElementById("authBox")?.scrollIntoView({behavior:"smooth"}),50)},scrollAuth(){document.getElementById("authBox")?.scrollIntoView({behavior:"smooth"})},register(e){e.preventDefault();try{Auth.registerUser({name:regName.value,email:regEmail.value,mobile:regMobile.value,password:regPassword.value,referralCode:regReferral.value.trim()});page="home";App.toast("Account created successfully.");render()}catch(err){App.toast(err.message)}},login(e){e.preventDefault();try{Auth.loginUser({email:loginEmail.value,password:loginPassword.value});page="home";App.toast("Logged in successfully.");render()}catch(err){App.toast(err.message)}},go(p){page=p;drawerOpen=false;render()},toggleDrawer(f){drawerOpen=typeof f==="boolean"?f:!drawerOpen;render()},toggleAccountMode(){accountMode=accountMode==="REAL"?"DEMO":"REAL";localStorage.setItem("AITradeX_ACCOUNT_MODE",accountMode);render()},setAutoPercent(v){autoPercent=Number(v);localStorage.setItem("AITradeX_AUTO_PERCENT",autoPercent);render()},toggleAutoTrade(){autoTradeOn=!autoTradeOn;localStorage.setItem("AITradeX_AUTO_ON",String(autoTradeOn));render()},logout(){App.clearSession();page="home";drawerOpen=false;landing()}};
+  let selectedPair = localStorage.getItem("AITradeX_SELECTED_PAIR") || "BTC/USDT";
+
+  const pairs = [
+    { pair: "BTC/USDT", price: "$76,737.55", inr: "₹64,15,894", change: "+2.84%", mood: "up", signal: "BUY" },
+    { pair: "ETH/USDT", price: "$2,111.72", inr: "₹1,76,434", change: "-1.04%", mood: "down", signal: "SELL" },
+    { pair: "SOL/USDT", price: "$184.46", inr: "₹15,415", change: "+1.20%", mood: "up", signal: "BUY" },
+    { pair: "BNB/USDT", price: "$639.82", inr: "₹53,484", change: "-0.28%", mood: "down", signal: "WAIT" },
+    { pair: "XRP/USDT", price: "$2.47", inr: "₹206", change: "+0.62%", mood: "up", signal: "BUY" }
+  ];
+
+  const leverageOptions = [1, 5, 10, 20, 50, 100, 200, 500, 1000, 2000];
+
+  function user() {
+    return App.currentUser();
+  }
+
+  function currentBalance() {
+    const u = user();
+    if (!u) return 0;
+    return accountMode === "DEMO" ? App.demoBalance(u.id) : App.realBalance(u.id);
+  }
+
+  function realBalance() {
+    const u = user();
+    return u ? App.realBalance(u.id) : 0;
+  }
+
+  function demoBalance() {
+    const u = user();
+    return u ? App.demoBalance(u.id) : 0;
+  }
+
+  function pnlValue() {
+    const u = user();
+    if (!u) return 0;
+    return App.state.trades
+      .filter(t => t.userId === u.id && t.accountType === accountMode && t.status === "CLOSED")
+      .reduce((sum, t) => sum + Number(t.pnl || 0), 0);
+  }
+
+  function selectedPairData() {
+    return pairs.find(p => p.pair === selectedPair) || pairs[0];
+  }
+
+  function avatar(name) {
+    return `<span class="avatar">${String(name || "A").trim().charAt(0).toUpperCase()}</span>`;
+  }
+
+  function accountSwitch(compact = false) {
+    return `
+      <div class="account-segment ${compact ? "compact" : ""}" aria-label="Account mode">
+        <button class="${accountMode === "REAL" ? "active" : ""}" onclick="AITradeXUser.setAccountMode('REAL')">Real</button>
+        <button class="${accountMode === "DEMO" ? "active" : ""}" onclick="AITradeXUser.setAccountMode('DEMO')">Demo</button>
+      </div>`;
+  }
+
+  function appHeader() {
+    const u = user();
+    return `
+      <header class="app-topbar">
+        <button class="menu-btn" onclick="AITradeXUser.toggleDrawer()">☰</button>
+        <div class="app-brand">
+          <b>AITradeX</b>
+          <small>${accountMode} · ${App.money(currentBalance())}</small>
+        </div>
+        <div class="top-actions">
+          ${accountSwitch(true)}
+          <button class="profile-chip" onclick="AITradeXUser.toggleDrawer()">${avatar(u.name)}</button>
+        </div>
+      </header>
+      ${drawerOpen ? menuDrawer() : ""}`;
+  }
+
+  function menuDrawer() {
+    const u = user();
+    return `
+      <div class="drawer-backdrop" onclick="AITradeXUser.toggleDrawer(false)"></div>
+      <aside class="side-drawer">
+        <div class="drawer-head">
+          ${avatar(u.name)}
+          <div>
+            <b>${App.escapeHtml(u.name || "AITradeX User")}</b>
+            <span>${accountMode} account active</span>
+          </div>
+        </div>
+        <button onclick="AITradeXUser.go('profile')" class="drawer-item">👤 Profile</button>
+        <button onclick="AITradeXUser.go('kyc')" class="drawer-item">🛡️ KYC Verification</button>
+        <button onclick="AITradeXUser.go('payments')" class="drawer-item">💳 My Payment Methods</button>
+        <button onclick="AITradeXUser.go('referral')" class="drawer-item">🎁 Referral</button>
+        <button onclick="AITradeXUser.go('support')" class="drawer-item">🎧 Support</button>
+        <button onclick="AITradeXUser.logout()" class="drawer-item danger">🚪 Logout</button>
+      </aside>`;
+  }
+
+  function bottomNav() {
+    const nav = [
+      ["home", "⌂", "Home"],
+      ["trade", "⇅", "Trade"],
+      ["wallet", "▣", "Wallet"],
+      ["pnl", "↗", "P/L"],
+      ["history", "☰", "History"]
+    ];
+    return `
+      <nav class="bottom-nav">
+        ${nav.map(([key, icon, label]) => `
+          <button class="${page === key ? "active" : ""}" onclick="AITradeXUser.go('${key}')">
+            <i>${icon}</i><span>${label}</span>
+          </button>`).join("")}
+      </nav>`;
+  }
+
+  function shell(content) {
+    root.innerHTML = `
+      <div class="aitx-app">
+        ${appHeader()}
+        <main class="app-content">${content}</main>
+        ${bottomNav()}
+      </div>`;
+  }
+
+  function landing() {
+    root.innerHTML = `
+      <main class="public-wrap">
+        <nav class="public-nav">
+          <div class="brand"><span>AI</span><b>AITradeX</b></div>
+          <div class="public-actions">
+            <a href="#plans">Plans</a>
+            <a href="#security">Security</a>
+            <button onclick="AITradeXUser.scrollAuth()" class="btn small">Get Started</button>
+          </div>
+        </nav>
+
+        <section class="hero-section">
+          <div class="hero-copy">
+            <p class="eyebrow">AI Real Trading Platform</p>
+            <h1>AI powered trading experience with secure INR wallet.</h1>
+            <p class="hero-text">AITradeX combines a premium trading dashboard, TradingView style charts, real and demo account modes, KYC verification, subscriptions, referrals and a clean wallet ledger.</p>
+            <div class="hero-buttons">
+              <button onclick="AITradeXUser.scrollAuth()" class="btn">Create Account</button>
+              <button onclick="AITradeXUser.setAuthMode('login')" class="btn ghost">User Login</button>
+            </div>
+            <div class="trust-pills"><span>KYC Verified</span><span>INR Wallet</span><span>Real + Demo</span></div>
+          </div>
+
+          <div class="hero-terminal">
+            <div class="terminal-head"><div><span>BTC/USDT</span><strong>₹58,42,210</strong></div><em>+2.84%</em></div>
+            <div class="fake-chart"></div>
+            <div class="terminal-grid"><div><span>AI Signal</span><b>BUY</b></div><div><span>Leverage</span><b>2000x</b></div><div><span>Risk</span><b>Adaptive</b></div></div>
+          </div>
+        </section>
+
+        <section id="plans" class="landing-grid">
+          <article><i>💰</i><h3>Secure Wallet</h3><p>Deposit, withdrawal, pending funds and ledger-based balance.</p></article>
+          <article><i>📈</i><h3>AI Trading</h3><p>Buy/Sell, pairs, amount, leverage up to 2000x, real and demo accounts.</p></article>
+          <article><i>🤝</i><h3>Referral</h3><p>10% one-time commission only on first approved deposit.</p></article>
+        </section>
+
+        <section id="authBox" class="auth-section">
+          <div class="auth-copy"><p class="eyebrow">User Access</p><h2>${authMode === "login" ? "Login to AITradeX" : "Create AITradeX account"}</h2><p>User panel is fully separate from the control center. No control wording is shown here.</p></div>
+          <div class="auth-card">
+            <div class="auth-tabs"><button class="${authMode === "login" ? "active" : ""}" onclick="AITradeXUser.setAuthMode('login')">Login</button><button class="${authMode === "register" ? "active" : ""}" onclick="AITradeXUser.setAuthMode('register')">Register</button></div>
+            ${authMode === "login" ? loginForm() : registerForm()}
+          </div>
+        </section>
+
+        <section id="security" class="security-note"><b>AITradeX Security:</b> KYC approval and verified payment methods help reduce fraud risk before withdrawals.</section>
+      </main>`;
+  }
+
+  function loginForm() {
+    return `<form onsubmit="AITradeXUser.login(event)" class="form-grid"><label>Email<input id="loginEmail" type="email" required placeholder="you@example.com"/></label><label>Password<input id="loginPassword" type="password" required placeholder="Password"/></label><button class="btn">Login</button></form>`;
+  }
+
+  function registerForm() {
+    return `<form onsubmit="AITradeXUser.register(event)" class="form-grid"><label>Full Name<input id="regName" required placeholder="Your name"/></label><label>Email<input id="regEmail" type="email" required placeholder="you@example.com"/></label><label>Mobile<input id="regMobile" required placeholder="10 digit mobile"/></label><label>Password<input id="regPassword" type="password" required placeholder="Create password"/></label><label>Referral Code <small>Optional</small><input id="regReferral" placeholder="Referral code"/></label><button class="btn">Create Account</button></form>`;
+  }
+
+  function homePage() {
+    const u = user();
+    const balance = currentBalance();
+    const pnl = pnlValue();
+    const tradeAmount = balance * autoPercent / 100;
+    const pair = selectedPairData();
+
+    shell(`
+      <section class="account-overview-card ${accountMode.toLowerCase()}">
+        <div class="overview-top">
+          <div>
+            <p>${accountMode} ACCOUNT</p>
+            <h1>${App.money(balance)}</h1>
+            <span>${accountMode === "REAL" ? "Available real equity" : "Practice equity"}</span>
+          </div>
+          ${accountSwitch()}
+        </div>
+        <div class="overview-mini">
+          <article><span>Real</span><b>${App.money(realBalance())}</b></article>
+          <article><span>Demo</span><b>${App.money(demoBalance())}</b></article>
+          <article><span>Today P/L</span><b class="${pnl >= 0 ? "green" : "red"}">${App.money(pnl)}</b></article>
+        </div>
+      </section>
+
+      <section class="market-ticker">
+        ${pairs.map(p => `
+          <article class="ticker-card ${p.mood} ${selectedPair === p.pair ? "selected" : ""}" onclick="AITradeXUser.selectPair('${p.pair}')">
+            <div><h3>${p.pair}</h3><small>${p.inr}</small></div>
+            <strong>${p.price}</strong>
+            <span>${p.change}</span>
+          </article>`).join("")}
+      </section>
+
+      <section class="compact-grid">
+        <article><span>AI Status</span><b>${autoTradeOn ? "Active" : "Ready"}</b><small>Signal engine</small></article>
+        <article><span>Open Trades</span><b>0</b><small>${accountMode} positions</small></article>
+        <article><span>KYC</span><b>${App.kycStatus(u.id).replace("_", " ")}</b><small>Verification</small></article>
+        <article><span>Selected Pair</span><b>${selectedPair}</b><small>${pair.signal} bias</small></article>
+      </section>
+
+      <section class="premium-card live-signal-card">
+        <div class="card-row">
+          <div>
+            <p>AI SIGNAL LIVE</p>
+            <h2>${pair.signal} ${selectedPair}</h2>
+            <h4>AI confidence is based on live market behaviour and selected account mode.</h4>
+          </div>
+          <div class="confidence-ring">82%</div>
+        </div>
+        <div class="signal-grid">
+          <article><span>Entry</span><b>Market</b></article>
+          <article><span>Target</span><b>Auto</b></article>
+          <article><span>Stop Loss</span><b>Smart</b></article>
+          <article><span>Expires</span><b>30m</b></article>
+        </div>
+      </section>
+
+      <section class="premium-card auto-card">
+        <div class="card-row">
+          <div><p>AI TRADE CONTROL</p><h2>Auto Trade Amount</h2><h4>Choose how much ${accountMode} balance AI can use for future automatic trades.</h4></div>
+          <button class="ai-power ${autoTradeOn ? "on" : ""}" onclick="AITradeXUser.toggleAutoTrade()">${autoTradeOn ? "ON" : "OFF"}</button>
+        </div>
+        <div class="percent-grid">
+          ${[25, 50, 75, 100].map(v => `<button class="${autoPercent === v ? "active" : ""}" onclick="AITradeXUser.setAutoPercent(${v})">${v}%</button>`).join("")}
+        </div>
+        <div class="auto-summary">
+          <article><span>Selected</span><b>${autoPercent}%</b></article>
+          <article><span>AI Trade Amount</span><b>${App.money(tradeAmount)}</b></article>
+        </div>
+      </section>
+    `);
+  }
+
+  function tradePage() {
+    const pair = selectedPairData();
+
+    shell(`
+      <section class="trade-command">
+        <div>
+          <p>${accountMode} ACCOUNT</p>
+          <h1>${selectedPair}</h1>
+          <span>${pair.price} · ${pair.inr} · ${pair.change}</span>
+        </div>
+        <div class="trade-live">LIVE</div>
+      </section>
+
+      <section class="chart-shell">
+        <div class="chart-toolbar">
+          <span>1m</span><span>5m</span><span>30m</span><span>1h</span><span>4h</span><span>1D</span><button>⚙</button>
+        </div>
+        <div class="responsive-chart">
+          <div class="chart-watermark">TradingView Chart Area</div>
+        </div>
+      </section>
+
+      <section class="premium-card order-ticket">
+        <div class="card-row">
+          <div><p>ORDER TICKET</p><h2>Place Order</h2></div>
+          ${accountSwitch(true)}
+        </div>
+        <label>Coin Pair<select onchange="AITradeXUser.selectPair(this.value)">${pairs.map(p => `<option ${selectedPair === p.pair ? "selected" : ""}>${p.pair}</option>`).join("")}</select></label>
+        <div class="form-row">
+          <label>Order Type<select><option>Market</option><option>Limit</option></select></label>
+          <label>Leverage<select>${leverageOptions.map(x => `<option>${x}x</option>`).join("")}</select></label>
+        </div>
+        <label>Margin Amount<input type="number" placeholder="Enter INR amount"/></label>
+        <div class="form-row">
+          <label>Take Profit Optional<input placeholder="TP price"/></label>
+          <label>Stop Loss Optional<input placeholder="SL price"/></label>
+        </div>
+        <div class="buy-sell-row">
+          <button class="buy-btn">BUY / LONG</button>
+          <button class="sell-btn">SELL / SHORT</button>
+        </div>
+      </section>
+
+      <section class="premium-card depth-card">
+        <div class="card-row"><div><p>MARKET DEPTH</p><h2>Order Book</h2></div><span class="mini-live">LIVE</span></div>
+        <div class="depth-table">
+          <span>Price</span><span>Qty</span><span>Total</span>
+          <b class="red">$77,147.07</b><b>1.5562</b><b>$120,057</b>
+          <b class="red">$77,104.78</b><b>0.2684</b><b>$20,691</b>
+          <b class="green">$76,737.55</b><b>0.8940</b><b>$68,603</b>
+          <b class="green">$76,612.11</b><b>2.1180</b><b>$162,279</b>
+        </div>
+      </section>
+
+      <section class="premium-card">
+        <p>OPEN POSITIONS</p>
+        <h2>Active AI Trades</h2>
+        <div class="empty-state">No active ${accountMode.toLowerCase()} positions yet.</div>
+      </section>
+    `);
+  }
+
+  function walletPage() {
+    const u = user();
+    const balance = currentBalance();
+
+    shell(`
+      <section class="wallet-hero-card ${accountMode.toLowerCase()}">
+        <div class="card-row">
+          <div><p>${accountMode} WALLET</p><h1>${accountMode === "REAL" ? "Real Wallet Equity" : "Demo Practice Equity"}</h1></div>
+          ${accountSwitch(true)}
+        </div>
+        <strong>${App.money(balance)}</strong>
+        <span>${accountMode === "REAL" ? "Deposits and withdrawals enabled" : "Practice wallet only"}</span>
+      </section>
+
+      <section class="wallet-grid">
+        <article><span>Available Balance</span><b>${App.money(balance)}</b><p>${accountMode === "REAL" ? "Ready for trading" : "Practice trading"}</p></article>
+        <article><span>Withdrawable</span><b>${accountMode === "REAL" ? App.money(realBalance()) : "Not available"}</b><p>${accountMode === "REAL" ? "After checks" : "Demo cannot withdraw"}</p></article>
+        <article><span>Pending Deposit</span><b>${App.money(App.pendingDeposit(u.id))}</b><p>Waiting approval</p></article>
+        <article><span>Pending Withdrawal</span><b>${App.money(App.pendingWithdrawal(u.id))}</b><p>Under review</p></article>
+      </section>
+
+      ${accountMode === "REAL" ? `
+        <section class="wallet-actions">
+          <button>Deposit</button><button>Withdrawal</button><button>History</button>
+        </section>
+        <section class="step-preview">
+          <div><span>01</span><b>Amount</b></div>
+          <div><span>02</span><b>UPI / Bank</b></div>
+          <div><span>03</span><b>Pay with QR</b></div>
+          <div><span>04</span><b>12-digit UTR</b></div>
+        </section>
+      ` : `
+        <section class="premium-card"><p>DEMO WALLET</p><h2>Practice Mode</h2><div class="empty-state">Demo wallet is for learning. Deposit and withdrawal are available only in Real Account.</div></section>
+      `}
+    `);
+  }
+
+  function pnlPage() {
+    const pnl = pnlValue();
+    shell(`
+      <section class="compact-grid">
+        <article><span>Total Trades</span><b>0</b><small>${accountMode} trades</small></article>
+        <article><span>Total P/L</span><b class="${pnl >= 0 ? "green" : "red"}">${App.money(pnl)}</b><small>Closed trades</small></article>
+        <article><span>Win Rate</span><b>0%</b><small>Performance</small></article>
+        <article><span>Referral Bonus</span><b>₹0</b><small>One-time credit</small></article>
+      </section>
+      <section class="premium-card"><p>P/L ANALYTICS</p><h2>Performance Overview</h2><div class="analytics-graph"><i></i></div></section>
+    `);
+  }
+
+  function historyPage() {
+    shell(`
+      <section class="premium-card history-list">
+        <p>TRADE HISTORY</p>
+        <h2>Closed AI Trade History</h2>
+        <article><div><b>BTC/USDT</b><span>BUY · 10x · ${accountMode}</span></div><strong class="green">+₹0.00</strong></article>
+        <article><div><b>ETH/USDT</b><span>SELL · 5x · ${accountMode}</span></div><strong>Pending</strong></article>
+      </section>
+      <section class="premium-card">
+        <p>WALLET HISTORY</p>
+        <h2>Transactions</h2>
+        <div class="empty-state">Deposit, withdrawal and ledger history will appear here.</div>
+      </section>
+    `);
+  }
+
+  function kycPage() {
+    shell(`<section class="premium-card"><p>KYC VERIFICATION</p><h2>4 Step Verification</h2><div class="step-preview vertical"><div><span>01</span><b>Personal Details</b></div><div><span>02</span><b>ID Details</b></div><div><span>03</span><b>ID Card + Selfie Upload</b></div><div><span>04</span><b>Review & Submit</b></div></div></section>`);
+  }
+
+  function paymentPage() {
+    shell(`<section class="premium-card"><p>PAYMENT METHODS</p><h2>My Payment Methods</h2><div class="empty-state">Holder name will auto-fill from approved KYC. Max 2 UPI and 2 Bank accounts.</div></section>`);
+  }
+
+  function referralPage() {
+    const u = user();
+    shell(`<section class="premium-card"><p>REFERRAL</p><h2>Invite & Earn</h2><div class="ref-code">${u.referralCode || "-"}</div><div class="empty-state">10% commission only on first approved deposit.</div></section>`);
+  }
+
+  function profilePage() {
+    const u = user();
+    shell(`<section class="premium-card"><p>PROFILE</p><h2>${App.escapeHtml(u.name)}</h2><div class="empty-state">${App.escapeHtml(u.email)}<br/>${App.escapeHtml(u.mobile || "")}</div></section>`);
+  }
+
+  function supportPage() {
+    shell(`<section class="premium-card"><p>SUPPORT</p><h2>Help Center</h2><div class="empty-state">Support tickets will be connected later.</div></section>`);
+  }
+
+  function render() {
+    const u = user();
+    if (!u || u.role !== "user") return landing();
+
+    if (page === "home") return homePage();
+    if (page === "trade") return tradePage();
+    if (page === "wallet") return walletPage();
+    if (page === "pnl") return pnlPage();
+    if (page === "history") return historyPage();
+    if (page === "kyc") return kycPage();
+    if (page === "payments") return paymentPage();
+    if (page === "referral") return referralPage();
+    if (page === "profile") return profilePage();
+    if (page === "support") return supportPage();
+    return homePage();
+  }
+
+  window.AITradeXUser = {
+    setAuthMode(mode) {
+      authMode = mode;
+      landing();
+      setTimeout(() => document.getElementById("authBox")?.scrollIntoView({ behavior: "smooth" }), 50);
+    },
+    scrollAuth() {
+      document.getElementById("authBox")?.scrollIntoView({ behavior: "smooth" });
+    },
+    register(event) {
+      event.preventDefault();
+      try {
+        Auth.registerUser({
+          name: regName.value,
+          email: regEmail.value,
+          mobile: regMobile.value,
+          password: regPassword.value,
+          referralCode: regReferral.value.trim()
+        });
+        page = "home";
+        localStorage.setItem("AITradeX_ACTIVE_PAGE", page);
+        App.toast("Account created successfully.");
+        render();
+      } catch (err) {
+        App.toast(err.message);
+      }
+    },
+    login(event) {
+      event.preventDefault();
+      try {
+        Auth.loginUser({ email: loginEmail.value, password: loginPassword.value });
+        page = "home";
+        localStorage.setItem("AITradeX_ACTIVE_PAGE", page);
+        App.toast("Logged in successfully.");
+        render();
+      } catch (err) {
+        App.toast(err.message);
+      }
+    },
+    go(next) {
+      page = next;
+      drawerOpen = false;
+      localStorage.setItem("AITradeX_ACTIVE_PAGE", page);
+      render();
+    },
+    toggleDrawer(force) {
+      drawerOpen = typeof force === "boolean" ? force : !drawerOpen;
+      render();
+    },
+    setAccountMode(mode) {
+      accountMode = mode === "DEMO" ? "DEMO" : "REAL";
+      localStorage.setItem("AITradeX_ACCOUNT_MODE", accountMode);
+      render();
+    },
+    selectPair(pair) {
+      selectedPair = pair;
+      localStorage.setItem("AITradeX_SELECTED_PAIR", selectedPair);
+      render();
+    },
+    setAutoPercent(value) {
+      autoPercent = Number(value);
+      localStorage.setItem("AITradeX_AUTO_PERCENT", autoPercent);
+      render();
+    },
+    toggleAutoTrade() {
+      autoTradeOn = !autoTradeOn;
+      localStorage.setItem("AITradeX_AUTO_ON", String(autoTradeOn));
+      render();
+    },
+    logout() {
+      App.clearSession();
+      page = "home";
+      drawerOpen = false;
+      localStorage.removeItem("AITradeX_ACTIVE_PAGE");
+      landing();
+    }
+  };
+
   render();
 })();
