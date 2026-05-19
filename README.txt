@@ -71,3 +71,17 @@ Phase 1.4 Selected Account + Compact Polish:
 - Account switch remains in the top header/Home account card.
 - UI spacing/cards reduced for less bulky feel.
 - Admin side untouched.
+
+
+Phase 1.5 Nav + History + Profit/Loss Color:
+- user-app.js fully replaced.
+- styles.css fully replaced.
+- Header now has only menu, AITradeX brand and avatar.
+- Header account switch/balance removed.
+- Wallet page account switch removed.
+- History page now contains AI Trade History and Manual Trade History only.
+- Wallet history is not shown in History page.
+- Profit values use green styling.
+- Loss values use red styling.
+- Bottom nav and top header made compact.
+- Admin side untouched.

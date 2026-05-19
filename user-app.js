@@ -68,16 +68,12 @@
   function appHeader() {
     const u = user();
     return `
-      <header class="app-topbar">
+      <header class="app-topbar compact-header">
         <button class="menu-btn" onclick="AITradeXUser.toggleDrawer()">☰</button>
         <div class="app-brand">
           <b>AITradeX</b>
-          <small>${accountMode} · ${App.money(currentBalance())}</small>
         </div>
-        <div class="top-actions">
-          ${accountSwitch(true)}
-          <button class="profile-chip" onclick="AITradeXUser.toggleDrawer()">${avatar(u.name)}</button>
-        </div>
+        <button class="profile-chip" onclick="AITradeXUser.toggleDrawer()">${avatar(u.name)}</button>
       </header>
       ${drawerOpen ? menuDrawer() : ""}`;
   }
@@ -205,7 +201,7 @@
         </div>
         <div class="overview-mini single-mode">
           <article><span>${accountMode === "REAL" ? "Real Wallet" : "Demo Wallet"}</span><b>${App.money(balance)}</b></article>
-          <article><span>Today P/L</span><b class="${pnl >= 0 ? "green" : "red"}">${App.money(pnl)}</b></article>
+          <article><span>Today P/L</span><b class="${pnl >= 0 ? "profit-text" : "loss-text"}">${App.money(pnl)}</b></article>
           <article><span>Mode</span><b>${accountMode === "REAL" ? "Live" : "Practice"}</b></article>
         </div>
       </section>
@@ -283,7 +279,7 @@
 
       <section class="premium-card order-ticket">
         <div class="card-row">
-          <div><p>ORDER TICKET</p><h2>Place Order</h2><span class="ticket-mode">${accountMode} account selected from Home header</span></div>
+          <div><p>ORDER TICKET</p><h2>Place Order</h2><span class="ticket-mode">${accountMode} account selected from Home</span></div>
         </div>
         <label>Coin Pair<select onchange="AITradeXUser.selectPair(this.value)">${pairs.map(p => `<option ${selectedPair === p.pair ? "selected" : ""}>${p.pair}</option>`).join("")}</select></label>
         <div class="form-row">
@@ -327,8 +323,7 @@
     shell(`
       <section class="wallet-hero-card ${accountMode.toLowerCase()}">
         <div class="card-row">
-          <div><p>${accountMode} WALLET</p><h1>${accountMode === "REAL" ? "Real Wallet Equity" : "Demo Practice Equity"}</h1></div>
-          ${accountSwitch(true)}
+          <div><p>${accountMode} WALLET</p><h1>${accountMode === "REAL" ? "Real Wallet Equity" : "Demo Practice Equity"}</h1><span class="ticket-mode">Account mode selected from Home</span></div>
         </div>
         <strong>${App.money(balance)}</strong>
         <span>${accountMode === "REAL" ? "Deposits and withdrawals enabled" : "Practice wallet only"}</span>
@@ -362,7 +357,7 @@
     shell(`
       <section class="compact-grid">
         <article><span>Total Trades</span><b>0</b><small>${accountMode} trades</small></article>
-        <article><span>Total P/L</span><b class="${pnl >= 0 ? "green" : "red"}">${App.money(pnl)}</b><small>Closed trades</small></article>
+        <article><span>Total P/L</span><b class="${pnl >= 0 ? "profit-text" : "loss-text"}">${App.money(pnl)}</b><small>Closed trades</small></article>
         <article><span>Win Rate</span><b>0%</b><small>Performance</small></article>
         <article><span>Referral Bonus</span><b>₹0</b><small>One-time credit</small></article>
       </section>
@@ -372,16 +367,29 @@
 
   function historyPage() {
     shell(`
-      <section class="premium-card history-list">
-        <p>TRADE HISTORY</p>
-        <h2>Closed AI Trade History</h2>
-        <article><div><b>BTC/USDT</b><span>BUY · 10x · ${accountMode}</span></div><strong class="green">+₹0.00</strong></article>
-        <article><div><b>ETH/USDT</b><span>SELL · 5x · ${accountMode}</span></div><strong>Pending</strong></article>
+      <section class="premium-card history-table-card">
+        <div class="card-row">
+          <div><p>AI TRADE HISTORY</p><h2>AI Auto Trades</h2></div>
+          <span class="history-mode">${accountMode}</span>
+        </div>
+        <div class="trade-history-table">
+          <span>Pair</span><span>Side</span><span>Lev.</span><span>Amount</span><span>P/L</span><span>Status</span>
+          <b>BTC/USDT</b><b>BUY</b><b>10x</b><b>₹10,000</b><b class="profit-text">+₹0.00</b><b>Closed</b>
+          <b>ETH/USDT</b><b>SELL</b><b>5x</b><b>₹5,000</b><b class="loss-text">-₹0.00</b><b>Closed</b>
+        </div>
       </section>
-      <section class="premium-card">
-        <p>WALLET HISTORY</p>
-        <h2>Transactions</h2>
-        <div class="empty-state">Deposit, withdrawal and ledger history will appear here.</div>
+
+      <section class="premium-card history-table-card">
+        <div class="card-row">
+          <div><p>MANUAL TRADE HISTORY</p><h2>Your Buy/Sell Trades</h2></div>
+          <span class="history-mode">${accountMode}</span>
+        </div>
+        <div class="trade-history-table">
+          <span>Pair</span><span>Side</span><span>Lev.</span><span>Amount</span><span>P/L</span><span>Status</span>
+          <b>BTC/USDT</b><b>BUY</b><b>20x</b><b>₹2,000</b><b class="profit-text">+₹0.00</b><b>Closed</b>
+          <b>SOL/USDT</b><b>SELL</b><b>50x</b><b>₹1,500</b><b class="loss-text">-₹0.00</b><b>Closed</b>
+        </div>
+        <div class="empty-state small-note">Wallet history stays inside Wallet page only.</div>
       </section>
     `);
   }
