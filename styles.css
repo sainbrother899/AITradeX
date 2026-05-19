@@ -330,3 +330,58 @@
     grid-template-columns:1fr;
   }
 }
+
+
+/* AITradeX Phase 1.7 crypto + forex market support */
+.market-switch-card{
+  background:linear-gradient(145deg,rgba(15,29,52,.88),rgba(8,16,31,.94));
+  border:1px solid var(--line);
+  border-radius:20px;
+  padding:8px;
+  margin-bottom:10px;
+}
+.market-switch{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.market-switch button{
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.055);
+  color:var(--muted);
+  min-height:44px;
+  border-radius:15px;
+  font-weight:1000;
+}
+.market-switch button.active{
+  background:linear-gradient(135deg,var(--cyan),#1bd0ee);
+  color:#07111f;
+  box-shadow:0 10px 30px rgba(21,229,211,.18);
+}
+.trade-command small{
+  display:block;
+  color:var(--muted);
+  font-size:12px;
+  margin-top:5px;
+}
+.chart-watermark{
+  position:absolute;
+  inset:0;
+  display:grid;
+  place-items:center;
+  color:rgba(255,255,255,.32);
+  font-weight:1000;
+  letter-spacing:.08em;
+}
+.trade-history-table{
+  grid-template-columns:.8fr 1.2fr .7fr .6fr .9fr .8fr .8fr!important;
+}
+@media(max-width:620px){
+  .trade-history-table{
+    grid-template-columns:repeat(7,minmax(78px,1fr))!important;
+  }
+  .market-switch button{
+    min-height:40px;
+    font-size:13px;
+  }
+}

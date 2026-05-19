@@ -9,15 +9,33 @@
   let drawerOpen = false;
   let autoPercent = Number(localStorage.getItem("AITradeX_AUTO_PERCENT") || 25);
   let autoTradeOn = localStorage.getItem("AITradeX_AUTO_ON") === "true";
+  let selectedMarket = localStorage.getItem("AITradeX_SELECTED_MARKET") || "CRYPTO";
   let selectedPair = localStorage.getItem("AITradeX_SELECTED_PAIR") || "BTC/USDT";
 
-  const pairs = [
-    { pair: "BTC/USDT", price: "$76,737.55", inr: "₹64,15,894", change: "+2.84%", mood: "up", signal: "BUY" },
-    { pair: "ETH/USDT", price: "$2,111.72", inr: "₹1,76,434", change: "-1.04%", mood: "down", signal: "SELL" },
-    { pair: "SOL/USDT", price: "$184.46", inr: "₹15,415", change: "+1.20%", mood: "up", signal: "BUY" },
-    { pair: "BNB/USDT", price: "$639.82", inr: "₹53,484", change: "-0.28%", mood: "down", signal: "WAIT" },
-    { pair: "XRP/USDT", price: "$2.47", inr: "₹206", change: "+0.62%", mood: "up", signal: "BUY" }
-  ];
+  const marketPairs = {
+    CRYPTO: [
+      { market: "CRYPTO", pair: "BTC/USDT", symbol: "BINANCE:BTCUSDT", price: "$76,737.55", inr: "₹64,15,894", change: "+2.84%", mood: "up", signal: "BUY" },
+      { market: "CRYPTO", pair: "ETH/USDT", symbol: "BINANCE:ETHUSDT", price: "$2,111.72", inr: "₹1,76,434", change: "-1.04%", mood: "down", signal: "SELL" },
+      { market: "CRYPTO", pair: "SOL/USDT", symbol: "BINANCE:SOLUSDT", price: "$184.46", inr: "₹15,415", change: "+1.20%", mood: "up", signal: "BUY" },
+      { market: "CRYPTO", pair: "BNB/USDT", symbol: "BINANCE:BNBUSDT", price: "$639.82", inr: "₹53,484", change: "-0.28%", mood: "down", signal: "WAIT" },
+      { market: "CRYPTO", pair: "XRP/USDT", symbol: "BINANCE:XRPUSDT", price: "$2.47", inr: "₹206", change: "+0.62%", mood: "up", signal: "BUY" }
+    ],
+    FOREX: [
+      { market: "FOREX", pair: "EUR/USD", symbol: "FX:EURUSD", price: "1.0854", inr: "Euro vs Dollar", change: "+0.18%", mood: "up", signal: "BUY" },
+      { market: "FOREX", pair: "GBP/USD", symbol: "FX:GBPUSD", price: "1.2712", inr: "Pound vs Dollar", change: "-0.11%", mood: "down", signal: "SELL" },
+      { market: "FOREX", pair: "USD/JPY", symbol: "FX:USDJPY", price: "156.84", inr: "Dollar vs Yen", change: "+0.32%", mood: "up", signal: "BUY" },
+      { market: "FOREX", pair: "USD/INR", symbol: "FX_IDC:USDINR", price: "83.42", inr: "Dollar vs Rupee", change: "+0.05%", mood: "up", signal: "WAIT" },
+      { market: "FOREX", pair: "XAU/USD", symbol: "OANDA:XAUUSD", price: "$2,421.80", inr: "Gold Spot", change: "+0.74%", mood: "up", signal: "BUY" }
+    ]
+  };
+
+  function pairsForMarket() {
+    return marketPairs[selectedMarket] || marketPairs.CRYPTO;
+  }
+
+  function allTrendingPairs() {
+    return [marketPairs.CRYPTO[0], marketPairs.CRYPTO[1], marketPairs.FOREX[0], marketPairs.FOREX[3], marketPairs.FOREX[4]];
+  }
 
   const leverageOptions = [1, 5, 10, 20, 50, 100, 200, 500, 1000, 2000];
 
@@ -50,7 +68,15 @@
   }
 
   function selectedPairData() {
-    return pairs.find(p => p.pair === selectedPair) || pairs[0];
+    return pairsForMarket().find(p => p.pair === selectedPair) || pairsForMarket()[0];
+  }
+
+  function ensurePairForMarket() {
+    const list = pairsForMarket();
+    if (!list.some(p => p.pair === selectedPair)) {
+      selectedPair = list[0].pair;
+      localStorage.setItem("AITradeX_SELECTED_PAIR", selectedPair);
+    }
   }
 
   function avatar(name) {
@@ -222,7 +248,7 @@
       </section>
 
       <section class="market-ticker">
-        ${pairs.map(p => `
+        ${allTrendingPairs().map(p => `
           <article class="ticker-card ${p.mood} ${selectedPair === p.pair ? "selected" : ""}" onclick="AITradeXUser.selectPair('${p.pair}')">
             <div><h3>${p.pair}</h3><small>${p.inr}</small></div>
             <strong>${p.price}</strong>
@@ -276,11 +302,19 @@
     shell(`
       <section class="trade-command">
         <div>
-          <p>${accountMode} ACCOUNT</p>
+          <p>${accountMode} ACCOUNT · ${selectedMarket}</p>
           <h1>${selectedPair}</h1>
           <span>${pair.price} · ${pair.inr} · ${pair.change}</span>
+          <small>Chart symbol: ${pair.symbol}</small>
         </div>
         <div class="trade-live">LIVE</div>
+      </section>
+
+      <section class="market-switch-card">
+        <div class="market-switch">
+          <button class="${selectedMarket === "CRYPTO" ? "active" : ""}" onclick="AITradeXUser.setMarket('CRYPTO')">Crypto</button>
+          <button class="${selectedMarket === "FOREX" ? "active" : ""}" onclick="AITradeXUser.setMarket('FOREX')">Forex</button>
+        </div>
       </section>
 
       <section class="chart-shell">
@@ -288,7 +322,7 @@
           <span>1m</span><span>5m</span><span>30m</span><span>1h</span><span>4h</span><span>1D</span><button>⚙</button>
         </div>
         <div class="responsive-chart">
-          <div class="chart-watermark">TradingView Chart Area</div>
+          <div class="chart-watermark">${pair.symbol}</div>
         </div>
       </section>
 
@@ -296,7 +330,7 @@
         <div class="card-row">
           <div><p>ORDER TICKET</p><h2>Place Order</h2><span class="ticket-mode">${accountMode} account selected from Home</span></div>
         </div>
-        <label>Coin Pair<select onchange="AITradeXUser.selectPair(this.value)">${pairs.map(p => `<option ${selectedPair === p.pair ? "selected" : ""}>${p.pair}</option>`).join("")}</select></label>
+        <label>Coin Pair<select onchange="AITradeXUser.selectPair(this.value)">${pairsForMarket().map(p => `<option ${selectedPair === p.pair ? "selected" : ""}>${p.pair}</option>`).join("")}</select></label>
         <div class="form-row">
           <label>Order Type<select><option>Market</option><option>Limit</option></select></label>
           <label>Leverage<select>${leverageOptions.map(x => `<option>${x}x</option>`).join("")}</select></label>
@@ -388,9 +422,9 @@
           <span class="history-mode">${accountMode}</span>
         </div>
         <div class="trade-history-table">
-          <span>Pair</span><span>Side</span><span>Lev.</span><span>Amount</span><span>P/L</span><span>Status</span>
-          <b>BTC/USDT</b><b>BUY</b><b>10x</b><b>₹10,000</b><b class="profit-text">+₹0.00</b><b>Closed</b>
-          <b>ETH/USDT</b><b>SELL</b><b>5x</b><b>₹5,000</b><b class="loss-text">-₹0.00</b><b>Closed</b>
+          <span>Market</span><span>Pair</span><span>Side</span><span>Lev.</span><span>Amount</span><span>P/L</span><span>Status</span>
+          <b>Crypto</b><b>BTC/USDT</b><b>BUY</b><b>10x</b><b>₹10,000</b><b class="profit-text">+₹0.00</b><b>Closed</b>
+          <b>Forex</b><b>EUR/USD</b><b>SELL</b><b>5x</b><b>₹5,000</b><b class="loss-text">-₹0.00</b><b>Closed</b>
         </div>
       </section>
 
@@ -400,9 +434,9 @@
           <span class="history-mode">${accountMode}</span>
         </div>
         <div class="trade-history-table">
-          <span>Pair</span><span>Side</span><span>Lev.</span><span>Amount</span><span>P/L</span><span>Status</span>
-          <b>BTC/USDT</b><b>BUY</b><b>20x</b><b>₹2,000</b><b class="profit-text">+₹0.00</b><b>Closed</b>
-          <b>SOL/USDT</b><b>SELL</b><b>50x</b><b>₹1,500</b><b class="loss-text">-₹0.00</b><b>Closed</b>
+          <span>Market</span><span>Pair</span><span>Side</span><span>Lev.</span><span>Amount</span><span>P/L</span><span>Status</span>
+          <b>Crypto</b><b>BTC/USDT</b><b>BUY</b><b>20x</b><b>₹2,000</b><b class="profit-text">+₹0.00</b><b>Closed</b>
+          <b>Forex</b><b>XAU/USD</b><b>SELL</b><b>50x</b><b>₹1,500</b><b class="loss-text">-₹0.00</b><b>Closed</b>
         </div>
         <div class="empty-state small-note">Wallet history stays inside Wallet page only.</div>
       </section>
@@ -469,6 +503,7 @@
   }
 
   function render() {
+    ensurePairForMarket();
     const u = user();
     if (!u || u.role !== "user") return landing();
 
@@ -539,8 +574,21 @@
       localStorage.setItem("AITradeX_ACCOUNT_MODE", accountMode);
       render();
     },
+    setMarket(market) {
+      selectedMarket = market === "FOREX" ? "FOREX" : "CRYPTO";
+      localStorage.setItem("AITradeX_SELECTED_MARKET", selectedMarket);
+      const list = pairsForMarket();
+      selectedPair = list[0].pair;
+      localStorage.setItem("AITradeX_SELECTED_PAIR", selectedPair);
+      render();
+    },
     selectPair(pair) {
       selectedPair = pair;
+      const found = [...marketPairs.CRYPTO, ...marketPairs.FOREX].find(p => p.pair === pair);
+      if (found) {
+        selectedMarket = found.market;
+        localStorage.setItem("AITradeX_SELECTED_MARKET", selectedMarket);
+      }
       localStorage.setItem("AITradeX_SELECTED_PAIR", selectedPair);
       render();
     },

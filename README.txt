@@ -95,3 +95,15 @@ Phase 1.6 Avatar + Profile Edit:
 - Avatar and display name currently save in browser localStorage.
 - Supabase Storage can be connected later for production avatar upload.
 - Admin side untouched.
+
+
+Phase 1.7 Crypto + Forex Markets:
+- user-app.js fully updated for market support.
+- styles.css updated for market selector and history layout.
+- Trade page now has Crypto / Forex market selector.
+- Pair list changes based on selected market.
+- TradingView symbol mapping is prepared for crypto and forex.
+- Home trending markets include crypto and forex cards.
+- History tables include Market column.
+- User balance and P/L remain INR-based.
+- Admin side untouched.
