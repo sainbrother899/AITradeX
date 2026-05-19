@@ -34,3 +34,5 @@ Root Files Version:
 - Removed js/ folder.
 - core.js, auth.js, user-app.js, admin-app.js are now in root.
 - index.html and admin.html script paths updated.
+
+Phase 1.1: user-app.js and styles.css fully replaced. Leverage up to 2000x. Responsive full-height chart area. No old-code patching.
