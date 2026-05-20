@@ -695,3 +695,13 @@ Phase 4.30 - Subscription Amount Limit Cleanup
 - Removed subscription amount-limit data from core plan defaults and normalization.
 - Kept Daily AI Trades, duration, price, status, and benefits as the clear plan controls.
 - Limit order trigger price logic remains untouched because it is part of manual trading.
+
+Phase 4.31 - Default AI On Upgrade Prompt Premium
+- New users now start with AI Auto Trading ON by default.
+- New users start with 75% AI allocation by default.
+- Existing users can still change AI ON/OFF and allocation from the Home AI Trade Control card.
+- Turning AI Auto Trading OFF now opens a premium confirmation popup.
+- The popup warns that AI-managed trades will stop until the user turns AI back ON.
+- Home plan and AI control cards now show an upgrade prompt when the daily AI trade limit is completed.
+- Upgrade prompt links directly to the Subscription page.
+- Admin Plans, wallet, deposits, withdrawals, manual trading, limit orders and history logic were not changed.

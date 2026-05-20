@@ -3257,6 +3257,90 @@
 }
 .top-live-position-bar.profit button{background:rgba(0,231,168,.14);color:var(--green);border-color:rgba(0,231,168,.25)}
 .top-live-position-bar.loss button{background:rgba(255,69,107,.14);color:#ff9aac;border-color:rgba(255,69,107,.25)}
+
+.upgrade-inline-note{
+  display:inline-flex;
+  margin-top:8px;
+  padding:7px 10px;
+  border-radius:999px;
+  border:1px solid rgba(255,199,107,.28);
+  background:rgba(255,199,107,.09);
+  color:#ffd48a;
+  font-size:12px;
+  font-weight:900;
+  line-height:1.35;
+}
+.ai-status-banner{
+  display:grid;
+  gap:5px;
+  margin-top:12px;
+  padding:12px 13px;
+  border-radius:18px;
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.045);
+}
+.ai-status-banner b{font-size:13px;letter-spacing:-.01em}
+.ai-status-banner span{color:var(--muted);font-size:12px;font-weight:800;line-height:1.4}
+.ai-status-banner.off{border-color:rgba(255,255,255,.13);background:rgba(255,255,255,.04)}
+.ai-status-banner.limit{border-color:rgba(255,199,107,.28);background:linear-gradient(135deg,rgba(255,199,107,.12),rgba(20,32,53,.65))}
+.ai-status-banner.limit button{
+  justify-self:start;
+  margin-top:4px;
+  border:0;
+  border-radius:999px;
+  min-height:34px;
+  padding:0 14px;
+  font-weight:1000;
+  background:linear-gradient(135deg,var(--cyan),#1bd0ee);
+  color:#061820;
+  cursor:pointer;
+}
+.ai-confirm-backdrop{
+  position:fixed;
+  inset:0;
+  z-index:92;
+  background:radial-gradient(circle at 50% 20%,rgba(41,227,255,.13),transparent 34%),rgba(1,5,12,.74);
+  backdrop-filter:blur(10px);
+}
+.ai-confirm-modal{
+  position:fixed;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  z-index:93;
+  width:min(440px,calc(100% - 28px));
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:28px;
+  background:linear-gradient(145deg,rgba(14,27,50,.98),rgba(6,13,26,.98));
+  box-shadow:0 34px 90px rgba(0,0,0,.62), inset 0 1px 0 rgba(255,255,255,.08);
+  padding:22px;
+  text-align:center;
+}
+.ai-confirm-icon{
+  width:58px;
+  height:58px;
+  margin:0 auto 14px;
+  border-radius:21px;
+  display:grid;
+  place-items:center;
+  background:linear-gradient(135deg,var(--cyan),#7cf4ff);
+  color:#04151c;
+  font-weight:1000;
+  letter-spacing:-.08em;
+  box-shadow:0 16px 38px rgba(41,227,255,.22);
+}
+.ai-confirm-modal h2{font-size:23px;letter-spacing:-.04em;margin:0 0 9px}
+.ai-confirm-modal p{margin:0;color:#b8c6d8;font-size:13px;font-weight:800;line-height:1.65}
+.ai-confirm-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
+.ai-confirm-actions button{min-height:44px;border-radius:999px;font-weight:1000;cursor:pointer}
+.keep-ai-btn{border:0;background:linear-gradient(135deg,var(--cyan),#1bd0ee);color:#061820}
+.turn-off-ai-btn{border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.07);color:#f2f7ff}
+@media(max-width:520px){
+  .ai-confirm-modal{padding:20px 16px;border-radius:24px}
+  .ai-confirm-actions{grid-template-columns:1fr}
+  .upgrade-inline-note{font-size:11px}
+}
+
 .manual-open-list{display:grid;gap:9px;margin-top:12px}
 .manual-open-list article{
   display:flex;

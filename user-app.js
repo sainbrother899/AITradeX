@@ -7,8 +7,9 @@
   let authMode = "login";
   let accountMode = localStorage.getItem("AITradeX_ACCOUNT_MODE") || "REAL";
   let drawerOpen = false;
-  let autoPercent = Number(localStorage.getItem("AITradeX_AUTO_PERCENT") || 25);
-  let autoTradeOn = localStorage.getItem("AITradeX_AUTO_ON") === "true";
+  let autoPercent = Number(localStorage.getItem("AITradeX_AUTO_PERCENT") || 75);
+  const savedAutoTradeState = localStorage.getItem("AITradeX_AUTO_ON");
+  let autoTradeOn = savedAutoTradeState === null ? true : savedAutoTradeState === "true";
   let selectedMarket = localStorage.getItem("AITradeX_SELECTED_MARKET") || "CRYPTO";
   let selectedPair = localStorage.getItem("AITradeX_SELECTED_PAIR") || "BTC/USDT";
   let tradeAmountPreview = Number(localStorage.getItem("AITradeX_TRADE_AMOUNT_PREVIEW") || 1000);
@@ -31,6 +32,7 @@
   let manualCloseSelectorOpen = false;
   let manualHistoryPageIndex = Number(localStorage.getItem("AITradeX_MANUAL_HISTORY_PAGE") || 0);
   let aiHistoryPageIndex = Number(localStorage.getItem("AITradeX_AI_HISTORY_PAGE") || 0);
+  let aiOffConfirmOpen = false;
 
   const marketPairs = App.marketPairs || { CRYPTO: [], FOREX: [] };
   function pairsForMarket() {
@@ -347,6 +349,21 @@
       </section>`;
   }
 
+  function aiOffConfirmHtml() {
+    if (!aiOffConfirmOpen) return "";
+    return `
+      <div class="ai-confirm-backdrop" onclick="AITradeXUser.cancelAiOffConfirm()"></div>
+      <section class="ai-confirm-modal" role="dialog" aria-modal="true" aria-label="Turn off AI Auto Trading">
+        <div class="ai-confirm-icon">AI</div>
+        <h2>Turn off AI Auto Trading?</h2>
+        <p>If you turn off AI Auto Trading, you will stop receiving AI-managed trades from the system. Your daily AI trade limit will remain available, but no AI trades will be applied until you turn it on again.</p>
+        <div class="ai-confirm-actions">
+          <button class="keep-ai-btn" onclick="AITradeXUser.cancelAiOffConfirm()">Keep AI ON</button>
+          <button class="turn-off-ai-btn" onclick="AITradeXUser.confirmAiOff()">Turn OFF</button>
+        </div>
+      </section>`;
+  }
+
   function updateManualLiveViews() {
     if (checkPendingLimitOrders()) return;
     if (autoCloseRiskPositions()) return;
@@ -409,10 +426,10 @@
   function currentAiSettings() {
     const u = user();
     if (!u) return { enabled: autoTradeOn, percent: autoPercent };
-    if (typeof u.aiTradeOn === "undefined") u.aiTradeOn = autoTradeOn;
-    if (!u.aiTradePercent) u.aiTradePercent = autoPercent;
+    if (typeof u.aiTradeOn === "undefined") u.aiTradeOn = true;
+    if (!u.aiTradePercent) u.aiTradePercent = 75;
     autoTradeOn = !!u.aiTradeOn;
-    autoPercent = Number(u.aiTradePercent || 25);
+    autoPercent = Number(u.aiTradePercent || 75);
     return { enabled: autoTradeOn, percent: autoPercent };
   }
 
@@ -421,6 +438,11 @@
     if (!u) return { used: 0, limit: 5 };
     return { used: App.aiTradesToday(u.id), limit: App.aiDailyLimit(u.id) };
   }
+  function isAiLimitComplete() {
+    const usage = aiDailyUsage();
+    return Number(usage.limit || 0) > 0 && Number(usage.used || 0) >= Number(usage.limit || 0);
+  }
+
   function activeSubscription() {
     const u = user();
     return u ? App.activeSubscription(u.id) : null;
@@ -1060,6 +1082,7 @@
         ${selectorSheetHtml()}
         ${manualLiveBarHtml()}
         ${manualCloseSelectorHtml()}
+        ${aiOffConfirmHtml()}
         ${bottomNav()}
       </div>`;
     updateManualLiveBar();
@@ -1170,8 +1193,9 @@
             <p>CURRENT PLAN</p>
             <h2>${App.escapeHtml(currentPlan().name || "Free")}</h2>
             <h4>${usage.used}/${usage.limit} AI auto trades used today · Expires ${subscriptionExpiryText(activeSubscription())}</h4>
+            ${isAiLimitComplete() ? `<span class="upgrade-inline-note">Daily AI trade limit completed. Upgrade your plan to unlock more AI auto trades.</span>` : ""}
           </div>
-          <button class="change-pair-btn" onclick="AITradeXUser.go('subscription')">Upgrade</button>
+          <button class="change-pair-btn" onclick="AITradeXUser.go('subscription')">${isAiLimitComplete() ? "Upgrade Plan" : "Upgrade"}</button>
         </div>
       </section>
 
@@ -1205,6 +1229,8 @@
           <article><span>AI Trade Pool</span><b>${App.money(tradeAmount)}</b></article>
           <article><span>Daily AI Trades</span><b>${usage.used}/${usage.limit}</b></article>
         </div>
+        ${!ai.enabled ? `<div class="ai-status-banner off"><b>AI Auto Trading is OFF.</b><span>Turn it ON to receive AI auto trades.</span></div>` : ""}
+        ${ai.enabled && isAiLimitComplete() ? `<div class="ai-status-banner limit"><b>Daily AI trade limit completed.</b><span>Upgrade your plan to unlock more AI auto trades.</span><button onclick="AITradeXUser.go('subscription')">Upgrade Plan</button></div>` : ""}
       </section>
     `);
     refreshVisiblePrices(allTrendingPairs());
@@ -2833,13 +2859,36 @@
     },
     toggleAutoTrade() {
       const u = user();
-      autoTradeOn = !autoTradeOn;
-      localStorage.setItem("AITradeX_AUTO_ON", String(autoTradeOn));
+      if (autoTradeOn) {
+        aiOffConfirmOpen = true;
+        render();
+        return;
+      }
+      autoTradeOn = true;
+      localStorage.setItem("AITradeX_AUTO_ON", "true");
       if (u) {
-        u.aiTradeOn = autoTradeOn;
-        if (!u.aiTradePercent) u.aiTradePercent = autoPercent || 25;
+        u.aiTradeOn = true;
+        if (!u.aiTradePercent) u.aiTradePercent = autoPercent || 75;
         App.saveState();
       }
+      App.toast("AI Auto Trading turned on.");
+      render();
+    },
+    cancelAiOffConfirm() {
+      aiOffConfirmOpen = false;
+      render();
+    },
+    confirmAiOff() {
+      const u = user();
+      aiOffConfirmOpen = false;
+      autoTradeOn = false;
+      localStorage.setItem("AITradeX_AUTO_ON", "false");
+      if (u) {
+        u.aiTradeOn = false;
+        if (!u.aiTradePercent) u.aiTradePercent = autoPercent || 75;
+        App.saveState();
+      }
+      App.toast("AI Auto Trading turned off.");
       render();
     },
     saveProfile() {
