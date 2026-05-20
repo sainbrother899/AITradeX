@@ -56,21 +56,65 @@
     return [...marketPairs.CRYPTO, ...marketPairs.FOREX];
   }
 
-  function tradeFeedForMarket() {
-    if (selectedMarket === "FOREX") {
+  function marketFeedForPair() {
+    const pair = selectedPairData();
+    const isForex = selectedMarket === "FOREX";
+    const isMetal = pair.pair === "XAU/USD" || pair.pair === "XAG/USD";
+
+    if (isMetal) {
       return [
-        { pair: "EUR/USD", action: "BUY Signal", size: "₹18,000", lev: "50x", change: "+0.18%", mood: "up", time: "Now" },
-        { pair: "GBP/USD", action: "SELL Watch", size: "₹12,000", lev: "25x", change: "-0.11%", mood: "down", time: "1m" },
-        { pair: "USD/JPY", action: "BUY Setup", size: "₹15,500", lev: "100x", change: "+0.32%", mood: "up", time: "3m" },
-        { pair: "XAU/USD", action: "BUY Signal", size: "₹25,000", lev: "20x", change: "+0.74%", mood: "up", time: "5m" }
+        { left: "Bid", mid: pair.price, right: "0.02%", mood: "up" },
+        { left: "Ask", mid: pair.price, right: "0.03%", mood: "up" },
+        { left: "Volatility", mid: "High", right: pair.change, mood: pair.mood },
+        { left: "Session", mid: "Global", right: "Active", mood: "up" }
+      ];
+    }
+
+    if (isForex) {
+      return [
+        { left: "Bid", mid: pair.price, right: "0.01%", mood: "up" },
+        { left: "Ask", mid: pair.price, right: "0.02%", mood: "up" },
+        { left: "Spread", mid: "Tight", right: pair.change, mood: pair.mood },
+        { left: "Session", mid: "FX", right: "Open", mood: "up" }
       ];
     }
 
     return [
-      { pair: "BTC/USDT", action: "BUY Signal", size: "₹22,000", lev: "20x", change: "+2.84%", mood: "up", time: "Now" },
-      { pair: "ETH/USDT", action: "SELL Watch", size: "₹14,000", lev: "10x", change: "-1.04%", mood: "down", time: "1m" },
-      { pair: "SOL/USDT", action: "BUY Setup", size: "₹9,500", lev: "50x", change: "+1.20%", mood: "up", time: "2m" },
-      { pair: "DOGE/USDT", action: "SELL Watch", size: "₹5,000", lev: "100x", change: "-0.88%", mood: "down", time: "4m" }
+      { left: "Bid", mid: pair.price, right: "0.02%", mood: "up" },
+      { left: "Ask", mid: pair.price, right: "0.03%", mood: "up" },
+      { left: "Volume", mid: "Rising", right: pair.change, mood: pair.mood },
+      { left: "Depth", mid: "Active", right: pair.signal, mood: pair.signal === "SELL" ? "down" : "up" }
+    ];
+  }
+
+  function tradeFeedForMarket() {
+    const pair = selectedPairData();
+    const isForex = selectedMarket === "FOREX";
+    const isMetal = pair.pair === "XAU/USD" || pair.pair === "XAG/USD";
+
+    if (isMetal) {
+      return [
+        { pair: pair.pair, action: `${pair.pair.includes("XAU") ? "Gold" : "Silver"} momentum ${pair.signal}`, size: "₹25,000", lev: "20x", change: pair.change, mood: pair.mood, time: "Now" },
+        { pair: pair.pair, action: "Volatility alert active", size: "₹18,500", lev: "10x", change: pair.mood === "up" ? "+0.24%" : "-0.24%", mood: pair.mood, time: "1m" },
+        { pair: pair.pair, action: "AI entry zone forming", size: "₹12,000", lev: "50x", change: pair.mood === "up" ? "+0.18%" : "-0.18%", mood: pair.mood, time: "3m" },
+        { pair: pair.pair, action: "Global session watch", size: "₹9,000", lev: "25x", change: pair.mood === "up" ? "+0.11%" : "-0.11%", mood: pair.mood, time: "5m" }
+      ];
+    }
+
+    if (isForex) {
+      return [
+        { pair: pair.pair, action: `${pair.signal} setup forming`, size: "₹18,000", lev: "50x", change: pair.change, mood: pair.mood, time: "Now" },
+        { pair: pair.pair, action: "Spread watch active", size: "₹12,000", lev: "25x", change: pair.mood === "up" ? "+0.09%" : "-0.09%", mood: pair.mood, time: "1m" },
+        { pair: pair.pair, action: "Trend confirmation pending", size: "₹15,500", lev: "100x", change: pair.mood === "up" ? "+0.12%" : "-0.12%", mood: pair.mood, time: "3m" },
+        { pair: pair.pair, action: "Currency strength alert", size: "₹8,500", lev: "20x", change: pair.mood === "up" ? "+0.06%" : "-0.06%", mood: pair.mood, time: "5m" }
+      ];
+    }
+
+    return [
+      { pair: pair.pair, action: `${pair.signal} signal detected`, size: "₹22,000", lev: "20x", change: pair.change, mood: pair.mood, time: "Now" },
+      { pair: pair.pair, action: "Volume movement watch", size: "₹14,000", lev: "10x", change: pair.mood === "up" ? "+0.42%" : "-0.42%", mood: pair.mood, time: "1m" },
+      { pair: pair.pair, action: "Breakout zone active", size: "₹9,500", lev: "50x", change: pair.mood === "up" ? "+0.27%" : "-0.27%", mood: pair.mood, time: "2m" },
+      { pair: pair.pair, action: "AI risk monitor", size: "₹5,000", lev: "100x", change: pair.mood === "up" ? "+0.16%" : "-0.16%", mood: pair.mood, time: "4m" }
     ];
   }
 
@@ -602,18 +646,19 @@
           <div><p>MARKET FEED</p><h2>${selectedMarket === "CRYPTO" ? "Crypto Depth" : "Forex Bid / Ask"}</h2></div>
           <span class="mini-live">LIVE</span>
         </div>
-        <div class="depth-table">
-          <span>${selectedMarket === "CRYPTO" ? "Price" : "Bid"}</span><span>${selectedMarket === "CRYPTO" ? "Qty" : "Ask"}</span><span>Spread</span>
-          <b class="loss-text">${selectedMarket === "CRYPTO" ? "$77,147.07" : pair.price}</b><b>${selectedMarket === "CRYPTO" ? "1.5562" : pair.price}</b><b>0.02%</b>
-          <b class="loss-text">${selectedMarket === "CRYPTO" ? "$77,104.78" : pair.price}</b><b>${selectedMarket === "CRYPTO" ? "0.2684" : pair.price}</b><b>0.03%</b>
-          <b class="profit-text">${selectedMarket === "CRYPTO" ? "$76,737.55" : pair.price}</b><b>${selectedMarket === "CRYPTO" ? "0.8940" : pair.price}</b><b>0.01%</b>
-          <b class="profit-text">${selectedMarket === "CRYPTO" ? "$76,612.11" : pair.price}</b><b>${selectedMarket === "CRYPTO" ? "2.1180" : pair.price}</b><b>0.02%</b>
+        <div class="depth-table pair-market-feed">
+          <span>Metric</span><span>Value</span><span>Signal</span>
+          ${marketFeedForPair().map(row => `
+            <b>${row.left}</b>
+            <b>${row.mid}</b>
+            <b class="${row.mood === "up" ? "profit-text" : "loss-text"}">${row.right}</b>
+          `).join("")}
         </div>
       </section>
 
       <section class="premium-card trade-feed-card">
         <div class="card-row">
-          <div><p>TRADE FEED</p><h2>${selectedMarket === "CRYPTO" ? "Crypto Activity" : "Forex Activity"}</h2></div>
+          <div><p>TRADE FEED</p><h2>${selectedPair} Activity</h2></div>
           <span class="history-mode">${selectedMarket}</span>
         </div>
         <div class="trade-feed-list">

@@ -200,3 +200,14 @@ Phase 2.6 Dynamic Trade Feed:
 - No separate user action is needed for Trade Feed.
 - styles.css updated for Trade Feed cards.
 - Admin side untouched.
+
+
+Phase 2.7 Pair-Based Feeds:
+- user-app.js updated so Market Feed changes by selected pair.
+- Trade Feed now generates rows based on selected pair, not just market.
+- Crypto pairs show crypto-specific feed text.
+- Forex pairs show forex-specific feed text.
+- XAU/USD and XAG/USD show metals-specific feed text.
+- Selected pair is highlighted in Trade Feed.
+- styles.css updated for pair-based feed polish.
+- Admin side untouched.

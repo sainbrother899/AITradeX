@@ -1166,3 +1166,25 @@
     padding:10px;
   }
 }
+
+
+/* AITradeX Phase 2.7 pair-based market/trade feeds */
+.pair-market-feed b{
+  min-height:38px;
+  display:flex;
+  align-items:center;
+}
+.trade-feed-list article.active{
+  border-color:rgba(21,229,211,.54)!important;
+  background:rgba(21,229,211,.10)!important;
+}
+.trade-feed-list article.active b:first-child:after{
+  content:" Selected";
+  color:var(--cyan);
+  font-size:10px;
+  margin-left:6px;
+}
+.market-feed-card h2,
+.trade-feed-card h2{
+  word-break:break-word;
+}
