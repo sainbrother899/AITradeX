@@ -444,6 +444,84 @@
     return Number(usage.limit || 0) > 0 && Number(usage.used || 0) >= Number(usage.limit || 0);
   }
 
+  function latestAiAutoTrade() {
+    const u = user();
+    if (!u) return null;
+    return (App.state.trades || [])
+      .filter(t => t.userId === u.id && t.tradeType === "AI_AUTO")
+      .sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0))[0] || null;
+  }
+
+  function aiActivityCard() {
+    const ai = currentAiSettings();
+    const usage = aiDailyUsage();
+    const latest = latestAiAutoTrade();
+    const limitDone = isAiLimitComplete();
+    const plan = currentPlan();
+    if (!ai.enabled) {
+      return `
+        <section class="premium-card ai-activity-card off">
+          <div class="card-row">
+            <div>
+              <p>AI TRADING ACTIVITY</p>
+              <h2>AI Auto Trading is OFF</h2>
+              <h4>Turn it ON from AI Trade Control to receive AI auto trades.</h4>
+            </div>
+            <span class="activity-pill muted">Paused</span>
+          </div>
+        </section>`;
+    }
+    if (limitDone) {
+      return `
+        <section class="premium-card ai-activity-card limit">
+          <div class="card-row">
+            <div>
+              <p>AI TRADING ACTIVITY</p>
+              <h2>Daily AI trade limit completed</h2>
+              <h4>${usage.used}/${usage.limit} AI auto trades used today on ${App.escapeHtml(plan.name || "current plan")}.</h4>
+            </div>
+            <button class="change-pair-btn" onclick="AITradeXUser.go('subscription')">Upgrade Plan</button>
+          </div>
+        </section>`;
+    }
+    if (!latest) {
+      return `
+        <section class="premium-card ai-activity-card">
+          <div class="card-row">
+            <div>
+              <p>AI TRADING ACTIVITY</p>
+              <h2>No AI trades yet today</h2>
+              <h4>AI Auto Trading is active. Keep your allocation ready to receive AI auto trades.</h4>
+            </div>
+            <span class="activity-pill live">Active</span>
+          </div>
+          <div class="activity-grid">
+            <article><span>Status</span><b>Ready</b></article>
+            <article><span>Daily AI Trades</span><b>${usage.used}/${usage.limit}</b></article>
+          </div>
+        </section>`;
+    }
+    const pnl = Number(latest.pnl || 0);
+    const resultLabel = pnl >= 0 ? "Profit" : "Loss";
+    return `
+      <section class="premium-card ai-activity-card ${pnl >= 0 ? "profit" : "loss"}">
+        <div class="card-row">
+          <div>
+            <p>AI TRADING ACTIVITY</p>
+            <h2>${App.escapeHtml(latest.pair || "AI Trade")} · ${App.escapeHtml(latest.side || "")}</h2>
+            <h4>Latest AI auto trade completed ${formatTime(latest.createdAt)}.</h4>
+          </div>
+          <span class="activity-pill ${pnl >= 0 ? "profit" : "loss"}">${resultLabel}</span>
+        </div>
+        <div class="activity-grid">
+          <article><span>Result</span><b class="${pnl >= 0 ? "profit-text" : "loss-text"}">${App.money(pnl)}</b></article>
+          <article><span>Daily AI Trades</span><b>${usage.used}/${usage.limit}</b></article>
+          <article><span>Leverage</span><b>${Number(latest.leverage || 1)}x</b></article>
+          <article><span>Entry Price</span><b>${App.escapeHtml(latest.entryPriceDisplay || latest.entryPrice || "Locked")}</b></article>
+        </div>
+      </section>`;
+  }
+
   function activeSubscription() {
     const u = user();
     return u ? App.activeSubscription(u.id) : null;
@@ -1365,22 +1443,7 @@
         </div>
       </section>
 
-      <section class="premium-card live-signal-card">
-        <div class="card-row">
-          <div>
-            <p>AI SIGNAL LIVE</p>
-            <h2>${pair.signal} ${selectedPair}</h2>
-            <h4>AI confidence is based on live market behaviour and selected account mode.</h4>
-          </div>
-          <div class="confidence-ring">82%</div>
-        </div>
-        <div class="signal-grid">
-          <article><span>Entry</span><b>Market</b></article>
-          <article><span>Target</span><b>Auto</b></article>
-          <article><span>Stop Loss</span><b>Smart</b></article>
-          <article><span>Expires</span><b>30m</b></article>
-        </div>
-      </section>
+      ${aiActivityCard()}
 
       <section class="premium-card auto-card">
         <div class="card-row">

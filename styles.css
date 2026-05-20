@@ -4084,3 +4084,80 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
 
 /* Phase 4.43 landing real TradingView chart */
 .landing-tv-card .terminal-head strong{font-size:28px;letter-spacing:-.03em}.landing-tv-frame{height:300px;border:1px solid var(--line);border-radius:22px;background:linear-gradient(180deg,rgba(5,8,20,.92),rgba(10,18,34,.94));overflow:hidden;position:relative}.landing-tradingview-chart-container{width:100%;height:100%;min-height:300px}.landing-tradingview-chart-container iframe{opacity:0;transition:opacity .35s ease}.landing-tradingview-chart-container iframe.aitx-tv-ready{opacity:1}.landing-tv-card .chart-loading-state{position:absolute;inset:0;z-index:2;background:linear-gradient(180deg,rgba(5,8,20,.94),rgba(12,21,38,.94));border:0;border-radius:0}.landing-tv-card .hide-loader{opacity:0;pointer-events:none}@media(max-width:620px){.landing-tv-frame{height:260px}.landing-tradingview-chart-container{min-height:260px}.landing-tv-card .terminal-head{gap:10px}.landing-tv-card .terminal-head strong{font-size:23px}.landing-tv-card .terminal-head em{font-size:11px;padding:7px 8px}}
+
+/* Phase 4.45 — Home AI Trading Activity Card */
+.ai-activity-card{
+  position:relative;
+  overflow:hidden;
+}
+.ai-activity-card:before{
+  content:"";
+  position:absolute;
+  inset:auto -40px -60px auto;
+  width:150px;
+  height:150px;
+  border-radius:50%;
+  background:rgba(21,229,211,.09);
+  pointer-events:none;
+}
+.activity-pill{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:36px;
+  border-radius:999px;
+  padding:0 13px;
+  font-size:12px;
+  font-weight:1000;
+  border:1px solid var(--line);
+  white-space:nowrap;
+}
+.activity-pill.live,.activity-pill.profit{
+  background:rgba(0,231,168,.12);
+  color:var(--green);
+  border-color:rgba(0,231,168,.28);
+}
+.activity-pill.loss{
+  background:rgba(255,69,107,.12);
+  color:#ff8da4;
+  border-color:rgba(255,69,107,.28);
+}
+.activity-pill.muted{
+  background:rgba(255,255,255,.055);
+  color:var(--muted);
+}
+.activity-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-top:12px;
+}
+.activity-grid article{
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.04);
+  border-radius:18px;
+  padding:13px;
+  min-width:0;
+}
+.activity-grid span{
+  display:block;
+  color:var(--muted);
+  font-size:12px;
+  font-weight:850;
+}
+.activity-grid b{
+  display:block;
+  margin-top:6px;
+  font-size:16px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.ai-activity-card.limit{
+  border-color:rgba(255,199,107,.24);
+  background:linear-gradient(145deg,rgba(255,199,107,.09),rgba(8,16,31,.96));
+}
+@media(max-width:620px){
+  .activity-grid{grid-template-columns:1fr 1fr}
+  .activity-pill{justify-self:start}
+}

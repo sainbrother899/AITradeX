@@ -806,3 +806,9 @@ Phase 4.44 — User Desktop Bottom Nav Restore Clean
 - Desktop user panel now shows the same Home, Trade, Orders, Wallet, History navigation.
 - Added desktop-safe app bottom spacing so the restored nav does not cover content.
 - Admin layout and all trading/wallet/KYC/referral/support logic were not changed.
+
+Phase 4.45 — Home AI Trading Activity Card Clean
+- Replaced the static AI SIGNAL LIVE card with a dynamic AI TRADING ACTIVITY card.
+- Shows AI OFF, daily limit completed, no AI trade yet, or latest AI auto trade state based on real user data.
+- Removed static confidence/target/stop-loss/expires copy from the home dashboard.
+- Current Plan card and AI Trade Control card remain unchanged.
