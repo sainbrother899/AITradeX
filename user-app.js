@@ -147,6 +147,7 @@
 
   function manualPositionMaxLoss(position) {
     const margin = Math.max(0, Number(position.marginAmount || 0));
+    if (position.marginLocked) return margin;
     const balanceNow = Math.max(0, positionBalance(position));
     if (!margin && !balanceNow) return 0;
     if (!margin) return balanceNow;
@@ -167,7 +168,7 @@
   }
 
   function availableForNewManualTrade() {
-    return Math.max(0, currentBalance() - manualReservedMargin(accountMode));
+    return Math.max(0, currentBalance());
   }
 
   function totalManualLivePnl() {
@@ -185,23 +186,31 @@
     if (!u || !position || position.status !== "OPEN") return false;
     const current = positionCurrentPrice(position);
     let pnl = manualPositionPnl(position);
-    const balanceNow = positionBalance(position);
-    if (balanceNow + pnl < 0) pnl = -balanceNow;
+    const margin = Math.max(0, Number(position.marginAmount || 0));
+    if (pnl < -margin) pnl = -margin;
+    if (!position.marginLocked) {
+      const balanceNow = positionBalance(position);
+      if (balanceNow + pnl < 0) pnl = -balanceNow;
+    }
+    const settlementAmount = position.marginLocked ? Math.max(0, margin + pnl) : pnl;
     position.exitPrice = current;
     position.exitPriceDisplay = positionCurrentDisplay(position);
     position.exitPriceSource = (App.getCachedPairPrice && App.getCachedPairPrice(position.pair)?.source) || position.priceSource || "Live price cache";
     position.closedAt = new Date().toISOString();
     position.pnl = pnl;
+    position.settlementAmount = settlementAmount;
     position.closeReason = reason;
     position.status = "CLOSED";
-    if (pnl !== 0) {
+    if (settlementAmount !== 0) {
       App.addLedger({
         userId: u.id,
         accountType: position.accountType || accountMode,
-        type: pnl >= 0 ? "MANUAL_TRADE_PROFIT" : "MANUAL_TRADE_LOSS",
-        amount: pnl,
+        type: position.marginLocked ? "MANUAL_TRADE_SETTLEMENT" : (pnl >= 0 ? "MANUAL_TRADE_PROFIT" : "MANUAL_TRADE_LOSS"),
+        amount: settlementAmount,
         referenceId: position.id,
-        note: `${position.pair} manual ${position.side} closed`
+        note: position.marginLocked
+          ? `${position.pair} manual ${position.side} closed · margin ${App.money(margin)} · P/L ${pnl >= 0 ? "+" : ""}${App.money(pnl)}`
+          : `${position.pair} manual ${position.side} closed`
       });
     } else {
       App.saveState();
@@ -217,8 +226,7 @@
       manualOpenPositions().forEach(position => {
         const rawPnl = manualPositionRawPnl(position);
         const maxLoss = manualPositionMaxLoss(position);
-        const balanceNow = positionBalance(position);
-        if (rawPnl < 0 && (Math.abs(rawPnl) >= maxLoss || balanceNow + rawPnl <= 0)) {
+        if (rawPnl < 0 && maxLoss > 0 && Math.abs(rawPnl) >= maxLoss) {
           if (settleManualPosition(position, "AUTO_RISK_CLOSE")) closed += 1;
         }
       });
@@ -311,6 +319,18 @@
 
   function updateManualLiveBar() {
     updateManualLiveViews();
+  }
+
+  function updateTradeAmountPreviewDom() {
+    const margin = Math.max(0, Number(tradeAmountPreview || 0));
+    const leverage = Math.max(1, Number(tradeLeveragePreview || 1));
+    const positionSize = margin * leverage;
+    const marginEl = document.querySelector("[data-trade-preview-margin]");
+    const positionEl = document.querySelector("[data-trade-preview-position]");
+    const summaryEl = document.querySelector("[data-trade-preview-summary]");
+    if (marginEl) marginEl.textContent = App.money(margin);
+    if (positionEl) positionEl.textContent = App.money(positionSize);
+    if (summaryEl) summaryEl.textContent = `${selectedMarket} · ${selectedPair} · ${accountMode} · Margin ${App.money(margin)} · Position ${App.money(positionSize)}`;
   }
 
   function realBalance() {
@@ -1116,9 +1136,9 @@
 
         <div class="trade-preview-grid">
           <article><span>Available</span><b>${App.money(balance)}</b></article>
-          <article><span>Margin</span><b>${App.money(tradeAmountPreview)}</b></article>
+          <article><span>Margin</span><b data-trade-preview-margin>${App.money(tradeAmountPreview)}</b></article>
           <article><span>Leverage</span><b>${tradeLeveragePreview}x</b></article>
-          <article><span>Position Size</span><b>${App.money(positionSize)}</b></article>
+          <article><span>Position Size</span><b data-trade-preview-position>${App.money(positionSize)}</b></article>
         </div>
 
         <div class="form-row">
@@ -1133,7 +1153,7 @@
 
         <div class="confirm-summary">
           <b>Order Summary</b>
-          <span>${selectedMarket} · ${selectedPair} · ${accountMode} · Margin ${App.money(tradeAmountPreview)} · Position ${App.money(positionSize)}</span>
+          <span data-trade-preview-summary>${selectedMarket} · ${selectedPair} · ${accountMode} · Margin ${App.money(tradeAmountPreview)} · Position ${App.money(positionSize)}</span>
         </div>
       </section>
 
@@ -2203,7 +2223,7 @@
     setTradeAmount(value) {
       tradeAmountPreview = Math.max(0, Number(value || 0));
       localStorage.setItem("AITradeX_TRADE_AMOUNT_PREVIEW", String(tradeAmountPreview));
-      render();
+      updateTradeAmountPreviewDom();
     },
     setTradeLeverage(value) {
       tradeLeveragePreview = Math.max(1, Number(String(value).replace("x", "") || 1));
@@ -2257,8 +2277,22 @@
         App.toast("Live entry price unavailable. Please try again.");
         return;
       }
+      const tradeId = App.uid("trd");
+      try {
+        App.addLedger({
+          userId: u.id,
+          accountType: accountMode,
+          type: "MANUAL_TRADE_MARGIN_LOCK",
+          amount: -margin,
+          referenceId: tradeId,
+          note: `${selectedPair} manual ${String(side || "BUY").toUpperCase() === "SELL" ? "SELL" : "BUY"} margin locked`
+        });
+      } catch (error) {
+        App.toast(error.message || "Insufficient balance for this trade.");
+        return;
+      }
       const trade = {
-        id: App.uid("trd"),
+        id: tradeId,
         userId: u.id,
         tradeType: "MANUAL",
         accountType: accountMode,
@@ -2272,6 +2306,7 @@
         priceLockedAt: lockedPrice?.fetchedAt || new Date().toISOString(),
         leverage,
         marginAmount: margin,
+        marginLocked: true,
         positionSize: margin * leverage,
         pnl: 0,
         status: "OPEN",
@@ -2288,6 +2323,16 @@
       const positions = manualOpenPositions();
       if (!positions.length) {
         App.toast("No manual position is active.");
+        return;
+      }
+      if (positions.length === 1) {
+        try {
+          settleManualPosition(positions[0], "USER_CLOSE");
+          App.toast("Manual position closed.");
+          render();
+        } catch (error) {
+          App.toast(error.message || "Position close failed.");
+        }
         return;
       }
       manualCloseSelectorOpen = true;

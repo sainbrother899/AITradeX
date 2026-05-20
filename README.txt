@@ -559,3 +559,17 @@ Phase 4.16 - Manual Live Bottom Bar Spacing Fix
 - Removed the extra vertical gap between the live position bar and bottom nav.
 - Close position selector modal position adjusted to match the lower bar placement.
 - No changes to manual trade logic, AI trade logic, price feeds, or admin flow.
+
+Phase 4.17 - Manual Trade Margin Lock & Single Close Clean
+- Base used: Phase 4.16 Manual Live Bar Nav Spacing Clean.
+- Fixed mobile amount input so typing no longer forces a full render/keyboard close on every digit.
+- Manual trade margin now locks immediately when the trade opens.
+- User balance reduces instantly by the margin amount when a manual position opens.
+- On close, the locked margin plus final P/L is settled back into the wallet.
+- If only one manual position is active, bottom bar Close closes it directly.
+- If multiple positions are active, Close opens the selector popup.
+- Existing old open positions remain compatible and will not be double-refunded.
+
+Changed files in Phase 4.17:
+- user-app.js
+- README.txt
