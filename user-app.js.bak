@@ -421,64 +421,6 @@
     if (!u) return { used: 0, limit: 5 };
     return { used: App.aiTradesToday(u.id), limit: App.aiDailyLimit(u.id) };
   }
-  function activeSubscription() {
-    const u = user();
-    return u ? App.activeSubscription(u.id) : null;
-  }
-
-  function currentPlan() {
-    const u = user();
-    return u ? App.currentPlan(u.id) : (App.planById("free") || { name: "Free", price: 0, signals: 5 });
-  }
-
-  function subscriptionExpiryText(sub) {
-    if (!sub || !sub.expiresAt) return "No expiry";
-    const date = new Date(sub.expiresAt);
-    if (Number.isNaN(date.getTime())) return "No expiry";
-    return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
-  }
-
-  function planBenefits(plan) {
-    if (Array.isArray(plan?.benefits) && plan.benefits.length) return plan.benefits;
-    return [
-      `${Number(plan?.signals || 0)} AI auto trades per day`,
-      `${plan?.aiAccess || "AI"} access`,
-      plan?.tradeLimit ? `AI trade capacity up to ${App.money(plan.tradeLimit)}` : "Manual trading access"
-    ];
-  }
-
-  function planCard(plan) {
-    const sub = activeSubscription();
-    const current = currentPlan();
-    const isCurrent = current?.id === plan.id;
-    const disabled = String(plan.status || "ACTIVE").toUpperCase() !== "ACTIVE";
-    const price = Number(plan.price || 0);
-    const duration = Number(plan.durationDays || 0);
-    return `
-      <article class="subscription-plan-card ${isCurrent ? "current" : ""} ${disabled ? "inactive" : ""}">
-        <div class="plan-card-top">
-          <div><p>${isCurrent ? "CURRENT PLAN" : "SUBSCRIPTION"}</p><h3>${App.escapeHtml(plan.name)}</h3></div>
-          <strong>${price ? App.money(price) : "Free"}</strong>
-        </div>
-        <div class="plan-limit-row">
-          <span>AI Trades / Day</span><b>${Number(plan.signals || 0)}</b>
-        </div>
-        <div class="plan-limit-row">
-          <span>Duration</span><b>${duration ? `${duration} days` : "Lifetime"}</b>
-        </div>
-        <ul class="plan-benefits">${planBenefits(plan).map(item => `<li>${App.escapeHtml(item)}</li>`).join("")}</ul>
-        ${isCurrent ? `<button class="save-profile-btn muted" disabled>Active Plan</button>` : `<button class="save-profile-btn" ${disabled ? "disabled" : ""} onclick="AITradeXUser.buyPlan('${plan.id}')">${disabled ? "Unavailable" : `Upgrade for ${price ? App.money(price) : "Free"}`}</button>`}
-        ${sub && isCurrent ? `<small class="plan-expiry-note">Expires: ${subscriptionExpiryText(sub)}</small>` : ""}
-      </article>`;
-  }
-
-  function subscriptionHistory() {
-    const u = user();
-    if (!u) return [];
-    return (App.state.subscriptions || [])
-      .filter(x => x.userId === u.id)
-      .sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0));
-  }
 
   function tradeRows(type) {
     const u = user();
@@ -1004,7 +946,6 @@
         <button onclick="AITradeXUser.go('profile')" class="drawer-item">👤 Profile</button>
         <button onclick="AITradeXUser.go('kyc')" class="drawer-item">🛡️ KYC Verification</button>
         <button onclick="AITradeXUser.go('payments')" class="drawer-item">🏦 Bank Accounts</button>
-        <button onclick="AITradeXUser.go('subscription')" class="drawer-item">⭐ Subscription</button>
         <button onclick="AITradeXUser.go('referral')" class="drawer-item">🎁 Referral</button>
         <button onclick="AITradeXUser.go('support')" class="drawer-item">🎧 Support</button>
         <button onclick="AITradeXUser.logout()" class="drawer-item danger">🚪 Logout</button>
@@ -1149,17 +1090,6 @@
         <article><span>Open Trades</span><b>0</b><small>${accountMode} positions</small></article>
         <article><span>KYC</span><b>${App.kycStatus(u.id).replace("_", " ")}</b><small>Verification</small></article>
         <article><span>Selected Pair</span><b>${selectedPair}</b><small>${pair.signal} bias</small></article>
-      </section>
-
-      <section class="premium-card subscription-mini-card">
-        <div class="card-row">
-          <div>
-            <p>CURRENT PLAN</p>
-            <h2>${App.escapeHtml(currentPlan().name || "Free")}</h2>
-            <h4>${usage.used}/${usage.limit} AI auto trades used today · Expires ${subscriptionExpiryText(activeSubscription())}</h4>
-          </div>
-          <button class="change-pair-btn" onclick="AITradeXUser.go('subscription')">Upgrade</button>
-        </div>
       </section>
 
       <section class="premium-card live-signal-card">
@@ -2002,47 +1932,6 @@
     `);
   }
 
-  function subscriptionPage() {
-    const u = user();
-    const sub = activeSubscription();
-    const plan = currentPlan();
-    const plans = App.getPlans().filter(p => p.id !== "free");
-    const balance = App.realBalance(u.id);
-    const usage = aiDailyUsage();
-    const history = subscriptionHistory();
-    shell(`
-      <section class="subscription-hero-card">
-        <div>
-          <p>SUBSCRIPTION</p>
-          <h1>${App.escapeHtml(plan.name || "Free")}</h1>
-          <span>${usage.used}/${usage.limit} AI auto trades used today · Real Wallet ${App.money(balance)}</span>
-        </div>
-        <button onclick="AITradeXUser.go('wallet')">Add Balance</button>
-      </section>
-
-      <section class="compact-grid subscription-summary-grid">
-        <article><span>Current Plan</span><b>${App.escapeHtml(plan.name || "Free")}</b><small>${sub ? "Active" : "Free access"}</small></article>
-        <article><span>AI Limit</span><b>${usage.limit}/day</b><small>Plan controlled</small></article>
-        <article><span>Used Today</span><b>${usage.used}/${usage.limit}</b><small>AI Auto Trades</small></article>
-        <article><span>Expires</span><b>${subscriptionExpiryText(sub)}</b><small>${sub ? "Plan validity" : "Free plan"}</small></article>
-      </section>
-
-      <section class="subscription-plan-grid">
-        ${plans.map(planCard).join("")}
-      </section>
-
-      <section class="premium-card subscription-history-card">
-        <div class="card-row"><div><p>SUBSCRIPTION HISTORY</p><h2>Plan Purchases</h2></div><span class="history-mode">Real Wallet</span></div>
-        ${history.length ? `<div class="subscription-history-list">${history.map(row => `
-          <article>
-            <div><b>${App.escapeHtml(row.planName || row.planId)}</b><span>${new Date(row.createdAt).toLocaleString("en-IN")}</span></div>
-            <strong>${App.money(row.price || 0)}</strong>
-            <small>${App.escapeHtml(row.status || "ACTIVE")} · Expires ${subscriptionExpiryText(row)}</small>
-          </article>`).join("")}</div>` : `<div class="empty-state">No paid subscription purchased yet.</div>`}
-      </section>
-    `);
-  }
-
   function referralPage() {
     const u = user();
     shell(`<section class="premium-card"><p>REFERRAL</p><h2>Invite & Earn</h2><div class="ref-code">${u.referralCode || "-"}</div><div class="empty-state">10% commission only on first approved deposit.</div></section>`);
@@ -2110,7 +1999,6 @@
     if (page === "history") return historyPage();
     if (page === "kyc") return kycPage();
     if (page === "payments") return paymentPage();
-    if (page === "subscription") return subscriptionPage();
     if (page === "referral") return referralPage();
     if (page === "profile") return profilePage();
     if (page === "support") return supportPage();
@@ -2729,70 +2617,6 @@
       App.saveState();
       App.toast("Pending limit order cancelled.");
       render();
-    },
-    buyPlan(planId) {
-      const u = user();
-      const plan = App.planById(planId);
-      if (!u || !plan) {
-        App.toast("Plan not found.");
-        return;
-      }
-      if (String(plan.status || "ACTIVE").toUpperCase() !== "ACTIVE") {
-        App.toast("This plan is currently unavailable.");
-        return;
-      }
-      const price = Math.max(0, Number(plan.price || 0));
-      if (!price) {
-        App.toast("Free plan is already available.");
-        return;
-      }
-      if (App.realBalance(u.id) < price) {
-        App.toast("Insufficient real wallet balance. Please deposit funds first.");
-        return;
-      }
-      const ok = confirm(`Buy ${plan.name} for ${App.money(price)} from your real wallet?`);
-      if (!ok) return;
-      const subId = App.uid("sub");
-      const startedAt = new Date();
-      const durationDays = Math.max(0, Number(plan.durationDays || 30));
-      const expiresAt = durationDays ? new Date(startedAt.getTime() + durationDays * 86400000).toISOString() : "";
-      try {
-        App.addLedger({
-          userId: u.id,
-          accountType: "REAL",
-          type: "SUBSCRIPTION_PURCHASE",
-          amount: -price,
-          referenceId: subId,
-          note: `${plan.name} subscription purchased`
-        });
-        (App.state.subscriptions || []).forEach(row => {
-          if (row.userId === u.id && row.status === "ACTIVE") {
-            row.status = "REPLACED";
-            row.replacedAt = new Date().toISOString();
-          }
-        });
-        if (!App.state.subscriptions) App.state.subscriptions = [];
-        App.state.subscriptions.unshift({
-          id: subId,
-          userId: u.id,
-          planId: plan.id,
-          planName: plan.name,
-          price,
-          aiTradeLimit: Number(plan.signals || 0),
-          signals: Number(plan.signals || 0),
-          durationDays,
-          status: "ACTIVE",
-          createdAt: startedAt.toISOString(),
-          startsAt: startedAt.toISOString(),
-          expiresAt,
-          ledgerReferenceId: subId
-        });
-        App.saveState();
-        App.toast(`${plan.name} activated successfully.`);
-        render();
-      } catch (error) {
-        App.toast(error.message || "Unable to activate plan.");
-      }
     },
     setManualHistoryPage(index) {
       const rows = tradeRows("MANUAL").filter(t => String(t.status || "").toUpperCase() === "CLOSED");

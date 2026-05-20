@@ -362,7 +362,6 @@
             ${navButton("deposits", "⬇️", "Deposits")}
             ${navButton("withdrawals", "⬆️", "Withdrawals")}
             ${navButton("trades", "🤖", "AI Trade Control")}
-            ${navButton("plans", "⭐", "Plans")}
             ${navButton("settings", "⚙️", "Payment Settings")}
           </nav>
           <button class="logout-btn" onclick="AITradeXAdmin.logout()">🚪 Logout</button>
@@ -393,7 +392,6 @@
       deposits: "Deposits",
       withdrawals: "Withdrawals",
       trades: "AI Trade Control",
-      plans: "Subscription Plans",
       settings: "Payment Settings"
     };
     return titles[page] || "Dashboard";
@@ -1089,94 +1087,6 @@
     `);
   }
 
-  function planBenefitsText(plan) {
-    return Array.isArray(plan?.benefits) ? plan.benefits.join("\n") : String(plan?.benefits || "");
-  }
-
-  function planEditorCard(plan) {
-    const clean = App.normalizePlan(plan);
-    const activeSubs = (App.state.subscriptions || []).filter(sub => sub.planId === clean.id && sub.status === "ACTIVE" && !App.subscriptionExpired(sub)).length;
-    return `
-      <form class="admin-plan-card" onsubmit="AITradeXAdmin.savePlan(event, '${clean.id}')">
-        <div class="admin-plan-head">
-          <div>
-            <p>${clean.id === "free" ? "DEFAULT ACCESS" : "SUBSCRIPTION PLAN"}</p>
-            <h3>${esc(clean.name)}</h3>
-          </div>
-          <span class="admin-count-pill">${activeSubs} active</span>
-        </div>
-        <div class="admin-plan-grid">
-          <label>Plan Name
-            <input id="plan_${clean.id}_name" value="${esc(clean.name)}" required/>
-          </label>
-          <label>Price
-            <input id="plan_${clean.id}_price" type="number" min="0" value="${Number(clean.price || 0)}" ${clean.id === "free" ? "readonly" : ""}/>
-          </label>
-          <label>AI Trades / Day
-            <input id="plan_${clean.id}_signals" type="number" min="0" value="${Number(clean.signals || 0)}" required/>
-          </label>
-          <label>Duration Days
-            <input id="plan_${clean.id}_duration" type="number" min="0" value="${Number(clean.durationDays || 0)}" ${clean.id === "free" ? "readonly" : ""}/>
-          </label>
-          <label>AI Access Label
-            <input id="plan_${clean.id}_access" value="${esc(clean.aiAccess)}" required/>
-          </label>
-          <label>Trade Capacity
-            <input id="plan_${clean.id}_tradeLimit" type="number" min="0" value="${Number(clean.tradeLimit || 0)}"/>
-          </label>
-          <label>Status
-            <select id="plan_${clean.id}_status" ${clean.id === "free" ? "disabled" : ""}>
-              <option value="ACTIVE" ${clean.status === "ACTIVE" ? "selected" : ""}>Active</option>
-              <option value="INACTIVE" ${clean.status === "INACTIVE" ? "selected" : ""}>Inactive</option>
-            </select>
-          </label>
-        </div>
-        <label>Benefits <small>One per line</small>
-          <textarea id="plan_${clean.id}_benefits" rows="4">${esc(planBenefitsText(clean))}</textarea>
-        </label>
-        <button class="save-profile-btn">Save ${esc(clean.name)}</button>
-      </form>`;
-  }
-
-  function plansPage() {
-    const plans = App.getPlans();
-    const activeSubs = (App.state.subscriptions || []).filter(sub => sub.status === "ACTIVE" && !App.subscriptionExpired(sub));
-    const revenue = (App.state.walletLedger || []).filter(x => x.type === "SUBSCRIPTION_PURCHASE").reduce((sum, x) => sum + Math.abs(Number(x.amount || 0)), 0);
-    shell(`
-      <section class="metrics-grid">
-        ${metric("⭐", "Plans", plans.length)}
-        ${metric("👑", "Active Subs", activeSubs.length)}
-        ${metric("💰", "Plan Revenue", App.money(revenue))}
-        ${metric("🎁", "Free AI / Day", Number(App.state.settings?.freeAiTradesPerDay || 5))}
-      </section>
-
-      <section class="panel-card admin-plans-panel">
-        <div class="section-head">
-          <div><h3>Subscription Plans</h3><span>Edit plan price, AI trade limit, duration and benefits shown to users.</span></div>
-          <span class="admin-count-pill">Wallet purchase enabled</span>
-        </div>
-        <div class="admin-plan-list">${plans.map(planEditorCard).join("")}</div>
-      </section>
-
-      <section class="panel-card">
-        <div class="section-head"><div><h3>Recent Subscriptions</h3><span>Latest user plan purchases</span></div></div>
-        <div class="admin-list">
-          ${(App.state.subscriptions || []).slice().sort((a,b)=>Date.parse(b.createdAt||0)-Date.parse(a.createdAt||0)).slice(0,8).map(sub => {
-            const target = allUsers().find(u => u.id === sub.userId) || {};
-            return `<article class="admin-user-card">
-              <div class="admin-user-main">
-                <div><b>${esc(sub.planName || sub.planId)}</b><span>${esc(displayNameFor(target))} · ${esc(target.email || "-")}</span></div>
-                <div class="admin-user-stats"><span>Price</span><b>${App.money(sub.price || 0)}</b></div>
-                <div class="admin-user-stats"><span>AI Limit</span><b>${Number(sub.aiTradeLimit || sub.signals || 0)}/day</b></div>
-                <div class="admin-user-stats"><span>Status</span><b>${esc(sub.status || "ACTIVE")}</b></div>
-              </div>
-            </article>`;
-          }).join("") || `<div class="empty-state">No subscription purchases yet.</div>`}
-        </div>
-      </section>
-    `);
-  }
-
   function settingsPage() {
     const settings = platformSettings();
     shell(`
@@ -1270,7 +1180,6 @@
     if (page === "deposits") return financeRequestPage("DEPOSIT");
     if (page === "withdrawals") return financeRequestPage("WITHDRAWAL");
     if (page === "trades") return tradesPage();
-    if (page === "plans") return plansPage();
     if (page === "settings") return settingsPage();
     return dashboardPage();
   }
@@ -1375,37 +1284,6 @@
         input.remove();
         App.toast("Copied.");
       }
-    },
-    savePlan(event, planId) {
-      event.preventDefault();
-      const plan = App.planById(planId);
-      if (!plan) {
-        App.toast("Plan not found.");
-        return;
-      }
-      const get = id => document.getElementById(`plan_${planId}_${id}`);
-      const next = {
-        ...plan,
-        name: String(get("name")?.value || plan.name || "Plan").trim(),
-        price: planId === "free" ? 0 : Math.max(0, Number(get("price")?.value || 0)),
-        signals: Math.max(0, Number(get("signals")?.value || 0)),
-        durationDays: planId === "free" ? 0 : Math.max(0, Number(get("duration")?.value || 0)),
-        aiAccess: String(get("access")?.value || "AI Access").trim(),
-        tradeLimit: Math.max(0, Number(get("tradeLimit")?.value || 0)),
-        status: planId === "free" ? "ACTIVE" : String(get("status")?.value || "ACTIVE").toUpperCase(),
-        benefits: String(get("benefits")?.value || "").split("\n").map(x => x.trim()).filter(Boolean)
-      };
-      if (!next.name) {
-        App.toast("Plan name required.");
-        return;
-      }
-      App.state.plans = App.getPlans().map(row => row.id === planId ? App.normalizePlan(next) : row);
-      if (planId === "free") {
-        App.state.settings = { ...(App.state.settings || {}), freeAiTradesPerDay: Number(next.signals || 5) };
-      }
-      App.saveState();
-      App.toast(`${next.name} plan saved.`);
-      render();
     },
     savePaymentSettings(event) {
       event.preventDefault();

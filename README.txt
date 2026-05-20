@@ -668,3 +668,13 @@ Phase 4.27 - Bank Account Limit Clean
 - Rejected bank accounts do not count, so users can submit a new bank account after rejection.
 - Add Bank form disables when the limit is reached.
 - Withdrawal remains bank-only; deposit UPI/QR flow is unchanged.
+
+Phase 4.28 — Subscription Plans Wallet Deduct Clean
+- Added user Subscription page in the drawer.
+- Added current plan mini card on user Home.
+- Added wallet-based plan purchase: paid plans deduct from Real Wallet only.
+- Active subscription stores plan name, price, AI trade/day limit, duration and expiry.
+- AI daily trade limit now reads active subscription plan settings.
+- Added admin Plans page with editable price, AI trade/day limit, duration, status and benefits.
+- Free plan AI trade/day setting updates platform free AI daily limit.
+- No trade, wallet deposit/withdrawal, referral or support logic was changed.
