@@ -3950,3 +3950,78 @@
 @media(max-width:760px){
   .support-hero-card{align-items:flex-start;flex-direction:column;border-radius:20px;padding:14px}.support-grid{grid-template-columns:1fr}.whatsapp-help-btn{width:100%;text-align:center}.ticket-card-head,.support-admin-head{align-items:flex-start;gap:8px}.admin-inline-form{grid-template-columns:1fr}.support-action-row button{flex:1;min-width:130px}
 }
+
+/* Phase 4.34 - Required Aadhaar KYC clean additions */
+.readonly-input,
+.kyc-form-card input[readonly] {
+  opacity: .78;
+  cursor: not-allowed;
+  background: rgba(255,255,255,.035);
+}
+.inline-upload {
+  min-height: 112px;
+  justify-content: center;
+}
+.single-upload-grid {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 520px;
+}
+.kyc-check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 13px 14px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 16px;
+  background: rgba(255,255,255,.045);
+  color: rgba(255,255,255,.82);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.kyc-check-row input {
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  accent-color: #6ee7b7;
+}
+.review-confirm {
+  background: rgba(110,231,183,.08);
+  border-color: rgba(110,231,183,.22);
+}
+.duplicate-warning-box {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(251, 191, 36, .12);
+  border: 1px solid rgba(251, 191, 36, .28);
+  color: #fde68a;
+  font-size: 13px;
+}
+.kyc-reject-inline {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(248, 113, 113, .2);
+  background: rgba(248, 113, 113, .06);
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 10px;
+}
+.kyc-reject-inline[hidden] {
+  display: none !important;
+}
+.kyc-reject-inline select,
+.kyc-reject-inline input {
+  min-height: 42px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color: #fff;
+  padding: 0 12px;
+}
+@media (max-width: 720px) {
+  .kyc-reject-inline {
+    grid-template-columns: 1fr;
+  }
+}

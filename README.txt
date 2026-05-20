@@ -726,3 +726,15 @@ Phase 4.33 - Support Ticket System With WhatsApp Help
 - Admin Support Settings includes editable WhatsApp support number.
 - WhatsApp is used only as quick help; support tickets stay as the official support record.
 - No backup files or patch/block layers are included.
+
+Phase 4.34 - Real App Aadhaar KYC Clean
+- Rebuilt user KYC into a required 4-step flow: Personal Details, Aadhaar Verification, Selfie Verification, Review & Submit.
+- Step 1 requires full name, DOB, gender select, auto-filled read-only mobile/email, city input, state dropdown and exactly 6 digit pincode.
+- Step 2 requires exactly 12 digit Aadhaar number plus Aadhaar front and back uploads.
+- Step 3 requires selfie upload and declaration confirmation.
+- Step 4 requires final confirmation before submit.
+- Added duplicate Aadhaar protection for pending/approved KYC records.
+- Added duplicate email/mobile signup protection.
+- Admin KYC review now shows city/state/pincode, Aadhaar masked number, Aadhaar front/back, selfie and duplicate warning.
+- Admin KYC reject now requires a selected reason instead of a browser prompt.
+- Same UI/design baseline preserved; no backup files, no patch layer, no blocked old logic.

@@ -808,26 +808,38 @@
   function currentKyc() {
     const u = user();
     if (!u) return null;
-    return readJson(userKey("KYC"), {
-      status: "NOT_SUBMITTED",
-      personal: {
-        fullName: displayName(),
-        mobile: u.mobile || "",
-        email: u.email || "",
-        dob: ""
-      },
-      id: {
-        type: "PAN Card",
-        number: ""
-      },
-      uploads: {
-        frontName: "",
-        backName: "",
-        selfieName: ""
-      },
-      submittedAt: "",
-      rejectReason: ""
-    });
+    const saved = readJson(userKey("KYC"), null) || {};
+    const personal = {
+      fullName: saved.personal?.fullName || displayName(),
+      mobile: u.mobile || saved.personal?.mobile || "",
+      email: u.email || saved.personal?.email || "",
+      dob: saved.personal?.dob || "",
+      gender: saved.personal?.gender || "",
+      city: saved.personal?.city || "",
+      state: saved.personal?.state || "",
+      pincode: saved.personal?.pincode || ""
+    };
+    const id = {
+      type: "Aadhaar Card",
+      number: saved.id?.number || saved.idDetails?.number || ""
+    };
+    const uploads = {
+      frontName: saved.uploads?.frontName || "",
+      backName: saved.uploads?.backName || "",
+      selfieName: saved.uploads?.selfieName || ""
+    };
+    return {
+      status: saved.status || "NOT_SUBMITTED",
+      personal,
+      id,
+      uploads,
+      declarationAccepted: !!saved.declarationAccepted,
+      finalAccepted: !!saved.finalAccepted,
+      submittedAt: saved.submittedAt || "",
+      approvedAt: saved.approvedAt || "",
+      rejectedAt: saved.rejectedAt || "",
+      rejectReason: saved.rejectReason || ""
+    };
   }
 
   function saveKycData(data) {
@@ -848,6 +860,8 @@
       idDetails: data.id,
       uploads: data.uploads,
       submittedAt: data.submittedAt || "",
+      approvedAt: data.approvedAt || "",
+      rejectedAt: data.rejectedAt || "",
       rejectReason: data.rejectReason || "",
       updatedAt: App.now()
     };
@@ -982,6 +996,38 @@
     return "XXXXXX" + text.slice(-4);
   }
 
+
+  const INDIAN_STATES = [
+    "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Delhi", "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal", "Andaman and Nicobar Islands", "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
+  ];
+
+  function stateOptions(value) {
+    return `<option value="">Select state</option>${INDIAN_STATES.map(st => `<option value="${App.escapeHtml(st)}" ${value === st ? "selected" : ""}>${App.escapeHtml(st)}</option>`).join("")}`;
+  }
+
+  function digitsOnly(value, max) {
+    return String(value || "").replace(/\D/g, "").slice(0, max);
+  }
+
+  function maskAadhaar(value) {
+    const digits = digitsOnly(value, 12);
+    if (!digits) return "-";
+    return `XXXX XXXX ${digits.slice(-4)}`;
+  }
+
+  function isDuplicateAadhaar(aadhaar) {
+    const digits = digitsOnly(aadhaar, 12);
+    const u = user();
+    if (!digits || !u) return false;
+    return (App.state.kycRequests || []).some(row => {
+      if (row.userId === u.id) return false;
+      const status = String(row.status || "").toUpperCase();
+      if (!["PENDING", "APPROVED"].includes(status)) return false;
+      const saved = digitsOnly(row.idDetails?.number || row.id?.number, 12);
+      return saved === digits;
+    });
+  }
+
   function kycDetailsGrid(kyc, title = "Verified Details") {
     return `
       <section class="premium-card kyc-result-details">
@@ -989,13 +1035,17 @@
         <h2>${App.escapeHtml(kyc.personal.fullName || "-")}</h2>
         <div class="review-grid">
           <article><span>Full Name</span><b>${App.escapeHtml(kyc.personal.fullName || "-")}</b></article>
+          <article><span>DOB</span><b>${App.escapeHtml(kyc.personal.dob || "-")}</b></article>
+          <article><span>Gender</span><b>${App.escapeHtml(kyc.personal.gender || "-")}</b></article>
           <article><span>Mobile</span><b>${App.escapeHtml(kyc.personal.mobile || "-")}</b></article>
           <article><span>Email</span><b>${App.escapeHtml(kyc.personal.email || "-")}</b></article>
-          <article><span>DOB</span><b>${App.escapeHtml(kyc.personal.dob || "-")}</b></article>
-          <article><span>Document</span><b>${App.escapeHtml(kyc.id.type || "-")}</b></article>
-          <article><span>Document No.</span><b>${App.escapeHtml(maskDocNumber(kyc.id.number))}</b></article>
-          <article><span>ID Front</span><b>${App.escapeHtml(kyc.uploads.frontName || "-")}</b></article>
-          <article><span>ID Back</span><b>${App.escapeHtml(kyc.uploads.backName || "-")}</b></article>
+          <article><span>City</span><b>${App.escapeHtml(kyc.personal.city || "-")}</b></article>
+          <article><span>State</span><b>${App.escapeHtml(kyc.personal.state || "-")}</b></article>
+          <article><span>Pincode</span><b>${App.escapeHtml(kyc.personal.pincode || "-")}</b></article>
+          <article><span>Document</span><b>Aadhaar Card</b></article>
+          <article><span>Aadhaar No.</span><b>${App.escapeHtml(maskAadhaar(kyc.id.number))}</b></article>
+          <article><span>Aadhaar Front</span><b>${App.escapeHtml(kyc.uploads.frontName || "-")}</b></article>
+          <article><span>Aadhaar Back</span><b>${App.escapeHtml(kyc.uploads.backName || "-")}</b></article>
           <article><span>Selfie</span><b>${App.escapeHtml(kyc.uploads.selfieName || "-")}</b></article>
           ${kyc.submittedAt ? `<article><span>Submitted On</span><b>${new Date(kyc.submittedAt).toLocaleString()}</b></article>` : ""}
           ${kyc.approvedAt ? `<article><span>Approved On</span><b>${new Date(kyc.approvedAt).toLocaleString()}</b></article>` : ""}
@@ -1905,7 +1955,7 @@
         ${[1, 2, 3, 4].map(step => `
           <button class="${kycStep === step ? "active" : ""} ${kycStep > step ? "done" : ""}" onclick="AITradeXUser.setKycStep(${step})">
             <b>${step}</b>
-            <span>${["Personal", "ID", "Uploads", "Review"][step - 1]}</span>
+            <span>${["Personal", "Aadhaar", "Selfie", "Review"][step - 1]}</span>
           </button>
         `).join("")}
       </section>
@@ -1915,47 +1965,57 @@
           <p>STEP 1</p>
           <h2>Personal Details</h2>
           <div class="form-grid kyc-grid">
-            <label>Full Name<input id="kycFullName" value="${App.escapeHtml(kyc.personal.fullName || "")}" placeholder="As per document"/></label>
-            <label>Mobile<input id="kycMobile" value="${App.escapeHtml(kyc.personal.mobile || "")}" placeholder="10 digit mobile"/></label>
-            <label>Email<input id="kycEmail" disabled value="${App.escapeHtml(kyc.personal.email || "")}"/></label>
+            <label>Full Name as per Document<input id="kycFullName" value="${App.escapeHtml(kyc.personal.fullName || "")}" placeholder="Enter full name"/></label>
             <label>Date of Birth<input id="kycDob" type="date" value="${App.escapeHtml(kyc.personal.dob || "")}"/></label>
+            <label>Gender
+              <select id="kycGender">
+                <option value="">Select gender</option>
+                ${["Male", "Female", "Other"].map(g => `<option value="${g}" ${kyc.personal.gender === g ? "selected" : ""}>${g}</option>`).join("")}
+              </select>
+            </label>
+            <label>Mobile Number<input id="kycMobile" class="readonly-input" value="${App.escapeHtml(kyc.personal.mobile || "")}" readonly/></label>
+            <label>Email Address<input id="kycEmail" class="readonly-input" value="${App.escapeHtml(kyc.personal.email || "")}" readonly/></label>
+            <label>City<input id="kycCity" value="${App.escapeHtml(kyc.personal.city || "")}" placeholder="Enter city"/></label>
+            <label>State
+              <select id="kycState">${stateOptions(kyc.personal.state || "")}</select>
+            </label>
+            <label>Pincode<input id="kycPincode" value="${App.escapeHtml(kyc.personal.pincode || "")}" inputmode="numeric" maxlength="6" placeholder="6 digit pincode" oninput="this.value=this.value.replace(/\D/g,'').slice(0,6)"/></label>
           </div>
         ` : ""}
 
         ${kycStep === 2 ? `
           <p>STEP 2</p>
-          <h2>ID Details</h2>
+          <h2>Aadhaar Verification</h2>
           <div class="form-grid kyc-grid">
-            <label>Document Type
-              <select id="kycDocType">
-                ${["PAN Card", "Aadhaar Card", "Passport", "Driving License"].map(t => `<option ${kyc.id.type === t ? "selected" : ""}>${t}</option>`).join("")}
-              </select>
+            <label>Aadhaar Number<input id="kycAadhaar" value="${App.escapeHtml(kyc.id.number || "")}" inputmode="numeric" maxlength="12" placeholder="12 digit Aadhaar number" oninput="this.value=this.value.replace(/\D/g,'').slice(0,12)"/></label>
+            <label class="upload-box inline-upload">
+              <span>Aadhaar Front Image</span>
+              <input id="kycFront" type="file" accept="image/*,.pdf"/>
+              <b>${App.escapeHtml(kyc.uploads.frontName || "Upload clear front side")}</b>
             </label>
-            <label>Document Number<input id="kycDocNumber" value="${App.escapeHtml(kyc.id.number || "")}" placeholder="Enter document number"/></label>
+            <label class="upload-box inline-upload">
+              <span>Aadhaar Back Image</span>
+              <input id="kycBack" type="file" accept="image/*,.pdf"/>
+              <b>${App.escapeHtml(kyc.uploads.backName || "Upload clear back side")}</b>
+            </label>
           </div>
+          <div class="profile-note">Aadhaar number must be exactly 12 digits. Front and back images are required for admin review.</div>
         ` : ""}
 
         ${kycStep === 3 ? `
           <p>STEP 3</p>
-          <h2>Upload Documents</h2>
-          <div class="upload-grid">
+          <h2>Selfie Verification</h2>
+          <div class="upload-grid single-upload-grid">
             <label class="upload-box">
-              <span>ID Front</span>
-              <input id="kycFront" type="file" accept="image/*,.pdf"/>
-              <b>${App.escapeHtml(kyc.uploads.frontName || "Upload front side")}</b>
-            </label>
-            <label class="upload-box">
-              <span>ID Back</span>
-              <input id="kycBack" type="file" accept="image/*,.pdf"/>
-              <b>${App.escapeHtml(kyc.uploads.backName || "Upload back side")}</b>
-            </label>
-            <label class="upload-box">
-              <span>Selfie</span>
+              <span>Selfie Image</span>
               <input id="kycSelfie" type="file" accept="image/*"/>
-              <b>${App.escapeHtml(kyc.uploads.selfieName || "Upload selfie")}</b>
+              <b>${App.escapeHtml(kyc.uploads.selfieName || "Upload clear selfie")}</b>
             </label>
           </div>
-          <div class="profile-note">अभी files का नाम save होगा. Production में इन्हें Supabase Storage में upload करेंगे.</div>
+          <label class="kyc-check-row">
+            <input id="kycDeclaration" type="checkbox" ${kyc.declarationAccepted ? "checked" : ""}/>
+            <span>I confirm this selfie and Aadhaar belong to me.</span>
+          </label>
         ` : ""}
 
         ${kycStep === 4 ? `
@@ -1963,15 +2023,23 @@
           <h2>Review & Submit</h2>
           <div class="review-grid">
             <article><span>Full Name</span><b>${App.escapeHtml(kyc.personal.fullName || "-")}</b></article>
+            <article><span>DOB</span><b>${App.escapeHtml(kyc.personal.dob || "-")}</b></article>
+            <article><span>Gender</span><b>${App.escapeHtml(kyc.personal.gender || "-")}</b></article>
             <article><span>Mobile</span><b>${App.escapeHtml(kyc.personal.mobile || "-")}</b></article>
             <article><span>Email</span><b>${App.escapeHtml(kyc.personal.email || "-")}</b></article>
-            <article><span>DOB</span><b>${App.escapeHtml(kyc.personal.dob || "-")}</b></article>
-            <article><span>Document</span><b>${App.escapeHtml(kyc.id.type || "-")}</b></article>
-            <article><span>Document No.</span><b>${App.escapeHtml(maskDocNumber(kyc.id.number))}</b></article>
-            <article><span>ID Front</span><b>${App.escapeHtml(kyc.uploads.frontName || "-")}</b></article>
-            <article><span>ID Back</span><b>${App.escapeHtml(kyc.uploads.backName || "-")}</b></article>
+            <article><span>City</span><b>${App.escapeHtml(kyc.personal.city || "-")}</b></article>
+            <article><span>State</span><b>${App.escapeHtml(kyc.personal.state || "-")}</b></article>
+            <article><span>Pincode</span><b>${App.escapeHtml(kyc.personal.pincode || "-")}</b></article>
+            <article><span>Document</span><b>Aadhaar Card</b></article>
+            <article><span>Aadhaar No.</span><b>${App.escapeHtml(maskAadhaar(kyc.id.number))}</b></article>
+            <article><span>Aadhaar Front</span><b>${App.escapeHtml(kyc.uploads.frontName || "-")}</b></article>
+            <article><span>Aadhaar Back</span><b>${App.escapeHtml(kyc.uploads.backName || "-")}</b></article>
             <article><span>Selfie</span><b>${App.escapeHtml(kyc.uploads.selfieName || "-")}</b></article>
           </div>
+          <label class="kyc-check-row review-confirm">
+            <input id="kycFinalConfirm" type="checkbox" ${kyc.finalAccepted ? "checked" : ""}/>
+            <span>I confirm all KYC details are correct and belong to me.</span>
+          </label>
         ` : ""}
 
         <div class="wizard-actions">
@@ -2570,33 +2638,54 @@
 
       if (kycStep === 1) {
         kyc.personal.fullName = document.getElementById("kycFullName")?.value?.trim() || "";
-        kyc.personal.mobile = document.getElementById("kycMobile")?.value?.trim() || "";
-        kyc.personal.email = document.getElementById("kycEmail")?.value?.trim() || kyc.personal.email;
+        kyc.personal.mobile = user()?.mobile || kyc.personal.mobile || "";
+        kyc.personal.email = user()?.email || kyc.personal.email || "";
         kyc.personal.dob = document.getElementById("kycDob")?.value || "";
-        if (!kyc.personal.fullName || !kyc.personal.mobile) {
-          App.toast("Full name and mobile required.");
+        kyc.personal.gender = document.getElementById("kycGender")?.value || "";
+        kyc.personal.city = document.getElementById("kycCity")?.value?.trim() || "";
+        kyc.personal.state = document.getElementById("kycState")?.value || "";
+        kyc.personal.pincode = digitsOnly(document.getElementById("kycPincode")?.value || "", 6);
+        if (!kyc.personal.fullName || !kyc.personal.dob || !kyc.personal.gender || !kyc.personal.mobile || !kyc.personal.email || !kyc.personal.city || !kyc.personal.state) {
+          App.toast("Complete all personal details.");
+          return;
+        }
+        if (!/^\d{6}$/.test(kyc.personal.pincode)) {
+          App.toast("Please enter a valid 6-digit pincode.");
           return;
         }
       }
 
       if (kycStep === 2) {
-        kyc.id.type = document.getElementById("kycDocType")?.value || "PAN Card";
-        kyc.id.number = document.getElementById("kycDocNumber")?.value?.trim() || "";
-        if (!kyc.id.number) {
-          App.toast("Document number required.");
+        kyc.id.type = "Aadhaar Card";
+        kyc.id.number = digitsOnly(document.getElementById("kycAadhaar")?.value || "", 12);
+        const front = document.getElementById("kycFront")?.files?.[0];
+        const back = document.getElementById("kycBack")?.files?.[0];
+        if (front) kyc.uploads.frontName = front.name;
+        if (back) kyc.uploads.backName = back.name;
+        if (!/^\d{12}$/.test(kyc.id.number)) {
+          App.toast("Please enter a valid 12-digit Aadhaar number.");
+          return;
+        }
+        if (isDuplicateAadhaar(kyc.id.number)) {
+          App.toast("This Aadhaar number is already linked with another account.");
+          return;
+        }
+        if (!kyc.uploads.frontName || !kyc.uploads.backName) {
+          App.toast("Aadhaar front and back images are required.");
           return;
         }
       }
 
       if (kycStep === 3) {
-        const front = document.getElementById("kycFront")?.files?.[0];
-        const back = document.getElementById("kycBack")?.files?.[0];
         const selfie = document.getElementById("kycSelfie")?.files?.[0];
-        if (front) kyc.uploads.frontName = front.name;
-        if (back) kyc.uploads.backName = back.name;
         if (selfie) kyc.uploads.selfieName = selfie.name;
-        if (!kyc.uploads.frontName || !kyc.uploads.backName || !kyc.uploads.selfieName) {
-          App.toast("Front, back and selfie required.");
+        kyc.declarationAccepted = !!document.getElementById("kycDeclaration")?.checked;
+        if (!kyc.uploads.selfieName) {
+          App.toast("Selfie image is required.");
+          return;
+        }
+        if (!kyc.declarationAccepted) {
+          App.toast("Please confirm selfie and Aadhaar declaration.");
           return;
         }
       }
@@ -2608,14 +2697,33 @@
     },
     submitKyc() {
       const kyc = currentKyc();
-      if (!kyc.personal.fullName || !kyc.personal.mobile || !kyc.id.number || !kyc.uploads.frontName || !kyc.uploads.backName || !kyc.uploads.selfieName) {
-        App.toast("Complete all KYC steps first.");
+      kyc.finalAccepted = !!document.getElementById("kycFinalConfirm")?.checked;
+      if (!kyc.personal.fullName || !kyc.personal.dob || !kyc.personal.gender || !kyc.personal.mobile || !kyc.personal.email || !kyc.personal.city || !kyc.personal.state || !/^\d{6}$/.test(String(kyc.personal.pincode || ""))) {
+        App.toast("Complete Step 1 personal details first.");
+        return;
+      }
+      if (!/^\d{12}$/.test(String(kyc.id.number || "")) || !kyc.uploads.frontName || !kyc.uploads.backName) {
+        App.toast("Complete Aadhaar verification first.");
+        return;
+      }
+      if (isDuplicateAadhaar(kyc.id.number)) {
+        App.toast("This Aadhaar number is already linked with another account.");
+        return;
+      }
+      if (!kyc.uploads.selfieName || !kyc.declarationAccepted) {
+        App.toast("Complete selfie verification first.");
+        return;
+      }
+      if (!kyc.finalAccepted) {
+        App.toast("Please confirm your KYC details before submit.");
         return;
       }
 
       kyc.status = "PENDING";
       kyc.submittedAt = new Date().toISOString();
       kyc.rejectReason = "";
+      kyc.rejectedAt = "";
+      kyc.approvedAt = "";
       saveKycData(kyc);
       App.toast("KYC submitted for verification.");
       render();

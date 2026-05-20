@@ -221,6 +221,28 @@
     return App.escapeHtml(value || "");
   }
 
+
+  function digitsOnly(value, max = 99) {
+    return String(value || "").replace(/\D/g, "").slice(0, max);
+  }
+
+  function maskAadhaar(value) {
+    const digits = digitsOnly(value, 12);
+    return digits ? `XXXX XXXX ${digits.slice(-4)}` : "-";
+  }
+
+  function duplicateAadhaarWarning(user, kyc) {
+    const aadhaar = digitsOnly(kyc?.id?.number || kyc?.idDetails?.number, 12);
+    if (!aadhaar) return "";
+    const matches = (App.state.kycRequests || []).filter(row => {
+      if (row.userId === user.id) return false;
+      const status = String(row.status || "").toUpperCase();
+      if (!["PENDING", "APPROVED"].includes(status)) return false;
+      return digitsOnly(row.idDetails?.number || row.id?.number, 12) === aadhaar;
+    });
+    return matches.length ? `<div class="duplicate-warning-box">Duplicate Aadhaar warning: this Aadhaar is already used in another pending/approved KYC.</div>` : "";
+  }
+
   function includesText(value, query) {
     return String(value || "").toLowerCase().includes(String(query || "").toLowerCase());
   }
@@ -607,13 +629,18 @@
           ${statusPill(kyc.status)}
         </div>
 
+        ${duplicateAadhaarWarning(user, kyc)}
         <div class="request-grid">
           <article><span>DOB</span><b>${esc(kyc.personal.dob || "-")}</b></article>
-          <article><span>Document</span><b>${esc(kyc.id.type || "-")}</b></article>
-          <article><span>Document No.</span><b>${esc(kyc.id.number || "-")}</b></article>
+          <article><span>Gender</span><b>${esc(kyc.personal.gender || "-")}</b></article>
+          <article><span>City</span><b>${esc(kyc.personal.city || "-")}</b></article>
+          <article><span>State</span><b>${esc(kyc.personal.state || "-")}</b></article>
+          <article><span>Pincode</span><b>${esc(kyc.personal.pincode || "-")}</b></article>
+          <article><span>Document</span><b>Aadhaar Card</b></article>
+          <article><span>Aadhaar No.</span><b>${esc(maskAadhaar(kyc.id.number))}</b></article>
           <article><span>Submitted</span><b>${kyc.submittedAt ? new Date(kyc.submittedAt).toLocaleString() : "-"}</b></article>
-          <article><span>ID Front</span><b>${esc(kyc.uploads.frontName || "-")}</b></article>
-          <article><span>ID Back</span><b>${esc(kyc.uploads.backName || "-")}</b></article>
+          <article><span>Aadhaar Front</span><b>${esc(kyc.uploads.frontName || "-")}</b></article>
+          <article><span>Aadhaar Back</span><b>${esc(kyc.uploads.backName || "-")}</b></article>
           <article><span>Selfie</span><b>${esc(kyc.uploads.selfieName || "-")}</b></article>
         </div>
 
@@ -625,6 +652,19 @@
           <div class="admin-action-row">
             <button class="approve-btn" onclick="AITradeXAdmin.approveKyc('${user.id}', this)">Approve KYC</button>
             <button class="reject-btn" onclick="AITradeXAdmin.rejectKyc('${user.id}', this)">Reject</button>
+          </div>
+          <div class="kyc-reject-inline" id="kycRejectBox-${user.id}" hidden>
+            <select id="kycRejectReason-${user.id}">
+              <option value="">Select reject reason</option>
+              <option>Blurry Aadhaar</option>
+              <option>Name mismatch</option>
+              <option>Invalid Aadhaar</option>
+              <option>Duplicate Aadhaar</option>
+              <option>Selfie mismatch</option>
+              <option>Other</option>
+            </select>
+            <input id="kycRejectOther-${user.id}" placeholder="Extra note, if needed"/>
+            <button class="reject-btn" onclick="AITradeXAdmin.confirmRejectKyc('${user.id}', this)">Confirm Reject</button>
           </div>
         ` : `<div class="action-locked">Action completed. Status cannot be changed again from this card.</div>`}
       </article>`;
@@ -1980,6 +2020,14 @@
       render();
     },
     rejectKyc(userId, button) {
+      const box = document.getElementById(`kycRejectBox-${userId}`);
+      if (box) {
+        box.hidden = !box.hidden;
+        return;
+      }
+      App.toast("Reject panel unavailable.");
+    },
+    confirmRejectKyc(userId, button) {
       const target = allUsers().find(u => u.id === userId);
       if (!target) return;
       const kyc = kycFor(target);
@@ -1988,11 +2036,15 @@
         render();
         return;
       }
-      const reason = prompt("Reject reason:", "Document details do not match.");
-      if (reason === null) return;
+      const reason = document.getElementById(`kycRejectReason-${userId}`)?.value || "";
+      const note = document.getElementById(`kycRejectOther-${userId}`)?.value?.trim() || "";
+      if (!reason) {
+        App.toast("Select reject reason.");
+        return;
+      }
       markButton(button, "Rejecting...");
       kyc.status = "REJECTED";
-      kyc.rejectReason = reason || "Rejected by admin.";
+      kyc.rejectReason = note ? `${reason}: ${note}` : reason;
       kyc.rejectedAt = new Date().toISOString();
       kyc.approvedAt = "";
       saveKyc(target, kyc);
