@@ -581,3 +581,16 @@ Phase 4.18 - Trade Page Mobile Fit Clean
 - Bottom manual live bar now ellipsizes safely and stays within mobile viewport.
 - Chart, pair strip, order ticket, and close selector popup are constrained to mobile width.
 - No trading, wallet, AI, admin, or price-feed logic changed in this phase.
+
+Phase 4.19 - CSS Clean Consolidation
+- Base used: Phase 4.18 Trade Page Mobile Fit Clean.
+- Consolidated manual live position bar CSS into one final clean block.
+- Removed old top/header live bar styling so only the final bottom-nav-above bar styling remains.
+- Consolidated close selector modal styling into the final manual live bar section.
+- Kept the bar directly above the bottom navigation with no extra gap.
+- Kept mobile overflow fixes from Phase 4.18.
+- No manual trade logic, wallet margin-lock logic, AI trade logic, admin flow, or price-feed logic changed.
+
+Changed files in Phase 4.19:
+- styles.css
+- README.txt
