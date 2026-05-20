@@ -202,6 +202,28 @@
     return `<span class="status-pill ${cls}">${clean}</span>`;
   }
 
+
+  function statusPriority(status) {
+    const value = String(status || "").toUpperCase();
+    if (value === "PENDING") return 0;
+    if (value === "APPROVED") return 1;
+    if (value === "REJECTED") return 2;
+    return 3;
+  }
+
+  function timeValue(value) {
+    const parsed = Date.parse(value || "");
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  function kycSortValue(kyc) {
+    return timeValue(kyc.submittedAt || kyc.approvedAt || kyc.rejectedAt);
+  }
+
+  function bankMethodSortValue(method) {
+    return timeValue(method.createdAt || method.approvedAt || method.rejectedAt || method.deletedAt);
+  }
+
   function userStatus(user) {
     return String(user.status || "ACTIVE").toUpperCase();
   }
@@ -598,6 +620,11 @@
           kyc.id.number,
           kyc.id.type
         ].some(v => includesText(v, query));
+      })
+      .sort((a, b) => {
+        const priorityDiff = statusPriority(a.kyc.status) - statusPriority(b.kyc.status);
+        if (priorityDiff) return priorityDiff;
+        return kycSortValue(b.kyc) - kycSortValue(a.kyc);
       });
 
     shell(`
@@ -702,6 +729,11 @@
           String(method.accountNumber || "").slice(-4),
           method.ifsc
         ].some(v => includesText(v, query));
+      })
+      .sort((a, b) => {
+        const priorityDiff = statusPriority(a.method.status) - statusPriority(b.method.status);
+        if (priorityDiff) return priorityDiff;
+        return bankMethodSortValue(b.method) - bankMethodSortValue(a.method);
       });
 
     shell(`

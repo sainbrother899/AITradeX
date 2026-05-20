@@ -746,3 +746,10 @@ Phase 4.36 - Referral Copy Button Robust Fix
 - Copy Link, Copy in link box, and Copy Code now show clear Copied ✓ feedback.
 - Added copy failure visual feedback for unsupported browser cases.
 - No backup files or blocked old code included.
+
+Phase 4.37 - Admin Request Sorting Clean
+- KYC Requests now show new/pending requests first, then approved records, then rejected records.
+- Bank Account Requests now show new/pending bank accounts first, then approved records, then rejected records.
+- Within each status group, latest submissions appear first.
+- Deposit and Withdrawal sorting behavior is unchanged.
+- No UI redesign, no backup files, no patch layer and no blocked old logic.
