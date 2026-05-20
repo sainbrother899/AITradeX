@@ -2781,3 +2781,118 @@
     border-radius:20px;
   }
 }
+
+/* AITradeX Phase 4.3 Admin Users mobile control polish */
+.status-pill.active{
+  color:var(--green);
+  border-color:rgba(0,231,168,.30);
+  background:rgba(0,231,168,.10);
+}
+.status-pill.suspended{
+  color:#ffd89c;
+  border-color:rgba(248,189,122,.30);
+  background:rgba(248,189,122,.10);
+}
+.status-pill.blocked{
+  color:var(--red);
+  border-color:rgba(255,69,107,.30);
+  background:rgba(255,69,107,.10);
+}
+.admin-user-card-list{
+  display:grid;
+  gap:12px;
+}
+.admin-user-control-card{
+  border:1px solid var(--line);
+  background:linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.025));
+  border-radius:22px;
+  padding:14px;
+}
+.admin-user-control-card.status-blocked{
+  border-color:rgba(255,69,107,.28);
+}
+.admin-user-control-card.status-suspended{
+  border-color:rgba(248,189,122,.28);
+}
+.user-control-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:12px;
+}
+.user-status-stack{
+  display:grid;
+  justify-items:end;
+  gap:5px;
+}
+.user-status-stack small{
+  color:var(--muted);
+  font-size:11px;
+  font-weight:800;
+}
+.user-control-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+}
+.user-control-grid article{
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.04);
+  border-radius:14px;
+  padding:10px;
+  min-width:0;
+}
+.user-control-grid span{
+  display:block;
+  color:var(--muted);
+  font-size:11px;
+  margin-bottom:5px;
+}
+.user-control-grid b{
+  display:block;
+  font-size:13px;
+  word-break:break-word;
+}
+.user-status-actions{
+  grid-template-columns:1fr 1fr 1fr;
+}
+.suspend-btn{
+  border:0;
+  border-radius:15px;
+  min-height:46px;
+  font-weight:1000;
+  background:linear-gradient(135deg,#f8bd7a,#d98d23);
+  color:#07111f;
+}
+.approve-btn:disabled,
+.suspend-btn:disabled,
+.reject-btn:disabled{
+  opacity:.48;
+  cursor:not-allowed;
+  filter:grayscale(.25);
+}
+@media(max-width:900px){
+  .control-shell .users-filter-bar{
+    grid-template-columns:1fr;
+  }
+  .control-shell .user-control-grid{
+    grid-template-columns:1fr 1fr;
+  }
+}
+@media(max-width:620px){
+  .control-shell .user-control-head{
+    display:grid;
+    grid-template-columns:1fr;
+    align-items:start;
+  }
+  .control-shell .user-status-stack{
+    justify-items:start;
+  }
+  .control-shell .user-control-grid{
+    grid-template-columns:1fr;
+  }
+  .control-shell .user-status-actions{
+    grid-template-columns:1fr;
+  }
+}

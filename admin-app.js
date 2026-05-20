@@ -11,6 +11,8 @@
   let paymentTypeFilter = localStorage.getItem("AITradeX_ADMIN_PAYMENT_TYPE_FILTER") || "ALL";
   let financeSearch = localStorage.getItem("AITradeX_ADMIN_FINANCE_SEARCH") || "";
   let financeStatusFilter = localStorage.getItem("AITradeX_ADMIN_FINANCE_STATUS") || "ALL";
+  let usersSearch = localStorage.getItem("AITradeX_ADMIN_USERS_SEARCH") || "";
+  let usersStatusFilter = localStorage.getItem("AITradeX_ADMIN_USERS_STATUS") || "ALL";
 
   function adminUser() {
     return App.currentUser();
@@ -199,6 +201,17 @@
     return `<span class="status-pill ${cls}">${clean}</span>`;
   }
 
+  function userStatus(user) {
+    return String(user.status || "ACTIVE").toUpperCase();
+  }
+
+  function userStatusText(status) {
+    const value = String(status || "ACTIVE").toUpperCase();
+    if (value === "BLOCKED") return "Login blocked";
+    if (value === "SUSPENDED") return "Temporarily suspended";
+    return "Allowed to login";
+  }
+
   function avatar(name) {
     return `<span class="admin-avatar">${String(name || "A").trim().charAt(0).toUpperCase()}</span>`;
   }
@@ -355,26 +368,77 @@
       </article>`;
   }
 
+  function userFilterBar() {
+    return `
+      <section class="admin-filter-bar users-filter-bar">
+        <input value="${esc(usersSearch)}" oninput="AITradeXAdmin.setUsersSearch(this.value)" placeholder="Search name, email, mobile..."/>
+        <div class="filter-chips">
+          ${["ALL", "ACTIVE", "SUSPENDED", "BLOCKED"].map(s => `<button class="${usersStatusFilter === s ? "active" : ""}" onclick="AITradeXAdmin.setUsersStatusFilter('${s}')">${s}</button>`).join("")}
+        </div>
+      </section>`;
+  }
+
   function usersPage() {
-    const users = allUsers();
+    const query = usersSearch.trim().toLowerCase();
+    const users = allUsers()
+      .filter(u => usersStatusFilter === "ALL" || userStatus(u) === usersStatusFilter)
+      .filter(u => {
+        if (!query) return true;
+        return [displayNameFor(u), u.email, u.mobile, userStatus(u), u.referralCode].some(v => includesText(v, query));
+      });
+
     shell(`
+      ${userFilterBar()}
       <section class="panel-card">
-        <div class="section-head"><div><h3>Users</h3><span>All registered users</span></div></div>
-        <div class="admin-table users-table">
-          <span>Name</span><span>Email</span><span>Mobile</span><span>KYC</span><span>Real</span><span>Demo</span>
-          ${users.map(u => {
-            const kyc = kycFor(u);
-            return `
-              <b>${esc(displayNameFor(u))}</b>
-              <b>${esc(u.email)}</b>
-              <b>${esc(u.mobile || "-")}</b>
-              <b>${statusPill(kyc.status)}</b>
-              <b>${App.money(App.realBalance(u.id))}</b>
-              <b>${App.money(App.demoBalance(u.id))}</b>`;
-          }).join("") || `<div class="empty-state">No users yet.</div>`}
+        <div class="section-head">
+          <div><h3>Users</h3><span>Manage user status, balances and verification summary</span></div>
+          <span class="admin-count-pill">${users.length} result</span>
+        </div>
+        <div class="admin-user-card-list">
+          ${users.map(u => userControlCard(u)).join("") || `<div class="empty-state">No users found.</div>`}
         </div>
       </section>
     `);
+  }
+
+  function userControlCard(user) {
+    const kyc = kycFor(user);
+    const status = userStatus(user);
+    const deposits = depositRequestsFor(user);
+    const withdrawals = withdrawalRequestsFor(user);
+    const pendingDeposits = deposits.filter(r => r.status === "PENDING").length;
+    const pendingWithdrawals = withdrawals.filter(r => r.status === "PENDING").length;
+    return `
+      <article class="admin-user-control-card status-${status.toLowerCase()}">
+        <div class="user-control-head">
+          <div class="request-user">
+            ${avatar(displayNameFor(user))}
+            <div>
+              <b>${esc(displayNameFor(user))}</b>
+              <span>${esc(user.email)} · ${esc(user.mobile || "No mobile")}</span>
+            </div>
+          </div>
+          <div class="user-status-stack">
+            ${statusPill(status)}
+            <small>${userStatusText(status)}</small>
+          </div>
+        </div>
+
+        <div class="user-control-grid">
+          <article><span>KYC</span><b>${statusPill(kyc.status)}</b></article>
+          <article><span>Real Balance</span><b>${App.money(App.realBalance(user.id))}</b></article>
+          <article><span>Demo Balance</span><b>${App.money(App.demoBalance(user.id))}</b></article>
+          <article><span>Pending Deposit</span><b>${pendingDeposits}</b></article>
+          <article><span>Pending Withdrawal</span><b>${pendingWithdrawals}</b></article>
+          <article><span>Joined</span><b>${esc(user.createdAt || "-")}</b></article>
+        </div>
+
+        <div class="admin-action-row user-status-actions">
+          <button class="approve-btn" ${status === "ACTIVE" ? "disabled" : ""} onclick="AITradeXAdmin.setUserStatus('${user.id}', 'ACTIVE', this)">Make Active</button>
+          <button class="suspend-btn" ${status === "SUSPENDED" ? "disabled" : ""} onclick="AITradeXAdmin.setUserStatus('${user.id}', 'SUSPENDED', this)">Suspend</button>
+          <button class="reject-btn" ${status === "BLOCKED" ? "disabled" : ""} onclick="AITradeXAdmin.setUserStatus('${user.id}', 'BLOCKED', this)">Block</button>
+        </div>
+      </article>`;
   }
 
   function filterBarKyc() {
@@ -827,6 +891,34 @@
     setFinanceStatusFilter(value) {
       financeStatusFilter = value;
       localStorage.setItem("AITradeX_ADMIN_FINANCE_STATUS", financeStatusFilter);
+      render();
+    },
+    setUsersSearch(value) {
+      usersSearch = value;
+      localStorage.setItem("AITradeX_ADMIN_USERS_SEARCH", usersSearch);
+      render();
+    },
+    setUsersStatusFilter(value) {
+      usersStatusFilter = value;
+      localStorage.setItem("AITradeX_ADMIN_USERS_STATUS", usersStatusFilter);
+      render();
+    },
+    setUserStatus(userId, status, button) {
+      const target = allUsers().find(u => u.id === userId);
+      if (!target) return;
+      const nextStatus = String(status || "ACTIVE").toUpperCase();
+      if (!["ACTIVE", "SUSPENDED", "BLOCKED"].includes(nextStatus)) return;
+      if (userStatus(target) === nextStatus) {
+        App.toast(`User is already ${nextStatus.toLowerCase()}.`);
+        return;
+      }
+      const actionText = nextStatus === "ACTIVE" ? "activate" : nextStatus === "SUSPENDED" ? "suspend" : "block";
+      if (!confirm(`Are you sure you want to ${actionText} ${displayNameFor(target)}?`)) return;
+      markButton(button, "Updating...");
+      target.status = nextStatus;
+      target.statusUpdatedAt = App.now();
+      App.saveState();
+      App.toast(`User status changed to ${nextStatus}.`);
       render();
     },
     savePaymentSettings(event) {

@@ -381,3 +381,19 @@ AITradeX Phase 4.2 - QR Fit Responsive Clean
 - Added white QR background padding to improve scanner readability.
 - Desktop and mobile admin/user UI baseline preserved.
 - Changed files: styles.css, README.txt.
+
+AITradeX Phase 4.3 - Admin Users Mobile Control Clean
+- Base used: Phase 4.2 QR Fit Responsive Clean.
+- Admin Users page changed from a wide desktop table to responsive user control cards.
+- Mobile Users page now stacks cleanly like other admin sections.
+- Added user search by name, email, mobile, referral/status.
+- Added status filters: All, Active, Suspended, Blocked.
+- Added admin actions: Make Active, Suspend, Block.
+- User login now respects both BLOCKED and SUSPENDED statuses.
+- Existing admin dashboard, deposits, withdrawals, payment settings and user-side UI/design baseline preserved.
+
+Changed files in Phase 4.3:
+- admin-app.js
+- auth.js
+- styles.css
+- README.txt
