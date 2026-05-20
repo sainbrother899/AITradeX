@@ -152,7 +152,8 @@
   }
 
   function selectedPairData() {
-    return pairsForMarket().find(p => p.pair === selectedPair) || pairsForMarket()[0];
+    const row = pairsForMarket().find(p => p.pair === selectedPair) || pairsForMarket()[0];
+    return App.pairLiveView ? App.pairLiveView(row) : row;
   }
 
   function ensurePairForMarket() {
@@ -165,6 +166,33 @@
 
   function changeClass(value) {
     return String(value || "").trim().startsWith("-") ? "loss-text" : "profit-text";
+  }
+
+  function pairView(item) {
+    return App.pairLiveView ? App.pairLiveView(item) : item;
+  }
+
+  function liveAttr(pair) {
+    return `data-live-pair="${App.escapeHtml(pair)}"`;
+  }
+
+  function refreshVisiblePrices(items) {
+    const list = (items || []).map(p => typeof p === "string" ? p : p.pair).filter(Boolean);
+    if (!App.refreshLivePrices || !list.length) return;
+    App.refreshLivePrices(list, row => {
+      if (!row || !row.ok) return;
+      document.querySelectorAll(`[data-live-pair="${CSS.escape(row.pair)}"]`).forEach(el => {
+        const type = el.getAttribute("data-live-type") || "price";
+        if (type === "price") el.textContent = row.display;
+        if (type === "change") {
+          el.textContent = row.change || "Live";
+          el.classList.toggle("profit-text", row.mood !== "down");
+          el.classList.toggle("loss-text", row.mood === "down");
+        }
+        if (type === "line") el.innerHTML = `${row.display} · <em class="${row.mood === "down" ? "loss-text" : "profit-text"}">${row.change || "Live"}</em> · ${row.source}`;
+        if (type === "source") el.textContent = row.source || "Live API";
+      });
+    });
   }
 
   function selectorSheetHtml() {
@@ -180,13 +208,13 @@
             <button onclick="AITradeXUser.closeSheet()">×</button>
           </div>
           <div class="sheet-grid pair-sheet-grid">
-            ${pairsForMarket().map(p => `
+            ${pairsForMarket().map(raw => { const p = pairView(raw); return `
               <button class="${selectedPair === p.pair ? "active" : ""}" onclick="AITradeXUser.selectPair('${p.pair}')">
                 <b>${p.pair}</b>
-                <span>${p.price}</span>
-                <em class="${changeClass(p.change)}">${p.change}</em>
+                <span data-live-pair="${p.pair}" data-live-type="price">${p.price}</span>
+                <em data-live-pair="${p.pair}" data-live-type="change" class="${changeClass(p.change)}">${p.change}</em>
               </button>
-            `).join("")}
+            `; }).join("")}
           </div>
         </section>`;
     }
@@ -732,12 +760,12 @@
       </section>
 
       <section class="market-ticker">
-        ${allTrendingPairs().map(p => `
+        ${allTrendingPairs().map(raw => { const p = pairView(raw); return `
           <article class="ticker-card ${p.mood} ${selectedPair === p.pair ? "selected" : ""}" onclick="AITradeXUser.selectPair('${p.pair}')">
-            <div><h3>${p.pair}</h3><small>${p.inr}</small></div>
-            <strong>${p.price}</strong>
-            <span class="${changeClass(p.change)}">${p.change}</span>
-          </article>`).join("")}
+            <div><h3>${p.pair}</h3><small data-live-pair="${p.pair}" data-live-type="source">${p.priceSource || p.inr}</small></div>
+            <strong data-live-pair="${p.pair}" data-live-type="price">${p.price}</strong>
+            <span data-live-pair="${p.pair}" data-live-type="change" class="${changeClass(p.change)}">${p.change}</span>
+          </article>`; }).join("")}
       </section>
 
       <section class="compact-grid">
@@ -779,6 +807,7 @@
         </div>
       </section>
     `);
+    refreshVisiblePrices(allTrendingPairs());
   }
 
   function tradePage() {
@@ -791,7 +820,7 @@
         <div>
           <p>${selectedMarket} MARKET</p>
           <h1>${selectedPair}</h1>
-          <span>${pair.price} · ${pair.inr} · <em class="${changeClass(pair.change)}">${pair.change}</em></span>
+          <span data-live-pair="${pair.pair}" data-live-type="line">${pair.price} · ${pair.inr} · <em class="${changeClass(pair.change)}">${pair.change}</em></span>
         </div>
         <button class="change-pair-btn" onclick="AITradeXUser.openSheet('pair')">Change Pair</button>
       </section>
@@ -804,13 +833,13 @@
       </section>
 
       <section class="pair-rate-list">
-        ${pairsForMarket().map(p => `
+        ${pairsForMarket().map(raw => { const p = pairView(raw); return `
           <button class="${selectedPair === p.pair ? "active" : ""}" onclick="AITradeXUser.selectPair('${p.pair}')">
             <b>${p.pair}</b>
-            <span>${p.price}</span>
-            <em class="${changeClass(p.change)}">${p.change}</em>
+            <span data-live-pair="${p.pair}" data-live-type="price">${p.price}</span>
+            <em data-live-pair="${p.pair}" data-live-type="change" class="${changeClass(p.change)}">${p.change}</em>
           </button>
-        `).join("")}
+        `; }).join("")}
       </section>
 
       <section class="chart-shell tradingview-shell">
@@ -927,6 +956,7 @@
       </section>
     `);
 
+    refreshVisiblePrices(pairsForMarket());
     scheduleTradingViewChart();
   }
   function walletPage() {
@@ -1978,6 +2008,7 @@
         return;
       }
       const pair = selectedPairData();
+      const cachedPrice = App.getCachedPairPrice ? App.getCachedPairPrice(selectedPair) : null;
       const trade = {
         id: App.uid("trd"),
         userId: u.id,
@@ -1986,6 +2017,11 @@
         market: selectedMarket,
         pair: selectedPair,
         side,
+        entryPrice: cachedPrice ? Number(cachedPrice.price || 0) : Number(pair.rawPrice || 0),
+        entryPriceDisplay: cachedPrice ? cachedPrice.display : (pair.price || ""),
+        priceSource: cachedPrice ? cachedPrice.source : (pair.priceSource || "Static display"),
+        priceSourceType: cachedPrice ? cachedPrice.sourceType : "DISPLAY",
+        priceLockedAt: cachedPrice ? cachedPrice.fetchedAt : new Date().toISOString(),
         leverage: tradeLeveragePreview,
         marginAmount: margin,
         positionSize: margin * tradeLeveragePreview,

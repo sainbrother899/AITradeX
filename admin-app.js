@@ -271,6 +271,33 @@
     `).join("");
   }
 
+  function aiPairPriceView(pair = "BTC/USDT") {
+    const item = pairDataByPair(pair);
+    const view = App.pairLiveView ? App.pairLiveView(item) : item;
+    const metal = App.isMetalPair && App.isMetalPair(view.pair);
+    return {
+      pair: view.pair,
+      price: view.price || "--",
+      source: metal ? "Manual required" : (view.priceSource || "Not fetched"),
+      change: view.change || "--",
+      metal
+    };
+  }
+
+  function setAiPriceView(row) {
+    const priceEl = document.getElementById("aiEntryPriceValue");
+    const sourceEl = document.getElementById("aiEntryPriceSource");
+    const statusEl = document.getElementById("aiEntryPriceStatus");
+    const manualWrap = document.getElementById("aiManualPriceWrap");
+    const pair = inputValue("aiTradePair") || "BTC/USDT";
+    const meta = aiPairPriceView(pair);
+    const finalRow = row || meta;
+    if (priceEl) priceEl.textContent = finalRow.display || finalRow.price || "--";
+    if (sourceEl) sourceEl.textContent = finalRow.source || "Not fetched";
+    if (statusEl) statusEl.textContent = meta.metal ? "Manual" : (row?.ok ? "Live locked" : "Ready");
+    if (manualWrap) manualWrap.classList.toggle("show", !!meta.metal);
+  }
+
 
   function dateLine(label, value) {
     if (!value) return "";
@@ -894,15 +921,29 @@
             <div class="ai-step-card">
               <div class="ai-step-label"><b>1</b><span>Select pair</span></div>
               <label>Market Pair
-                <select id="aiTradePair" required onchange="AITradeXAdmin.updateAiPreview()">
+                <select id="aiTradePair" required onchange="AITradeXAdmin.onAiPairChange()">
                   ${aiTradePairOptions("BTC/USDT")}
                 </select>
                 <small>Same full pair list as user trade page.</small>
               </label>
             </div>
 
+            <div class="ai-step-card live-entry-card">
+              <div class="ai-step-label"><b>2</b><span>Entry price</span></div>
+              <div class="entry-price-box">
+                <div><span>Selected Entry</span><b id="aiEntryPriceValue">${aiPairPriceView("BTC/USDT").price}</b><small id="aiEntryPriceSource">${aiPairPriceView("BTC/USDT").source}</small></div>
+                <button type="button" onclick="AITradeXAdmin.fetchAiEntryPrice()">Fetch Price</button>
+              </div>
+              <div id="aiManualPriceWrap" class="manual-price-wrap">
+                <label>Manual Entry Price
+                  <input id="aiManualEntryPrice" type="number" min="0" step="0.0001" placeholder="Required for XAU/USD or XAG/USD" oninput="AITradeXAdmin.updateAiPreview()"/>
+                </label>
+              </div>
+              <small id="aiEntryPriceStatus">Ready</small>
+            </div>
+
             <div class="ai-step-card">
-              <div class="ai-step-label"><b>2</b><span>Choose side</span></div>
+              <div class="ai-step-label"><b>3</b><span>Choose side</span></div>
               <div class="ai-toggle-grid two">
                 <label class="ai-radio-card buy"><input type="radio" name="aiTradeSide" value="BUY" checked onchange="AITradeXAdmin.updateAiPreview()"/><span>BUY</span><small>Long / upward trade</small></label>
                 <label class="ai-radio-card sell"><input type="radio" name="aiTradeSide" value="SELL" onchange="AITradeXAdmin.updateAiPreview()"/><span>SELL</span><small>Short / downward trade</small></label>
@@ -910,7 +951,7 @@
             </div>
 
             <div class="ai-step-card">
-              <div class="ai-step-label"><b>3</b><span>Result & leverage</span></div>
+              <div class="ai-step-label"><b>4</b><span>Result & leverage</span></div>
               <div class="ai-toggle-grid two">
                 <label class="ai-radio-card profit"><input type="radio" name="aiTradeResultType" value="PROFIT" checked onchange="AITradeXAdmin.updateAiPreview()"/><span>Profit</span><small>Add P/L to real wallet</small></label>
                 <label class="ai-radio-card loss"><input type="radio" name="aiTradeResultType" value="LOSS" onchange="AITradeXAdmin.updateAiPreview()"/><span>Loss</span><small>Deduct P/L from real wallet</small></label>
@@ -931,7 +972,7 @@
             </div>
 
             <div class="ai-step-card">
-              <div class="ai-step-label"><b>4</b><span>Final check</span></div>
+              <div class="ai-step-label"><b>5</b><span>Final check</span></div>
               <label>Minimum Real Balance
                 <input id="aiTradeMinBalance" type="number" min="0" value="0" oninput="AITradeXAdmin.updateAiPreview()"/>
                 <small>Users below this balance will be skipped. Keep 0 for all valid users.</small>
@@ -970,7 +1011,7 @@
           ${batches.length ? batches.slice(0, 8).map(batch => `
             <article class="admin-user-card ai-batch-card">
               <div class="admin-user-main">
-                <div><b>${esc(batch.pair)} · ${esc(batch.side)}</b><span>${esc(batch.market)} · ${esc(batch.resultType)} ${Number(batch.resultPercent || 0)}% · ${Number(batch.leverage || 1)}x · ${esc(batch.createdAt)}</span></div>
+                <div><b>${esc(batch.pair)} · ${esc(batch.side)}</b><span>${esc(batch.market)} · ${esc(batch.resultType)} ${Number(batch.resultPercent || 0)}% · ${Number(batch.leverage || 1)}x · Entry ${esc(batch.entryPriceDisplay || batch.entryPrice || "-")} · ${esc(batch.priceSource || "-")}</span></div>
                 <div class="admin-user-stats"><span>Applied</span><b>${batch.appliedCount || 0}</b></div>
                 <div class="admin-user-stats"><span>Skipped</span><b>${batch.skippedCount || 0}</b></div>
                 <div class="admin-user-stats"><span>Exposure</span><b>${App.money(batch.totalExposure || 0)}</b></div>
@@ -990,7 +1031,7 @@
             return `
               <article class="admin-user-card">
                 <div class="admin-user-main">
-                  <div><b>${esc(t.pair)} · ${esc(t.side)}</b><span>${esc(displayNameFor(target || {}))} · ${esc(target?.email || "-")}</span></div>
+                  <div><b>${esc(t.pair)} · ${esc(t.side)}</b><span>${esc(displayNameFor(target || {}))} · Entry ${esc(t.entryPriceDisplay || t.entryPrice || "-")} · ${esc(t.priceSource || "-")}</span></div>
                   <div class="admin-user-stats"><span>AI Amount</span><b>${App.money(t.marginAmount || 0)}</b></div>
                   <div class="admin-user-stats"><span>Exposure</span><b>${App.money(t.positionSize || 0)}</b></div>
                   <div class="admin-user-stats"><span>P/L</span><b class="${Number(t.pnl || 0) >= 0 ? "profit-text" : "loss-text"}">${App.money(t.pnl || 0)}</b></div>
@@ -1221,6 +1262,26 @@
         apply(settings.depositQrImage || "");
       }
     },
+    onAiPairChange() {
+      this.updateAiPreview();
+      setAiPriceView();
+      const pair = inputValue("aiTradePair") || "BTC/USDT";
+      if (!(App.isMetalPair && App.isMetalPair(pair))) this.fetchAiEntryPrice(false);
+    },
+    async fetchAiEntryPrice(showToast = true) {
+      const pair = inputValue("aiTradePair") || "BTC/USDT";
+      const manual = Number(inputValue("aiManualEntryPrice") || 0);
+      try {
+        const row = await App.getLivePairPrice(pair, manual);
+        setAiPriceView(row);
+        if (showToast) App.toast(`${pair} entry price locked from ${row.source}.`);
+        return row;
+      } catch (error) {
+        setAiPriceView({ price: "--", source: "Unavailable", display: "--" });
+        if (showToast) App.toast(error.message || "Live price unavailable.");
+        throw error;
+      }
+    },
     updateAiPreview() {
       const resultType = document.querySelector('input[name="aiTradeResultType"]:checked')?.value || "PROFIT";
       const resultPercent = Math.max(0, Number(inputValue("aiTradeResultPercent") || 0));
@@ -1245,7 +1306,7 @@
       setPnl("aiPreviewTotalPnl", stats.totalPnl);
       setText("aiPreviewReasons", skipReasonLine(stats.report.reasons));
     },
-    executeAiTrade(event) {
+    async executeAiTrade(event) {
       event.preventDefault();
       const selectedPairData = pairDataByPair(inputValue("aiTradePair") || "BTC/USDT");
       const market = selectedPairData.market || "CRYPTO";
@@ -1256,6 +1317,13 @@
       const resultPercent = Math.max(0, Number(inputValue("aiTradeResultPercent") || 0));
       const minBalance = Math.max(0, Number(inputValue("aiTradeMinBalance") || 0));
       const note = inputValue("aiTradeNote") || "Expert AI auto trade executed";
+      let priceRow;
+      try {
+        priceRow = await this.fetchAiEntryPrice(false);
+      } catch (error) {
+        App.toast(error.message || "Entry price unavailable. Trade not executed.");
+        return;
+      }
 
       const batchId = App.uid("ai_batch");
       const report = aiEligibilityReport(minBalance);
@@ -1288,6 +1356,11 @@
           market,
           pair,
           side,
+          entryPrice: Number(priceRow.price || 0),
+          entryPriceDisplay: priceRow.display || String(priceRow.price || ""),
+          priceSource: priceRow.source || "Live API",
+          priceSourceType: priceRow.sourceType || "LIVE_API",
+          priceLockedAt: priceRow.fetchedAt || new Date().toISOString(),
           leverage,
           marginAmount: Number(margin.toFixed(2)),
           positionSize: Number(exposure.toFixed(2)),
@@ -1327,6 +1400,11 @@
         market,
         pair,
         side,
+        entryPrice: Number(priceRow.price || 0),
+        entryPriceDisplay: priceRow.display || String(priceRow.price || ""),
+        priceSource: priceRow.source || "Live API",
+        priceSourceType: priceRow.sourceType || "LIVE_API",
+        priceLockedAt: priceRow.fetchedAt || new Date().toISOString(),
         leverage,
         resultType,
         resultPercent,

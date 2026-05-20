@@ -3096,3 +3096,12 @@
     grid-template-columns:1fr;
   }
 }
+
+/* Phase 4.8 - Live entry price cards */
+.live-entry-card .entry-price-box{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px;border:1px solid rgba(255,255,255,.12);border-radius:18px;background:rgba(255,255,255,.04)}
+.live-entry-card .entry-price-box div{display:flex;flex-direction:column;gap:4px}
+.live-entry-card .entry-price-box span,.live-entry-card .entry-price-box small{color:var(--muted);font-size:12px}
+.live-entry-card .entry-price-box b{font-size:24px;color:var(--text)}
+.live-entry-card .entry-price-box button{border:0;border-radius:14px;padding:11px 14px;font-weight:800;cursor:pointer;background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;white-space:nowrap}
+.manual-price-wrap{display:none;margin-top:12px}.manual-price-wrap.show{display:block}
+@media(max-width:640px){.live-entry-card .entry-price-box{align-items:flex-start;flex-direction:column}.live-entry-card .entry-price-box button{width:100%}}

@@ -39,8 +39,60 @@ const MARKET_PAIRS={
     ]
 };
 
+
+const FX_API_KEY=String(C.EXCHANGERATE_API_KEY||"25b67ee121b52d7058f61034").trim();
+const LIVE_CACHE_KEY="AITradeX_LIVE_PRICE_CACHE_V1";
+const LIVE_TTL_MS=30000;
+const liveCache=(()=>{try{return JSON.parse(localStorage.getItem(LIVE_CACHE_KEY)||"{}")}catch{return {}}})();
+const normPair=pair=>String(pair||"").trim().toUpperCase();
+const baseQuote=pair=>{const [base,quote]=normPair(pair).split("/");return {base,quote};};
+const isMetalPair=pair=>["XAU/USD","XAG/USD"].includes(normPair(pair));
+const isCryptoPair=pair=>Object.values(MARKET_PAIRS).flat().some(x=>normPair(x.pair)===normPair(pair)&&x.market==="CRYPTO");
+const fmtPrice=(n,asset="")=>{const v=Number(n);if(!Number.isFinite(v))return "--";const max=v>=1000?2:v>=1?4:8;const text=v.toLocaleString("en-US",{maximumFractionDigits:max});return asset==="CRYPTO"||asset==="METAL"?`$${text}`:text;};
+const fmtChange=n=>{const v=Number(n||0);const sign=v>0?"+":"";return `${sign}${v.toFixed(2)}%`;};
+function saveLiveCache(){try{localStorage.setItem(LIVE_CACHE_KEY,JSON.stringify(liveCache))}catch{}}
+function cachedLive(pair){const row=liveCache[normPair(pair)];if(!row)return null;return Date.now()-Number(row.fetchedMs||0)<LIVE_TTL_MS?row:null;}
+async function fetchJson(url){const res=await fetch(url,{cache:"no-store"});if(!res.ok)throw new Error(`HTTP ${res.status}`);return res.json();}
+async function fetchCryptoPrice(pair){const symbol=normPair(pair).replace("/","");const url=`https://api.binance.com/api/v3/ticker/24hr?symbol=${encodeURIComponent(symbol)}`;let data;try{data=await fetchJson(url)}catch(e){data=await fetchJson(`https://data-api.binance.vision/api/v3/ticker/24hr?symbol=${encodeURIComponent(symbol)}`)}
+  const price=Number(data.lastPrice);if(!Number.isFinite(price))throw new Error("Crypto price unavailable");
+  return {ok:true,pair:normPair(pair),price,display:fmtPrice(price,"CRYPTO"),change:fmtChange(data.priceChangePercent),mood:Number(data.priceChangePercent||0)>=0?"up":"down",source:"Binance",sourceType:"LIVE_API",fetchedAt:new Date().toISOString(),fetchedMs:Date.now()};
+}
+async function fetchForexPrice(pair){const {base,quote}=baseQuote(pair);if(!base||!quote)throw new Error("Invalid forex pair");if(isMetalPair(pair))throw new Error("Manual rate required");
+  const url=`https://v6.exchangerate-api.com/v6/${encodeURIComponent(FX_API_KEY)}/pair/${encodeURIComponent(base)}/${encodeURIComponent(quote)}`;
+  const data=await fetchJson(url);const price=Number(data.conversion_rate);if(data.result!=="success"||!Number.isFinite(price))throw new Error("Forex price unavailable");
+  return {ok:true,pair:normPair(pair),price,display:fmtPrice(price,"FOREX"),change:"Live",mood:"up",source:"ExchangeRate-API",sourceType:"LIVE_API",fetchedAt:new Date().toISOString(),fetchedMs:Date.now()};
+}
+
 const App={config:C,db,state:load(),session:loadSession(),now,uid,money,escapeHtml:esc};
 App.marketPairs=MARKET_PAIRS;
+
+App.livePrices=liveCache;
+App.isMetalPair=isMetalPair;
+App.isCryptoPair=isCryptoPair;
+App.getCachedPairPrice=pair=>cachedLive(pair);
+App.pairLiveView=item=>{const cached=cachedLive(item?.pair);return cached?{...item,live:true,price:cached.display,rawPrice:cached.price,change:cached.change||item.change,mood:cached.mood||item.mood,priceSource:cached.source,priceFetchedAt:cached.fetchedAt}:item};
+App.getLivePairPrice=async(pair,manualPrice)=>{
+  const clean=normPair(pair);
+  const manual=Number(manualPrice||0);
+  if(isMetalPair(clean)){
+    if(!manual||manual<=0)throw new Error(`${clean} needs manual entry price.`);
+    const row={ok:true,pair:clean,price:manual,display:fmtPrice(manual,"METAL"),change:"Manual",mood:"up",source:"Manual Rate",sourceType:"MANUAL",fetchedAt:new Date().toISOString(),fetchedMs:Date.now()};
+    liveCache[clean]=row;saveLiveCache();return row;
+  }
+  const cached=cachedLive(clean);if(cached)return cached;
+  const row=isCryptoPair(clean)?await fetchCryptoPrice(clean):await fetchForexPrice(clean);
+  liveCache[clean]=row;saveLiveCache();return row;
+};
+App.refreshLivePrices=async(pairs,onEach)=>{
+  const unique=[...new Set((pairs||[]).map(x=>typeof x==="string"?x:x?.pair).filter(Boolean).map(normPair))];
+  const out=[];
+  for(const pair of unique){
+    if(isMetalPair(pair)){continue;}
+    try{const row=await App.getLivePairPrice(pair);out.push(row);if(typeof onEach==="function")onEach(row);}catch(err){if(typeof onEach==="function")onEach({ok:false,pair,error:err.message||"Price unavailable"});}
+  }
+  return out;
+};
+
 App.saveState=()=>localStorage.setItem(SK,JSON.stringify(App.state));
 App.setSession=(userId,role)=>{App.session={userId,role,savedAt:Date.now()};localStorage.setItem(SS,JSON.stringify(App.session))};
 App.clearSession=()=>{App.session=null;localStorage.removeItem(SS)};

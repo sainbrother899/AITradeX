@@ -457,3 +457,24 @@ Phase 4.7 - AI Trading Desk Leverage + P/L Calculator Clean
 - AI trade execution now uses leveraged exposure for profit/loss calculation.
 - Loss is capped so user real balance never goes below zero.
 - Removed explanatory logic helper text from the admin desk UI to keep the page practical and clean.
+
+Phase 4.8 - Common Live Price System Clean
+- Base used: Phase 4.7 AI Trading Desk Leverage Calculator Clean.
+- Added shared live price service in core.js.
+- Crypto prices use Binance public ticker API, no API key required.
+- Forex prices use ExchangeRate-API with the provided API key.
+- XAU/USD and XAG/USD do not use random prices; admin must enter manual entry price for these metals.
+- User home market ticker cards now refresh crypto/forex prices from the shared price service.
+- User trade page pair cards and selected pair header now refresh from the shared price service.
+- Admin AI Trading Desk now has an Entry Price step with Fetch Price button.
+- AI trade execution locks entry price, price source and lock time into batch history and user-wise AI Auto Trade entries.
+- Manual trade entries also save the latest available displayed/live entry price for history continuity.
+- No TradingView scraping, no random settlement price, no patch layer or hidden blocked code.
+
+Changed files in Phase 4.8:
+- config.js
+- core.js
+- user-app.js
+- admin-app.js
+- styles.css
+- README.txt
