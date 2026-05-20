@@ -507,3 +507,13 @@ Changed files in Phase 4.11:
 - user-app.js
 - admin-app.js
 - README.txt
+
+Phase 4.12 - Manual Live Position Bar Clean
+- Added a minimal one-line manual live position bar above the user nav/header.
+- The bar appears only when the user has an open manual position.
+- The bar shows active position count, live profit/loss amount, Profit/Loss label, and Close button.
+- AI auto trades are not shown as live positions; they remain inside AI Auto Trade History.
+- Manual live P/L updates from the current live price cache/stream.
+- Closing a manual position moves it to Manual Trade History and applies final P/L to the correct account wallet.
+- New manual positions are limited to one active manual position at a time for a cleaner mobile flow.
+- No admin AI trading flow changes were made.
