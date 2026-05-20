@@ -278,7 +278,7 @@
     return {
       pair: view.pair,
       price: view.price || "--",
-      source: metal ? "Manual required" : (view.priceSource || "Not fetched"),
+      source: metal ? (view.priceSource || "TradingView Chart Feed") : (view.priceSource || "Not fetched"),
       change: view.change || "--",
       metal
     };
@@ -294,7 +294,7 @@
     const finalRow = row || meta;
     if (priceEl) priceEl.textContent = finalRow.display || finalRow.price || "--";
     if (sourceEl) sourceEl.textContent = finalRow.source || "Not fetched";
-    if (statusEl) statusEl.textContent = meta.metal ? "Manual" : (row?.ok ? "Live locked" : "Ready");
+    if (statusEl) statusEl.textContent = row?.ok ? "Live locked" : (meta.metal ? "Chart feed ready" : "Ready");
     if (manualWrap) manualWrap.classList.toggle("show", !!meta.metal);
   }
 
@@ -935,8 +935,8 @@
                 <button type="button" onclick="AITradeXAdmin.fetchAiEntryPrice()">Fetch Price</button>
               </div>
               <div id="aiManualPriceWrap" class="manual-price-wrap">
-                <label>Manual Entry Price
-                  <input id="aiManualEntryPrice" type="number" min="0" step="0.0001" placeholder="Required for XAU/USD or XAG/USD" oninput="AITradeXAdmin.updateAiPreview()"/>
+                <label>Manual Fallback Price
+                  <input id="aiManualEntryPrice" type="number" min="0" step="0.0001" placeholder="Optional fallback if chart feed is unavailable" oninput="AITradeXAdmin.updateAiPreview()"/>
                 </label>
               </div>
               <small id="aiEntryPriceStatus">Ready</small>
@@ -1265,8 +1265,7 @@
     onAiPairChange() {
       this.updateAiPreview();
       setAiPriceView();
-      const pair = inputValue("aiTradePair") || "BTC/USDT";
-      if (!(App.isMetalPair && App.isMetalPair(pair))) this.fetchAiEntryPrice(false);
+      this.fetchAiEntryPrice(false);
     },
     async fetchAiEntryPrice(showToast = true) {
       const pair = inputValue("aiTradePair") || "BTC/USDT";

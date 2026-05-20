@@ -202,10 +202,11 @@
 
     if (App.refreshLivePrices) App.refreshLivePrices(list, applyLivePriceRow);
     if (App.startCryptoLiveTicker) App.startCryptoLiveTicker(list, applyLivePriceRow);
+    if (App.startMetalChartTicker) App.startMetalChartTicker(list, applyLivePriceRow);
 
     if (priceRefreshTimer) clearInterval(priceRefreshTimer);
     priceRefreshTimer = setInterval(() => {
-      if (App.refreshLivePrices) App.refreshLivePrices(list.filter(pair => !(App.isCryptoPair && App.isCryptoPair(pair))), applyLivePriceRow);
+      if (App.refreshLivePrices) App.refreshLivePrices(list.filter(pair => !(App.isCryptoPair && App.isCryptoPair(pair)) && !(App.isMetalPair && App.isMetalPair(pair))), applyLivePriceRow);
     }, 60000);
   }
 

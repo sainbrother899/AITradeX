@@ -492,3 +492,18 @@ Phase 4.10 — Crypto Chart Price Sync Clean
 - Ticker stream is still used for 24h change/mood, but visible card price follows the faster trade stream.
 - This makes TradingView BINANCE chart price and platform crypto card price much closer. Tiny differences can still appear from chart refresh timing/rounding.
 - No UI redesign, no patch layer; common live price logic was cleanly updated in core.js.
+
+Phase 4.11 — Gold Silver Chart Feed Live Clean
+- Base used: Phase 4.10 Crypto Chart Price Sync Clean.
+- Added temporary TradingView chart-feed based price fetch for XAU/USD and XAG/USD.
+- Gold and silver cards now refresh from the chart feed instead of showing only manual/static pricing.
+- Admin AI Trading Desk can fetch/lock XAU/USD and XAG/USD entry prices from the same chart feed.
+- Manual fallback price remains available only if the chart feed is unavailable.
+- Crypto WebSocket price sync and forex ExchangeRate API flow were not changed.
+- No UI redesign, no patch layer, no hidden blocked code.
+
+Changed files in Phase 4.11:
+- core.js
+- user-app.js
+- admin-app.js
+- README.txt
