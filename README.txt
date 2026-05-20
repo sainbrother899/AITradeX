@@ -324,3 +324,15 @@ Phase 3.7 Wallet Premium Deposit Polish:
 - Added bank name in bank transfer details.
 - Added copy buttons for account name, bank name, account number, IFSC and amount.
 - Wallet flow UI made more compact and premium.
+
+Phase 3.8 Wallet Admin Approval:
+- admin-app.js fully updated with clean Wallet Requests control center.
+- Admin dashboard now shows live pending wallet request count.
+- Wallet Requests page now has Pending / Approved / Rejected / Total metrics.
+- Wallet Requests page supports search, status filter and type filter.
+- Admin can approve/reject deposits.
+- Approved deposit adds REAL wallet ledger credit and updates user real balance.
+- Admin can approve/reject withdrawals.
+- Approved withdrawal adds REAL wallet ledger debit and updates user real balance.
+- User wallet request status syncs through localStorage/state without changing existing user UI baseline.
+- No new patch layer added; admin wallet placeholder was replaced cleanly.

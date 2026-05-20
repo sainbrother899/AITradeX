@@ -9,6 +9,9 @@
   let paymentSearch = localStorage.getItem("AITradeX_ADMIN_PAYMENT_SEARCH") || "";
   let paymentStatusFilter = localStorage.getItem("AITradeX_ADMIN_PAYMENT_STATUS") || "ALL";
   let paymentTypeFilter = localStorage.getItem("AITradeX_ADMIN_PAYMENT_TYPE_FILTER") || "ALL";
+  let walletSearch = localStorage.getItem("AITradeX_ADMIN_WALLET_SEARCH") || "";
+  let walletStatusFilter = localStorage.getItem("AITradeX_ADMIN_WALLET_STATUS") || "ALL";
+  let walletTypeFilter = localStorage.getItem("AITradeX_ADMIN_WALLET_TYPE") || "ALL";
 
   function adminUser() {
     return App.currentUser();
@@ -140,6 +143,53 @@
     App.saveState();
   }
 
+
+  function depositRequestsFor(user) {
+    const local = readJson(userKey(user.id, "DEPOSIT_REQUESTS"), []);
+    if (local.length) return local;
+    return (App.state.depositRequests || [])
+      .filter(r => r.userId === user.id)
+      .map(r => ({ ...r }));
+  }
+
+  function saveDepositRequests(user, requests) {
+    writeJson(userKey(user.id, "DEPOSIT_REQUESTS"), requests);
+    App.state.depositRequests = (App.state.depositRequests || []).filter(r => r.userId !== user.id);
+    requests.forEach(r => App.state.depositRequests.push({ ...r, userId: user.id, userEmail: user.email }));
+    App.saveState();
+  }
+
+  function withdrawalRequestsFor(user) {
+    const local = readJson(userKey(user.id, "WITHDRAWAL_REQUESTS"), []);
+    if (local.length) return local;
+    return (App.state.withdrawalRequests || [])
+      .filter(r => r.userId === user.id)
+      .map(r => ({ ...r }));
+  }
+
+  function saveWithdrawalRequests(user, requests) {
+    writeJson(userKey(user.id, "WITHDRAWAL_REQUESTS"), requests);
+    App.state.withdrawalRequests = (App.state.withdrawalRequests || []).filter(r => r.userId !== user.id);
+    requests.forEach(r => App.state.withdrawalRequests.push({ ...r, userId: user.id, userEmail: user.email }));
+    App.saveState();
+  }
+
+  function allWalletRequests() {
+    const deposits = allUsers().flatMap(user => depositRequestsFor(user).map(request => ({ user, request, type: "DEPOSIT" })));
+    const withdrawals = allUsers().flatMap(user => withdrawalRequestsFor(user).map(request => ({ user, request, type: "WITHDRAWAL" })));
+    return [...deposits, ...withdrawals].sort((a, b) => Date.parse(b.request.createdAt || 0) - Date.parse(a.request.createdAt || 0));
+  }
+
+  function walletStats() {
+    const items = allWalletRequests();
+    return {
+      total: items.length,
+      pending: items.filter(x => x.request.status === "PENDING").length,
+      approved: items.filter(x => x.request.status === "APPROVED").length,
+      rejected: items.filter(x => x.request.status === "REJECTED").length
+    };
+  }
+
   function statusPill(status) {
     const clean = String(status || "NOT_SUBMITTED").replaceAll("_", " ");
     const cls = String(status || "").toLowerCase().replaceAll("_", "-");
@@ -230,13 +280,14 @@
     const users = allUsers();
     const kycRequests = users.map(u => ({ user: u, kyc: kycFor(u) })).filter(x => x.kyc.status === "PENDING");
     const paymentPending = users.flatMap(u => paymentMethodsFor(u).map(m => ({ user: u, method: m }))).filter(x => x.method.status === "PENDING");
+    const pendingWallet = allWalletRequests().filter(x => x.request.status === "PENDING").length;
 
     shell(`
       <section class="metrics-grid">
         ${metric("👥", "Total Users", users.length)}
         ${metric("🛡️", "Pending KYC", kycRequests.length)}
         ${metric("💳", "Pending Methods", paymentPending.length)}
-        ${metric("🏦", "Wallet Requests", "0")}
+        ${metric("🏦", "Wallet Requests", pendingWallet)}
       </section>
 
       <section class="admin-grid-two">
@@ -477,13 +528,110 @@
       </article>`;
   }
 
+  function filterBarWallet() {
+    return `
+      <section class="admin-filter-card">
+        <input value="${esc(walletSearch)}" oninput="AITradeXAdmin.setWalletSearch(this.value)" placeholder="Search user, email, UTR, method..."/>
+        <select onchange="AITradeXAdmin.setWalletStatusFilter(this.value)">
+          <option value="ALL" ${walletStatusFilter === "ALL" ? "selected" : ""}>All Status</option>
+          <option value="PENDING" ${walletStatusFilter === "PENDING" ? "selected" : ""}>Pending</option>
+          <option value="APPROVED" ${walletStatusFilter === "APPROVED" ? "selected" : ""}>Approved</option>
+          <option value="REJECTED" ${walletStatusFilter === "REJECTED" ? "selected" : ""}>Rejected</option>
+        </select>
+        <select onchange="AITradeXAdmin.setWalletTypeFilter(this.value)">
+          <option value="ALL" ${walletTypeFilter === "ALL" ? "selected" : ""}>All Types</option>
+          <option value="DEPOSIT" ${walletTypeFilter === "DEPOSIT" ? "selected" : ""}>Deposit</option>
+          <option value="WITHDRAWAL" ${walletTypeFilter === "WITHDRAWAL" ? "selected" : ""}>Withdrawal</option>
+        </select>
+      </section>`;
+  }
+
   function walletPage() {
+    const stats = walletStats();
+    const query = walletSearch.trim().toLowerCase();
+    const items = allWalletRequests()
+      .filter(x => walletStatusFilter === "ALL" || x.request.status === walletStatusFilter)
+      .filter(x => walletTypeFilter === "ALL" || x.type === walletTypeFilter)
+      .filter(({ user, request, type }) => {
+        if (!query) return true;
+        const haystack = [
+          displayNameFor(user),
+          user.email,
+          user.mobile,
+          type,
+          request.status,
+          request.utr,
+          request.type,
+          request.amount,
+          request.methodSnapshot?.upiId,
+          request.methodSnapshot?.bankName,
+          request.methodSnapshot?.accountNumber,
+          request.methodSnapshot?.holderName
+        ];
+        return haystack.some(v => includesText(v, query));
+      });
+
     shell(`
+      <section class="metrics-grid wallet-admin-metrics">
+        ${metric("⌛", "Pending", stats.pending)}
+        ${metric("✅", "Approved", stats.approved)}
+        ${metric("❌", "Rejected", stats.rejected)}
+        ${metric("🏦", "Total Requests", stats.total)}
+      </section>
+      ${filterBarWallet()}
       <section class="panel-card">
-        <div class="section-head"><div><h3>Wallet Requests</h3><span>Deposit and withdrawal approvals will be built next.</span></div></div>
-        <div class="empty-state">Next phase: deposit approval, withdrawal approval, ledger and pending balance.</div>
+        <div class="section-head">
+          <div><h3>Wallet Requests</h3><span>Approve or reject deposit and withdrawal requests</span></div>
+          <span class="admin-count-pill">${items.length} result</span>
+        </div>
+        <div class="admin-request-list">
+          ${items.length ? items.map(({ user, request, type }) => walletRequestCard(user, request, type)).join("") : `<div class="empty-state">No wallet requests found.</div>`}
+        </div>
       </section>
     `);
+  }
+
+  function walletRequestCard(user, request, type) {
+    const isDeposit = type === "DEPOSIT";
+    const isPending = request.status === "PENDING";
+    const methodTitle = isDeposit ? `${request.type || "UPI"} Payment` : `${request.methodSnapshot?.type || "Method"} Withdrawal`;
+    const methodText = isDeposit
+      ? `UTR ${request.utr || "-"}`
+      : `${request.methodSnapshot?.type === "UPI" ? request.methodSnapshot?.upiId : `${request.methodSnapshot?.bankName || "Bank"} ****${String(request.methodSnapshot?.accountNumber || "").slice(-4)}`} · ${request.methodSnapshot?.holderName || "-"}`;
+
+    return `
+      <article class="admin-request-card wallet-admin-card ${String(request.status || "").toLowerCase()}">
+        <div class="request-head">
+          <div class="request-user">
+            ${avatar(displayNameFor(user))}
+            <div>
+              <b>${type === "DEPOSIT" ? "Deposit Request" : "Withdrawal Request"}</b>
+              <span>${esc(user.email)} · ${esc(methodTitle)}</span>
+            </div>
+          </div>
+          ${statusPill(request.status)}
+        </div>
+
+        <div class="request-grid wallet-request-grid">
+          <article><span>User</span><b>${esc(displayNameFor(user))}</b></article>
+          <article><span>Amount</span><b>${App.money(request.amount || 0)}</b></article>
+          <article><span>Current Real Balance</span><b>${App.money(App.realBalance(user.id))}</b></article>
+          <article><span>${isDeposit ? "Payment Proof" : "Pay To"}</span><b>${esc(methodText)}</b></article>
+          <article><span>Requested On</span><b>${request.createdAt ? new Date(request.createdAt).toLocaleString() : "-"}</b></article>
+          <article><span>Request ID</span><b>${esc(request.id)}</b></article>
+        </div>
+
+        ${dateLine("Approved", request.approvedAt)}
+        ${dateLine("Rejected", request.rejectedAt)}
+        ${request.rejectReason ? `<div class="reject-box">${esc(request.rejectReason)}</div>` : ""}
+
+        <div class="admin-action-row ${isPending ? "" : "single-delete"}">
+          ${isPending ? `
+            <button class="approve-btn" onclick="AITradeXAdmin.${isDeposit ? "approveDeposit" : "approveWithdrawal"}('${user.id}', '${request.id}', this)">${isDeposit ? "Approve Deposit" : "Approve Withdrawal"}</button>
+            <button class="reject-btn" onclick="AITradeXAdmin.${isDeposit ? "rejectDeposit" : "rejectWithdrawal"}('${user.id}', '${request.id}', this)">Reject</button>
+          ` : ""}
+        </div>
+      </article>`;
   }
 
   function tradesPage() {
@@ -576,6 +724,142 @@
     setPaymentTypeFilter(value) {
       paymentTypeFilter = value;
       localStorage.setItem("AITradeX_ADMIN_PAYMENT_TYPE_FILTER", paymentTypeFilter);
+      render();
+    },
+    setWalletSearch(value) {
+      walletSearch = value;
+      localStorage.setItem("AITradeX_ADMIN_WALLET_SEARCH", walletSearch);
+      render();
+    },
+    setWalletStatusFilter(value) {
+      walletStatusFilter = value;
+      localStorage.setItem("AITradeX_ADMIN_WALLET_STATUS", walletStatusFilter);
+      render();
+    },
+    setWalletTypeFilter(value) {
+      walletTypeFilter = value;
+      localStorage.setItem("AITradeX_ADMIN_WALLET_TYPE", walletTypeFilter);
+      render();
+    },
+    approveDeposit(userId, requestId, button) {
+      markButton(button, "Approving...");
+      const target = allUsers().find(u => u.id === userId);
+      if (!target) return;
+      const requests = depositRequestsFor(target);
+      const request = requests.find(r => r.id === requestId);
+      if (!request) return;
+      if (request.status !== "PENDING") {
+        App.toast("Deposit action already completed.");
+        render();
+        return;
+      }
+
+      try {
+        App.addLedger({
+          userId: target.id,
+          accountType: "REAL",
+          type: "DEPOSIT",
+          amount: Number(request.amount || 0),
+          referenceId: request.id,
+          note: `Approved deposit · UTR ${request.utr || "-"}`
+        });
+        request.status = "APPROVED";
+        request.approvedAt = new Date().toISOString();
+        request.reviewedAt = request.approvedAt;
+        request.rejectReason = "";
+        request.balanceApplied = true;
+        saveDepositRequests(target, requests);
+        App.toast("Deposit approved and balance updated.");
+      } catch (err) {
+        App.toast(err.message || "Unable to approve deposit.");
+      }
+      render();
+    },
+    rejectDeposit(userId, requestId, button) {
+      const target = allUsers().find(u => u.id === userId);
+      if (!target) return;
+      const requests = depositRequestsFor(target);
+      const request = requests.find(r => r.id === requestId);
+      if (!request) return;
+      if (request.status !== "PENDING") {
+        App.toast("Deposit action already completed.");
+        render();
+        return;
+      }
+      const reason = prompt("Reject reason:", "Payment proof / UTR could not be verified.");
+      if (reason === null) return;
+      markButton(button, "Rejecting...");
+      request.status = "REJECTED";
+      request.rejectReason = reason || "Deposit rejected by admin.";
+      request.rejectedAt = new Date().toISOString();
+      request.reviewedAt = request.rejectedAt;
+      request.balanceApplied = false;
+      saveDepositRequests(target, requests);
+      App.toast("Deposit rejected.");
+      render();
+    },
+    approveWithdrawal(userId, requestId, button) {
+      markButton(button, "Approving...");
+      const target = allUsers().find(u => u.id === userId);
+      if (!target) return;
+      const requests = withdrawalRequestsFor(target);
+      const request = requests.find(r => r.id === requestId);
+      if (!request) return;
+      if (request.status !== "PENDING") {
+        App.toast("Withdrawal action already completed.");
+        render();
+        return;
+      }
+
+      const amount = Number(request.amount || 0);
+      if (App.realBalance(target.id) < amount) {
+        App.toast("Insufficient real balance for withdrawal.");
+        render();
+        return;
+      }
+
+      try {
+        App.addLedger({
+          userId: target.id,
+          accountType: "REAL",
+          type: "WITHDRAWAL",
+          amount: -amount,
+          referenceId: request.id,
+          note: "Approved withdrawal payout"
+        });
+        request.status = "APPROVED";
+        request.approvedAt = new Date().toISOString();
+        request.reviewedAt = request.approvedAt;
+        request.rejectReason = "";
+        request.balanceApplied = true;
+        saveWithdrawalRequests(target, requests);
+        App.toast("Withdrawal approved and balance debited.");
+      } catch (err) {
+        App.toast(err.message || "Unable to approve withdrawal.");
+      }
+      render();
+    },
+    rejectWithdrawal(userId, requestId, button) {
+      const target = allUsers().find(u => u.id === userId);
+      if (!target) return;
+      const requests = withdrawalRequestsFor(target);
+      const request = requests.find(r => r.id === requestId);
+      if (!request) return;
+      if (request.status !== "PENDING") {
+        App.toast("Withdrawal action already completed.");
+        render();
+        return;
+      }
+      const reason = prompt("Reject reason:", "Withdrawal details could not be verified.");
+      if (reason === null) return;
+      markButton(button, "Rejecting...");
+      request.status = "REJECTED";
+      request.rejectReason = reason || "Withdrawal rejected by admin.";
+      request.rejectedAt = new Date().toISOString();
+      request.reviewedAt = request.rejectedAt;
+      request.balanceApplied = false;
+      saveWithdrawalRequests(target, requests);
+      App.toast("Withdrawal rejected.");
       render();
     },
     approveKyc(userId, button) {
