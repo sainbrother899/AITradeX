@@ -1476,42 +1476,104 @@
     `);
   }
 
-  function historyTable(rows, emptyText) {
-    if (!rows.length) return `<div class="empty-state">${emptyText}</div>`;
+  function formatHistoryDate(value) {
+    if (!value) return "-";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "-";
+    return d.toLocaleString([], { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  }
+
+  function historyStatus(t) {
+    const reason = String(t.closeReason || "").toUpperCase();
+    if (reason === "AUTO_RISK_CLOSE") return "Auto Closed";
+    return App.escapeHtml(t.status || "Closed").replace(/_/g, " ");
+  }
+
+  function tradeHistoryCard(t, type) {
+    const pnl = Number(t.pnl || 0);
+    const profit = pnl >= 0;
+    const title = type === "AI_AUTO" ? "AI Auto Trade" : "Manual Trade";
+    const entry = t.entryPriceDisplay || (t.entryPrice ? String(t.entryPrice) : "-");
+    const close = t.exitPriceDisplay || (t.exitPrice ? String(t.exitPrice) : (type === "AI_AUTO" ? "Settled" : "-"));
+    const amountLabel = type === "AI_AUTO" ? "AI Amount" : "Margin";
+    const timeLabel = type === "AI_AUTO" ? "Executed" : "Closed";
+    const resultLine = type === "AI_AUTO"
+      ? `${App.escapeHtml(t.resultType || (profit ? "PROFIT" : "LOSS"))} ${Number(t.resultPercent || 0)}%`
+      : historyStatus(t);
+
     return `
-      <div class="trade-history-table">
-        <span>Market</span><span>Pair</span><span>Side</span><span>Lev.</span><span>Amount</span><span>P/L</span><span>Status</span>
-        ${rows.map(t => `
-          <b>${App.escapeHtml(t.market || "-")}</b>
-          <b>${App.escapeHtml(t.pair || "-")}</b>
-          <b>${App.escapeHtml(t.side || "-")}</b>
-          <b>${Number(t.leverage || 1)}x</b>
-          <b>${App.money(t.marginAmount || t.amount || 0)}</b>
-          <b class="${Number(t.pnl || 0) >= 0 ? "profit-text" : "loss-text"}">${Number(t.pnl || 0) >= 0 ? "+" : ""}${App.money(t.pnl || 0)}</b>
-          <b>${App.escapeHtml(t.status || "CLOSED")}</b>
-        `).join("")}
-      </div>`;
+      <article class="history-trade-card ${profit ? "profit" : "loss"}">
+        <div class="history-trade-top">
+          <div>
+            <p>${title}</p>
+            <h3>${App.escapeHtml(t.pair || "-")} <span>${App.escapeHtml(t.side || "-")}</span></h3>
+          </div>
+          <strong class="${profit ? "profit-text" : "loss-text"}">${profit ? "+" : ""}${App.money(pnl)}</strong>
+        </div>
+        <div class="history-trade-meta">
+          <span>${App.escapeHtml(t.market || "-")}</span>
+          <span>${Number(t.leverage || 1)}x</span>
+          <span>${resultLine}</span>
+        </div>
+        <div class="history-trade-grid">
+          <article><span>Entry Price</span><b>${App.escapeHtml(entry)}</b></article>
+          <article><span>${type === "AI_AUTO" ? "Settlement" : "Close Price"}</span><b>${App.escapeHtml(close)}</b></article>
+          <article><span>${amountLabel}</span><b>${App.money(t.marginAmount || t.amount || 0)}</b></article>
+          <article><span>Exposure</span><b>${App.money(t.positionSize || ((t.marginAmount || t.amount || 0) * Number(t.leverage || 1)))}</b></article>
+          <article><span>Opened</span><b>${formatHistoryDate(t.openedAt || t.createdAt)}</b></article>
+          <article><span>${timeLabel}</span><b>${formatHistoryDate(t.closedAt || t.createdAt)}</b></article>
+        </div>
+        <div class="history-trade-foot">
+          <span>${App.escapeHtml(t.priceSource || "Live price")}</span>
+          <b>${type === "AI_AUTO" ? "AI Auto" : "Manual"}</b>
+        </div>
+      </article>`;
+  }
+
+  function historyCards(rows, type, emptyText) {
+    if (!rows.length) return `<div class="empty-state">${emptyText}</div>`;
+    return `<div class="unified-history-grid">${rows.map(t => tradeHistoryCard(t, type)).join("")}</div>`;
+  }
+
+  function historySummaryCard(label, rows) {
+    const total = rows.reduce((sum, t) => sum + Number(t.pnl || 0), 0);
+    const wins = rows.filter(t => Number(t.pnl || 0) >= 0).length;
+    const losses = rows.filter(t => Number(t.pnl || 0) < 0).length;
+    return `
+      <article>
+        <span>${label}</span>
+        <b class="${total >= 0 ? "profit-text" : "loss-text"}">${total >= 0 ? "+" : ""}${App.money(total)}</b>
+        <small>${rows.length} closed · ${wins} profit · ${losses} loss</small>
+      </article>`;
   }
 
   function historyPage() {
     const aiRows = tradeRows("AI_AUTO");
     const manualRows = tradeRows("MANUAL");
+    const allRows = [...aiRows, ...manualRows];
     shell(`
-      <section class="premium-card history-table-card">
-        <div class="card-row">
-          <div><p>AI TRADE HISTORY</p><h2>AI Auto Trades</h2></div>
-          <span class="history-mode">${accountMode}</span>
-        </div>
-        ${historyTable(aiRows, "No AI auto trades yet. When admin executes AI Trade Control, entries will show here.")}
+      <section class="compact-grid trade-history-summary">
+        ${historySummaryCard("Total Trade P/L", allRows)}
+        ${historySummaryCard("Manual Trades", manualRows)}
+        ${historySummaryCard("AI Auto Trades", aiRows)}
+        <article><span>Account</span><b>${accountMode}</b><small>Unified history view</small></article>
       </section>
 
-      <section class="premium-card history-table-card">
+      <section class="premium-card history-table-card unified-history-card">
         <div class="card-row">
-          <div><p>MANUAL TRADE HISTORY</p><h2>Your Buy/Sell Trades</h2></div>
+          <div><p>TRADE HISTORY</p><h2>AI Auto Trades</h2></div>
           <span class="history-mode">${accountMode}</span>
         </div>
-        ${historyTable(manualRows, "No manual trades yet. Trades placed by you will show here.")}
-        <div class="empty-state small-note">Wallet history stays inside Wallet page only.</div>
+        ${historyCards(aiRows, "AI_AUTO", "No AI auto trades yet. When admin executes AI Trading Desk, entries will show here.")}
+      </section>
+
+      <section class="premium-card history-table-card unified-history-card">
+        <div class="card-row">
+          <div><p>TRADE HISTORY</p><h2>Manual Trades</h2></div>
+          <span class="history-mode">${accountMode}</span>
+        </div>
+        ${historyCards(manualRows, "MANUAL", "No manual trades yet. Closed manual trades will show here.")}
+        <div class="empty-state small-note">Wallet deposit and withdrawal history stays inside Wallet page only.</div>
       </section>
     `);
   }

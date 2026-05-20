@@ -594,3 +594,10 @@ Phase 4.19 - CSS Clean Consolidation
 Changed files in Phase 4.19:
 - styles.css
 - README.txt
+
+Phase 4.20 - Unified Trade History Polish
+- Manual Trade History and AI Auto Trade History now use the same premium card style.
+- Added unified summary cards for total P/L, manual trade P/L, and AI auto trade P/L.
+- Manual history cards show entry price, close price, margin, exposure, leverage, open/close time, and close status.
+- AI history cards show entry price, settlement, AI amount, exposure, leverage, execution time, result type, and price source.
+- Wallet history remains separate inside the Wallet page.
