@@ -543,3 +543,19 @@ Phase 4.14 - Manual Trade Risk & Bottom Live Bar Clean
 - Removed the one-active-position limit; multiple manual positions can be opened.
 - Close button now asks which manual position to close when multiple positions are active.
 - AI auto trade flow was not changed.
+
+
+Phase 4.15 - Manual Position Selector & Risk Clamp Clean
+- Replaced browser prompt close selector with a premium in-app close position modal.
+- Manual live bar stays above the bottom nav and opens the custom selector when Close is clicked.
+- Multiple manual positions remain supported, but new trade margin now respects already-open manual margins.
+- Manual trade live P/L is capped on the loss side by the position margin/current balance so balance cannot go negative.
+- Risk auto-close now triggers when a position reaches its max allowed loss.
+- Trade page active manual cards continue to refresh live current price and P/L.
+
+
+Phase 4.16 - Manual Live Bottom Bar Spacing Fix
+- Manual live position bar now sits directly above the bottom navigation on mobile.
+- Removed the extra vertical gap between the live position bar and bottom nav.
+- Close position selector modal position adjusted to match the lower bar placement.
+- No changes to manual trade logic, AI trade logic, price feeds, or admin flow.

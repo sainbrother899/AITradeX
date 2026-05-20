@@ -27,6 +27,7 @@
   let withdrawalDraft = readJson("AITradeX_WITHDRAWAL_DRAFT", { amount: "", methodId: "" });
   let priceRefreshTimer = null;
   let manualRiskCloseLock = false;
+  let manualCloseSelectorOpen = false;
 
   const marketPairs = App.marketPairs || { CRYPTO: [], FOREX: [] };
   function pairsForMarket() {
@@ -135,13 +136,38 @@
     return current ? String(current) : "--";
   }
 
-  function manualPositionPnl(position) {
+  function manualPositionRawPnl(position) {
     const entry = Number(position.entryPrice || 0);
     const current = positionCurrentPrice(position);
     const exposure = Number(position.positionSize || 0);
     if (!entry || !current || !exposure) return 0;
     const direction = String(position.side || "BUY").toUpperCase() === "SELL" ? -1 : 1;
     return exposure * ((current - entry) / entry) * direction;
+  }
+
+  function manualPositionMaxLoss(position) {
+    const margin = Math.max(0, Number(position.marginAmount || 0));
+    const balanceNow = Math.max(0, positionBalance(position));
+    if (!margin && !balanceNow) return 0;
+    if (!margin) return balanceNow;
+    if (!balanceNow) return margin;
+    return Math.min(margin, balanceNow);
+  }
+
+  function manualPositionPnl(position) {
+    const raw = manualPositionRawPnl(position);
+    if (raw < 0) return Math.max(raw, -manualPositionMaxLoss(position));
+    return raw;
+  }
+
+  function manualReservedMargin(account = accountMode) {
+    return manualOpenPositions()
+      .filter(position => (position.accountType || accountMode) === account)
+      .reduce((sum, position) => sum + Math.max(0, Number(position.marginAmount || 0)), 0);
+  }
+
+  function availableForNewManualTrade() {
+    return Math.max(0, currentBalance() - manualReservedMargin(accountMode));
   }
 
   function totalManualLivePnl() {
@@ -189,9 +215,10 @@
     let closed = 0;
     try {
       manualOpenPositions().forEach(position => {
-        const pnl = manualPositionPnl(position);
+        const rawPnl = manualPositionRawPnl(position);
+        const maxLoss = manualPositionMaxLoss(position);
         const balanceNow = positionBalance(position);
-        if (pnl < 0 && balanceNow > 0 && Math.abs(pnl) >= balanceNow) {
+        if (rawPnl < 0 && (Math.abs(rawPnl) >= maxLoss || balanceNow + rawPnl <= 0)) {
           if (settleManualPosition(position, "AUTO_RISK_CLOSE")) closed += 1;
         }
       });
@@ -215,6 +242,38 @@
       <section class="top-live-position-bar ${pnl >= 0 ? "profit" : "loss"}" id="manualLivePositionBar">
         <span id="manualLivePositionText">${countText} ${pnl >= 0 ? "+" : ""}${App.money(pnl)} (${label})</span>
         <button onclick="AITradeXUser.closeManualLivePositions()">Close</button>
+      </section>`;
+  }
+
+  function manualCloseSelectorHtml() {
+    if (!manualCloseSelectorOpen) return "";
+    const positions = manualOpenPositions();
+    if (!positions.length) return "";
+    return `
+      <div class="manual-close-backdrop" onclick="AITradeXUser.cancelManualCloseSelector()"></div>
+      <section class="manual-close-modal">
+        <div class="manual-close-head">
+          <div>
+            <b>Select position to close</b>
+            <span>${positions.length} active manual ${positions.length === 1 ? "position" : "positions"}</span>
+          </div>
+          <button onclick="AITradeXUser.cancelManualCloseSelector()">×</button>
+        </div>
+        <div class="manual-close-list">
+          ${positions.map(position => {
+            const pnl = manualPositionPnl(position);
+            const cls = pnl >= 0 ? "profit-text" : "loss-text";
+            return `
+              <article>
+                <div>
+                  <b>${App.escapeHtml(position.pair)} ${App.escapeHtml(position.side)}</b>
+                  <span>${Number(position.leverage || 1)}x · Margin ${App.money(position.marginAmount || 0)} · Live ${App.escapeHtml(positionCurrentDisplay(position))}</span>
+                </div>
+                <strong class="${cls}">${pnl >= 0 ? "+" : ""}${App.money(pnl)}</strong>
+                <button onclick="AITradeXUser.closeManualPositionById('${position.id}')">Close</button>
+              </article>`;
+          }).join("")}
+        </div>
       </section>`;
   }
 
@@ -342,7 +401,9 @@
   }
 
   function refreshVisiblePrices(items) {
-    const list = (items || []).map(p => typeof p === "string" ? p : p.pair).filter(Boolean);
+    const baseList = (items || []).map(p => typeof p === "string" ? p : p.pair).filter(Boolean);
+    const openList = manualOpenPositions().map(position => position.pair).filter(Boolean);
+    const list = [...new Set([...baseList, ...openList])];
     if (!list.length) return;
 
     if (App.refreshLivePrices) App.refreshLivePrices(list, applyLivePriceRow);
@@ -833,6 +894,7 @@
         <main class="app-content">${content}</main>
         ${selectorSheetHtml()}
         ${manualLiveBarHtml()}
+        ${manualCloseSelectorHtml()}
         ${bottomNav()}
       </div>`;
     updateManualLiveBar();
@@ -2177,8 +2239,9 @@
         App.toast("Enter valid margin amount.");
         return;
       }
-      if (margin > currentBalance()) {
-        App.toast("Insufficient balance for this trade.");
+      const availableMargin = availableForNewManualTrade();
+      if (margin > availableMargin) {
+        App.toast(`Available manual margin is ${App.money(availableMargin)}. Close a position or reduce amount.`);
         return;
       }
       App.toast("Locking live entry price...");
@@ -2227,21 +2290,24 @@
         App.toast("No manual position is active.");
         return;
       }
-      let target = positions[0];
-      if (positions.length > 1) {
-        const list = positions.map((position, index) => {
-          const pnl = manualPositionPnl(position);
-          return `${index + 1}. ${position.pair} ${position.side} ${pnl >= 0 ? "+" : ""}${App.money(pnl)}`;
-        }).join("\n");
-        const pick = Number(window.prompt(`Select position to close:\n\n${list}`, "1"));
-        if (!pick || pick < 1 || pick > positions.length) {
-          App.toast("Position close cancelled.");
-          return;
-        }
-        target = positions[pick - 1];
+      manualCloseSelectorOpen = true;
+      render();
+    },
+    cancelManualCloseSelector() {
+      manualCloseSelectorOpen = false;
+      render();
+    },
+    closeManualPositionById(positionId) {
+      const target = manualOpenPositions().find(position => position.id === positionId);
+      if (!target) {
+        App.toast("Position not found.");
+        manualCloseSelectorOpen = false;
+        render();
+        return;
       }
       try {
         settleManualPosition(target, "USER_CLOSE");
+        manualCloseSelectorOpen = false;
         App.toast("Manual position closed.");
         render();
       } catch (error) {
