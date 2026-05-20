@@ -236,3 +236,16 @@ Phase 2.9 KYC + Payment Premium Polish:
 - Payment Methods status, tabs, forms and saved cards are now more compact.
 - No logic changed.
 - Admin side untouched.
+
+
+Phase 3.0 Admin KYC + Payment Approval:
+- admin-app.js rebuilt for admin approval workflow.
+- Admin Dashboard shows pending KYC and payment method requests.
+- Admin Users page shows KYC status and balances.
+- Admin KYC Requests page shows submitted user KYC details and upload filenames.
+- Admin can approve/reject KYC with reject reason.
+- Admin Payment Methods page shows UPI/Bank details.
+- Admin can compare payment holder name vs KYC name.
+- Admin can approve/reject payment methods with reject reason.
+- Data currently reads/writes localStorage for testing with user side.
+- Wallet and trade control admin pages remain placeholders for next phases.
