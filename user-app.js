@@ -2182,15 +2182,15 @@
           <h1>Invite & Earn Automatically</h1>
           <span>Earn when your referred user completes a first approved deposit or buys a paid subscription.</span>
         </div>
-        <button onclick="AITradeXUser.copyText(${jsArg(link)})">Copy Link</button>
+        <button onclick="AITradeXUser.copyText(${jsArg(link)}, this)">Copy Link</button>
       </section>
 
       <section class="premium-card referral-link-card">
         <div class="card-row"><div><p>YOUR REFERRAL LINK</p><h2>${App.escapeHtml(u.referralCode || "-")}</h2></div><span class="history-mode">Auto Bonus</span></div>
-        <div class="referral-link-box"><span>${App.escapeHtml(link)}</span><button onclick="AITradeXUser.copyText(${jsArg(link)})">Copy</button></div>
+        <div class="referral-link-box"><span>${App.escapeHtml(link)}</span><button onclick="AITradeXUser.copyText(${jsArg(link)}, this)">Copy</button></div>
         <div class="referral-actions">
           <a class="btn" href="https://wa.me/?text=${shareText}" target="_blank" rel="noopener">Share on WhatsApp</a>
-          <button class="btn ghost" onclick="AITradeXUser.copyText(${jsArg(u.referralCode || "")})">Copy Code</button>
+          <button class="btn ghost" onclick="AITradeXUser.copyText(${jsArg(u.referralCode || "")}, this)">Copy Code</button>
         </div>
       </section>
 
@@ -2429,18 +2429,48 @@
       drawerOpen = typeof force === "boolean" ? force : !drawerOpen;
       render();
     },
-    copyText(value) {
-      const text = String(value || "");
-      if (navigator.clipboard?.writeText) {
-        navigator.clipboard.writeText(text).then(() => App.toast("Copied."));
-      } else {
-        const input = document.createElement("input");
+    async copyText(value, button) {
+      const text = String(value || "").trim();
+      if (!text) {
+        App.toast("Nothing to copy.");
+        return false;
+      }
+      const fallbackCopy = () => {
+        const input = document.createElement("textarea");
         input.value = text;
+        input.setAttribute("readonly", "readonly");
+        input.style.position = "fixed";
+        input.style.left = "-9999px";
+        input.style.top = "0";
         document.body.appendChild(input);
+        input.focus();
         input.select();
-        document.execCommand("copy");
+        const copied = document.execCommand("copy");
         input.remove();
-        App.toast("Copied.");
+        return copied;
+      };
+      try {
+        if (navigator.clipboard?.writeText && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+        } else if (!fallbackCopy()) {
+          throw new Error("Copy failed");
+        }
+        if (button) {
+          const oldText = button.textContent;
+          button.classList.add("copy-success");
+          button.textContent = "Copied ✓";
+          button.disabled = true;
+          setTimeout(() => {
+            button.classList.remove("copy-success");
+            button.textContent = oldText;
+            button.disabled = false;
+          }, 1400);
+        }
+        App.toast("Copied to clipboard.");
+        return true;
+      } catch (err) {
+        App.toast("Copy failed. Long press and copy manually.");
+        return false;
       }
     },
     setAccountMode(mode) {

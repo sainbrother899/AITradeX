@@ -3863,6 +3863,19 @@
 .referral-actions .btn { border:0; border-radius:14px; padding:10px 12px; font-weight:900; color:#04111f; background:linear-gradient(135deg,#7dd3fc,#34d399); text-decoration:none; text-align:center; }
 .referral-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
 .referral-actions .ghost { background:rgba(255,255,255,.08); color:#e5e7eb; border:1px solid rgba(255,255,255,.12); }
+.referral-copy-btn, .referral-link-box button, .referral-hero-card button, .copy-success {
+  transition: transform .18s ease, filter .18s ease, box-shadow .18s ease, background .18s ease;
+}
+.referral-link-box button:hover, .referral-hero-card button:hover, .referral-actions .btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+}
+button.copy-success, .referral-link-box button.copy-success, .referral-hero-card button.copy-success, .referral-actions .btn.copy-success {
+  background: linear-gradient(135deg,#00e7a8,#16b649) !important;
+  color: #041318 !important;
+  box-shadow: 0 12px 30px rgba(0,231,168,.20);
+}
+
 .referral-summary-grid { margin-top:14px; }
 .referral-user-list { display:grid; gap:10px; }
 .referral-user-card { display:flex; justify-content:space-between; gap:12px; align-items:center; padding:13px; border-radius:18px; background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.08); }
