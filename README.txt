@@ -517,3 +517,19 @@ Phase 4.12 - Manual Live Position Bar Clean
 - Closing a manual position moves it to Manual Trade History and applies final P/L to the correct account wallet.
 - New manual positions are limited to one active manual position at a time for a cleaner mobile flow.
 - No admin AI trading flow changes were made.
+
+Phase 4.13 - Manual Trading Logic Clean
+- Base used: Phase 4.12 Manual Live Position Bar Clean.
+- Manual BUY/SELL now opens a real open-position record only after a live entry price is locked.
+- Entry price is fetched through the shared live price system before placing the trade.
+- If live price is unavailable, the trade is blocked instead of using random/static zero values.
+- One active manual position remains allowed at a time to keep the top live bar clean.
+- Manual live P/L continues to update from the live price cache/stream.
+- Open manual position cards now show entry price and current live price for easier testing.
+- Close button finalizes the manual position, saves exit price/source, applies final P/L to the correct REAL/DEMO wallet, and moves the trade to Manual Trade History.
+- AI auto trade flow was not changed.
+- No UI redesign, no patch layer, no hidden blocked code.
+
+Changed files in Phase 4.13:
+- user-app.js
+- README.txt

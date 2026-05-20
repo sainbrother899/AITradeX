@@ -127,6 +127,13 @@
     return Number.isFinite(current) && current > 0 ? current : fallback;
   }
 
+  function positionCurrentDisplay(position) {
+    const cached = App.getCachedPairPrice ? App.getCachedPairPrice(position.pair) : null;
+    if (cached?.display) return cached.display;
+    const current = positionCurrentPrice(position);
+    return current ? String(current) : "--";
+  }
+
   function manualPositionPnl(position) {
     const entry = Number(position.entryPrice || 0);
     const current = positionCurrentPrice(position);
@@ -1036,7 +1043,7 @@
               const pnl = manualPositionPnl(position);
               return `
                 <article>
-                  <div><b>${App.escapeHtml(position.pair)}</b><span>${App.escapeHtml(position.side)} · ${Number(position.leverage || 1)}x · ${App.escapeHtml(position.accountType || accountMode)}</span></div>
+                  <div><b>${App.escapeHtml(position.pair)}</b><span>${App.escapeHtml(position.side)} · ${Number(position.leverage || 1)}x · ${App.escapeHtml(position.accountType || accountMode)} · Entry ${App.escapeHtml(position.entryPriceDisplay || String(position.entryPrice || "--"))} · Live ${App.escapeHtml(positionCurrentDisplay(position))}</span></div>
                   <strong class="${pnl >= 0 ? "profit-text" : "loss-text"}">${pnl >= 0 ? "+" : ""}${App.money(pnl)}</strong>
                 </article>`;
             }).join("")}
@@ -2084,7 +2091,7 @@
       selectorSheet = null;
       render();
     },
-    placeManualTrade(side) {
+    async placeManualTrade(side) {
       const u = user();
       if (!u) return;
       if (manualOpenPositions().length) {
@@ -2092,6 +2099,7 @@
         return;
       }
       const margin = Number(tradeAmountPreview || 0);
+      const leverage = Math.max(1, Number(tradeLeveragePreview || 1));
       if (!margin || margin <= 0) {
         App.toast("Enter valid margin amount.");
         return;
@@ -2100,8 +2108,19 @@
         App.toast("Insufficient balance for this trade.");
         return;
       }
+      App.toast("Locking live entry price...");
+      let lockedPrice = null;
+      try {
+        lockedPrice = App.getLivePairPrice ? await App.getLivePairPrice(selectedPair) : null;
+      } catch (error) {
+        lockedPrice = App.getCachedPairPrice ? App.getCachedPairPrice(selectedPair) : null;
+      }
       const pair = selectedPairData();
-      const cachedPrice = App.getCachedPairPrice ? App.getCachedPairPrice(selectedPair) : null;
+      const entryPrice = Number(lockedPrice?.price || pair.rawPrice || 0);
+      if (!Number.isFinite(entryPrice) || entryPrice <= 0) {
+        App.toast("Live entry price unavailable. Please try again.");
+        return;
+      }
       const trade = {
         id: App.uid("trd"),
         userId: u.id,
@@ -2109,15 +2128,15 @@
         accountType: accountMode,
         market: selectedMarket,
         pair: selectedPair,
-        side,
-        entryPrice: cachedPrice ? Number(cachedPrice.price || 0) : Number(pair.rawPrice || 0),
-        entryPriceDisplay: cachedPrice ? cachedPrice.display : (pair.price || ""),
-        priceSource: cachedPrice ? cachedPrice.source : (pair.priceSource || "Static display"),
-        priceSourceType: cachedPrice ? cachedPrice.sourceType : "DISPLAY",
-        priceLockedAt: cachedPrice ? cachedPrice.fetchedAt : new Date().toISOString(),
-        leverage: tradeLeveragePreview,
+        side: String(side || "BUY").toUpperCase() === "SELL" ? "SELL" : "BUY",
+        entryPrice,
+        entryPriceDisplay: lockedPrice?.display || pair.price || String(entryPrice),
+        priceSource: lockedPrice?.source || pair.priceSource || "Live price cache",
+        priceSourceType: lockedPrice?.sourceType || "LIVE_PRICE",
+        priceLockedAt: lockedPrice?.fetchedAt || new Date().toISOString(),
+        leverage,
         marginAmount: margin,
-        positionSize: margin * tradeLeveragePreview,
+        positionSize: margin * leverage,
         pnl: 0,
         status: "OPEN",
         source: "USER_MANUAL",
@@ -2126,7 +2145,7 @@
       };
       App.state.trades.unshift(trade);
       App.saveState();
-      App.toast(`${side} manual trade placed.`);
+      App.toast(`${trade.side} manual trade opened at ${trade.entryPriceDisplay}.`);
       render();
     },
     closeManualLivePositions() {
@@ -2143,7 +2162,8 @@
         const balanceNow = position.accountType === "DEMO" ? App.demoBalance(u.id) : App.realBalance(u.id);
         if (balanceNow + pnl < 0) pnl = -balanceNow;
         position.exitPrice = current;
-        position.exitPriceDisplay = App.money ? String(current) : String(current);
+        position.exitPriceDisplay = positionCurrentDisplay(position);
+        position.exitPriceSource = (App.getCachedPairPrice && App.getCachedPairPrice(position.pair)?.source) || position.priceSource || "Live price cache";
         position.closedAt = new Date().toISOString();
         position.pnl = pnl;
         position.status = "CLOSED";
