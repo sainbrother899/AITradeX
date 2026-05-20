@@ -356,3 +356,17 @@ Phase 4.0 Admin Payment Settings:
 - styles.css updated only for QR image/payment settings preview polish; existing UI baseline preserved.
 - index.html and admin.html cache-buster versions updated.
 - No patch layer or hidden blocked old UI added.
+
+PHASE 4.1 - ADMIN MOBILE RESPONSIVE CLEAN
+- Base kept as Phase 4.0 / Phase 3.10 flow.
+- Admin panel mobile layout improved without changing desktop design.
+- Mobile sidebar is now a sticky compact top control area.
+- Admin menu scrolls horizontally on mobile for quick access to Deposits, Withdrawals and Payment Settings.
+- Admin cards, filters, action buttons and request details stack cleanly on small screens.
+- Users table remains horizontally scrollable on mobile instead of breaking layout.
+- No feature flow removed; no old code hidden behind a new UI layer.
+
+Changed files in Phase 4.1:
+- styles.css
+- admin.html
+- README.txt
