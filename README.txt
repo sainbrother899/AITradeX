@@ -660,3 +660,11 @@ Phase 4.26 - Bank Only Withdrawal Clean
 - Admin Payment Method Requests are now Bank Account Requests.
 - Admin withdrawal details keep full bank payout fields for transfer.
 - Old UPI withdrawal requests can still be read as legacy records, but new UPI withdrawal requests cannot be created.
+
+
+Phase 4.27 - Bank Account Limit Clean
+- Added clean 2-bank-account limit for withdrawals.
+- Pending and approved bank accounts count toward the 2-account limit.
+- Rejected bank accounts do not count, so users can submit a new bank account after rejection.
+- Add Bank form disables when the limit is reached.
+- Withdrawal remains bank-only; deposit UPI/QR flow is unchanged.

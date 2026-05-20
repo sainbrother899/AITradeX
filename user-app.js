@@ -797,7 +797,7 @@
   function paymentCounts() {
     const methods = paymentMethods();
     return {
-      BANK: methods.filter(m => m.type === "BANK").length
+      BANK: methods.filter(m => m.type === "BANK" && m.status !== "REJECTED").length
     };
   }
 
@@ -1905,7 +1905,7 @@
           <label>Account Type<select id="bankTypeInput" ${!kycReady || !canAddBank ? "disabled" : ""}><option>Savings</option><option>Current</option></select></label>
         </div>
         <button class="save-profile-btn" onclick="AITradeXUser.addBankMethod()" ${!kycReady || !canAddBank ? "disabled" : ""}>Submit Bank for Verification</button>
-        ${!canAddBank ? `<div class="profile-note">Maximum 2 bank accounts allowed.</div>` : ""}
+        ${!canAddBank ? `<div class="profile-note">Maximum 2 pending/approved bank accounts allowed. Rejected accounts do not count in this limit.</div>` : ""}
       </section>
 
       <section class="premium-card">
@@ -2321,8 +2321,8 @@
       }
 
       const methods = paymentMethods();
-      if (methods.filter(m => m.type === "BANK").length >= 2) {
-        App.toast("Maximum 2 bank accounts allowed.");
+      if (methods.filter(m => m.type === "BANK" && m.status !== "REJECTED").length >= 2) {
+        App.toast("Maximum 2 bank accounts allowed. Rejected bank accounts do not count in this limit.");
         return;
       }
 
