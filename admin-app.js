@@ -755,16 +755,67 @@
     return (App.state.aiTradeBatches || []).sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0));
   }
 
-  function aiUserEligibility(applyTo) {
-    return allUsers().filter(u => {
-      if (userStatus(u) !== "ACTIVE") return false;
-      if (!u.aiTradeOn) return false;
-      const sub = App.activeSubscription(u.id);
-      if (applyTo === "SUBSCRIBED" && !sub) return false;
-      if (applyTo === "FREE" && sub) return false;
-      if (App.aiTradesToday(u.id) >= App.aiDailyLimit(u.id)) return false;
-      return App.aiAllowedAmount(u) > 0;
+  function aiEligibilityReport(minBalance = 0) {
+    const report = {
+      eligible: [],
+      skipped: [],
+      reasons: {
+        inactive: 0,
+        aiOff: 0,
+        limit: 0,
+        lowBalance: 0,
+        noPool: 0
+      }
+    };
+
+    allUsers().forEach(u => {
+      const status = userStatus(u);
+      const balance = App.realBalance(u.id);
+      const used = App.aiTradesToday(u.id);
+      const limit = App.aiDailyLimit(u.id);
+      const allowedPool = App.aiAllowedAmount(u);
+
+      if (status !== "ACTIVE") {
+        report.skipped.push({ userId: u.id, reason: "Inactive / suspended / blocked" });
+        report.reasons.inactive += 1;
+        return;
+      }
+      if (!u.aiTradeOn) {
+        report.skipped.push({ userId: u.id, reason: "AI Auto Trading OFF" });
+        report.reasons.aiOff += 1;
+        return;
+      }
+      if (used >= limit) {
+        report.skipped.push({ userId: u.id, reason: "Daily AI trade limit completed" });
+        report.reasons.limit += 1;
+        return;
+      }
+      if (balance < minBalance) {
+        report.skipped.push({ userId: u.id, reason: "Below minimum real balance" });
+        report.reasons.lowBalance += 1;
+        return;
+      }
+      if (allowedPool <= 0) {
+        report.skipped.push({ userId: u.id, reason: "No AI trade pool available" });
+        report.reasons.noPool += 1;
+        return;
+      }
+
+      report.eligible.push(u);
     });
+
+    return report;
+  }
+
+  function skipReasonLine(reasons = {}) {
+    const rows = [
+      ["AI OFF", reasons.aiOff],
+      ["Limit done", reasons.limit],
+      ["Low balance", reasons.lowBalance],
+      ["Inactive", reasons.inactive],
+      ["No pool", reasons.noPool]
+    ].filter(([, value]) => Number(value || 0) > 0);
+    return rows.length ? rows.map(([label, value]) => `${label}: ${value}`).join(" · ") : "No skipped users";
   }
 
   function aiRecentTrades() {
@@ -776,109 +827,111 @@
 
   function tradesPage() {
     const settings = App.state.settings || {};
+    const previewReport = aiEligibilityReport(0);
     const aiOnCount = allUsers().filter(u => u.aiTradeOn && userStatus(u) === "ACTIVE").length;
-    const eligibleNow = aiUserEligibility("ALL").length;
+    const eligibleNow = previewReport.eligible.length;
     const batches = aiTradeBatches();
     const recentTrades = aiRecentTrades();
+    const lastBatch = batches[0];
 
     shell(`
       <section class="metrics-grid">
         ${metric("🤖", "AI ON Users", aiOnCount)}
-        ${metric("✅", "Eligible Now", eligibleNow)}
-        ${metric("📊", "Market Pairs", allTradePairs().length)}
+        ${metric("✅", "Valid Now", eligibleNow)}
+        ${metric("⏭️", "Skipped Now", previewReport.skipped.length)}
         ${metric("🎁", "Free AI / Day", Number(settings.freeAiTradesPerDay || 5))}
-        ${metric("📜", "AI Trades", (App.state.trades || []).filter(t => t.tradeType === "AI_AUTO").length)}
       </section>
 
-      <section class="panel-card payment-settings-panel">
-        <div class="section-head">
-          <div><h3>AI Trade Control</h3><span>Expert/admin trades apply only to users with AI Auto Trading ON.</span></div>
+      <section class="panel-card ai-desk-panel">
+        <div class="section-head ai-desk-head">
+          <div><h3>AI Trading Desk</h3><span>One clean execution applies to every valid AI user. Invalid users are skipped automatically.</span></div>
           <span class="admin-count-pill">Manual trades stay separate</span>
         </div>
 
-        <div class="admin-grid-two payment-settings-grid">
-          <form class="payment-form-card form-grid" onsubmit="AITradeXAdmin.executeAiTrade(event)">
-            <p>AI AUTO TRADE SETUP</p>
-            <h2>Execute AI Trade</h2>
-            <label>User Market Pair
-              <select id="aiTradePair" required>
-                ${aiTradePairOptions("BTC/USDT")}
-              </select>
-              <small>Same full pair list as user trade page.</small>
-            </label>
-            <label>Side
-              <select id="aiTradeSide">
-                <option>BUY</option>
-                <option>SELL</option>
-              </select>
-            </label>
-            <label>Leverage
-              <input id="aiTradeLeverage" type="number" min="1" max="2000" value="10" required/>
-            </label>
-            <label>Apply To
-              <select id="aiTradeApplyTo">
-                <option value="ALL">All AI ON users</option>
-                <option value="FREE">Free users only</option>
-                <option value="SUBSCRIBED">Subscribed users only</option>
-              </select>
-            </label>
-            <label>AI Pool Usage
-              <select id="aiTradePoolUsage">
-                <option value="25">25% of user's AI pool</option>
-                <option value="50">50% of user's AI pool</option>
-                <option value="75">75% of user's AI pool</option>
-                <option value="100" selected>100% of user's AI pool</option>
-              </select>
-            </label>
-            <label>Result
-              <select id="aiTradeResultType">
-                <option value="PROFIT">Profit</option>
-                <option value="LOSS">Loss</option>
-              </select>
-            </label>
-            <label>Profit / Loss %
-              <input id="aiTradeResultPercent" type="number" min="0" step="0.01" value="2" required/>
-            </label>
-            <label>Minimum Real Balance
-              <input id="aiTradeMinBalance" type="number" min="0" value="0"/>
-            </label>
-            <label>Trade Note
-              <input id="aiTradeNote" value="Expert AI trade executed" placeholder="Internal note"/>
-            </label>
-            <button class="save-profile-btn">Execute AI Auto Trade</button>
-            <div class="profile-note">This will create entries only in AI Auto Trade history. Manual trade history will not be touched.</div>
+        <div class="admin-grid-two ai-desk-grid">
+          <form class="payment-form-card ai-desk-form" onsubmit="AITradeXAdmin.executeAiTrade(event)">
+            <p>EXPERT AUTO TRADE</p>
+            <h2>Execute AI Auto Trade</h2>
+
+            <div class="ai-step-card">
+              <div class="ai-step-label"><b>1</b><span>Select pair</span></div>
+              <label>Market Pair
+                <select id="aiTradePair" required>
+                  ${aiTradePairOptions("BTC/USDT")}
+                </select>
+                <small>Same full pair list as user trade page.</small>
+              </label>
+            </div>
+
+            <div class="ai-step-card">
+              <div class="ai-step-label"><b>2</b><span>Choose side</span></div>
+              <div class="ai-toggle-grid two">
+                <label class="ai-radio-card buy"><input type="radio" name="aiTradeSide" value="BUY" checked/><span>BUY</span><small>Long / upward trade</small></label>
+                <label class="ai-radio-card sell"><input type="radio" name="aiTradeSide" value="SELL"/><span>SELL</span><small>Short / downward trade</small></label>
+              </div>
+            </div>
+
+            <div class="ai-step-card">
+              <div class="ai-step-label"><b>3</b><span>Set result</span></div>
+              <div class="ai-toggle-grid two">
+                <label class="ai-radio-card profit"><input type="radio" name="aiTradeResultType" value="PROFIT" checked/><span>Profit</span><small>Add to real wallet</small></label>
+                <label class="ai-radio-card loss"><input type="radio" name="aiTradeResultType" value="LOSS"/><span>Loss</span><small>Deduct from real wallet</small></label>
+              </div>
+              <label>Profit / Loss %
+                <input id="aiTradeResultPercent" type="number" min="0" step="0.01" value="2" required/>
+              </label>
+            </div>
+
+            <div class="ai-step-card">
+              <div class="ai-step-label"><b>4</b><span>Safety check</span></div>
+              <label>Minimum Real Balance
+                <input id="aiTradeMinBalance" type="number" min="0" value="0"/>
+                <small>Users below this balance will be skipped. Keep 0 for all valid users.</small>
+              </label>
+              <label>Trade Note
+                <input id="aiTradeNote" value="Expert AI auto trade executed" placeholder="Internal note"/>
+              </label>
+            </div>
+
+            <button class="save-profile-btn ai-execute-btn">Execute For All Valid AI Users</button>
+            <div class="profile-note">No user selection required. System checks Active status, AI ON, daily limit, real balance and each user's 25/50/75/100% AI allocation.</div>
           </form>
 
-          <section class="payment-form-card payment-settings-preview ai-control-preview">
-            <p>HOW IT WORKS</p>
-            <h2>Balance Logic</h2>
+          <section class="payment-form-card ai-control-preview ai-desk-summary">
+            <p>AUTO ELIGIBILITY</p>
+            <h2>Who will receive this trade?</h2>
             <div class="review-grid compact-review">
-              <article><span>AI OFF</span><b>No trade</b></article>
-              <article><span>AI ON</span><b>Eligible</b></article>
-              <article><span>User setting</span><b>25/50/75/100%</b></article>
-              <article><span>Daily free</span><b>${Number(settings.freeAiTradesPerDay || 5)}</b></article>
+              <article><span>Valid users</span><b>${eligibleNow}</b></article>
+              <article><span>Skipped users</span><b>${previewReport.skipped.length}</b></article>
+              <article><span>Market pairs</span><b>${allTradePairs().length}</b></article>
+              <article><span>History bucket</span><b>AI Auto</b></article>
             </div>
-            <div class="profile-note">Example: user balance ₹10,000 and AI control 50% = AI pool ₹5,000. If admin uses 100% pool and closes profit 2%, user gets +₹100. If loss 2%, user balance gets -₹100.</div>
+            <div class="ai-rule-list">
+              <div><b>✅ Trade applies</b><span>Active + AI ON + limit available + real balance available.</span></div>
+              <div><b>⏭️ Trade skips</b><span>AI OFF, suspended/blocked, daily limit completed, low balance or no AI pool.</span></div>
+              <div><b>💰 Amount logic</b><span>Every user uses their own AI allocation: 25%, 50%, 75% or 100% of real balance.</span></div>
+              <div><b>📚 History logic</b><span>Admin AI trades go only to AI Auto Trade history. Manual history stays untouched.</span></div>
+            </div>
             <div class="premium-bank-card">
-              <div class="copy-row"><b>AI ON Users</b><span>${aiOnCount}</span><button type="button">Live</button></div>
-              <div class="copy-row"><b>Eligible Now</b><span>${eligibleNow}</span><button type="button">Ready</button></div>
-              <div class="copy-row"><b>History Bucket</b><span>AI Auto Trade</span><button type="button">Fixed</button></div>
+              <div class="copy-row"><b>Current skip reasons</b><span>${esc(skipReasonLine(previewReport.reasons))}</span><button type="button">Auto</button></div>
+              ${lastBatch ? `<div class="copy-row"><b>Last execution</b><span>${lastBatch.appliedCount || 0} applied · ${lastBatch.skippedCount || 0} skipped</span><button type="button">Done</button></div>` : `<div class="copy-row"><b>Last execution</b><span>No AI trade executed yet</span><button type="button">Ready</button></div>`}
             </div>
           </section>
         </div>
       </section>
 
       <section class="panel-card">
-        <div class="section-head"><div><h3>Recent AI Trade Batches</h3><span>Admin executed AI trades</span></div></div>
+        <div class="section-head"><div><h3>AI Trade Execution Summary</h3><span>Every batch shows applied users, skipped users and wallet impact</span></div></div>
         <div class="admin-list">
           ${batches.length ? batches.slice(0, 8).map(batch => `
-            <article class="admin-user-card">
+            <article class="admin-user-card ai-batch-card">
               <div class="admin-user-main">
                 <div><b>${esc(batch.pair)} · ${esc(batch.side)}</b><span>${esc(batch.market)} · ${esc(batch.resultType)} ${Number(batch.resultPercent || 0)}% · ${esc(batch.createdAt)}</span></div>
                 <div class="admin-user-stats"><span>Applied</span><b>${batch.appliedCount || 0}</b></div>
                 <div class="admin-user-stats"><span>Skipped</span><b>${batch.skippedCount || 0}</b></div>
                 <div class="admin-user-stats"><span>Total P/L</span><b class="${Number(batch.totalPnl || 0) >= 0 ? "profit-text" : "loss-text"}">${App.money(batch.totalPnl || 0)}</b></div>
               </div>
+              <div class="ai-skip-line">${esc(skipReasonLine(batch.skipReasons || {}))}</div>
             </article>
           `).join("") : `<div class="empty-state">No AI trade batches executed yet.</div>`}
         </div>
@@ -893,7 +946,7 @@
               <article class="admin-user-card">
                 <div class="admin-user-main">
                   <div><b>${esc(t.pair)} · ${esc(t.side)}</b><span>${esc(displayNameFor(target || {}))} · ${esc(target?.email || "-")}</span></div>
-                  <div class="admin-user-stats"><span>Margin</span><b>${App.money(t.marginAmount || 0)}</b></div>
+                  <div class="admin-user-stats"><span>AI Amount</span><b>${App.money(t.marginAmount || 0)}</b></div>
                   <div class="admin-user-stats"><span>P/L</span><b class="${Number(t.pnl || 0) >= 0 ? "profit-text" : "loss-text"}">${App.money(t.pnl || 0)}</b></div>
                   <div class="admin-user-stats"><span>Status</span><b>${esc(t.status || "CLOSED")}</b></div>
                 </div>
@@ -1127,31 +1180,24 @@
       const selectedPairData = pairDataByPair(inputValue("aiTradePair") || "BTC/USDT");
       const market = selectedPairData.market || "CRYPTO";
       const pair = String(selectedPairData.pair || "BTC/USDT").toUpperCase();
-      const side = inputValue("aiTradeSide") || "BUY";
-      const leverage = Math.max(1, Number(inputValue("aiTradeLeverage") || 1));
-      const applyTo = inputValue("aiTradeApplyTo") || "ALL";
-      const poolUsage = Math.min(100, Math.max(1, Number(inputValue("aiTradePoolUsage") || 100)));
-      const resultType = inputValue("aiTradeResultType") || "PROFIT";
+      const side = document.querySelector('input[name="aiTradeSide"]:checked')?.value || "BUY";
+      const leverage = 1;
+      const resultType = document.querySelector('input[name="aiTradeResultType"]:checked')?.value || "PROFIT";
       const resultPercent = Math.max(0, Number(inputValue("aiTradeResultPercent") || 0));
       const minBalance = Math.max(0, Number(inputValue("aiTradeMinBalance") || 0));
-      const note = inputValue("aiTradeNote") || "Expert AI trade executed";
+      const note = inputValue("aiTradeNote") || "Expert AI auto trade executed";
 
       const batchId = App.uid("ai_batch");
-      const candidates = aiUserEligibility(applyTo);
+      const report = aiEligibilityReport(minBalance);
       let appliedCount = 0;
-      let skippedCount = 0;
       let totalPnl = 0;
 
-      candidates.forEach(target => {
+      report.eligible.forEach(target => {
         const balanceBefore = App.realBalance(target.id);
-        if (balanceBefore < minBalance) {
-          skippedCount += 1;
-          return;
-        }
-        const allowedPool = App.aiAllowedAmount(target);
-        const margin = Math.min(balanceBefore, allowedPool * poolUsage / 100);
+        const margin = Math.min(balanceBefore, App.aiAllowedAmount(target));
         if (!margin || margin <= 0) {
-          skippedCount += 1;
+          report.skipped.push({ userId: target.id, reason: "No AI trade pool available" });
+          report.reasons.noPool += 1;
           return;
         }
 
@@ -1171,17 +1217,16 @@
           side,
           leverage,
           marginAmount: Number(margin.toFixed(2)),
-          positionSize: Number((margin * leverage).toFixed(2)),
+          positionSize: Number(margin.toFixed(2)),
           resultType,
           resultPercent,
           pnl: Number(pnl.toFixed(2)),
           status: "CLOSED",
-          source: "ADMIN_AI_TRADE_CONTROL",
+          source: "ADMIN_AI_TRADING_DESK",
           note,
           balanceBefore: Number(balanceBefore.toFixed(2)),
           balanceAfter: Number((balanceBefore + pnl).toFixed(2)),
           aiPercent: Number(target.aiTradePercent || 25),
-          poolUsage,
           createdAt: new Date().toISOString(),
           createdDate: App.todayKey()
         };
@@ -1208,19 +1253,18 @@
         pair,
         side,
         leverage,
-        applyTo,
-        poolUsage,
         resultType,
         resultPercent,
         minBalance,
         note,
         appliedCount,
-        skippedCount,
+        skippedCount: report.skipped.length,
+        skipReasons: report.reasons,
         totalPnl: Number(totalPnl.toFixed(2)),
         createdAt: new Date().toISOString()
       });
       App.saveState();
-      App.toast(appliedCount ? `AI trade applied to ${appliedCount} user(s).` : "No eligible AI ON users found.");
+      App.toast(appliedCount ? `AI trade applied to ${appliedCount} valid user(s). ${report.skipped.length} skipped.` : "No valid AI users found. Trade was not applied.");
       render();
     },
     approveDeposit(userId, requestId, button) {

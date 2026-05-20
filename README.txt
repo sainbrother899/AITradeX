@@ -430,3 +430,22 @@ PHASE 4.5 - ADMIN AI TRADE FULL USER PAIR LIST
 - Market is automatically detected from the selected pair, preventing CRYPTO/FOREX mismatch.
 - User manual trade history and AI Auto Trade history remain separate.
 - No UI redesign, no patch layer, clean file replacement only.
+
+
+PHASE 4.6 - AI TRADING DESK AUTO ELIGIBILITY CLEAN
+- Base used: Phase 4.5 Admin AI Trade Full User Pairs Clean.
+- Admin AI Trade Control simplified into AI Trading Desk.
+- Removed confusing apply-to, leverage and AI pool usage controls from the admin flow.
+- Admin now only selects Pair, Buy/Sell, Profit/Loss, Profit/Loss %, optional minimum balance and note.
+- AI trade automatically applies to every valid user.
+- Invalid users are skipped automatically without stopping valid users from receiving the trade.
+- Eligibility checks: Active user status, AI Auto Trading ON, daily AI trade limit available, real balance available and AI allocation pool available.
+- Every user's own 25/50/75/100% AI allocation is used directly for trade amount calculation.
+- Admin now sees applied count, skipped count, total P/L impact and skip reason summary.
+- AI Auto Trade history remains separate from Manual Trade history.
+- No patch layer, no hidden blocked code; admin AI Trading Desk flow was cleanly simplified.
+
+Changed files in Phase 4.6:
+- admin-app.js
+- styles.css
+- README.txt
