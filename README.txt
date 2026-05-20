@@ -705,3 +705,13 @@ Phase 4.31 - Default AI On Upgrade Prompt Premium
 - Home plan and AI control cards now show an upgrade prompt when the daily AI trade limit is completed.
 - Upgrade prompt links directly to the Subscription page.
 - Admin Plans, wallet, deposits, withdrawals, manual trading, limit orders and history logic were not changed.
+
+Phase 4.32 - Auto Referral Bonus System Clean
+- Added working user Referral page with referral code, referral link, copy and WhatsApp share.
+- Referral bonuses are automatic; no separate admin approval is required.
+- First approved deposit by a referred user credits the referrer real wallet bonus automatically.
+- First paid subscription purchase by a referred user credits the referrer real wallet bonus automatically.
+- Admin now has a Referrals page with bonus percentage settings, enable/disable controls and referral tracking.
+- Added duplicate bonus protection so each referred user can credit deposit bonus once and subscription bonus once only.
+- Referral bonus ledger entries are credited to real wallet only.
+- No backup files or patch layers are included.

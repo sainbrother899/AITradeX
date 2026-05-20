@@ -363,6 +363,7 @@
             ${navButton("withdrawals", "⬆️", "Withdrawals")}
             ${navButton("trades", "🤖", "AI Trade Control")}
             ${navButton("plans", "⭐", "Plans")}
+            ${navButton("referrals", "🎁", "Referrals")}
             ${navButton("settings", "⚙️", "Payment Settings")}
           </nav>
           <button class="logout-btn" onclick="AITradeXAdmin.logout()">🚪 Logout</button>
@@ -394,6 +395,7 @@
       withdrawals: "Withdrawals",
       trades: "AI Trade Control",
       plans: "Subscription Plans",
+      referrals: "Referrals",
       settings: "Payment Settings"
     };
     return titles[page] || "Dashboard";
@@ -1177,6 +1179,71 @@
     `);
   }
 
+  function referralsPage() {
+    const settings = App.referralSettings ? App.referralSettings() : (App.state.settings || {});
+    const referrals = (App.state.referrals || []).slice().sort((a, b) => Date.parse(b.updatedAt || b.createdAt || 0) - Date.parse(a.updatedAt || a.createdAt || 0));
+    const users = allUsers();
+    const nameForId = id => {
+      const target = users.find(u => u.id === id) || {};
+      return `${displayNameFor(target)} · ${target.email || "-"}`;
+    };
+    const totalDepositBonus = referrals.reduce((sum, row) => sum + Number(row.bonuses?.deposit?.amount || 0), 0);
+    const totalSubscriptionBonus = referrals.reduce((sum, row) => sum + Number(row.bonuses?.subscription?.amount || 0), 0);
+    const creditedRows = referrals.filter(row => row.bonuses?.deposit?.credited || row.bonuses?.subscription?.credited).length;
+    const referralCard = row => {
+      const deposit = row.bonuses?.deposit;
+      const subscription = row.bonuses?.subscription;
+      const referred = users.find(u => u.id === row.referredUserId) || {};
+      return `<article class="admin-user-card referral-admin-card">
+        <div class="admin-user-main">
+          <div><b>${esc(displayNameFor(referred))}</b><span>Referred by ${esc(nameForId(row.referrerUserId))}</span><small>${esc(referred.email || "-")} · Joined ${row.createdAt ? new Date(row.createdAt).toLocaleString("en-IN") : "-"}</small></div>
+          <div class="admin-user-stats"><span>Deposit Bonus</span><b>${deposit?.credited ? App.money(deposit.amount) : "Pending"}</b><small>${deposit?.credited ? `${deposit.percent}% credited` : "First approved deposit"}</small></div>
+          <div class="admin-user-stats"><span>Subscription Bonus</span><b>${subscription?.credited ? App.money(subscription.amount) : "Pending"}</b><small>${subscription?.credited ? `${subscription.percent}% credited` : "First paid plan"}</small></div>
+          <div class="admin-user-stats"><span>Status</span><b>${esc(row.status || "REGISTERED")}</b><small>${row.updatedAt ? new Date(row.updatedAt).toLocaleString("en-IN") : "Auto tracking"}</small></div>
+        </div>
+      </article>`;
+    };
+
+    shell(`
+      <section class="metrics-grid">
+        ${metric("🎁", "Referrals", referrals.length)}
+        ${metric("✅", "Rewarded", creditedRows)}
+        ${metric("⬇️", "Deposit Bonus", App.money(totalDepositBonus))}
+        ${metric("⭐", "Plan Bonus", App.money(totalSubscriptionBonus))}
+      </section>
+
+      <section class="panel-card referral-settings-panel">
+        <div class="section-head"><div><h3>Referral Bonus Settings</h3><span>Bonus is credited automatically to real wallet. No manual approval is required.</span></div><span class="admin-count-pill">Auto Credit</span></div>
+        <form class="admin-settings-grid" onsubmit="AITradeXAdmin.saveReferralSettings(event)">
+          <label>Deposit Bonus %
+            <input id="referralDepositPercent" type="number" min="0" step="0.01" value="${Number(settings.referralDepositPercent ?? settings.referralFirstDepositPercent ?? 10)}" required/>
+          </label>
+          <label>Subscription Bonus %
+            <input id="referralSubscriptionPercent" type="number" min="0" step="0.01" value="${Number(settings.referralSubscriptionPercent ?? 10)}" required/>
+          </label>
+          <label>Deposit Bonus
+            <select id="referralDepositEnabled">
+              <option value="true" ${settings.referralDepositEnabled !== false ? "selected" : ""}>Enabled</option>
+              <option value="false" ${settings.referralDepositEnabled === false ? "selected" : ""}>Disabled</option>
+            </select>
+          </label>
+          <label>Subscription Bonus
+            <select id="referralSubscriptionEnabled">
+              <option value="true" ${settings.referralSubscriptionEnabled !== false ? "selected" : ""}>Enabled</option>
+              <option value="false" ${settings.referralSubscriptionEnabled === false ? "selected" : ""}>Disabled</option>
+            </select>
+          </label>
+          <button class="save-profile-btn">Save Referral Settings</button>
+        </form>
+      </section>
+
+      <section class="panel-card">
+        <div class="section-head"><div><h3>Referral Tracking</h3><span>Registered referrals, automatic deposit bonuses and subscription bonuses.</span></div><span class="admin-count-pill">${referrals.length} rows</span></div>
+        <div class="admin-list">${referrals.length ? referrals.map(referralCard).join("") : `<div class="empty-state">No referral signups yet.</div>`}</div>
+      </section>
+    `);
+  }
+
   function settingsPage() {
     const settings = platformSettings();
     shell(`
@@ -1271,6 +1338,7 @@
     if (page === "withdrawals") return financeRequestPage("WITHDRAWAL");
     if (page === "trades") return tradesPage();
     if (page === "plans") return plansPage();
+    if (page === "referrals") return referralsPage();
     if (page === "settings") return settingsPage();
     return dashboardPage();
   }
@@ -1409,6 +1477,20 @@
       }
       App.saveState();
       App.toast(`${next.name} plan saved.`);
+      render();
+    },
+    saveReferralSettings(event) {
+      event.preventDefault();
+      App.state.settings = {
+        ...(App.state.settings || {}),
+        referralDepositPercent: Math.max(0, Number(document.getElementById("referralDepositPercent")?.value || 0)),
+        referralFirstDepositPercent: Math.max(0, Number(document.getElementById("referralDepositPercent")?.value || 0)),
+        referralSubscriptionPercent: Math.max(0, Number(document.getElementById("referralSubscriptionPercent")?.value || 0)),
+        referralDepositEnabled: document.getElementById("referralDepositEnabled")?.value !== "false",
+        referralSubscriptionEnabled: document.getElementById("referralSubscriptionEnabled")?.value !== "false"
+      };
+      App.saveState();
+      App.toast("Referral settings saved.");
       render();
     },
     savePaymentSettings(event) {
@@ -1628,6 +1710,7 @@
         request.rejectReason = "";
         request.balanceApplied = true;
         saveDepositRequests(target, requests);
+        App.creditReferralBonus?.({ referredUserId: target.id, eventType: "DEPOSIT", amount: Number(request.amount || 0), referenceId: request.id, sourceLabel: `Deposit UTR ${request.utr || "-"}` });
         App.toast("Deposit approved and balance updated.");
       } catch (err) {
         App.toast(err.message || "Unable to approve deposit.");

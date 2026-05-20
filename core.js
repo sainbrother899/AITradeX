@@ -6,7 +6,7 @@ const now=()=>new Date().toLocaleString("en-IN");
 const uid=(p="id")=>`${p}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 const money=n=>"₹"+Number(n||0).toLocaleString("en-IN");
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
-function initial(){return{users:[{id:"control_root",name:"AITradeX Control",email:"control@aitradex.com",password:"admin123",role:"admin",status:"ACTIVE",createdAt:now()}],profiles:[],kycRequests:[],paymentMethods:[],depositRequests:[],withdrawalRequests:[],walletLedger:[],demoLedger:[],trades:[],aiTradeBatches:[],plans:[{id:"free",name:"Free Trial",price:0,signals:5,aiAccess:"Trial AI",durationDays:7,status:"ACTIVE",benefits:["5 AI auto trades per day for 7 days","1 AI auto trade per day after trial","Manual trading access","Live price cards"]},{id:"starter",name:"Starter",price:999,signals:25,aiAccess:"Starter AI",durationDays:30,status:"ACTIVE",benefits:["25 AI auto trades per day","Higher AI trading access","Priority dashboard visibility"]},{id:"pro",name:"Pro",price:2999,signals:100,aiAccess:"Pro AI",durationDays:30,status:"ACTIVE",benefits:["100 AI auto trades per day","Pro AI access","Faster plan priority"]},{id:"premium",name:"Premium",price:9999,signals:500,aiAccess:"Premium AI",durationDays:30,status:"ACTIVE",benefits:["500 AI auto trades per day","Premium AI priority","Highest daily AI trades"]}],subscriptions:[],referrals:[],settings:{minDeposit:Number(C.MIN_DEPOSIT||500),minWithdrawal:Number(C.MIN_WITHDRAWAL||1000),referralFirstDepositPercent:Number(C.REFERRAL_FIRST_DEPOSIT_PERCENT||10),demoBalance:Number(C.DEMO_BALANCE||100000),platformName:"AITradeX",depositUpiId:"aitradex@upi",depositQrImage:"",depositBankName:"AITradeX Bank",depositAccountName:"AITradeX Private Wallet",depositAccountNumber:"123456789012",depositIfsc:"AITX0001234",freeAiTradesPerDay:5,postTrialFreeAiTradesPerDay:1,freeTrialDays:7}}}
+function initial(){return{users:[{id:"control_root",name:"AITradeX Control",email:"control@aitradex.com",password:"admin123",role:"admin",status:"ACTIVE",createdAt:now()}],profiles:[],kycRequests:[],paymentMethods:[],depositRequests:[],withdrawalRequests:[],walletLedger:[],demoLedger:[],trades:[],aiTradeBatches:[],plans:[{id:"free",name:"Free Trial",price:0,signals:5,aiAccess:"Trial AI",durationDays:7,status:"ACTIVE",benefits:["5 AI auto trades per day for 7 days","1 AI auto trade per day after trial","Manual trading access","Live price cards"]},{id:"starter",name:"Starter",price:999,signals:25,aiAccess:"Starter AI",durationDays:30,status:"ACTIVE",benefits:["25 AI auto trades per day","Higher AI trading access","Priority dashboard visibility"]},{id:"pro",name:"Pro",price:2999,signals:100,aiAccess:"Pro AI",durationDays:30,status:"ACTIVE",benefits:["100 AI auto trades per day","Pro AI access","Faster plan priority"]},{id:"premium",name:"Premium",price:9999,signals:500,aiAccess:"Premium AI",durationDays:30,status:"ACTIVE",benefits:["500 AI auto trades per day","Premium AI priority","Highest daily AI trades"]}],subscriptions:[],referrals:[],settings:{minDeposit:Number(C.MIN_DEPOSIT||500),minWithdrawal:Number(C.MIN_WITHDRAWAL||1000),referralFirstDepositPercent:Number(C.REFERRAL_FIRST_DEPOSIT_PERCENT||10),referralDepositPercent:Number(C.REFERRAL_DEPOSIT_PERCENT||10),referralSubscriptionPercent:Number(C.REFERRAL_SUBSCRIPTION_PERCENT||10),referralDepositEnabled:true,referralSubscriptionEnabled:true,demoBalance:Number(C.DEMO_BALANCE||100000),platformName:"AITradeX",depositUpiId:"aitradex@upi",depositQrImage:"",depositBankName:"AITradeX Bank",depositAccountName:"AITradeX Private Wallet",depositAccountNumber:"123456789012",depositIfsc:"AITX0001234",freeAiTradesPerDay:5,postTrialFreeAiTradesPerDay:1,freeTrialDays:7}}}
 const load=()=>{try{return JSON.parse(localStorage.getItem(SK)||"null")||initial()}catch{return initial()}};
 const loadSession=()=>{try{return JSON.parse(localStorage.getItem(SS)||"null")}catch{return null}};
 
@@ -278,6 +278,54 @@ App.aiDailyLimit=userId=>{const sub=App.activeSubscription(userId);if(sub){const
 App.aiSettings=user=>({enabled:!!user?.aiTradeOn,percent:Number(user?.aiTradePercent||25)});
 App.aiAllowedAmount=user=>{const settings=App.aiSettings(user);if(!settings.enabled)return 0;return Math.max(0,App.realBalance(user.id))*settings.percent/100};
 App.addLedger=({userId,accountType="REAL",type,amount,referenceId,note=""})=>{const list=accountType==="DEMO"?App.state.demoLedger:App.state.walletLedger;if(list.some(x=>x.type===type&&x.referenceId===referenceId))return false;const before=accountType==="DEMO"?App.demoBalance(userId):App.realBalance(userId),after=before+Number(amount||0);if(after<0)throw new Error("Insufficient balance");list.push({id:uid("ledger"),userId,accountType,type,amount:Number(amount||0),referenceId,note,balanceAfter:after,createdAt:now()});App.saveState();return true};
+
+App.referralSettings=()=>{
+  App.state.settings=App.state.settings||{};
+  if(App.state.settings.referralDepositPercent===undefined)App.state.settings.referralDepositPercent=Number(App.state.settings.referralFirstDepositPercent||10);
+  if(App.state.settings.referralSubscriptionPercent===undefined)App.state.settings.referralSubscriptionPercent=10;
+  if(App.state.settings.referralDepositEnabled===undefined)App.state.settings.referralDepositEnabled=true;
+  if(App.state.settings.referralSubscriptionEnabled===undefined)App.state.settings.referralSubscriptionEnabled=true;
+  return App.state.settings;
+};
+App.referralRowsForUser=userId=>{
+  App.state.referrals=App.state.referrals||[];
+  return App.state.referrals.filter(r=>r.referrerUserId===userId||r.referredUserId===userId);
+};
+App.referralByReferredUser=userId=>{
+  App.state.referrals=App.state.referrals||[];
+  return App.state.referrals.find(r=>r.referredUserId===userId)||null;
+};
+App.referralBonusAlreadyCredited=(referral,type)=>!!(referral&&referral.bonuses&&referral.bonuses[type]&&referral.bonuses[type].credited);
+App.creditReferralBonus=({referredUserId,eventType,amount,referenceId,sourceLabel})=>{
+  const settings=App.referralSettings();
+  const referral=App.referralByReferredUser(referredUserId);
+  const baseAmount=Number(amount||0);
+  if(!referral||!baseAmount||baseAmount<=0)return {credited:false,reason:"No eligible referral"};
+  if(referral.referrerUserId===referral.referredUserId)return {credited:false,reason:"Self referral blocked"};
+  const key=eventType==="SUBSCRIPTION"?"subscription":"deposit";
+  if(key==="deposit"&&!settings.referralDepositEnabled)return {credited:false,reason:"Deposit referral disabled"};
+  if(key==="subscription"&&!settings.referralSubscriptionEnabled)return {credited:false,reason:"Subscription referral disabled"};
+  if(App.referralBonusAlreadyCredited(referral,key))return {credited:false,reason:"Bonus already credited"};
+  const percent=key==="subscription"?Number(settings.referralSubscriptionPercent||0):Number(settings.referralDepositPercent||settings.referralFirstDepositPercent||0);
+  const bonus=Number((baseAmount*percent/100).toFixed(2));
+  if(!bonus||bonus<=0)return {credited:false,reason:"Bonus percent is zero"};
+  const ledgerRef=`ref_${key}_${referral.id}_${referenceId||Date.now()}`;
+  try{
+    const added=App.addLedger({userId:referral.referrerUserId,accountType:"REAL",type:key==="subscription"?"REFERRAL_SUBSCRIPTION_BONUS":"REFERRAL_DEPOSIT_BONUS",amount:bonus,referenceId:ledgerRef,note:`Referral ${key} bonus · ${percent}% of ${money(baseAmount)}${sourceLabel?` · ${sourceLabel}`:""}`});
+    if(!referral.bonuses)referral.bonuses={};
+    referral.bonuses[key]={credited:true,amount:bonus,percent,baseAmount,referenceId,ledgerReferenceId:ledgerRef,creditedAt:new Date().toISOString(),eventType:key.toUpperCase()};
+    referral.status=referral.bonuses.deposit?.credited&&referral.bonuses.subscription?.credited?"BONUSES_CREDITED":key==="deposit"?"DEPOSIT_BONUS_CREDITED":"SUBSCRIPTION_BONUS_CREDITED";
+    referral.updatedAt=new Date().toISOString();
+    App.saveState();
+    return {credited:!!added,amount:bonus,percent,referral};
+  }catch(err){return {credited:false,reason:err.message||"Unable to credit referral bonus"};}
+};
+App.referralStats=userId=>{
+  const rows=(App.state.referrals||[]).filter(r=>r.referrerUserId===userId);
+  const depositBonus=rows.reduce((s,r)=>s+Number(r.bonuses?.deposit?.amount||0),0);
+  const subscriptionBonus=rows.reduce((s,r)=>s+Number(r.bonuses?.subscription?.amount||0),0);
+  return {totalInvited:rows.length,depositBonus,subscriptionBonus,totalBonus:depositBonus+subscriptionBonus,credited:rows.filter(r=>r.bonuses?.deposit?.credited||r.bonuses?.subscription?.credited).length};
+};
 App.toast=m=>{let e=document.querySelector(".toast");if(e)e.remove();e=document.createElement("div");e.className="toast";e.textContent=m;document.body.appendChild(e);setTimeout(()=>e.classList.add("show"),10);setTimeout(()=>{e.classList.remove("show");setTimeout(()=>e.remove(),250)},2600)};
 App.saveState();window.AITradeX=App;
 })();

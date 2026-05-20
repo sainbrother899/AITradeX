@@ -5,6 +5,7 @@
 
   let page = localStorage.getItem("AITradeX_ACTIVE_PAGE") || "home";
   let authMode = "login";
+  const referralParam = new URLSearchParams(window.location.search).get("ref") || "";
   let accountMode = localStorage.getItem("AITradeX_ACCOUNT_MODE") || "REAL";
   let drawerOpen = false;
   let autoPercent = Number(localStorage.getItem("AITradeX_AUTO_PERCENT") || 75);
@@ -1142,7 +1143,7 @@
   }
 
   function registerForm() {
-    return `<form onsubmit="AITradeXUser.register(event)" class="form-grid"><label>Full Name<input id="regName" required placeholder="Your name"/></label><label>Email<input id="regEmail" type="email" required placeholder="you@example.com"/></label><label>Mobile<input id="regMobile" required placeholder="10 digit mobile"/></label><label>Password<input id="regPassword" type="password" required placeholder="Create password"/></label><label>Referral Code <small>Optional</small><input id="regReferral" placeholder="Referral code"/></label><button class="btn">Create Account</button></form>`;
+    return `<form onsubmit="AITradeXUser.register(event)" class="form-grid"><label>Full Name<input id="regName" required placeholder="Your name"/></label><label>Email<input id="regEmail" type="email" required placeholder="you@example.com"/></label><label>Mobile<input id="regMobile" required placeholder="10 digit mobile"/></label><label>Password<input id="regPassword" type="password" required placeholder="Create password"/></label><label>Referral Code <small>Optional</small><input id="regReferral" value="${App.escapeHtml(referralParam)}" placeholder="Referral code"/></label><button class="btn">Create Account</button></form>`;
   }
 
   function homePage() {
@@ -2084,7 +2085,69 @@
 
   function referralPage() {
     const u = user();
-    shell(`<section class="premium-card"><p>REFERRAL</p><h2>Invite & Earn</h2><div class="ref-code">${u.referralCode || "-"}</div><div class="empty-state">10% commission only on first approved deposit.</div></section>`);
+    const settings = App.referralSettings ? App.referralSettings() : (App.state.settings || {});
+    const stats = App.referralStats ? App.referralStats(u.id) : { totalInvited: 0, depositBonus: 0, subscriptionBonus: 0, totalBonus: 0, credited: 0 };
+    const referrals = (App.state.referrals || []).filter(row => row.referrerUserId === u.id).slice().sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0));
+    const link = `${window.location.origin}${window.location.pathname}?ref=${encodeURIComponent(u.referralCode || "")}`;
+    const shareText = encodeURIComponent(`Join AITradeX with my referral code ${u.referralCode || ""}: ${link}`);
+    const referredCard = row => {
+      const target = (App.state.users || []).find(user => user.id === row.referredUserId) || {};
+      const depositBonus = row.bonuses?.deposit;
+      const subscriptionBonus = row.bonuses?.subscription;
+      return `<article class="referral-user-card">
+        <div>
+          <b>${App.escapeHtml(target.name || "Referred User")}</b>
+          <span>${App.escapeHtml(target.email || "-")}</span>
+          <small>Joined ${row.createdAt ? new Date(row.createdAt).toLocaleString("en-IN") : "-"}</small>
+        </div>
+        <div class="referral-bonus-stack">
+          <span class="${depositBonus?.credited ? "profit-text" : "muted-text"}">Deposit: ${depositBonus?.credited ? App.money(depositBonus.amount) : "Pending"}</span>
+          <span class="${subscriptionBonus?.credited ? "profit-text" : "muted-text"}">Subscription: ${subscriptionBonus?.credited ? App.money(subscriptionBonus.amount) : "Pending"}</span>
+        </div>
+      </article>`;
+    };
+
+    shell(`
+      <section class="referral-hero-card">
+        <div>
+          <p>REFERRAL REWARDS</p>
+          <h1>Invite & Earn Automatically</h1>
+          <span>Earn when your referred user completes a first approved deposit or buys a paid subscription.</span>
+        </div>
+        <button onclick="AITradeXUser.copyText(${jsArg(link)})">Copy Link</button>
+      </section>
+
+      <section class="premium-card referral-link-card">
+        <div class="card-row"><div><p>YOUR REFERRAL LINK</p><h2>${App.escapeHtml(u.referralCode || "-")}</h2></div><span class="history-mode">Auto Bonus</span></div>
+        <div class="referral-link-box"><span>${App.escapeHtml(link)}</span><button onclick="AITradeXUser.copyText(${jsArg(link)})">Copy</button></div>
+        <div class="referral-actions">
+          <a class="btn" href="https://wa.me/?text=${shareText}" target="_blank" rel="noopener">Share on WhatsApp</a>
+          <button class="btn ghost" onclick="AITradeXUser.copyText(${jsArg(u.referralCode || "")})">Copy Code</button>
+        </div>
+      </section>
+
+      <section class="compact-grid referral-summary-grid">
+        <article><span>Total Invited</span><b>${stats.totalInvited}</b><small>Registered users</small></article>
+        <article><span>Deposit Bonus</span><b>${App.money(stats.depositBonus)}</b><small>${settings.referralDepositPercent || 0}% auto credit</small></article>
+        <article><span>Subscription Bonus</span><b>${App.money(stats.subscriptionBonus)}</b><small>${settings.referralSubscriptionPercent || 0}% auto credit</small></article>
+        <article><span>Total Earned</span><b>${App.money(stats.totalBonus)}</b><small>Real wallet credited</small></article>
+      </section>
+
+      <section class="premium-card">
+        <div class="card-row"><div><p>REFERRAL RULES</p><h2>How rewards work</h2></div></div>
+        <div class="profile-info-grid">
+          <article><span>First Deposit Bonus</span><b>${settings.referralDepositEnabled === false ? "Disabled" : `${Number(settings.referralDepositPercent || 0)}%`}</b></article>
+          <article><span>Subscription Bonus</span><b>${settings.referralSubscriptionEnabled === false ? "Disabled" : `${Number(settings.referralSubscriptionPercent || 0)}%`}</b></article>
+          <article><span>Credit Type</span><b>Automatic</b></article>
+          <article><span>Wallet</span><b>Real Balance</b></article>
+        </div>
+      </section>
+
+      <section class="premium-card">
+        <div class="card-row"><div><p>REFERRED USERS</p><h2>Your Referral List</h2></div><span class="history-mode">${referrals.length}</span></div>
+        <div class="referral-user-list">${referrals.length ? referrals.map(referredCard).join("") : `<div class="empty-state">No referred users yet. Share your link to start earning.</div>`}</div>
+      </section>
+    `);
   }
 
   function profilePage() {
@@ -2827,6 +2890,7 @@
           ledgerReferenceId: subId
         });
         App.saveState();
+        App.creditReferralBonus?.({ referredUserId: u.id, eventType: "SUBSCRIPTION", amount: price, referenceId: subId, sourceLabel: plan.name });
         App.toast(`${plan.name} activated successfully.`);
         render();
       } catch (error) {
