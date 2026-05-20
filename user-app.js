@@ -13,6 +13,8 @@
   let selectedPair = localStorage.getItem("AITradeX_SELECTED_PAIR") || "BTC/USDT";
   let tradeAmountPreview = Number(localStorage.getItem("AITradeX_TRADE_AMOUNT_PREVIEW") || 1000);
   let tradeLeveragePreview = Number(localStorage.getItem("AITradeX_TRADE_LEVERAGE_PREVIEW") || 10);
+  let tradeOrderType = localStorage.getItem("AITradeX_TRADE_ORDER_TYPE") || "MARKET";
+  let tradeLimitPrice = localStorage.getItem("AITradeX_TRADE_LIMIT_PRICE") || "";
   let selectorSheet = null;
   let chartInterval = localStorage.getItem("AITradeX_CHART_INTERVAL") || "15";
   let chartStyle = localStorage.getItem("AITradeX_CHART_STYLE") || "1";
@@ -183,6 +185,15 @@
     return Math.max(0, currentBalance());
   }
 
+  function formatPairPrice(pair, value) {
+    const n = Number(value || 0);
+    if (!Number.isFinite(n) || n <= 0) return "--";
+    const item = [...marketPairs.CRYPTO, ...marketPairs.FOREX].find(p => p.pair === pair);
+    const prefix = item?.prefix || (String(pair || "").includes("INR") ? "₹" : "$");
+    const decimals = String(pair || "").includes("JPY") || String(pair || "").includes("INR") ? 3 : 2;
+    return `${prefix}${n.toLocaleString(undefined, { maximumFractionDigits: decimals })}`;
+  }
+
   function totalManualLivePnl() {
     return manualOpenPositions().reduce((sum, position) => sum + manualPositionPnl(position), 0);
   }
@@ -252,6 +263,44 @@
     return closed;
   }
 
+  function openPositionFromPendingOrder(order, currentPrice, currentDisplay) {
+    if (!order || !["PENDING", "LIMIT_PENDING"].includes(String(order.status || "").toUpperCase())) return false;
+    const price = Number(currentPrice || 0);
+    if (!Number.isFinite(price) || price <= 0) return false;
+    order.status = "OPEN";
+    order.entryPrice = price;
+    order.entryPriceDisplay = currentDisplay || formatPairPrice(order.pair, price);
+    order.priceSource = (App.getCachedPairPrice && App.getCachedPairPrice(order.pair)?.source) || order.priceSource || "Live price cache";
+    order.priceSourceType = (App.getCachedPairPrice && App.getCachedPairPrice(order.pair)?.sourceType) || order.priceSourceType || "LIVE_PRICE";
+    order.priceLockedAt = new Date().toISOString();
+    order.triggeredAt = new Date().toISOString();
+    order.orderTriggered = true;
+    order.pnl = 0;
+    return true;
+  }
+
+  function checkPendingLimitOrders() {
+    const pending = pendingManualOrders();
+    if (!pending.length) return 0;
+    let triggered = 0;
+    pending.forEach(order => {
+      const current = positionCurrentPrice({ pair: order.pair, entryPrice: order.limitPrice });
+      const limit = Number(order.limitPrice || 0);
+      if (!current || !limit) return;
+      const side = String(order.side || "BUY").toUpperCase() === "SELL" ? "SELL" : "BUY";
+      const shouldTrigger = side === "BUY" ? current <= limit : current >= limit;
+      if (!shouldTrigger) return;
+      const display = positionCurrentDisplay({ pair: order.pair, entryPrice: current });
+      if (openPositionFromPendingOrder(order, current, display)) triggered += 1;
+    });
+    if (triggered) {
+      App.saveState();
+      App.toast(`${triggered} limit ${triggered === 1 ? "order" : "orders"} triggered.`);
+      setTimeout(() => render(), 0);
+    }
+    return triggered;
+  }
+
   function manualLiveBarHtml() {
     const positions = manualOpenPositions();
     if (!positions.length) return "";
@@ -298,6 +347,7 @@
   }
 
   function updateManualLiveViews() {
+    if (checkPendingLimitOrders()) return;
     if (autoCloseRiskPositions()) return;
     const positions = manualOpenPositions();
     const pnl = positions.reduce((sum, position) => sum + manualPositionPnl(position), 0);
@@ -435,7 +485,8 @@
   function refreshVisiblePrices(items) {
     const baseList = (items || []).map(p => typeof p === "string" ? p : p.pair).filter(Boolean);
     const openList = manualOpenPositions().map(position => position.pair).filter(Boolean);
-    const list = [...new Set([...baseList, ...openList])];
+    const pendingList = pendingManualOrders().map(order => order.pair).filter(Boolean);
+    const list = [...new Set([...baseList, ...openList, ...pendingList])];
     if (!list.length) return;
 
     if (App.refreshLivePrices) App.refreshLivePrices(list, applyLivePriceRow);
@@ -1143,7 +1194,12 @@
         </div>
 
         <div class="form-row">
-          <label>Order Type<select><option>Market</option><option>Limit</option></select></label>
+          <label>Order Type
+            <select onchange="AITradeXUser.setTradeOrderType(this.value)">
+              <option value="MARKET" ${tradeOrderType === "MARKET" ? "selected" : ""}>Market</option>
+              <option value="LIMIT" ${tradeOrderType === "LIMIT" ? "selected" : ""}>Limit</option>
+            </select>
+          </label>
           <div class="app-field">
             <span>Leverage</span>
             <button class="app-select-btn full" onclick="AITradeXUser.openSheet('leverage')">
@@ -1152,6 +1208,15 @@
             </button>
           </div>
         </div>
+
+        ${tradeOrderType === "LIMIT" ? `
+          <label>Limit Price
+            <input type="number" value="${App.escapeHtml(tradeLimitPrice)}" min="0" step="any" oninput="AITradeXUser.setTradeLimitPrice(this.value)" placeholder="Enter trigger price"/>
+          </label>
+          <div class="limit-order-note">
+            <b>Limit order:</b> BUY triggers when live price reaches your price or below. SELL triggers when live price reaches your price or above.
+          </div>
+        ` : ""}
 
         <label>Margin Amount
           <input type="number" value="${tradeAmountPreview}" min="1" oninput="AITradeXUser.setTradeAmount(this.value)" placeholder="Enter INR amount"/>
@@ -1176,7 +1241,7 @@
 
         <div class="confirm-summary">
           <b>Order Summary</b>
-          <span data-trade-preview-summary>${selectedMarket} · ${selectedPair} · ${accountMode} · Margin ${App.money(tradeAmountPreview)} · Position ${App.money(positionSize)}</span>
+          <span data-trade-preview-summary>${tradeOrderType === "LIMIT" ? "Limit" : "Market"} · ${selectedMarket} · ${selectedPair} · ${accountMode} · Margin ${App.money(tradeAmountPreview)} · Position ${App.money(positionSize)}</span>
         </div>
       </section>
 
@@ -1485,12 +1550,14 @@
   }
 
   function pendingOrderCard(order) {
+    const side = String(order.side || "BUY").toUpperCase() === "SELL" ? "SELL" : "BUY";
+    const rule = side === "BUY" ? "Triggers at or below" : "Triggers at or above";
     return `
       <article class="orders-position-card pending">
         <div>
-          <b>${App.escapeHtml(order.pair || "-")} <span>${App.escapeHtml(order.side || "-")}</span></b>
-          <small>${App.escapeHtml(order.orderType || "Limit")} · Limit ${App.escapeHtml(order.limitPriceDisplay || order.limitPrice || "-")} · ${Number(order.leverage || 1)}x</small>
-          <small>Margin ${App.money(order.marginAmount || 0)} · ${formatHistoryDate(order.createdAt)}</small>
+          <b>${App.escapeHtml(order.pair || "-")} <span>${App.escapeHtml(side)}</span></b>
+          <small>Limit · ${rule} ${App.escapeHtml(order.limitPriceDisplay || order.limitPrice || "-")} · ${Number(order.leverage || 1)}x</small>
+          <small>Live <em data-live-pair="${App.escapeHtml(order.pair || "")}" data-live-type="price">${App.escapeHtml(positionCurrentDisplay({ pair: order.pair, entryPrice: order.limitPrice }))}</em> · Margin ${App.money(order.marginAmount || 0)}</small>
         </div>
         <strong>Pending</strong>
         <button onclick="AITradeXUser.cancelPendingOrder('${order.id}')">Cancel</button>
@@ -1523,9 +1590,10 @@
           <div><p>ORDERS</p><h2>Open Orders</h2></div>
           <span class="history-mode">Limit</span>
         </div>
-        ${pending.length ? `<div class="orders-position-list">${pending.map(pendingOrderCard).join("")}</div>` : `<div class="empty-state">No pending limit orders yet. Market and limit order logic will use this section for order management.</div>`}
+        ${pending.length ? `<div class="orders-position-list">${pending.map(pendingOrderCard).join("")}</div>` : `<div class="empty-state">No pending limit orders yet. Limit orders placed from Trade page will appear here.</div>`}
       </section>
     `);
+    refreshVisiblePrices([...positions.map(position => position.pair), ...pending.map(order => order.pair)]);
   }
 
   function formatHistoryDate(value) {
@@ -2338,6 +2406,15 @@
       selectorSheet = null;
       render();
     },
+    setTradeOrderType(value) {
+      tradeOrderType = String(value || "MARKET").toUpperCase() === "LIMIT" ? "LIMIT" : "MARKET";
+      localStorage.setItem("AITradeX_TRADE_ORDER_TYPE", tradeOrderType);
+      render();
+    },
+    setTradeLimitPrice(value) {
+      tradeLimitPrice = String(value || "").replace(/[^0-9.]/g, "");
+      localStorage.setItem("AITradeX_TRADE_LIMIT_PRICE", tradeLimitPrice);
+    },
     setTradeAmount(value) {
       tradeAmountPreview = Math.max(0, Number(value || 0));
       localStorage.setItem("AITradeX_TRADE_AMOUNT_PREVIEW", String(tradeAmountPreview));
@@ -2373,6 +2450,9 @@
       if (!u) return;
       const margin = Number(tradeAmountPreview || 0);
       const leverage = Math.max(1, Number(tradeLeveragePreview || 1));
+      const normalizedSide = String(side || "BUY").toUpperCase() === "SELL" ? "SELL" : "BUY";
+      const orderType = tradeOrderType === "LIMIT" ? "LIMIT" : "MARKET";
+
       if (!margin || margin <= 0) {
         App.toast("Enter valid margin amount.");
         return;
@@ -2382,6 +2462,61 @@
         App.toast(`Available manual margin is ${App.money(availableMargin)}. Close a position or reduce amount.`);
         return;
       }
+
+      const tradeId = App.uid(orderType === "LIMIT" ? "lmt" : "trd");
+      const pair = selectedPairData();
+      const marketNow = App.getCachedPairPrice ? App.getCachedPairPrice(selectedPair) : null;
+
+      if (orderType === "LIMIT") {
+        const limitPrice = Number(tradeLimitPrice || 0);
+        if (!Number.isFinite(limitPrice) || limitPrice <= 0) {
+          App.toast("Enter valid limit price.");
+          return;
+        }
+        try {
+          App.addLedger({
+            userId: u.id,
+            accountType: accountMode,
+            type: "MANUAL_LIMIT_MARGIN_LOCK",
+            amount: -margin,
+            referenceId: tradeId,
+            note: `${selectedPair} manual ${normalizedSide} limit margin locked`
+          });
+        } catch (error) {
+          App.toast(error.message || "Insufficient balance for this order.");
+          return;
+        }
+        const order = {
+          id: tradeId,
+          userId: u.id,
+          tradeType: "MANUAL",
+          accountType: accountMode,
+          orderType: "LIMIT",
+          market: selectedMarket,
+          pair: selectedPair,
+          side: normalizedSide,
+          limitPrice,
+          limitPriceDisplay: formatPairPrice(selectedPair, limitPrice),
+          currentPriceAtOrder: Number(marketNow?.price || pair.rawPrice || 0),
+          currentPriceAtOrderDisplay: marketNow?.display || pair.price || "--",
+          priceSource: marketNow?.source || pair.priceSource || "Live price cache",
+          leverage,
+          marginAmount: margin,
+          marginLocked: true,
+          positionSize: margin * leverage,
+          pnl: 0,
+          status: "LIMIT_PENDING",
+          source: "USER_MANUAL_LIMIT",
+          createdAt: new Date().toISOString(),
+          createdDate: App.todayKey()
+        };
+        App.state.trades.unshift(order);
+        App.saveState();
+        App.toast(`${normalizedSide} limit order placed at ${order.limitPriceDisplay}.`);
+        render();
+        return;
+      }
+
       App.toast("Locking live entry price...");
       let lockedPrice = null;
       try {
@@ -2389,13 +2524,11 @@
       } catch (error) {
         lockedPrice = App.getCachedPairPrice ? App.getCachedPairPrice(selectedPair) : null;
       }
-      const pair = selectedPairData();
       const entryPrice = Number(lockedPrice?.price || pair.rawPrice || 0);
       if (!Number.isFinite(entryPrice) || entryPrice <= 0) {
         App.toast("Live entry price unavailable. Please try again.");
         return;
       }
-      const tradeId = App.uid("trd");
       try {
         App.addLedger({
           userId: u.id,
@@ -2403,7 +2536,7 @@
           type: "MANUAL_TRADE_MARGIN_LOCK",
           amount: -margin,
           referenceId: tradeId,
-          note: `${selectedPair} manual ${String(side || "BUY").toUpperCase() === "SELL" ? "SELL" : "BUY"} margin locked`
+          note: `${selectedPair} manual ${normalizedSide} margin locked`
         });
       } catch (error) {
         App.toast(error.message || "Insufficient balance for this trade.");
@@ -2414,9 +2547,10 @@
         userId: u.id,
         tradeType: "MANUAL",
         accountType: accountMode,
+        orderType: "MARKET",
         market: selectedMarket,
         pair: selectedPair,
-        side: String(side || "BUY").toUpperCase() === "SELL" ? "SELL" : "BUY",
+        side: normalizedSide,
         entryPrice,
         entryPriceDisplay: lockedPrice?.display || pair.price || String(entryPrice),
         priceSource: lockedPrice?.source || pair.priceSource || "Live price cache",
@@ -2484,10 +2618,22 @@
         render();
         return;
       }
+      const margin = Math.max(0, Number(target.marginAmount || 0));
+      if (target.marginLocked && margin > 0) {
+        App.addLedger({
+          userId: user().id,
+          accountType: target.accountType || accountMode,
+          type: "MANUAL_LIMIT_MARGIN_RELEASE",
+          amount: margin,
+          referenceId: target.id,
+          note: `${target.pair} manual ${target.side} limit order cancelled · margin released`
+        });
+        target.marginReleased = true;
+      }
       target.status = "CANCELLED";
       target.cancelledAt = new Date().toISOString();
       App.saveState();
-      App.toast("Pending order cancelled.");
+      App.toast("Pending limit order cancelled.");
       render();
     },
     setAutoPercent(value) {

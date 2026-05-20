@@ -3536,3 +3536,22 @@
   .nav-svg{width:18px;height:18px;}
   .wallet-svg{width:20px;height:20px;}
 }
+
+/* Phase 4.23 - Limit order field polish */
+.limit-order-note {
+  margin: -2px 0 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(39, 224, 230, 0.18);
+  border-radius: 14px;
+  background: rgba(39, 224, 230, 0.07);
+  color: rgba(232, 241, 255, 0.78);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.limit-order-note b {
+  color: #7df9ff;
+}
+.orders-position-card.pending em {
+  font-style: normal;
+  color: rgba(232, 241, 255, 0.92);
+}

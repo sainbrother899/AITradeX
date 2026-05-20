@@ -617,3 +617,21 @@ Phase 4.22 - Bottom Nav SVG Icon Polish
 - Kept bottom nav order: Home, Trade, Orders, Wallet, History.
 - No trading, wallet, AI, price feed, or admin logic was changed.
 Changed files: user-app.js, styles.css, README.txt
+
+Phase 4.23 - Market Limit Order System Clean
+- Base used: Phase 4.22 Bottom Nav SVG Icon Polish Clean.
+- Made the Trade page Order Type selector functional for Market and Limit orders.
+- Added Limit Price input when Limit order is selected.
+- Market orders still open immediately at the locked live entry price.
+- Limit orders are now saved as pending open orders and show in the Orders page.
+- Limit order margin is locked when the order is placed, so users cannot over-use wallet balance.
+- BUY limit orders trigger when live price reaches the limit price or below.
+- SELL limit orders trigger when live price reaches the limit price or above.
+- Triggered limit orders automatically become open manual positions and use the same live P/L, close, risk, and history flow.
+- Cancelling a pending limit order releases the locked margin back to the user wallet.
+- No admin, AI trade, wallet deposit/withdrawal, or bottom nav icon logic was changed.
+
+Changed files in Phase 4.23:
+- user-app.js
+- styles.css
+- README.txt
