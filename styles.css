@@ -3267,3 +3267,156 @@
   .manual-close-list strong{font-size:15px}
   .manual-close-list button{width:100%}
 }
+
+/* AITradeX Phase 4.18 - Trade page mobile fit clean */
+.trade-command,
+.clean-pair-card,
+.order-ticket,
+.pro-order-ticket,
+.chart-shell,
+.tradingview-shell,
+.market-feed-card,
+.trade-feed-card,
+.premium-card{
+  max-width:100%;
+}
+.clean-pair-card,
+.trade-account-mini,
+.trade-preview-grid,
+.confirm-summary,
+.manual-open-list article,
+.top-live-position-bar,
+.manual-close-modal,
+.manual-close-list article{
+  min-width:0;
+}
+.clean-pair-card h1,
+.clean-pair-card span,
+.confirm-summary span,
+.manual-open-list b,
+.manual-open-list span,
+.manual-close-list b,
+.manual-close-list span{
+  overflow-wrap:anywhere;
+  word-break:break-word;
+}
+.pro-order-ticket input,
+.pro-order-ticket select,
+.order-ticket input,
+.order-ticket select{
+  width:100%;
+  max-width:100%;
+}
+.manual-open-list article > div{
+  min-width:0;
+  overflow:hidden;
+}
+.manual-open-list article > div span{
+  line-height:1.45;
+}
+.manual-open-list strong{
+  flex:0 0 auto;
+  max-width:42%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.top-live-position-bar span{
+  min-width:0;
+  flex:1 1 auto;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.top-live-position-bar button{
+  flex:0 0 auto;
+}
+.tradingview-widget-frame,
+.tradingview-chart-container{
+  width:100%;
+  max-width:100%;
+  overflow:hidden;
+}
+@media(max-width:620px){
+  .app-content{
+    width:100%;
+    max-width:100%;
+    overflow-x:hidden;
+  }
+  .clean-pair-card{
+    display:flex;
+    align-items:flex-start;
+    gap:12px;
+  }
+  .clean-pair-card > div{
+    min-width:0;
+    flex:1 1 auto;
+  }
+  .clean-pair-card h1{
+    font-size:25px!important;
+    line-height:1.05;
+  }
+  .clean-pair-card span{
+    display:block;
+    font-size:13px;
+    line-height:1.35;
+  }
+  .change-pair-btn{
+    flex:0 0 auto;
+    max-width:128px;
+    padding-inline:12px!important;
+    white-space:nowrap;
+  }
+  .pair-rate-list{
+    max-width:100%;
+    overflow-x:auto;
+    overflow-y:hidden;
+    -webkit-overflow-scrolling:touch;
+  }
+  .pair-rate-list button{
+    min-width:150px;
+  }
+  .chart-toolbar{
+    max-width:100%;
+    overflow-x:auto;
+    overflow-y:hidden;
+    -webkit-overflow-scrolling:touch;
+  }
+  .chart-toolbar button{
+    flex:0 0 auto;
+  }
+  .responsive-chart{
+    height:min(62vh,520px)!important;
+    min-height:420px;
+  }
+  .trade-account-mini,
+  .trade-preview-grid{
+    grid-template-columns:1fr 1fr!important;
+  }
+  .manual-open-list article{
+    display:grid;
+    grid-template-columns:1fr;
+    align-items:start;
+    gap:8px;
+  }
+  .manual-open-list strong{
+    max-width:100%;
+    text-align:left;
+    font-size:16px;
+  }
+  .top-live-position-bar{
+    width:calc(100vw - 24px)!important;
+    left:12px!important;
+    transform:none!important;
+    padding:7px 10px!important;
+  }
+  .top-live-position-bar span{
+    font-size:12px;
+  }
+  .top-live-position-bar button{
+    min-width:54px;
+    padding-inline:10px!important;
+  }
+  .manual-close-modal{
+    width:calc(100vw - 24px)!important;
+  }
+}

@@ -573,3 +573,11 @@ Phase 4.17 - Manual Trade Margin Lock & Single Close Clean
 Changed files in Phase 4.17:
 - user-app.js
 - README.txt
+
+
+Phase 4.18 - Trade Page Mobile Fit Clean
+- Fixed trade page mobile overflow after manual margin-lock update.
+- Active Manual Trades cards now wrap cleanly on mobile instead of pushing page width.
+- Bottom manual live bar now ellipsizes safely and stays within mobile viewport.
+- Chart, pair strip, order ticket, and close selector popup are constrained to mobile width.
+- No trading, wallet, AI, admin, or price-feed logic changed in this phase.
