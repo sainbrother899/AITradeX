@@ -799,3 +799,10 @@ Phase 4.43 — Landing Real TradingView Chart Clean
 - Landing chart is display-only and does not affect trade settlement logic.
 - Kept user, admin, wallet, KYC, referral, support and trading logic untouched.
 - No .bak files and no patch/block layer.
+
+
+Phase 4.44 — User Desktop Bottom Nav Restore Clean
+- Fixed user-side desktop/PC layout where bottom navigation was hidden after login.
+- Desktop user panel now shows the same Home, Trade, Orders, Wallet, History navigation.
+- Added desktop-safe app bottom spacing so the restored nav does not cover content.
+- Admin layout and all trading/wallet/KYC/referral/support logic were not changed.
