@@ -4062,3 +4062,11 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   .aitx-admin-logo .aitx-logo-admin{width:142px}
   .aitx-login-logo .aitx-logo-login{width:172px}
 }
+
+/* AITradeX Phase 4.39 clean standalone SVG logo mark */
+.aitx-logo-icon-wrap{width:42px;height:42px}
+.aitx-logo-icon-wrap .aitx-logo-svg{width:42px;height:42px}
+.logo-brand .aitx-logo-header .aitx-logo-svg,
+.aitx-public-logo .aitx-logo-full .aitx-logo-svg,
+.aitx-admin-logo .aitx-logo-admin .aitx-logo-svg,
+.aitx-login-logo .aitx-logo-login .aitx-logo-svg{max-height:64px}

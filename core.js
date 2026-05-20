@@ -96,11 +96,24 @@ App.logoHtml=(variant="full",className="")=>{
   const mode=String(variant||"full").toLowerCase();
   const cls=esc(className||"");
   const id=uid("logo").replace(/[^a-zA-Z0-9_]/g,"");
-  const blue=`${id}_blue`,green=`${id}_green`,glow=`${id}_glow`;
-  const defs=`<defs><linearGradient id="${blue}" x1="0" x2="1" y1="1" y2="0"><stop offset="0" stop-color="#1d5cff"/><stop offset="0.55" stop-color="#15e5d3"/><stop offset="1" stop-color="#6fff35"/></linearGradient><linearGradient id="${green}" x1="0" x2="1" y1="1" y2="0"><stop offset="0" stop-color="#15e5d3"/><stop offset="1" stop-color="#9dff32"/></linearGradient><filter id="${glow}" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="2.2" result="blur"/><feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.08 0 0 0 0 0.9 0 0 0 0 0.85 0 0 0 .55 0"/><feBlend in="SourceGraphic"/></filter></defs>`;
-  const icon=`<g filter="url(#${glow})"><path d="M9 49 L24 15 Q27 9 32 15 L44 40" fill="none" stroke="url(#${blue})" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M18 49 L25 35 L35 35 L45 20" fill="none" stroke="url(#${blue})" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/><path d="M38 16 L50 8 L50 22" fill="none" stroke="url(#${green})" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M48 10 L56 10 L56 18" fill="none" stroke="url(#${green})" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="18" cy="49" r="4" fill="#1d5cff"/><circle cx="31" cy="49" r="4" fill="#15e5d3"/><rect x="12" y="40" width="7" height="10" rx="3" fill="#1d5cff"/><rect x="25" y="34" width="7" height="16" rx="3" fill="#15e5d3"/><rect x="38" y="28" width="7" height="22" rx="3" fill="#6fff35"/></g>`;
+  const blue=`${id}_blue`,green=`${id}_green`,dark=`${id}_dark`,glow=`${id}_glow`;
+  const defs=`<defs>
+    <linearGradient id="${blue}" x1="0" x2="1" y1="1" y2="0"><stop offset="0" stop-color="#1d5cff"/><stop offset=".52" stop-color="#15e5d3"/><stop offset="1" stop-color="#6fff35"/></linearGradient>
+    <linearGradient id="${green}" x1="0" x2="1" y1="1" y2="0"><stop offset="0" stop-color="#15e5d3"/><stop offset="1" stop-color="#9dff32"/></linearGradient>
+    <linearGradient id="${dark}" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#10233d"/><stop offset="1" stop-color="#06101f"/></linearGradient>
+    <filter id="${glow}" x="-35%" y="-35%" width="170%" height="170%"><feGaussianBlur stdDeviation="1.55" result="blur"/><feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.08 0 0 0 0 0.88 0 0 0 0 0.82 0 0 0 .38 0"/><feBlend in="SourceGraphic"/></filter>
+  </defs>`;
+  const icon=`<g class="aitx-logo-mark">
+    <rect x="7" y="7" width="50" height="50" rx="17" fill="url(#${dark})" stroke="rgba(255,255,255,.16)" stroke-width="1.2"/>
+    <path d="M16.5 47.5 28.6 17.8c1.45-3.55 5.35-3.55 6.8 0l12.1 29.7" fill="none" stroke="url(#${blue})" stroke-width="5.6" stroke-linecap="round" stroke-linejoin="round" filter="url(#${glow})"/>
+    <path d="M24.1 35.1h15.8" fill="none" stroke="#f5f8ff" stroke-width="3.6" stroke-linecap="round" opacity=".92"/>
+    <path d="M38.2 25.4 49.6 14M41.1 14h8.5v8.5" fill="none" stroke="url(#${green})" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round" filter="url(#${glow})"/>
+    <rect x="18" y="42" width="5.6" height="8" rx="2.8" fill="#1d5cff" opacity=".94"/>
+    <rect x="28.8" y="38" width="5.6" height="12" rx="2.8" fill="#15e5d3" opacity=".94"/>
+    <rect x="39.6" y="33" width="5.6" height="17" rx="2.8" fill="#6fff35" opacity=".94"/>
+  </g>`;
   if(mode==="icon")return `<span class="aitx-logo-wrap aitx-logo-icon-wrap ${cls}" aria-label="AITradeX logo"><svg class="aitx-logo-svg" viewBox="0 0 64 64" role="img" aria-hidden="true">${defs}${icon}</svg></span>`;
-  return `<span class="aitx-logo-wrap aitx-logo-full-wrap ${cls}" aria-label="AITradeX logo"><svg class="aitx-logo-svg" viewBox="0 0 260 64" role="img" aria-hidden="true">${defs}${icon}<text x="72" y="42" font-family="Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif" font-size="31" font-weight="900" letter-spacing="-1.8"><tspan fill="url(#${blue})">AI</tspan><tspan fill="#f5f8ff">Trade</tspan><tspan fill="url(#${green})">X</tspan></text></svg></span>`;
+  return `<span class="aitx-logo-wrap aitx-logo-full-wrap ${cls}" aria-label="AITradeX logo"><svg class="aitx-logo-svg" viewBox="0 0 260 64" role="img" aria-hidden="true">${defs}${icon}<text x="74" y="42" font-family="Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif" font-size="31" font-weight="900" letter-spacing="-1.8"><tspan fill="url(#${blue})">AI</tspan><tspan fill="#f5f8ff">Trade</tspan><tspan fill="url(#${green})">X</tspan></text></svg></span>`;
 };
 App.state.settings={freeAiTradesPerDay:5,postTrialFreeAiTradesPerDay:1,freeTrialDays:7,...(App.state.settings||{})};
 if(!Array.isArray(App.state.plans))App.state.plans=initial().plans;
