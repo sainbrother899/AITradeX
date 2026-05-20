@@ -8,7 +8,6 @@
   let kycFilter = localStorage.getItem("AITradeX_ADMIN_KYC_FILTER") || "ALL";
   let paymentSearch = localStorage.getItem("AITradeX_ADMIN_PAYMENT_SEARCH") || "";
   let paymentStatusFilter = localStorage.getItem("AITradeX_ADMIN_PAYMENT_STATUS") || "ALL";
-  let paymentTypeFilter = localStorage.getItem("AITradeX_ADMIN_PAYMENT_TYPE_FILTER") || "ALL";
   let financeSearch = localStorage.getItem("AITradeX_ADMIN_FINANCE_SEARCH") || "";
   let financeStatusFilter = localStorage.getItem("AITradeX_ADMIN_FINANCE_STATUS") || "ALL";
   let usersSearch = localStorage.getItem("AITradeX_ADMIN_USERS_SEARCH") || "";
@@ -322,10 +321,11 @@
   function withdrawalPayoutDetails(request) {
     const method = request.methodSnapshot || {};
     const type = String(method.type || request.methodType || "").toUpperCase();
+
     if (type === "UPI") {
       return `
-        <section class="withdrawal-detail-panel">
-          <div class="withdrawal-detail-title"><span>UPI Payout Details</span><b>Verified Method</b></div>
+        <section class="withdrawal-detail-panel legacy-upi-panel">
+          <div class="withdrawal-detail-title"><span>Legacy UPI Payout Details</span><b>Old Request</b></div>
           <div class="withdrawal-detail-grid">
             ${detailCopyRow("Holder Name", method.holderName)}
             ${detailCopyRow("UPI ID", method.upiId)}
@@ -336,7 +336,7 @@
 
     return `
       <section class="withdrawal-detail-panel">
-        <div class="withdrawal-detail-title"><span>Bank Payout Details</span><b>Verified Method</b></div>
+        <div class="withdrawal-detail-title"><span>Bank Payout Details</span><b>Verified Bank Account</b></div>
         <div class="withdrawal-detail-grid">
           ${detailCopyRow("Account Holder", method.holderName)}
           ${detailCopyRow("Bank Name", method.bankName)}
@@ -358,7 +358,7 @@
             ${navButton("dashboard", "📊", "Dashboard")}
             ${navButton("users", "👥", "Users")}
             ${navButton("kyc", "🛡️", "KYC Requests")}
-            ${navButton("payments", "💳", "Payment Methods")}
+            ${navButton("payments", "🏦", "Bank Accounts")}
             ${navButton("deposits", "⬇️", "Deposits")}
             ${navButton("withdrawals", "⬆️", "Withdrawals")}
             ${navButton("trades", "🤖", "AI Trade Control")}
@@ -388,7 +388,7 @@
       dashboard: "Dashboard",
       users: "User Management",
       kyc: "KYC Requests",
-      payments: "Payment Method Requests",
+      payments: "Bank Account Requests",
       deposits: "Deposits",
       withdrawals: "Withdrawals",
       trades: "AI Trade Control",
@@ -439,9 +439,9 @@
         </div>
 
         <div class="panel-card">
-          <div class="section-head"><div><h3>Payment Method Requests</h3><span>Pending approval</span></div><button onclick="AITradeXAdmin.go('payments')" class="mini-action">View All</button></div>
+          <div class="section-head"><div><h3>Bank Account Requests</h3><span>Pending approval</span></div><button onclick="AITradeXAdmin.go('payments')" class="mini-action">View All</button></div>
           <div class="admin-list">
-            ${paymentPending.length ? paymentPending.slice(0, 5).map(({ user, method }) => smallRequestRow(user, method.status, method.type === "UPI" ? method.upiId : method.bankName, method.type)).join("") : `<div class="empty-state">No pending payment methods.</div>`}
+            ${paymentPending.length ? paymentPending.slice(0, 5).map(({ user, method }) => smallRequestRow(user, method.status, method.bankName, method.type)).join("") : `<div class="empty-state">No pending bank accounts.</div>`}
           </div>
         </div>
       </section>
@@ -623,12 +623,9 @@
   function filterBarPayments() {
     return `
       <section class="admin-filter-bar payment-filter-bar">
-        <input value="${esc(paymentSearch)}" oninput="AITradeXAdmin.setPaymentSearch(this.value)" placeholder="Search name, email, UPI, bank, account last 4"/>
+        <input value="${esc(paymentSearch)}" oninput="AITradeXAdmin.setPaymentSearch(this.value)" placeholder="Search name, email, bank, account last 4"/>
         <div class="filter-chips">
           ${["ALL", "PENDING", "APPROVED", "REJECTED"].map(s => `<button class="${paymentStatusFilter === s ? "active" : ""}" onclick="AITradeXAdmin.setPaymentStatusFilter('${s}')">${s}</button>`).join("")}
-        </div>
-        <div class="filter-chips">
-          ${["ALL", "UPI", "BANK"].map(s => `<button class="${paymentTypeFilter === s ? "active" : ""}" onclick="AITradeXAdmin.setPaymentTypeFilter('${s}')">${s}</button>`).join("")}
         </div>
       </section>`;
   }
@@ -638,10 +635,9 @@
     const items = allUsers()
       .flatMap(user => {
         const kyc = kycFor(user);
-        return paymentMethodsFor(user).map(method => ({ user, kyc, method }));
+        return paymentMethodsFor(user).filter(method => method.type === "BANK").map(method => ({ user, kyc, method }));
       })
       .filter(x => paymentStatusFilter === "ALL" || x.method.status === paymentStatusFilter)
-      .filter(x => paymentTypeFilter === "ALL" || x.method.type === paymentTypeFilter)
       .filter(({ user, kyc, method }) => {
         if (!query) return true;
         return [
@@ -662,11 +658,11 @@
       ${filterBarPayments()}
       <section class="panel-card">
         <div class="section-head">
-          <div><h3>Payment Method Requests</h3><span>Approve UPI and bank accounts after matching KYC name</span></div>
+          <div><h3>Bank Account Requests</h3><span>Approve bank accounts after matching KYC name</span></div>
           <span class="admin-count-pill">${items.length} result</span>
         </div>
         <div class="admin-request-list">
-          ${items.length ? items.map(({ user, kyc, method }) => paymentRequestCard(user, kyc, method)).join("") : `<div class="empty-state">No payment methods found.</div>`}
+          ${items.length ? items.map(({ user, kyc, method }) => paymentRequestCard(user, kyc, method)).join("") : `<div class="empty-state">No bank accounts found.</div>`}
         </div>
       </section>
     `);
@@ -683,8 +679,8 @@
           <div class="request-user">
             ${avatar(method.holderName || displayNameFor(user))}
             <div>
-              <b>${method.type === "UPI" ? "UPI Method" : "Bank Account"}</b>
-              <span>${esc(user.email)} · ${method.type}</span>
+              <b>Bank Account</b>
+              <span>${esc(user.email)} · BANK</span>
             </div>
           </div>
           ${statusPill(method.status)}
@@ -694,14 +690,10 @@
           <article><span>KYC Name</span><b>${esc(kycName)}</b></article>
           <article><span>Holder Name</span><b>${esc(method.holderName || "-")}</b></article>
           <article><span>Name Match</span><b class="${holderMatch ? "profit-text" : "loss-text"}">${holderMatch ? "Matched" : "Mismatch"}</b></article>
-          ${method.type === "UPI" ? `
-            <article><span>UPI ID</span><b>${esc(method.upiId || "-")}</b></article>
-          ` : `
-            <article><span>Bank</span><b>${esc(method.bankName || "-")}</b></article>
-            <article><span>Account</span><b>****${String(method.accountNumber || "").slice(-4)}</b></article>
-            <article><span>IFSC</span><b>${esc(method.ifsc || "-")}</b></article>
-            <article><span>Type</span><b>${esc(method.accountType || "-")}</b></article>
-          `}
+          <article><span>Bank</span><b>${esc(method.bankName || "-")}</b></article>
+          <article><span>Account</span><b>****${String(method.accountNumber || "").slice(-4)}</b></article>
+          <article><span>IFSC</span><b>${esc(method.ifsc || "-")}</b></article>
+          <article><span>Type</span><b>${esc(method.accountType || "-")}</b></article>
         </div>
 
         ${dateLine("Approved", method.approvedAt)}
@@ -783,10 +775,12 @@
     const isDeposit = type === "DEPOSIT";
     const isPending = request.status === "PENDING";
     const method = request.methodSnapshot || {};
-    const methodTitle = isDeposit ? `${request.type || "UPI"} Payment` : `${method.type || "Method"} Withdrawal`;
+    const methodTitle = isDeposit ? `${request.type || "UPI"} Payment` : `${method.type === "UPI" ? "Legacy UPI" : "Bank"} Withdrawal`;
     const methodText = isDeposit
       ? `UTR ${request.utr || "-"}`
-      : `${method.type === "UPI" ? method.upiId : `${method.bankName || "Bank"} · ${method.accountNumber || "-"}`} · ${method.holderName || "-"}`;
+      : method.type === "UPI"
+        ? `${method.upiId || "UPI"} · ${method.holderName || "-"}`
+        : `${method.bankName || "Bank"} · ${method.accountNumber || "-"} · ${method.holderName || "-"}`;
 
     return `
       <article class="admin-request-card wallet-admin-card ${String(request.status || "").toLowerCase()}">
@@ -1236,11 +1230,6 @@
     setPaymentStatusFilter(value) {
       paymentStatusFilter = value;
       localStorage.setItem("AITradeX_ADMIN_PAYMENT_STATUS", paymentStatusFilter);
-      render();
-    },
-    setPaymentTypeFilter(value) {
-      paymentTypeFilter = value;
-      localStorage.setItem("AITradeX_ADMIN_PAYMENT_TYPE_FILTER", paymentTypeFilter);
       render();
     },
     setFinanceSearch(value) {

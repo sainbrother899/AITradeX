@@ -21,8 +21,7 @@
   let chartTheme = localStorage.getItem("AITradeX_CHART_THEME") || "dark";
   let chartToolbar = localStorage.getItem("AITradeX_CHART_TOOLBAR") !== "false";
   let kycStep = Number(localStorage.getItem("AITradeX_KYC_STEP") || 1);
-  let paymentType = localStorage.getItem("AITradeX_PAYMENT_TYPE") || "UPI";
-  let walletMode = localStorage.getItem("AITradeX_WALLET_MODE") || "DEPOSIT";
+    let walletMode = localStorage.getItem("AITradeX_WALLET_MODE") || "DEPOSIT";
   let depositStep = Number(localStorage.getItem("AITradeX_DEPOSIT_STEP") || 1);
   let withdrawalStep = Number(localStorage.getItem("AITradeX_WITHDRAWAL_STEP") || 1);
   let depositDraft = readJson("AITradeX_DEPOSIT_DRAFT", { amount: "", type: "UPI", utr: "" });
@@ -770,11 +769,11 @@
     if (!u || !App.state.paymentMethods) return;
 
     App.state.paymentMethods = App.state.paymentMethods.filter(m => m.userId !== u.id);
-    methods.forEach(m => {
+    methods.filter(m => m.type === "BANK").forEach(m => {
       App.state.paymentMethods.push({
         ...m,
         userId: u.id,
-        source: "USER_PAYMENT_METHOD"
+        source: "USER_BANK_ACCOUNT"
       });
     });
 
@@ -798,13 +797,12 @@
   function paymentCounts() {
     const methods = paymentMethods();
     return {
-      UPI: methods.filter(m => m.type === "UPI").length,
       BANK: methods.filter(m => m.type === "BANK").length
     };
   }
 
   function approvedPaymentMethods() {
-    return paymentMethods().filter(m => m.status === "APPROVED");
+    return paymentMethods().filter(m => m.type === "BANK" && m.status === "APPROVED");
   }
 
   function depositRequests() {
@@ -875,8 +873,7 @@
 
   function methodLabel(method) {
     if (!method) return "-";
-    if (method.type === "UPI") return `${method.upiId} · ${method.holderName}`;
-    return `${method.bankName} · ****${String(method.accountNumber || "").slice(-4)} · ${method.holderName}`;
+    return `${method.bankName || "Bank"} · ****${String(method.accountNumber || "").slice(-4)} · ${method.holderName || "-"}`;
   }
 
   function statusPill(status) {
@@ -948,7 +945,7 @@
         </div>
         <button onclick="AITradeXUser.go('profile')" class="drawer-item">👤 Profile</button>
         <button onclick="AITradeXUser.go('kyc')" class="drawer-item">🛡️ KYC Verification</button>
-        <button onclick="AITradeXUser.go('payments')" class="drawer-item">💳 My Payment Methods</button>
+        <button onclick="AITradeXUser.go('payments')" class="drawer-item">🏦 Bank Accounts</button>
         <button onclick="AITradeXUser.go('referral')" class="drawer-item">🎁 Referral</button>
         <button onclick="AITradeXUser.go('support')" class="drawer-item">🎧 Support</button>
         <button onclick="AITradeXUser.logout()" class="drawer-item danger">🚪 Logout</button>
@@ -1041,7 +1038,7 @@
           </div>
         </section>
 
-        <section id="security" class="security-note"><b>AITradeX Security:</b> KYC approval and verified payment methods help reduce fraud risk before withdrawals.</section>
+        <section id="security" class="security-note"><b>AITradeX Security:</b> KYC approval and verified bank accounts help reduce fraud risk before withdrawals.</section>
       </main>`;
   }
 
@@ -1476,8 +1473,8 @@
             <div class="kyc-required-box">KYC approval is required before withdrawal.</div>
             <button class="save-profile-btn" onclick="AITradeXUser.go('kyc')">Go to KYC</button>
           ` : approvedMethods.length === 0 ? `
-            <div class="kyc-required-box">No approved withdrawal method found. Add UPI/Bank in Payment Methods and wait for admin approval.</div>
-            <button class="save-profile-btn" onclick="AITradeXUser.go('payments')">Go to Payment Methods</button>
+            <div class="kyc-required-box">No approved bank account found. Add a bank account and wait for admin approval.</div>
+            <button class="save-profile-btn" onclick="AITradeXUser.go('payments')">Go to Bank Accounts</button>
           ` : `
             ${withdrawalStep === 1 ? `
               <label>Withdrawal Amount
@@ -1490,18 +1487,18 @@
               <div class="approved-method-list premium-approved-list">
                 ${approvedMethods.map(m => `
                   <button class="${(withdrawalDraft.methodId || selectedWithdrawalMethod?.id) === m.id ? "active" : ""}" onclick="AITradeXUser.selectWithdrawalMethod('${m.id}')">
-                    <b>${m.type === "UPI" ? "UPI" : "Bank"}</b>
+                    <b>Bank Account</b>
                     <span>${App.escapeHtml(methodLabel(m))}</span>
                   </button>
                 `).join("")}
               </div>
-              <div class="profile-note">Only admin-approved methods are available. New account entry is not allowed during withdrawal.</div>
+              <div class="profile-note">Only admin-approved bank accounts are available. New account entry is not allowed during withdrawal.</div>
             ` : ""}
 
             ${withdrawalStep === 3 || withdrawalStep === 4 ? `
               <div class="review-grid compact-review">
                 <article><span>Amount</span><b>${App.money(withdrawalDraft.amount || 0)}</b></article>
-                <article><span>Method</span><b>${selectedWithdrawalMethod?.type || "-"}</b></article>
+                <article><span>Method</span><b>Bank Account</b></article>
                 <article><span>Pay To</span><b>${App.escapeHtml(methodLabel(selectedWithdrawalMethod))}</b></article>
                 <article><span>Status</span><b>Will be Pending</b></article>
               </div>
@@ -1744,7 +1741,7 @@
           <div class="result-icon">✓</div>
           <p>KYC APPROVED</p>
           <h2>KYC Approved Successfully</h2>
-          <h4>Your identity verification has been approved. You can now add payment methods and request withdrawals after approval.</h4>
+          <h4>Your identity verification has been approved. You can now add bank accounts and request withdrawals after approval.</h4>
           ${statusPill(kyc.status)}
         </section>
         ${kycDetailsGrid(kyc, "VERIFIED DETAILS")}
@@ -1877,75 +1874,59 @@
 
   function paymentPage() {
     const kyc = currentKyc();
-    const methods = paymentMethods();
+    const methods = paymentMethods().filter(m => m.type === "BANK");
     const counts = paymentCounts();
     const kycReady = kyc.status === "APPROVED";
     const holder = verifiedKycName();
-    const canAddUpi = counts.UPI < 2;
     const canAddBank = counts.BANK < 2;
 
     shell(`
       <section class="premium-card payment-head-card">
         <div class="card-row">
           <div>
-            <p>PAYMENT METHODS</p>
-            <h2>Withdrawal Accounts</h2>
-            <span class="ticket-mode">Holder name auto-fills from approved KYC.</span>
+            <p>BANK ACCOUNTS</p>
+            <h2>Withdrawal Bank Accounts</h2>
+            <span class="ticket-mode">Withdrawals are processed only to approved bank accounts. Deposit UPI/QR remains separate.</span>
           </div>
           ${statusPill(kyc.status)}
         </div>
-        ${!kycReady ? `<div class="kyc-required-box">Complete and approve KYC first to add payment methods.</div>` : `<div class="verified-name-box"><span>Verified Name</span><b>${App.escapeHtml(holder)}</b></div>`}
-      </section>
-
-      <section class="payment-type-tabs">
-        <button class="${paymentType === "UPI" ? "active" : ""}" onclick="AITradeXUser.setPaymentType('UPI')">UPI (${counts.UPI}/2)</button>
-        <button class="${paymentType === "BANK" ? "active" : ""}" onclick="AITradeXUser.setPaymentType('BANK')">Bank (${counts.BANK}/2)</button>
+        ${!kycReady ? `<div class="kyc-required-box">Complete and approve KYC first to add bank accounts.</div>` : `<div class="verified-name-box"><span>Verified Name</span><b>${App.escapeHtml(holder)}</b></div>`}
       </section>
 
       <section class="premium-card payment-form-card">
-        ${paymentType === "UPI" ? `
-          <p>ADD UPI</p>
-          <h2>UPI Verification</h2>
-          <div class="form-grid">
-            <label>Holder Name<input value="${App.escapeHtml(holder)}" disabled/></label>
-            <label>UPI ID<input id="upiIdInput" ${!kycReady || !canAddUpi ? "disabled" : ""} placeholder="yourname@upi"/></label>
-          </div>
-          <button class="save-profile-btn" onclick="AITradeXUser.addUpiMethod()" ${!kycReady || !canAddUpi ? "disabled" : ""}>Submit UPI for Verification</button>
-          ${!canAddUpi ? `<div class="profile-note">Maximum 2 UPI methods allowed.</div>` : ""}
-        ` : `
-          <p>ADD BANK</p>
-          <h2>Bank Verification</h2>
-          <div class="form-grid kyc-grid">
-            <label>Holder Name<input value="${App.escapeHtml(holder)}" disabled/></label>
-            <label>Bank Name<input id="bankNameInput" ${!kycReady || !canAddBank ? "disabled" : ""} placeholder="Bank name"/></label>
-            <label>Account Number<input id="bankAccInput" ${!kycReady || !canAddBank ? "disabled" : ""} placeholder="Account number"/></label>
-            <label>Confirm Account Number<input id="bankAccConfirmInput" ${!kycReady || !canAddBank ? "disabled" : ""} placeholder="Confirm account number"/></label>
-            <label>IFSC Code<input id="bankIfscInput" ${!kycReady || !canAddBank ? "disabled" : ""} placeholder="IFSC code"/></label>
-            <label>Account Type<select id="bankTypeInput" ${!kycReady || !canAddBank ? "disabled" : ""}><option>Savings</option><option>Current</option></select></label>
-          </div>
-          <button class="save-profile-btn" onclick="AITradeXUser.addBankMethod()" ${!kycReady || !canAddBank ? "disabled" : ""}>Submit Bank for Verification</button>
-          ${!canAddBank ? `<div class="profile-note">Maximum 2 bank accounts allowed.</div>` : ""}
-        `}
+        <p>ADD BANK ACCOUNT</p>
+        <h2>Bank Verification</h2>
+        <div class="form-grid kyc-grid">
+          <label>Holder Name<input value="${App.escapeHtml(holder)}" disabled/></label>
+          <label>Bank Name<input id="bankNameInput" ${!kycReady || !canAddBank ? "disabled" : ""} placeholder="Bank name"/></label>
+          <label>Account Number<input id="bankAccInput" ${!kycReady || !canAddBank ? "disabled" : ""} placeholder="Account number"/></label>
+          <label>Confirm Account Number<input id="bankAccConfirmInput" ${!kycReady || !canAddBank ? "disabled" : ""} placeholder="Confirm account number"/></label>
+          <label>IFSC Code<input id="bankIfscInput" ${!kycReady || !canAddBank ? "disabled" : ""} placeholder="IFSC code"/></label>
+          <label>Account Type<select id="bankTypeInput" ${!kycReady || !canAddBank ? "disabled" : ""}><option>Savings</option><option>Current</option></select></label>
+        </div>
+        <button class="save-profile-btn" onclick="AITradeXUser.addBankMethod()" ${!kycReady || !canAddBank ? "disabled" : ""}>Submit Bank for Verification</button>
+        ${!canAddBank ? `<div class="profile-note">Maximum 2 bank accounts allowed.</div>` : ""}
       </section>
 
       <section class="premium-card">
-        <p>SAVED METHODS</p>
-        <h2>Your Methods</h2>
+        <p>SAVED BANK ACCOUNTS</p>
+        <h2>Your Bank Accounts</h2>
         <div class="payment-method-list">
           ${methods.length ? methods.map(m => `
             <article class="method-card ${String(m.status || "").toLowerCase()}">
               <div class="method-icon">${m.status === "APPROVED" ? "✓" : m.status === "REJECTED" ? "!" : "⌛"}</div>
               <div>
-                <b>${m.type === "UPI" ? "UPI" : "Bank Account"}</b>
-                <span>${m.type === "UPI" ? App.escapeHtml(m.upiId) : `${App.escapeHtml(m.bankName)} · ****${String(m.accountNumber || "").slice(-4)}`}</span>
+                <b>Bank Account</b>
+                <span>${App.escapeHtml(m.bankName)} · ****${String(m.accountNumber || "").slice(-4)}</span>
                 <small>Holder: ${App.escapeHtml(m.holderName)}</small>
+                <small>IFSC: ${App.escapeHtml(m.ifsc || "-")} · ${App.escapeHtml(m.accountType || "Savings")}</small>
                 ${m.approvedAt ? `<small>Approved: ${new Date(m.approvedAt).toLocaleString()}</small>` : ""}
                 ${m.rejectedAt ? `<small>Rejected: ${new Date(m.rejectedAt).toLocaleString()}</small>` : ""}
                 ${m.rejectReason ? `<small class="loss-text">Reason: ${App.escapeHtml(m.rejectReason)}</small>` : ""}
               </div>
               ${statusPill(m.status)}
             </article>
-          `).join("") : `<div class="empty-state">No payment methods added yet.</div>`}
+          `).join("") : `<div class="empty-state">No bank accounts added yet.</div>`}
         </div>
       </section>
     `);
@@ -2184,7 +2165,7 @@
       }
 
       if (!approved.length) {
-        App.toast("Approved payment method required.");
+        App.toast("Approved bank account required.");
         return;
       }
 
@@ -2330,42 +2311,6 @@
       kyc.rejectReason = "";
       saveKycData(kyc);
       App.toast("KYC submitted for verification.");
-      render();
-    },
-    setPaymentType(type) {
-      paymentType = type === "BANK" ? "BANK" : "UPI";
-      localStorage.setItem("AITradeX_PAYMENT_TYPE", paymentType);
-      render();
-    },
-    addUpiMethod() {
-      const kyc = currentKyc();
-      if (kyc.status !== "APPROVED") {
-        App.toast("KYC approval required.");
-        return;
-      }
-
-      const methods = paymentMethods();
-      if (methods.filter(m => m.type === "UPI").length >= 2) {
-        App.toast("Maximum 2 UPI methods allowed.");
-        return;
-      }
-
-      const upiId = document.getElementById("upiIdInput")?.value?.trim() || "";
-      if (!upiId || !upiId.includes("@")) {
-        App.toast("Valid UPI ID required.");
-        return;
-      }
-
-      methods.unshift({
-        id: `PM-${Date.now()}`,
-        type: "UPI",
-        holderName: verifiedKycName(),
-        upiId,
-        status: "PENDING",
-        createdAt: new Date().toISOString()
-      });
-      savePaymentMethods(methods);
-      App.toast("UPI submitted for verification.");
       render();
     },
     addBankMethod() {

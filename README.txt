@@ -650,3 +650,13 @@ Phase 4.25 — Admin Withdrawal Details Clean
 - User email and mobile are included on request cards for easier verification.
 - Copy buttons added for payout fields so admin can transfer without retyping.
 - Existing approve/reject flow and UI baseline were preserved.
+
+Phase 4.26 - Bank Only Withdrawal Clean
+- User withdrawal flow now uses approved bank accounts only.
+- UPI withdrawal option removed from user withdrawal flow.
+- Payment Methods user page is now Bank Accounts.
+- Users can add only bank accounts for withdrawal verification.
+- Deposit UPI/QR flow remains unchanged.
+- Admin Payment Method Requests are now Bank Account Requests.
+- Admin withdrawal details keep full bank payout fields for transfer.
+- Old UPI withdrawal requests can still be read as legacy records, but new UPI withdrawal requests cannot be created.
