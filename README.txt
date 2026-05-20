@@ -336,3 +336,11 @@ Phase 3.8 Wallet Admin Approval:
 - Approved withdrawal adds REAL wallet ledger debit and updates user real balance.
 - User wallet request status syncs through localStorage/state without changing existing user UI baseline.
 - No new patch layer added; admin wallet placeholder was replaced cleanly.
+
+Phase 3.10 Deposit UTR Validation Clean Fix:
+- user-app.js updated without changing UI/design baseline.
+- Deposit UTR field now accepts digits only.
+- Deposit UTR input is limited to exactly 12 digits.
+- Deposit flow blocks Next/Submit unless UTR is exactly 12 digits.
+- Duplicate deposit UTR is blocked before submission.
+- Existing admin Deposits and Withdrawals split remains unchanged.

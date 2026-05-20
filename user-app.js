@@ -462,6 +462,20 @@
     return readJson(userKey("DEPOSIT_REQUESTS"), []);
   }
 
+  function normalizeUtr(value) {
+    return String(value || "").replace(/\D/g, "").slice(0, 12);
+  }
+
+  function isDuplicateDepositUtr(utr) {
+    const cleanUtr = normalizeUtr(utr);
+    if (!cleanUtr) return false;
+
+    const localDuplicate = depositRequests().some(r => normalizeUtr(r.utr) === cleanUtr);
+    const stateDuplicate = (App.state.depositRequests || []).some(r => normalizeUtr(r.utr) === cleanUtr);
+
+    return localDuplicate || stateDuplicate;
+  }
+
   function saveDepositRequests(requests) {
     writeJson(userKey("DEPOSIT_REQUESTS"), requests);
     syncDepositRequestsToState(requests);
@@ -1051,8 +1065,9 @@
               </div>
             `}
             <label>UTR / Transaction ID
-              <input id="depositUtrInput" value="${App.escapeHtml(depositDraft.utr)}" placeholder="Enter 12 digit UTR"/>
+              <input id="depositUtrInput" type="text" inputmode="numeric" maxlength="12" pattern="[0-9]{12}" value="${App.escapeHtml(normalizeUtr(depositDraft.utr))}" placeholder="Enter 12 digit UTR" oninput="this.value=this.value.replace(/\D/g,'').slice(0,12)"/>
             </label>
+            <div class="profile-note">Only a unique 12 digit UTR is accepted.</div>
           ` : ""}
 
           ${depositStep === 4 ? `
@@ -1562,9 +1577,13 @@
       }
 
       if (depositStep === 3) {
-        const utr = String(document.getElementById("depositUtrInput")?.value || "").trim();
-        if (!utr || utr.length < 6) {
-          App.toast("Valid UTR / Transaction ID required.");
+        const utr = normalizeUtr(document.getElementById("depositUtrInput")?.value || "");
+        if (!/^\d{12}$/.test(utr)) {
+          App.toast("Enter exactly 12 digit UTR.");
+          return;
+        }
+        if (isDuplicateDepositUtr(utr)) {
+          App.toast("This UTR is already submitted. Enter a unique UTR.");
           return;
         }
         depositDraft.utr = utr;
@@ -1583,8 +1602,13 @@
     submitDepositRequest() {
       const amount = Number(depositDraft.amount || 0);
       const minDeposit = Number(App.state.settings.minDeposit || 500);
-      if (!amount || amount < minDeposit || !depositDraft.utr) {
-        App.toast("Complete deposit details first.");
+      const utr = normalizeUtr(depositDraft.utr);
+      if (!amount || amount < minDeposit || !/^\d{12}$/.test(utr)) {
+        App.toast("Complete deposit details with exactly 12 digit UTR.");
+        return;
+      }
+      if (isDuplicateDepositUtr(utr)) {
+        App.toast("This UTR is already submitted. Enter a unique UTR.");
         return;
       }
 
@@ -1593,7 +1617,7 @@
         id: App.uid("dep"),
         amount,
         type: depositDraft.type || "UPI",
-        utr: depositDraft.utr,
+        utr,
         status: "PENDING",
         createdAt: new Date().toISOString(),
         rejectReason: ""
