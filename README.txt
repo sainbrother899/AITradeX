@@ -768,3 +768,10 @@ Phase 4.39 — Standalone SVG Logo Mark Fix Clean
 - Full AITradeX wordmark remains supported from the same reusable logo helper.
 - Added safe logo icon sizing CSS for future compact/icon-only placements.
 - No image/PNG dependency, no backup files, no patch/block layer.
+
+
+Phase 4.40 - User Header Logo Size Polish
+- User panel top header logo/brand mark enlarged for better visibility.
+- Menu button placement remains unchanged.
+- No trading, wallet, admin, KYC, referral, or support logic was touched.
+- Changed files: styles.css, README.txt.

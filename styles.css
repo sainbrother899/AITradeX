@@ -4051,13 +4051,13 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
 .aitx-logo-wrap{display:inline-flex;align-items:center;justify-content:center;line-height:0;flex:0 0 auto}
 .aitx-logo-svg{display:block;width:100%;height:auto;overflow:visible}
 .logo-brand{flex:1;display:flex!important;align-items:center;min-width:0;line-height:0!important}
-.logo-brand .aitx-logo-header{width:152px;max-width:42vw;height:auto}
+.logo-brand .aitx-logo-header{width:188px;max-width:48vw;height:auto}
 .aitx-public-logo,.aitx-admin-logo,.aitx-login-logo{gap:0!important;line-height:0}
 .aitx-public-logo .aitx-logo-full{width:186px;max-width:56vw}
 .aitx-admin-logo .aitx-logo-admin{width:164px;max-width:100%}
 .aitx-login-logo .aitx-logo-login{width:190px;max-width:72vw;margin:0 auto 4px}
 @media(max-width:620px){
-  .logo-brand .aitx-logo-header{width:132px;max-width:38vw}
+  .logo-brand .aitx-logo-header{width:164px;max-width:44vw}
   .aitx-public-logo .aitx-logo-full{width:160px;max-width:54vw}
   .aitx-admin-logo .aitx-logo-admin{width:142px}
   .aitx-login-logo .aitx-logo-login{width:172px}
