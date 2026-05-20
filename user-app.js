@@ -2182,15 +2182,15 @@
           <h1>Invite & Earn Automatically</h1>
           <span>Earn when your referred user completes a first approved deposit or buys a paid subscription.</span>
         </div>
-        <button onclick="AITradeXUser.copyText(${jsArg(link)}, this)">Copy Link</button>
+        <button type="button" class="copy-action" onclick="AITradeXUser.copyReferral('link', this)">Copy Link</button>
       </section>
 
       <section class="premium-card referral-link-card">
         <div class="card-row"><div><p>YOUR REFERRAL LINK</p><h2>${App.escapeHtml(u.referralCode || "-")}</h2></div><span class="history-mode">Auto Bonus</span></div>
-        <div class="referral-link-box"><span>${App.escapeHtml(link)}</span><button onclick="AITradeXUser.copyText(${jsArg(link)}, this)">Copy</button></div>
+        <div class="referral-link-box"><span id="referralLinkText">${App.escapeHtml(link)}</span><button type="button" class="copy-action" onclick="AITradeXUser.copyReferral('link', this)">Copy</button></div>
         <div class="referral-actions">
           <a class="btn" href="https://wa.me/?text=${shareText}" target="_blank" rel="noopener">Share on WhatsApp</a>
-          <button class="btn ghost" onclick="AITradeXUser.copyText(${jsArg(u.referralCode || "")}, this)">Copy Code</button>
+          <button type="button" class="btn ghost copy-action" onclick="AITradeXUser.copyReferral('code', this)">Copy Code</button>
         </div>
       </section>
 
@@ -2429,46 +2429,81 @@
       drawerOpen = typeof force === "boolean" ? force : !drawerOpen;
       render();
     },
+    copyReferral(type, button) {
+      const u = user();
+      if (!u) return false;
+      const link = `${window.location.origin}${window.location.pathname}?ref=${encodeURIComponent(u.referralCode || "")}`;
+      const value = type === "code" ? (u.referralCode || "") : link;
+      return this.copyText(value, button);
+    },
     async copyText(value, button) {
       const text = String(value || "").trim();
+      const targetButton = button?.closest ? button.closest("button") : button;
       if (!text) {
         App.toast("Nothing to copy.");
         return false;
       }
+
+      const showCopyFeedback = (success) => {
+        if (!targetButton) return;
+        const oldText = targetButton.dataset.originalText || targetButton.textContent || "Copy";
+        targetButton.dataset.originalText = oldText;
+        targetButton.classList.toggle("copy-success", !!success);
+        targetButton.classList.toggle("copy-failed", !success);
+        targetButton.textContent = success ? "Copied ✓" : "Copy failed";
+        targetButton.disabled = true;
+        window.clearTimeout(targetButton._copyTimer);
+        targetButton._copyTimer = window.setTimeout(() => {
+          targetButton.classList.remove("copy-success", "copy-failed");
+          targetButton.textContent = oldText;
+          targetButton.disabled = false;
+        }, 1600);
+      };
+
       const fallbackCopy = () => {
         const input = document.createElement("textarea");
         input.value = text;
         input.setAttribute("readonly", "readonly");
         input.style.position = "fixed";
-        input.style.left = "-9999px";
-        input.style.top = "0";
+        input.style.top = "50%";
+        input.style.left = "50%";
+        input.style.width = "1px";
+        input.style.height = "1px";
+        input.style.opacity = "0";
+        input.style.zIndex = "-1";
+        input.style.pointerEvents = "none";
         document.body.appendChild(input);
-        input.focus();
+        input.focus({ preventScroll: true });
         input.select();
-        const copied = document.execCommand("copy");
+        input.setSelectionRange(0, input.value.length);
+        let copied = false;
+        try {
+          copied = document.execCommand("copy");
+        } catch (err) {
+          copied = false;
+        }
         input.remove();
         return copied;
       };
+
       try {
-        if (navigator.clipboard?.writeText && window.isSecureContext) {
-          await navigator.clipboard.writeText(text);
-        } else if (!fallbackCopy()) {
-          throw new Error("Copy failed");
+        let copied = false;
+        if (navigator.clipboard?.writeText) {
+          try {
+            await navigator.clipboard.writeText(text);
+            copied = true;
+          } catch (err) {
+            copied = fallbackCopy();
+          }
+        } else {
+          copied = fallbackCopy();
         }
-        if (button) {
-          const oldText = button.textContent;
-          button.classList.add("copy-success");
-          button.textContent = "Copied ✓";
-          button.disabled = true;
-          setTimeout(() => {
-            button.classList.remove("copy-success");
-            button.textContent = oldText;
-            button.disabled = false;
-          }, 1400);
-        }
+        if (!copied) throw new Error("Copy failed");
+        showCopyFeedback(true);
         App.toast("Copied to clipboard.");
         return true;
       } catch (err) {
+        showCopyFeedback(false);
         App.toast("Copy failed. Long press and copy manually.");
         return false;
       }

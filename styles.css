@@ -3876,6 +3876,13 @@ button.copy-success, .referral-link-box button.copy-success, .referral-hero-card
   box-shadow: 0 12px 30px rgba(0,231,168,.20);
 }
 
+button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card button.copy-failed, .referral-actions .btn.copy-failed {
+  background: linear-gradient(135deg,#fb7185,#f97316) !important;
+  color: #fff !important;
+  box-shadow: 0 12px 30px rgba(251,113,133,.20);
+}
+.copy-action { cursor:pointer; user-select:none; }
+
 .referral-summary-grid { margin-top:14px; }
 .referral-user-list { display:grid; gap:10px; }
 .referral-user-card { display:flex; justify-content:space-between; gap:12px; align-items:center; padding:13px; border-radius:18px; background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.08); }

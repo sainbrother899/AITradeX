@@ -738,3 +738,11 @@ Phase 4.34 - Real App Aadhaar KYC Clean
 - Admin KYC review now shows city/state/pincode, Aadhaar masked number, Aadhaar front/back, selfie and duplicate warning.
 - Admin KYC reject now requires a selected reason instead of a browser prompt.
 - Same UI/design baseline preserved; no backup files, no patch layer, no blocked old logic.
+
+
+Phase 4.36 - Referral Copy Button Robust Fix
+- Reworked referral copy buttons to use a dedicated referral copy handler.
+- Added stronger mobile/browser clipboard fallback.
+- Copy Link, Copy in link box, and Copy Code now show clear Copied ✓ feedback.
+- Added copy failure visual feedback for unsupported browser cases.
+- No backup files or blocked old code included.
