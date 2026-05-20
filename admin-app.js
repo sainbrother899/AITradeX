@@ -399,7 +399,7 @@
     root.innerHTML = `
       <div class="app-shell control-shell">
         <aside class="sidebar">
-          <div class="side-brand brand"><span>AI</span><b>AITradeX</b></div>
+          <div class="side-brand brand aitx-admin-logo">${App.logoHtml("full", "aitx-logo-admin")}</div>
           <nav>
             ${navButton("dashboard", "📊", "Dashboard")}
             ${navButton("users", "👥", "Users")}
@@ -453,7 +453,7 @@
     root.innerHTML = `
       <main class="control-login">
         <section class="control-card">
-          <div class="brand center"><span>AI</span><b>AITradeX</b></div>
+          <div class="brand center aitx-login-logo">${App.logoHtml("full", "aitx-logo-login")}</div>
           <p class="eyebrow">Control Center</p>
           <h1>Admin Login</h1>
           <form onsubmit="AITradeXAdmin.login(event)" class="form-grid">

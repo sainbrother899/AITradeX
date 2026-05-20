@@ -92,6 +92,16 @@ async function fetchMetalChartPrice(pair){
 }
 
 const App={config:C,db,state:load(),session:loadSession(),now,uid,money,escapeHtml:esc};
+App.logoHtml=(variant="full",className="")=>{
+  const mode=String(variant||"full").toLowerCase();
+  const cls=esc(className||"");
+  const id=uid("logo").replace(/[^a-zA-Z0-9_]/g,"");
+  const blue=`${id}_blue`,green=`${id}_green`,glow=`${id}_glow`;
+  const defs=`<defs><linearGradient id="${blue}" x1="0" x2="1" y1="1" y2="0"><stop offset="0" stop-color="#1d5cff"/><stop offset="0.55" stop-color="#15e5d3"/><stop offset="1" stop-color="#6fff35"/></linearGradient><linearGradient id="${green}" x1="0" x2="1" y1="1" y2="0"><stop offset="0" stop-color="#15e5d3"/><stop offset="1" stop-color="#9dff32"/></linearGradient><filter id="${glow}" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="2.2" result="blur"/><feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.08 0 0 0 0 0.9 0 0 0 0 0.85 0 0 0 .55 0"/><feBlend in="SourceGraphic"/></filter></defs>`;
+  const icon=`<g filter="url(#${glow})"><path d="M9 49 L24 15 Q27 9 32 15 L44 40" fill="none" stroke="url(#${blue})" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M18 49 L25 35 L35 35 L45 20" fill="none" stroke="url(#${blue})" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/><path d="M38 16 L50 8 L50 22" fill="none" stroke="url(#${green})" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M48 10 L56 10 L56 18" fill="none" stroke="url(#${green})" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="18" cy="49" r="4" fill="#1d5cff"/><circle cx="31" cy="49" r="4" fill="#15e5d3"/><rect x="12" y="40" width="7" height="10" rx="3" fill="#1d5cff"/><rect x="25" y="34" width="7" height="16" rx="3" fill="#15e5d3"/><rect x="38" y="28" width="7" height="22" rx="3" fill="#6fff35"/></g>`;
+  if(mode==="icon")return `<span class="aitx-logo-wrap aitx-logo-icon-wrap ${cls}" aria-label="AITradeX logo"><svg class="aitx-logo-svg" viewBox="0 0 64 64" role="img" aria-hidden="true">${defs}${icon}</svg></span>`;
+  return `<span class="aitx-logo-wrap aitx-logo-full-wrap ${cls}" aria-label="AITradeX logo"><svg class="aitx-logo-svg" viewBox="0 0 260 64" role="img" aria-hidden="true">${defs}${icon}<text x="72" y="42" font-family="Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif" font-size="31" font-weight="900" letter-spacing="-1.8"><tspan fill="url(#${blue})">AI</tspan><tspan fill="#f5f8ff">Trade</tspan><tspan fill="url(#${green})">X</tspan></text></svg></span>`;
+};
 App.state.settings={freeAiTradesPerDay:5,postTrialFreeAiTradesPerDay:1,freeTrialDays:7,...(App.state.settings||{})};
 if(!Array.isArray(App.state.plans))App.state.plans=initial().plans;
 const freePlan=App.state.plans.find(p=>p.id==="free");

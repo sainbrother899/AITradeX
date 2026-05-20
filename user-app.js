@@ -1067,8 +1067,8 @@
     return `
       <header class="app-topbar compact-header">
         <button class="menu-btn" onclick="AITradeXUser.toggleDrawer()">☰</button>
-        <div class="app-brand">
-          <b>AITradeX</b>
+        <div class="app-brand logo-brand">
+          ${App.logoHtml("full", "aitx-logo-header")}
         </div>
         ${profileNameChip()}
       </header>
@@ -1143,7 +1143,7 @@
     root.innerHTML = `
       <main class="public-wrap">
         <nav class="public-nav">
-          <div class="brand"><span>AI</span><b>AITradeX</b></div>
+          <div class="brand aitx-public-logo">${App.logoHtml("full", "aitx-logo-full")}</div>
           <div class="public-actions">
             <a href="#plans">Plans</a>
             <a href="#security">Security</a>

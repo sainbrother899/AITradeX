@@ -753,3 +753,12 @@ Phase 4.37 - Admin Request Sorting Clean
 - Within each status group, latest submissions appear first.
 - Deposit and Withdrawal sorting behavior is unchanged.
 - No UI redesign, no backup files, no patch layer and no blocked old logic.
+
+
+Phase 4.38 - Inbuilt SVG Logo Branding Clean
+- Added reusable inbuilt SVG AITradeX logo helper in core.js.
+- User panel header keeps the menu button and replaces plain AITradeX text with the compact logo.
+- Landing page brand uses the full inbuilt logo.
+- Admin sidebar and admin login use the same inbuilt logo system.
+- No image/PNG dependency added; logo sizes are controlled by CSS for each placement.
+- Existing trading, wallet, KYC, referral, support, admin request sorting and database logic untouched.
