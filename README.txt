@@ -678,3 +678,12 @@ Phase 4.28 — Subscription Plans Wallet Deduct Clean
 - Added admin Plans page with editable price, AI trade/day limit, duration, status and benefits.
 - Free plan AI trade/day setting updates platform free AI daily limit.
 - No trade, wallet deposit/withdrawal, referral or support logic was changed.
+
+Phase 4.29 — Free Trial AI Trades Clean
+- Free access is no longer lifetime 5 AI trades/day.
+- New users get a 7-day Free Trial with 5 AI auto trades/day.
+- After the trial ends, free users keep 1 AI auto trade/day so the platform remains useful.
+- Paid plans still control higher daily AI trade limits.
+- Admin Plans page can edit Free Trial days, trial AI trades/day and after-trial AI trades/day.
+- Wording cleaned from capacity-style language to Daily AI Trades / Max AI Amount.
+- Subscription purchase still deducts only from Real Wallet.

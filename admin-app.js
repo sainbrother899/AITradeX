@@ -1112,16 +1112,19 @@
           <label>Price
             <input id="plan_${clean.id}_price" type="number" min="0" value="${Number(clean.price || 0)}" ${clean.id === "free" ? "readonly" : ""}/>
           </label>
-          <label>AI Trades / Day
+          <label>${clean.id === "free" ? "Trial AI Trades / Day" : "AI Trades / Day"}
             <input id="plan_${clean.id}_signals" type="number" min="0" value="${Number(clean.signals || 0)}" required/>
           </label>
-          <label>Duration Days
-            <input id="plan_${clean.id}_duration" type="number" min="0" value="${Number(clean.durationDays || 0)}" ${clean.id === "free" ? "readonly" : ""}/>
+          <label>${clean.id === "free" ? "Free Trial Days" : "Duration Days"}
+            <input id="plan_${clean.id}_duration" type="number" min="0" value="${Number(clean.durationDays || 0)}"/>
           </label>
+          ${clean.id === "free" ? `<label>After Trial AI Trades / Day
+            <input id="plan_${clean.id}_postTrial" type="number" min="0" value="${Number(App.state.settings?.postTrialFreeAiTradesPerDay || 1)}" required/>
+          </label>` : ""}
           <label>AI Access Label
             <input id="plan_${clean.id}_access" value="${esc(clean.aiAccess)}" required/>
           </label>
-          <label>Trade Capacity
+          <label>Max AI Amount
             <input id="plan_${clean.id}_tradeLimit" type="number" min="0" value="${Number(clean.tradeLimit || 0)}"/>
           </label>
           <label>Status
@@ -1147,12 +1150,12 @@
         ${metric("⭐", "Plans", plans.length)}
         ${metric("👑", "Active Subs", activeSubs.length)}
         ${metric("💰", "Plan Revenue", App.money(revenue))}
-        ${metric("🎁", "Free AI / Day", Number(App.state.settings?.freeAiTradesPerDay || 5))}
+        ${metric("🎁", "Trial AI / Day", Number(App.state.settings?.freeAiTradesPerDay || 5))}
       </section>
 
       <section class="panel-card admin-plans-panel">
         <div class="section-head">
-          <div><h3>Subscription Plans</h3><span>Edit plan price, AI trade limit, duration and benefits shown to users.</span></div>
+          <div><h3>Subscription Plans</h3><span>Edit plan price, daily AI trades, free trial duration and benefits shown to users.</span></div>
           <span class="admin-count-pill">Wallet purchase enabled</span>
         </div>
         <div class="admin-plan-list">${plans.map(planEditorCard).join("")}</div>
@@ -1167,7 +1170,7 @@
               <div class="admin-user-main">
                 <div><b>${esc(sub.planName || sub.planId)}</b><span>${esc(displayNameFor(target))} · ${esc(target.email || "-")}</span></div>
                 <div class="admin-user-stats"><span>Price</span><b>${App.money(sub.price || 0)}</b></div>
-                <div class="admin-user-stats"><span>AI Limit</span><b>${Number(sub.aiTradeLimit || sub.signals || 0)}/day</b></div>
+                <div class="admin-user-stats"><span>Daily AI Trades</span><b>${Number(sub.aiTradeLimit || sub.signals || 0)}/day</b></div>
                 <div class="admin-user-stats"><span>Status</span><b>${esc(sub.status || "ACTIVE")}</b></div>
               </div>
             </article>`;
@@ -1389,7 +1392,7 @@
         name: String(get("name")?.value || plan.name || "Plan").trim(),
         price: planId === "free" ? 0 : Math.max(0, Number(get("price")?.value || 0)),
         signals: Math.max(0, Number(get("signals")?.value || 0)),
-        durationDays: planId === "free" ? 0 : Math.max(0, Number(get("duration")?.value || 0)),
+        durationDays: Math.max(0, Number(get("duration")?.value || 0)),
         aiAccess: String(get("access")?.value || "AI Access").trim(),
         tradeLimit: Math.max(0, Number(get("tradeLimit")?.value || 0)),
         status: planId === "free" ? "ACTIVE" : String(get("status")?.value || "ACTIVE").toUpperCase(),
@@ -1401,7 +1404,12 @@
       }
       App.state.plans = App.getPlans().map(row => row.id === planId ? App.normalizePlan(next) : row);
       if (planId === "free") {
-        App.state.settings = { ...(App.state.settings || {}), freeAiTradesPerDay: Number(next.signals || 5) };
+        App.state.settings = {
+          ...(App.state.settings || {}),
+          freeAiTradesPerDay: Number(next.signals || 5),
+          freeTrialDays: Number(next.durationDays || 7),
+          postTrialFreeAiTradesPerDay: Math.max(0, Number(get("postTrial")?.value || 1))
+        };
       }
       App.saveState();
       App.toast(`${next.name} plan saved.`);

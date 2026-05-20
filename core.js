@@ -6,7 +6,7 @@ const now=()=>new Date().toLocaleString("en-IN");
 const uid=(p="id")=>`${p}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 const money=n=>"₹"+Number(n||0).toLocaleString("en-IN");
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
-function initial(){return{users:[{id:"control_root",name:"AITradeX Control",email:"control@aitradex.com",password:"admin123",role:"admin",status:"ACTIVE",createdAt:now()}],profiles:[],kycRequests:[],paymentMethods:[],depositRequests:[],withdrawalRequests:[],walletLedger:[],demoLedger:[],trades:[],aiTradeBatches:[],plans:[{id:"free",name:"Free",price:0,signals:5,aiAccess:"Basic AI",tradeLimit:0,durationDays:0,status:"ACTIVE",benefits:["5 AI auto trades per day","Manual trading access","Live price cards"]},{id:"starter",name:"Starter",price:999,signals:25,aiAccess:"Starter AI",tradeLimit:10000,durationDays:30,status:"ACTIVE",benefits:["25 AI auto trades per day","Higher AI trading access","Priority dashboard visibility"]},{id:"pro",name:"Pro",price:2999,signals:100,aiAccess:"Pro AI",tradeLimit:50000,durationDays:30,status:"ACTIVE",benefits:["100 AI auto trades per day","Pro AI trade capacity","Faster plan priority"]},{id:"premium",name:"Premium",price:9999,signals:500,aiAccess:"Premium AI",tradeLimit:200000,durationDays:30,status:"ACTIVE",benefits:["500 AI auto trades per day","Premium AI priority","Highest trade capacity"]}],subscriptions:[],referrals:[],settings:{minDeposit:Number(C.MIN_DEPOSIT||500),minWithdrawal:Number(C.MIN_WITHDRAWAL||1000),referralFirstDepositPercent:Number(C.REFERRAL_FIRST_DEPOSIT_PERCENT||10),demoBalance:Number(C.DEMO_BALANCE||100000),platformName:"AITradeX",depositUpiId:"aitradex@upi",depositQrImage:"",depositBankName:"AITradeX Bank",depositAccountName:"AITradeX Private Wallet",depositAccountNumber:"123456789012",depositIfsc:"AITX0001234",freeAiTradesPerDay:5}}}
+function initial(){return{users:[{id:"control_root",name:"AITradeX Control",email:"control@aitradex.com",password:"admin123",role:"admin",status:"ACTIVE",createdAt:now()}],profiles:[],kycRequests:[],paymentMethods:[],depositRequests:[],withdrawalRequests:[],walletLedger:[],demoLedger:[],trades:[],aiTradeBatches:[],plans:[{id:"free",name:"Free Trial",price:0,signals:5,aiAccess:"Trial AI",tradeLimit:0,durationDays:7,status:"ACTIVE",benefits:["5 AI auto trades per day for 7 days","1 AI auto trade per day after trial","Manual trading access","Live price cards"]},{id:"starter",name:"Starter",price:999,signals:25,aiAccess:"Starter AI",tradeLimit:10000,durationDays:30,status:"ACTIVE",benefits:["25 AI auto trades per day","Higher AI trading access","Priority dashboard visibility"]},{id:"pro",name:"Pro",price:2999,signals:100,aiAccess:"Pro AI",tradeLimit:50000,durationDays:30,status:"ACTIVE",benefits:["100 AI auto trades per day","Pro AI access","Faster plan priority"]},{id:"premium",name:"Premium",price:9999,signals:500,aiAccess:"Premium AI",tradeLimit:200000,durationDays:30,status:"ACTIVE",benefits:["500 AI auto trades per day","Premium AI priority","Highest daily AI trades"]}],subscriptions:[],referrals:[],settings:{minDeposit:Number(C.MIN_DEPOSIT||500),minWithdrawal:Number(C.MIN_WITHDRAWAL||1000),referralFirstDepositPercent:Number(C.REFERRAL_FIRST_DEPOSIT_PERCENT||10),demoBalance:Number(C.DEMO_BALANCE||100000),platformName:"AITradeX",depositUpiId:"aitradex@upi",depositQrImage:"",depositBankName:"AITradeX Bank",depositAccountName:"AITradeX Private Wallet",depositAccountNumber:"123456789012",depositIfsc:"AITX0001234",freeAiTradesPerDay:5,postTrialFreeAiTradesPerDay:1,freeTrialDays:7}}}
 const load=()=>{try{return JSON.parse(localStorage.getItem(SK)||"null")||initial()}catch{return initial()}};
 const loadSession=()=>{try{return JSON.parse(localStorage.getItem(SS)||"null")}catch{return null}};
 
@@ -92,6 +92,14 @@ async function fetchMetalChartPrice(pair){
 }
 
 const App={config:C,db,state:load(),session:loadSession(),now,uid,money,escapeHtml:esc};
+App.state.settings={freeAiTradesPerDay:5,postTrialFreeAiTradesPerDay:1,freeTrialDays:7,...(App.state.settings||{})};
+if(!Array.isArray(App.state.plans))App.state.plans=initial().plans;
+const freePlan=App.state.plans.find(p=>p.id==="free");
+if(freePlan){
+  if(!freePlan.durationDays)freePlan.durationDays=Number(App.state.settings.freeTrialDays||7);
+  if(!freePlan.name||freePlan.name==="Free")freePlan.name="Free Trial";
+  if(!Array.isArray(freePlan.benefits)||!freePlan.benefits.length)freePlan.benefits=["5 AI auto trades per day for 7 days","1 AI auto trade per day after trial","Manual trading access","Live price cards"];
+}
 App.marketPairs=MARKET_PAIRS;
 
 App.livePrices=liveCache;
@@ -246,11 +254,28 @@ App.activeSubscription=id=>{
   const active=rows.find(x=>!App.subscriptionExpired(x));
   return active||null;
 };
-App.currentPlan=id=>{const sub=App.activeSubscription(id);return sub?(App.planById(sub.planId)||{id:sub.planId,name:sub.planName||"Active Plan",signals:sub.aiTradeLimit||sub.signals||0,price:sub.price||0,durationDays:sub.durationDays||0,status:"ACTIVE"}):(App.planById("free")||{id:"free",name:"Free",price:0,signals:Number(App.state.settings.freeAiTradesPerDay||5),durationDays:0,status:"ACTIVE"})};
+App.freeTrialInfo=userId=>{
+  const target=App.state.users.find(u=>u.id===userId)||{};
+  const free=App.planById("free")||{};
+  const trialDays=Math.max(0,Number(free.durationDays||App.state.settings.freeTrialDays||7));
+  let startedMs=Date.parse(target.freeTrialStartedAt||target.createdAt||"");
+  if(!Number.isFinite(startedMs))startedMs=Date.now();
+  const endsMs=startedMs+trialDays*86400000;
+  const active=trialDays>0&&Date.now()<endsMs;
+  const daysLeft=active?Math.max(1,Math.ceil((endsMs-Date.now())/86400000)):0;
+  return {active,expired:trialDays>0&&!active,trialDays,daysLeft,startsAt:new Date(startedMs).toISOString(),endsAt:trialDays?new Date(endsMs).toISOString():""};
+};
+App.currentPlan=id=>{
+  const sub=App.activeSubscription(id);
+  if(sub)return App.planById(sub.planId)||{id:sub.planId,name:sub.planName||"Active Plan",signals:sub.aiTradeLimit||sub.signals||0,price:sub.price||0,durationDays:sub.durationDays||0,status:"ACTIVE"};
+  const free=App.planById("free")||{id:"free",name:"Free Trial",price:0,signals:Number(App.state.settings.freeAiTradesPerDay||5),durationDays:Number(App.state.settings.freeTrialDays||7),status:"ACTIVE"};
+  const trial=App.freeTrialInfo(id);
+  return {...free,name:trial.active?"Free Trial":"Free",signals:App.aiDailyLimit(id),trialInfo:trial};
+};
 
 App.todayKey=()=>new Date().toISOString().slice(0,10);
 App.aiTradesToday=userId=>App.state.trades.filter(t=>t.userId===userId&&t.tradeType==="AI_AUTO"&&String(t.createdDate||"")===App.todayKey()).length;
-App.aiDailyLimit=userId=>{const sub=App.activeSubscription(userId);if(sub){const plan=App.planById(sub.planId)||{};return Number(sub.aiTradeLimit||sub.signals||plan.signals||50)||50}return Number(App.state.settings.freeAiTradesPerDay||5)};
+App.aiDailyLimit=userId=>{const sub=App.activeSubscription(userId);if(sub){const plan=App.planById(sub.planId)||{};return Number(sub.aiTradeLimit||sub.signals||plan.signals||50)||50}const trial=App.freeTrialInfo(userId);return trial.active?Number(App.state.settings.freeAiTradesPerDay||5):Number(App.state.settings.postTrialFreeAiTradesPerDay||1)};
 App.aiSettings=user=>({enabled:!!user?.aiTradeOn,percent:Number(user?.aiTradePercent||25)});
 App.aiAllowedAmount=user=>{const settings=App.aiSettings(user);if(!settings.enabled)return 0;return Math.max(0,App.realBalance(user.id))*settings.percent/100};
 App.addLedger=({userId,accountType="REAL",type,amount,referenceId,note=""})=>{const list=accountType==="DEMO"?App.state.demoLedger:App.state.walletLedger;if(list.some(x=>x.type===type&&x.referenceId===referenceId))return false;const before=accountType==="DEMO"?App.demoBalance(userId):App.realBalance(userId),after=before+Number(amount||0);if(after<0)throw new Error("Insufficient balance");list.push({id:uid("ledger"),userId,accountType,type,amount:Number(amount||0),referenceId,note,balanceAfter:after,createdAt:now()});App.saveState();return true};

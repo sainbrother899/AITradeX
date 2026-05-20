@@ -426,13 +426,26 @@
     return u ? App.activeSubscription(u.id) : null;
   }
 
+  function freeTrialInfo() {
+    const u = user();
+    return u ? App.freeTrialInfo(u.id) : { active: false, expired: false, trialDays: 7, daysLeft: 0 };
+  }
+
+  function freeAccessText() {
+    const info = freeTrialInfo();
+    const postLimit = Number(App.state.settings?.postTrialFreeAiTradesPerDay || 1);
+    if (info.active) return `Trial ends in ${info.daysLeft} day${info.daysLeft === 1 ? "" : "s"}`;
+    return `Free access: ${postLimit}/day`;
+  }
+
   function currentPlan() {
     const u = user();
     return u ? App.currentPlan(u.id) : (App.planById("free") || { name: "Free", price: 0, signals: 5 });
   }
 
   function subscriptionExpiryText(sub) {
-    if (!sub || !sub.expiresAt) return "No expiry";
+    if (!sub) return freeAccessText();
+    if (!sub.expiresAt) return "No expiry";
     const date = new Date(sub.expiresAt);
     if (Number.isNaN(date.getTime())) return "No expiry";
     return date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
@@ -441,9 +454,9 @@
   function planBenefits(plan) {
     if (Array.isArray(plan?.benefits) && plan.benefits.length) return plan.benefits;
     return [
-      `${Number(plan?.signals || 0)} AI auto trades per day`,
+      `${Number(plan?.signals || 0)} daily AI trades`,
       `${plan?.aiAccess || "AI"} access`,
-      plan?.tradeLimit ? `AI trade capacity up to ${App.money(plan.tradeLimit)}` : "Manual trading access"
+      plan?.tradeLimit ? `Max AI amount up to ${App.money(plan.tradeLimit)}` : "Manual trading access"
     ];
   }
 
@@ -2022,9 +2035,9 @@
 
       <section class="compact-grid subscription-summary-grid">
         <article><span>Current Plan</span><b>${App.escapeHtml(plan.name || "Free")}</b><small>${sub ? "Active" : "Free access"}</small></article>
-        <article><span>AI Limit</span><b>${usage.limit}/day</b><small>Plan controlled</small></article>
+        <article><span>Daily AI Trades</span><b>${usage.limit}/day</b><small>${activeSubscription() ? "Plan controlled" : freeAccessText()}</small></article>
         <article><span>Used Today</span><b>${usage.used}/${usage.limit}</b><small>AI Auto Trades</small></article>
-        <article><span>Expires</span><b>${subscriptionExpiryText(sub)}</b><small>${sub ? "Plan validity" : "Free plan"}</small></article>
+        <article><span>${sub ? "Expires" : "Free Access"}</span><b>${subscriptionExpiryText(sub)}</b><small>${sub ? "Plan validity" : "Trial + free limit"}</small></article>
       </section>
 
       <section class="subscription-plan-grid">
