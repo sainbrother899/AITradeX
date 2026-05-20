@@ -3883,3 +3883,70 @@
   .referral-user-card { align-items:flex-start; flex-direction:column; }
   .referral-bonus-stack { text-align:left; }
 }
+
+/* Phase 4.33 Support Ticket System */
+.support-hero-card{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  padding:18px;
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:24px;
+  background:linear-gradient(135deg,rgba(34,197,94,.14),rgba(59,130,246,.10)),rgba(8,13,28,.88);
+  box-shadow:0 18px 50px rgba(0,0,0,.22);
+  margin-bottom:16px;
+}
+.support-hero-card p,.support-form-card p,.support-list-card p,.support-admin-head p{margin:0 0 4px;color:#8bb5ff;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+.support-hero-card h2,.support-form-card h2,.support-list-card h2{margin:0;color:#fff;font-size:20px}
+.support-hero-card span{display:block;color:rgba(235,244,255,.72);font-size:13px;margin-top:6px}
+.whatsapp-help-btn{
+  white-space:nowrap;
+  border:0;
+  border-radius:999px;
+  padding:12px 16px;
+  color:#062514;
+  background:linear-gradient(135deg,#7cffb2,#22c55e);
+  font-weight:900;
+  text-decoration:none;
+  box-shadow:0 12px 28px rgba(34,197,94,.25);
+}
+.support-grid{display:grid;grid-template-columns:minmax(280px,.9fr) minmax(320px,1.1fr);gap:16px;align-items:start}
+.support-form-card textarea,.support-reply-form textarea{resize:vertical;min-height:110px}
+.support-ticket-list,.support-admin-list{display:grid;gap:12px}
+.support-ticket-card,.admin-support-ticket-card{
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:20px;
+  padding:14px;
+  background:rgba(255,255,255,.045);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
+}
+.ticket-card-head,.support-admin-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+.ticket-card-head h3,.support-admin-head h3{margin:0;color:#fff;font-size:16px;line-height:1.25}
+.support-admin-head span{display:block;color:rgba(235,244,255,.68);font-size:12px;margin-top:5px}
+.ticket-status{display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;border:1px solid rgba(255,255,255,.12)}
+.ticket-status.open{color:#fde68a;background:rgba(245,158,11,.14)}
+.ticket-status.replied{color:#93c5fd;background:rgba(59,130,246,.16)}
+.ticket-status.closed{color:#86efac;background:rgba(34,197,94,.16)}
+.ticket-message-box,.support-admin-message{
+  color:rgba(235,244,255,.86);
+  line-height:1.55;
+  padding:12px;
+  border-radius:14px;
+  background:rgba(0,0,0,.18);
+  border:1px solid rgba(255,255,255,.08);
+  margin-bottom:10px;
+}
+.ticket-reply-preview{display:grid;gap:4px;border-radius:14px;padding:10px 12px;background:rgba(59,130,246,.10);border:1px solid rgba(59,130,246,.18);margin-bottom:10px}
+.ticket-reply-preview b{color:#bfdbfe;font-size:12px}.ticket-reply-preview span{color:#eaf2ff;font-size:13px}
+.ticket-meta-grid{display:flex;flex-wrap:wrap;gap:8px;color:rgba(235,244,255,.58);font-size:11px;margin-top:10px}
+.ticket-meta-grid span{border:1px solid rgba(255,255,255,.08);border-radius:999px;padding:5px 8px;background:rgba(255,255,255,.035)}
+.ticket-thread,.support-admin-thread{display:grid;gap:8px;margin-top:10px}
+.ticket-thread-row{border-radius:14px;padding:10px 12px;display:grid;gap:4px;border:1px solid rgba(255,255,255,.08)}
+.ticket-thread-row.admin{background:rgba(59,130,246,.10)}.ticket-thread-row.user{background:rgba(255,255,255,.045)}
+.ticket-thread-row b{color:#fff;font-size:12px}.ticket-thread-row span{color:rgba(235,244,255,.82);font-size:13px}.ticket-thread-row small{color:rgba(235,244,255,.50);font-size:10px}
+.support-settings-card{margin-bottom:14px}.admin-inline-form{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end}.admin-inline-form label{display:grid;gap:7px;color:rgba(235,244,255,.74);font-size:12px}.admin-inline-form input{width:100%}
+.support-reply-form{display:grid;gap:10px;margin-top:12px}.support-action-row{display:flex;gap:10px;flex-wrap:wrap}.support-closed-note{color:#86efac;font-weight:800;margin-top:10px}
+@media(max-width:760px){
+  .support-hero-card{align-items:flex-start;flex-direction:column;border-radius:20px;padding:14px}.support-grid{grid-template-columns:1fr}.whatsapp-help-btn{width:100%;text-align:center}.ticket-card-head,.support-admin-head{align-items:flex-start;gap:8px}.admin-inline-form{grid-template-columns:1fr}.support-action-row button{flex:1;min-width:130px}
+}

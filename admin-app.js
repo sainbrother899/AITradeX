@@ -12,6 +12,8 @@
   let financeStatusFilter = localStorage.getItem("AITradeX_ADMIN_FINANCE_STATUS") || "ALL";
   let usersSearch = localStorage.getItem("AITradeX_ADMIN_USERS_SEARCH") || "";
   let usersStatusFilter = localStorage.getItem("AITradeX_ADMIN_USERS_STATUS") || "ALL";
+  let supportSearch = localStorage.getItem("AITradeX_ADMIN_SUPPORT_SEARCH") || "";
+  let supportStatusFilter = localStorage.getItem("AITradeX_ADMIN_SUPPORT_STATUS") || "ALL";
 
   function adminUser() {
     return App.currentUser();
@@ -364,6 +366,7 @@
             ${navButton("trades", "🤖", "AI Trade Control")}
             ${navButton("plans", "⭐", "Plans")}
             ${navButton("referrals", "🎁", "Referrals")}
+            ${navButton("support", "🎧", "Support Tickets")}
             ${navButton("settings", "⚙️", "Payment Settings")}
           </nav>
           <button class="logout-btn" onclick="AITradeXAdmin.logout()">🚪 Logout</button>
@@ -396,6 +399,7 @@
       trades: "AI Trade Control",
       plans: "Subscription Plans",
       referrals: "Referrals",
+      support: "Support Tickets",
       settings: "Payment Settings"
     };
     return titles[page] || "Dashboard";
@@ -423,6 +427,7 @@
     const paymentPending = users.flatMap(u => paymentMethodsFor(u).map(m => ({ user: u, method: m }))).filter(x => x.method.status === "PENDING");
     const pendingDeposits = pendingFinanceCount("DEPOSIT");
     const pendingWithdrawals = pendingFinanceCount("WITHDRAWAL");
+    const openSupportTickets = (App.state.supportTickets || []).filter(t => String(t.status || "OPEN").toUpperCase() !== "CLOSED").length;
 
     shell(`
       <section class="metrics-grid">
@@ -432,6 +437,7 @@
         ${metric("⬇️", "Pending Deposits", pendingDeposits)}
         ${metric("⬆️", "Pending Withdrawals", pendingWithdrawals)}
         ${metric("🤖", "AI ON Users", allUsers().filter(u => u.aiTradeOn && userStatus(u) === "ACTIVE").length)}
+        ${metric("🎧", "Open Support", openSupportTickets)}
       </section>
 
       <section class="admin-grid-two">
@@ -1244,6 +1250,102 @@
     `);
   }
 
+  function supportUserFor(ticket) {
+    return allUsers().find(u => u.id === ticket.userId) || { name: ticket.userName || "User", email: ticket.userEmail || "", mobile: ticket.userMobile || "" };
+  }
+
+  function supportRows() {
+    App.state.supportTickets = App.state.supportTickets || [];
+    const q = supportSearch.trim().toLowerCase();
+    return App.state.supportTickets
+      .filter(ticket => supportStatusFilter === "ALL" || String(ticket.status || "OPEN").toUpperCase() === supportStatusFilter)
+      .filter(ticket => {
+        if (!q) return true;
+        const u = supportUserFor(ticket);
+        return [ticket.id, ticket.category, ticket.subject, ticket.message, ticket.status, u.name, u.email, u.mobile].some(value => String(value || "").toLowerCase().includes(q));
+      })
+      .sort((a, b) => Date.parse(b.updatedAt || b.createdAt || 0) - Date.parse(a.updatedAt || a.createdAt || 0));
+  }
+
+  function supportTicketCard(ticket) {
+    const u = supportUserFor(ticket);
+    const replies = Array.isArray(ticket.replies) ? ticket.replies : [];
+    const status = String(ticket.status || "OPEN").toUpperCase();
+    return `
+      <article class="admin-support-ticket-card">
+        <div class="support-admin-head">
+          <div>
+            <p>${esc(ticket.category || "Support")}</p>
+            <h3>${esc(ticket.subject || "Support request")}</h3>
+            <span>${esc(displayNameFor(u))} · ${esc(u.email || "No email")} · ${esc(u.mobile || "No mobile")}</span>
+          </div>
+          ${statusPill(status)}
+        </div>
+        <div class="support-admin-message">${esc(ticket.message || "-")}</div>
+        ${replies.length ? `<div class="support-admin-thread">${replies.map(reply => `
+          <div class="ticket-thread-row ${reply.by === "admin" ? "admin" : "user"}">
+            <b>${reply.by === "admin" ? "Support" : "User"}</b>
+            <span>${esc(reply.message || "")}</span>
+            <small>${esc(reply.createdAt || "")}</small>
+          </div>`).join("")}</div>` : ""}
+        <div class="ticket-meta-grid admin-ticket-meta">
+          <span>ID: ${esc(ticket.id)}</span>
+          <span>Created: ${esc(ticket.createdAt || "-")}</span>
+          <span>Updated: ${esc(ticket.updatedAt || "-")}</span>
+        </div>
+        ${status !== "CLOSED" ? `
+          <form class="support-reply-form" onsubmit="AITradeXAdmin.replySupportTicket(event,'${ticket.id}')">
+            <textarea id="reply_${ticket.id}" rows="3" placeholder="Write admin reply..."></textarea>
+            <div class="support-action-row">
+              <button class="mini-action" type="submit">Send Reply</button>
+              <button class="ghost-action" type="button" onclick="AITradeXAdmin.closeSupportTicket('${ticket.id}', this)">Close Ticket</button>
+            </div>
+          </form>` : `<div class="support-closed-note">Ticket closed.</div>`}
+      </article>`;
+  }
+
+  function supportPage() {
+    const settings = App.state.settings || {};
+    const rows = supportRows();
+    const total = App.state.supportTickets || [];
+    const open = total.filter(t => String(t.status || "OPEN").toUpperCase() === "OPEN").length;
+    const replied = total.filter(t => String(t.status || "OPEN").toUpperCase() === "REPLIED").length;
+    const closed = total.filter(t => String(t.status || "OPEN").toUpperCase() === "CLOSED").length;
+    shell(`
+      <section class="metrics-grid compact-metrics">
+        ${metric("🎧", "Open", open)}
+        ${metric("↩️", "Replied", replied)}
+        ${metric("✅", "Closed", closed)}
+      </section>
+
+      <section class="panel-card support-settings-card">
+        <div class="section-head">
+          <div><h3>Support Settings</h3><span>WhatsApp is used for urgent quick help. Tickets stay as official support records.</span></div>
+        </div>
+        <form class="admin-inline-form" onsubmit="AITradeXAdmin.saveSupportSettings(event)">
+          <label>WhatsApp Support Number
+            <input id="supportWhatsAppNumber" value="${esc(settings.supportWhatsAppNumber || "919999999999")}" placeholder="919999999999"/>
+          </label>
+          <button class="mini-action">Save</button>
+        </form>
+      </section>
+
+      <section class="admin-filter-bar users-filter-bar">
+        <input value="${esc(supportSearch)}" oninput="AITradeXAdmin.setSupportSearch(this.value)" placeholder="Search ticket, user, email, category..."/>
+        <select onchange="AITradeXAdmin.setSupportStatusFilter(this.value)">
+          ${["ALL", "OPEN", "REPLIED", "CLOSED"].map(status => `<option value="${status}" ${supportStatusFilter === status ? "selected" : ""}>${status}</option>`).join("")}
+        </select>
+      </section>
+
+      <section class="panel-card">
+        <div class="section-head"><div><h3>Support Tickets</h3><span>${rows.length} matching tickets</span></div></div>
+        <div class="support-admin-list">
+          ${rows.length ? rows.map(supportTicketCard).join("") : `<div class="empty-state">No support tickets found.</div>`}
+        </div>
+      </section>
+    `);
+  }
+
   function settingsPage() {
     const settings = platformSettings();
     shell(`
@@ -1339,6 +1441,7 @@
     if (page === "trades") return tradesPage();
     if (page === "plans") return plansPage();
     if (page === "referrals") return referralsPage();
+    if (page === "support") return supportPage();
     if (page === "settings") return settingsPage();
     return dashboardPage();
   }
@@ -1443,6 +1546,60 @@
         input.remove();
         App.toast("Copied.");
       }
+    },
+    setSupportSearch(value) {
+      supportSearch = value;
+      localStorage.setItem("AITradeX_ADMIN_SUPPORT_SEARCH", supportSearch);
+      render();
+    },
+    setSupportStatusFilter(value) {
+      supportStatusFilter = value;
+      localStorage.setItem("AITradeX_ADMIN_SUPPORT_STATUS", supportStatusFilter);
+      render();
+    },
+    saveSupportSettings(event) {
+      event.preventDefault();
+      const raw = String(document.getElementById("supportWhatsAppNumber")?.value || "").replace(/\D/g, "");
+      if (!raw || raw.length < 10) {
+        App.toast("Enter a valid WhatsApp support number with country code.");
+        return;
+      }
+      App.state.settings = { ...(App.state.settings || {}), supportWhatsAppNumber: raw };
+      App.saveState();
+      App.toast("Support settings saved.");
+      render();
+    },
+    replySupportTicket(event, ticketId) {
+      event.preventDefault();
+      App.state.supportTickets = App.state.supportTickets || [];
+      const ticket = App.state.supportTickets.find(t => t.id === ticketId);
+      if (!ticket) return;
+      const input = document.getElementById(`reply_${ticketId}`);
+      const message = String(input?.value || "").trim();
+      if (!message) {
+        App.toast("Reply message required.");
+        return;
+      }
+      ticket.replies = Array.isArray(ticket.replies) ? ticket.replies : [];
+      ticket.replies.push({ by: "admin", message, createdAt: App.now() });
+      ticket.status = "REPLIED";
+      ticket.updatedAt = App.now();
+      App.saveState();
+      App.toast("Reply sent.");
+      render();
+    },
+    closeSupportTicket(ticketId, button) {
+      App.state.supportTickets = App.state.supportTickets || [];
+      const ticket = App.state.supportTickets.find(t => t.id === ticketId);
+      if (!ticket) return;
+      if (!confirm("Close this support ticket?")) return;
+      markButton(button, "Closing...");
+      ticket.status = "CLOSED";
+      ticket.closedAt = App.now();
+      ticket.updatedAt = App.now();
+      App.saveState();
+      App.toast("Ticket closed.");
+      render();
     },
     savePlan(event, planId) {
       event.preventDefault();

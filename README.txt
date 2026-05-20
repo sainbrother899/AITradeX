@@ -715,3 +715,14 @@ Phase 4.32 - Auto Referral Bonus System Clean
 - Added duplicate bonus protection so each referred user can credit deposit bonus once and subscription bonus once only.
 - Referral bonus ledger entries are credited to real wallet only.
 - No backup files or patch layers are included.
+
+Phase 4.33 - Support Ticket System With WhatsApp Help
+- Added working user Support page with ticket creation.
+- User can create support tickets for Deposit, Withdrawal, Trade, Subscription, Referral, Account or Other issues.
+- User Support page includes WhatsApp Help for urgent contact.
+- User can view official ticket history, ticket status and admin replies.
+- Admin sidebar now includes Support Tickets.
+- Admin can search/filter support tickets, reply to tickets and close tickets.
+- Admin Support Settings includes editable WhatsApp support number.
+- WhatsApp is used only as quick help; support tickets stay as the official support record.
+- No backup files or patch/block layers are included.

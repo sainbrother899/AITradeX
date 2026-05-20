@@ -2192,8 +2192,101 @@
     `);
   }
 
+  function supportTicketsForUser() {
+    const u = user();
+    if (!u) return [];
+    App.state.supportTickets = App.state.supportTickets || [];
+    return App.state.supportTickets
+      .filter(ticket => ticket.userId === u.id)
+      .sort((a, b) => Date.parse(b.updatedAt || b.createdAt || 0) - Date.parse(a.updatedAt || a.createdAt || 0));
+  }
+
+  function supportStatusBadge(status) {
+    const clean = String(status || "OPEN").toUpperCase();
+    const label = clean === "REPLIED" ? "Replied" : clean === "CLOSED" ? "Closed" : "Open";
+    return `<span class="ticket-status ${clean.toLowerCase()}">${label}</span>`;
+  }
+
+  function supportWhatsAppLink() {
+    const settings = App.state.settings || {};
+    const raw = String(settings.supportWhatsAppNumber || "919999999999").replace(/\D/g, "");
+    const message = encodeURIComponent("Hello AITradeX Support, I need help with my account.");
+    return `https://wa.me/${raw}?text=${message}`;
+  }
+
+  function supportTicketCard(ticket) {
+    const replies = Array.isArray(ticket.replies) ? ticket.replies : [];
+    const adminReplies = replies.filter(reply => reply.by === "admin").length;
+    const lastReply = replies[replies.length - 1];
+    return `
+      <article class="support-ticket-card">
+        <div class="ticket-card-head">
+          <div>
+            <p>${App.escapeHtml(ticket.category || "Support")}</p>
+            <h3>${App.escapeHtml(ticket.subject || "Support request")}</h3>
+          </div>
+          ${supportStatusBadge(ticket.status)}
+        </div>
+        <div class="ticket-message-box">${App.escapeHtml(ticket.message || "-")}</div>
+        ${lastReply ? `<div class="ticket-reply-preview"><b>${lastReply.by === "admin" ? "Support" : "You"}</b><span>${App.escapeHtml(lastReply.message || "")}</span></div>` : ""}
+        <div class="ticket-meta-grid">
+          <span>Ticket ID: ${App.escapeHtml(ticket.id)}</span>
+          <span>Created: ${App.escapeHtml(ticket.createdAt || "-")}</span>
+          <span>Replies: ${adminReplies}</span>
+        </div>
+        ${replies.length ? `<div class="ticket-thread">${replies.map(reply => `
+          <div class="ticket-thread-row ${reply.by === "admin" ? "admin" : "user"}">
+            <b>${reply.by === "admin" ? "Support" : "You"}</b>
+            <span>${App.escapeHtml(reply.message || "")}</span>
+            <small>${App.escapeHtml(reply.createdAt || "")}</small>
+          </div>`).join("")}</div>` : ""}
+      </article>`;
+  }
+
   function supportPage() {
-    shell(`<section class="premium-card"><p>SUPPORT</p><h2>Help Center</h2><div class="empty-state">Support tickets will be connected later.</div></section>`);
+    const tickets = supportTicketsForUser();
+    const openCount = tickets.filter(ticket => String(ticket.status || "OPEN").toUpperCase() !== "CLOSED").length;
+    shell(`
+      <section class="support-hero-card">
+        <div>
+          <p>SUPPORT CENTER</p>
+          <h2>Need help? Create a support ticket.</h2>
+          <span>Use tickets for official support records. For urgent help, contact WhatsApp support.</span>
+        </div>
+        <a class="whatsapp-help-btn" href="${supportWhatsAppLink()}" target="_blank" rel="noopener">WhatsApp Help</a>
+      </section>
+
+      <section class="support-grid">
+        <form class="premium-card support-form-card form-grid" onsubmit="AITradeXUser.createSupportTicket(event)">
+          <div class="card-row"><div><p>NEW TICKET</p><h2>Create Support Ticket</h2></div><span class="history-mode">${openCount} Open</span></div>
+          <label>Category
+            <select id="supportCategory" required>
+              <option value="Deposit">Deposit</option>
+              <option value="Withdrawal">Withdrawal</option>
+              <option value="Trade">Trade</option>
+              <option value="Subscription">Subscription</option>
+              <option value="Referral">Referral</option>
+              <option value="Account">Account</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
+          <label>Subject
+            <input id="supportSubject" required maxlength="80" placeholder="Example: Withdrawal request not updated"/>
+          </label>
+          <label>Message
+            <textarea id="supportMessage" required rows="5" maxlength="700" placeholder="Write your issue clearly with amount, request ID or transaction detail if available."></textarea>
+          </label>
+          <button class="save-profile-btn">Submit Ticket</button>
+        </form>
+
+        <section class="premium-card support-list-card">
+          <div class="card-row"><div><p>YOUR TICKETS</p><h2>Ticket History</h2></div><span class="history-mode">${tickets.length}</span></div>
+          <div class="support-ticket-list">
+            ${tickets.length ? tickets.map(supportTicketCard).join("") : `<div class="empty-state">No support tickets yet.</div>`}
+          </div>
+        </section>
+      </section>
+    `);
   }
 
   function render() {
@@ -2953,6 +3046,37 @@
         App.saveState();
       }
       App.toast("AI Auto Trading turned off.");
+      render();
+    },
+    createSupportTicket(event) {
+      event.preventDefault();
+      const u = user();
+      if (!u) return;
+      const category = String(document.getElementById("supportCategory")?.value || "Other").trim();
+      const subject = String(document.getElementById("supportSubject")?.value || "").trim();
+      const message = String(document.getElementById("supportMessage")?.value || "").trim();
+      if (!subject || !message) {
+        App.toast("Subject and message required.");
+        return;
+      }
+      App.state.supportTickets = App.state.supportTickets || [];
+      const id = App.uid("ticket");
+      App.state.supportTickets.unshift({
+        id,
+        userId: u.id,
+        userName: displayName(),
+        userEmail: u.email || "",
+        userMobile: u.mobile || "",
+        category,
+        subject,
+        message,
+        status: "OPEN",
+        replies: [],
+        createdAt: App.now(),
+        updatedAt: App.now()
+      });
+      App.saveState();
+      App.toast("Support ticket submitted.");
       render();
     },
     saveProfile() {
