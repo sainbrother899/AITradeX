@@ -93,6 +93,77 @@ App.refreshLivePrices=async(pairs,onEach)=>{
   return out;
 };
 
+const cryptoStreamSymbol=pair=>normPair(pair).replace("/","").toLowerCase();
+let cryptoTickerSocket=null,cryptoTickerKey="",cryptoTickerRetry=null,cryptoTickerSaveTimer=0;
+function cryptoTickerRow(data){
+  const symbol=String(data?.s||"").toUpperCase();
+  const item=(MARKET_PAIRS.CRYPTO||[]).find(x=>normPair(x.pair).replace("/","")===symbol);
+  if(!item)return null;
+  const price=Number(data.c);
+  if(!Number.isFinite(price))return null;
+  const changePct=Number(data.P||0);
+  return {
+    ok:true,
+    pair:normPair(item.pair),
+    price,
+    display:fmtPrice(price,"CRYPTO"),
+    change:fmtChange(changePct),
+    mood:changePct>=0?"up":"down",
+    source:"Binance WebSocket",
+    sourceType:"LIVE_WEBSOCKET",
+    fetchedAt:new Date().toISOString(),
+    fetchedMs:Date.now()
+  };
+}
+function saveTickerCacheSoon(){
+  const t=Date.now();
+  if(t-cryptoTickerSaveTimer<8000)return;
+  cryptoTickerSaveTimer=t;
+  saveLiveCache();
+}
+App.stopCryptoLiveTicker=()=>{
+  if(cryptoTickerRetry){clearTimeout(cryptoTickerRetry);cryptoTickerRetry=null;}
+  if(cryptoTickerSocket){try{cryptoTickerSocket.close();}catch{}}
+  cryptoTickerSocket=null;cryptoTickerKey="";
+};
+App.startCryptoLiveTicker=(pairs,onEach)=>{
+  const cryptoPairs=[...new Set((pairs||[]).map(x=>typeof x==="string"?x:x?.pair).filter(Boolean).map(normPair).filter(isCryptoPair))];
+  if(!cryptoPairs.length||!("WebSocket" in window)){return false;}
+  const streams=cryptoPairs.map(p=>`${cryptoStreamSymbol(p)}@ticker`).sort();
+  const key=streams.join("/");
+  if(key===cryptoTickerKey&&cryptoTickerSocket&&[WebSocket.OPEN,WebSocket.CONNECTING].includes(cryptoTickerSocket.readyState))return true;
+  App.stopCryptoLiveTicker();
+  cryptoTickerKey=key;
+  const url=`wss://data-stream.binance.vision:443/stream?streams=${streams.join("/")}`;
+  const connect=()=>{
+    try{
+      cryptoTickerSocket=new WebSocket(url);
+      cryptoTickerSocket.onmessage=event=>{
+        try{
+          const payload=JSON.parse(event.data||"{}");
+          const row=cryptoTickerRow(payload.data||payload);
+          if(!row)return;
+          liveCache[row.pair]=row;
+          saveTickerCacheSoon();
+          if(typeof onEach==="function")onEach(row);
+        }catch{}
+      };
+      cryptoTickerSocket.onclose=()=>{
+        if(cryptoTickerKey===key){
+          cryptoTickerRetry=setTimeout(connect,3500);
+        }
+      };
+      cryptoTickerSocket.onerror=()=>{
+        try{cryptoTickerSocket.close();}catch{}
+      };
+    }catch{
+      cryptoTickerRetry=setTimeout(connect,5000);
+    }
+  };
+  connect();
+  return true;
+};
+
 App.saveState=()=>localStorage.setItem(SK,JSON.stringify(App.state));
 App.setSession=(userId,role)=>{App.session={userId,role,savedAt:Date.now()};localStorage.setItem(SS,JSON.stringify(App.session))};
 App.clearSession=()=>{App.session=null;localStorage.removeItem(SS)};

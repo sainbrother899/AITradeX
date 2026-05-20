@@ -478,3 +478,11 @@ Changed files in Phase 4.8:
 - admin-app.js
 - styles.css
 - README.txt
+
+Phase 4.9 - Crypto Live WebSocket Ticker Clean
+- Added Binance WebSocket live ticker for crypto pair price cards.
+- Crypto price cards now update with a 1-second live feel where Binance stream is available.
+- Forex prices continue through the existing ExchangeRate API refresh flow to avoid excessive API calls.
+- XAU/USD and XAG/USD remain manual-rate based; no random rate is used.
+- Existing API fallback remains in place if the WebSocket disconnects or is unavailable.
+- Admin AI Trading Desk entry price lock remains separate and safe for history/settlement.

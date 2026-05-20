@@ -25,6 +25,7 @@
   let withdrawalStep = Number(localStorage.getItem("AITradeX_WITHDRAWAL_STEP") || 1);
   let depositDraft = readJson("AITradeX_DEPOSIT_DRAFT", { amount: "", type: "UPI", utr: "" });
   let withdrawalDraft = readJson("AITradeX_WITHDRAWAL_DRAFT", { amount: "", methodId: "" });
+  let priceRefreshTimer = null;
 
   const marketPairs = App.marketPairs || { CRYPTO: [], FOREX: [] };
   function pairsForMarket() {
@@ -176,23 +177,36 @@
     return `data-live-pair="${App.escapeHtml(pair)}"`;
   }
 
+  function applyLivePriceRow(row) {
+    if (!row || !row.ok) return;
+    document.querySelectorAll(`[data-live-pair="${CSS.escape(row.pair)}"]`).forEach(el => {
+      const type = el.getAttribute("data-live-type") || "price";
+      if (type === "price") {
+        el.textContent = row.display;
+        el.classList.add("live-price-tick");
+        setTimeout(() => el.classList.remove("live-price-tick"), 350);
+      }
+      if (type === "change") {
+        el.textContent = row.change || "Live";
+        el.classList.toggle("profit-text", row.mood !== "down");
+        el.classList.toggle("loss-text", row.mood === "down");
+      }
+      if (type === "line") el.innerHTML = `${row.display} · <em class="${row.mood === "down" ? "loss-text" : "profit-text"}">${row.change || "Live"}</em> · ${row.source}`;
+      if (type === "source") el.textContent = row.source || "Live API";
+    });
+  }
+
   function refreshVisiblePrices(items) {
     const list = (items || []).map(p => typeof p === "string" ? p : p.pair).filter(Boolean);
-    if (!App.refreshLivePrices || !list.length) return;
-    App.refreshLivePrices(list, row => {
-      if (!row || !row.ok) return;
-      document.querySelectorAll(`[data-live-pair="${CSS.escape(row.pair)}"]`).forEach(el => {
-        const type = el.getAttribute("data-live-type") || "price";
-        if (type === "price") el.textContent = row.display;
-        if (type === "change") {
-          el.textContent = row.change || "Live";
-          el.classList.toggle("profit-text", row.mood !== "down");
-          el.classList.toggle("loss-text", row.mood === "down");
-        }
-        if (type === "line") el.innerHTML = `${row.display} · <em class="${row.mood === "down" ? "loss-text" : "profit-text"}">${row.change || "Live"}</em> · ${row.source}`;
-        if (type === "source") el.textContent = row.source || "Live API";
-      });
-    });
+    if (!list.length) return;
+
+    if (App.refreshLivePrices) App.refreshLivePrices(list, applyLivePriceRow);
+    if (App.startCryptoLiveTicker) App.startCryptoLiveTicker(list, applyLivePriceRow);
+
+    if (priceRefreshTimer) clearInterval(priceRefreshTimer);
+    priceRefreshTimer = setInterval(() => {
+      if (App.refreshLivePrices) App.refreshLivePrices(list.filter(pair => !(App.isCryptoPair && App.isCryptoPair(pair))), applyLivePriceRow);
+    }, 60000);
   }
 
   function selectorSheetHtml() {
