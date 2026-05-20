@@ -6,3 +6,24 @@ function loginUser({email,password}){const u=byEmail(email);if(!u||u.password!==
 function loginControl({email,password}){const u=byEmail(email);if(!u||u.password!==password||u.role!=="admin")throw new Error("Invalid control center login.");App.setSession(u.id,"admin");return u}
 window.AITradeXAuth={registerUser,loginUser,loginControl};
 })();
+
+
+/* AITradeX Phase 3.1 admin auth compatibility */
+(() => {
+  const Auth = window.AITradeXAuth;
+  const App = window.AITradeX;
+  if (!Auth || !App || Auth.loginAdmin) return;
+
+  Auth.loginAdmin = function ({ email, password }) {
+    const admin = App.state.users.find(
+      u => u.role === "admin" && String(u.email).toLowerCase() === String(email).toLowerCase() && u.password === password
+    );
+
+    if (!admin) {
+      throw new Error("Invalid admin login.");
+    }
+
+    App.setSession(admin.id);
+    return admin;
+  };
+})();

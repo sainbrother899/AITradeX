@@ -249,3 +249,10 @@ Phase 3.0 Admin KYC + Payment Approval:
 - Admin can approve/reject payment methods with reject reason.
 - Data currently reads/writes localStorage for testing with user side.
 - Wallet and trade control admin pages remain placeholders for next phases.
+
+
+Phase 3.1 Admin Fix:
+- admin.html fixed to include id="adminApp" root for admin-app.js.
+- auth.js extended with loginAdmin compatibility if missing.
+- Admin login and admin render root should now work.
+- User side logic untouched.
