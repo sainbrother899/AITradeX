@@ -304,6 +304,50 @@
     return `<div class="admin-date-line"><span>${label}</span><b>${new Date(value).toLocaleString()}</b></div>`;
   }
 
+  function jsArg(value) {
+    return JSON.stringify(String(value ?? "")).replace(/</g, "\\u003c");
+  }
+
+  function detailCopyRow(label, value, copyValue = value) {
+    const clean = value || "-";
+    const hasValue = !!value && value !== "-";
+    return `
+      <article class="withdrawal-detail-row">
+        <span>${esc(label)}</span>
+        <b>${esc(clean)}</b>
+        ${hasValue ? `<button type="button" onclick="AITradeXAdmin.copyText(${jsArg(copyValue)})">Copy</button>` : ""}
+      </article>`;
+  }
+
+  function withdrawalPayoutDetails(request) {
+    const method = request.methodSnapshot || {};
+    const type = String(method.type || request.methodType || "").toUpperCase();
+    if (type === "UPI") {
+      return `
+        <section class="withdrawal-detail-panel">
+          <div class="withdrawal-detail-title"><span>UPI Payout Details</span><b>Verified Method</b></div>
+          <div class="withdrawal-detail-grid">
+            ${detailCopyRow("Holder Name", method.holderName)}
+            ${detailCopyRow("UPI ID", method.upiId)}
+            ${detailCopyRow("Method ID", request.methodId)}
+          </div>
+        </section>`;
+    }
+
+    return `
+      <section class="withdrawal-detail-panel">
+        <div class="withdrawal-detail-title"><span>Bank Payout Details</span><b>Verified Method</b></div>
+        <div class="withdrawal-detail-grid">
+          ${detailCopyRow("Account Holder", method.holderName)}
+          ${detailCopyRow("Bank Name", method.bankName)}
+          ${detailCopyRow("Account Number", method.accountNumber)}
+          ${detailCopyRow("IFSC Code", method.ifsc)}
+          ${detailCopyRow("Account Type", method.accountType || method.bankType)}
+          ${detailCopyRow("Method ID", request.methodId)}
+        </div>
+      </section>`;
+  }
+
   function shell(content) {
     const admin = adminUser();
     root.innerHTML = `
@@ -738,10 +782,11 @@
   function walletRequestCard(user, request, type) {
     const isDeposit = type === "DEPOSIT";
     const isPending = request.status === "PENDING";
-    const methodTitle = isDeposit ? `${request.type || "UPI"} Payment` : `${request.methodSnapshot?.type || "Method"} Withdrawal`;
+    const method = request.methodSnapshot || {};
+    const methodTitle = isDeposit ? `${request.type || "UPI"} Payment` : `${method.type || "Method"} Withdrawal`;
     const methodText = isDeposit
       ? `UTR ${request.utr || "-"}`
-      : `${request.methodSnapshot?.type === "UPI" ? request.methodSnapshot?.upiId : `${request.methodSnapshot?.bankName || "Bank"} ****${String(request.methodSnapshot?.accountNumber || "").slice(-4)}`} · ${request.methodSnapshot?.holderName || "-"}`;
+      : `${method.type === "UPI" ? method.upiId : `${method.bankName || "Bank"} · ${method.accountNumber || "-"}`} · ${method.holderName || "-"}`;
 
     return `
       <article class="admin-request-card wallet-admin-card ${String(request.status || "").toLowerCase()}">
@@ -758,12 +803,16 @@
 
         <div class="request-grid wallet-request-grid">
           <article><span>User</span><b>${esc(displayNameFor(user))}</b></article>
+          <article><span>Email</span><b>${esc(user.email)}</b></article>
+          <article><span>Mobile</span><b>${esc(user.mobile || "-")}</b></article>
           <article><span>Amount</span><b>${App.money(request.amount || 0)}</b></article>
           <article><span>Current Real Balance</span><b>${App.money(App.realBalance(user.id))}</b></article>
           <article><span>${isDeposit ? "Payment Proof" : "Pay To"}</span><b>${esc(methodText)}</b></article>
           <article><span>Requested On</span><b>${request.createdAt ? new Date(request.createdAt).toLocaleString() : "-"}</b></article>
           <article><span>Request ID</span><b>${esc(request.id)}</b></article>
         </div>
+
+        ${isDeposit ? "" : withdrawalPayoutDetails(request)}
 
         ${dateLine("Approved", request.approvedAt)}
         ${dateLine("Rejected", request.rejectedAt)}
@@ -1231,6 +1280,21 @@
       App.saveState();
       App.toast(`User status changed to ${nextStatus}.`);
       render();
+    },
+    copyText(value) {
+      const text = String(value || "");
+      if (!text) return;
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(text).then(() => App.toast("Copied."));
+      } else {
+        const input = document.createElement("input");
+        input.value = text;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand("copy");
+        input.remove();
+        App.toast("Copied.");
+      }
     },
     savePaymentSettings(event) {
       event.preventDefault();

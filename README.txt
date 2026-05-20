@@ -642,3 +642,11 @@ Phase 4.24 - Trade History Paging Cards Clean
 - Each history section keeps its own card position and count indicator.
 - Long history pages stay compact on mobile.
 - Trading, wallet, AI trade, price feed, admin flow, limit orders and bottom navigation were not changed.
+
+Phase 4.25 — Admin Withdrawal Details Clean
+- Admin withdrawal request cards now show complete verified payout details.
+- Bank withdrawals show account holder, bank name, full account number, IFSC, account type and method ID.
+- UPI withdrawals show holder name, UPI ID and method ID.
+- User email and mobile are included on request cards for easier verification.
+- Copy buttons added for payout fields so admin can transfer without retyping.
+- Existing approve/reject flow and UI baseline were preserved.
