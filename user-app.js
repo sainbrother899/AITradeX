@@ -147,6 +147,30 @@
     return u ? App.demoBalance(u.id) : 0;
   }
 
+  function currentAiSettings() {
+    const u = user();
+    if (!u) return { enabled: autoTradeOn, percent: autoPercent };
+    if (typeof u.aiTradeOn === "undefined") u.aiTradeOn = autoTradeOn;
+    if (!u.aiTradePercent) u.aiTradePercent = autoPercent;
+    autoTradeOn = !!u.aiTradeOn;
+    autoPercent = Number(u.aiTradePercent || 25);
+    return { enabled: autoTradeOn, percent: autoPercent };
+  }
+
+  function aiDailyUsage() {
+    const u = user();
+    if (!u) return { used: 0, limit: 5 };
+    return { used: App.aiTradesToday(u.id), limit: App.aiDailyLimit(u.id) };
+  }
+
+  function tradeRows(type) {
+    const u = user();
+    if (!u) return [];
+    return (App.state.trades || [])
+      .filter(t => t.userId === u.id && t.accountType === accountMode && t.tradeType === type)
+      .sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0));
+  }
+
   function pnlValue() {
     const u = user();
     if (!u) return 0;
@@ -713,7 +737,9 @@
     const u = user();
     const balance = currentBalance();
     const pnl = pnlValue();
-    const tradeAmount = balance * autoPercent / 100;
+    const ai = currentAiSettings();
+    const usage = aiDailyUsage();
+    const tradeAmount = accountMode === "REAL" ? balance * ai.percent / 100 : 0;
     const pair = selectedPairData();
 
     shell(`
@@ -743,7 +769,7 @@
       </section>
 
       <section class="compact-grid">
-        <article><span>AI Status</span><b>${autoTradeOn ? "Active" : "Ready"}</b><small>Signal engine</small></article>
+        <article><span>AI Status</span><b>${ai.enabled ? "Active" : "OFF"}</b><small>${usage.used}/${usage.limit} AI trades today</small></article>
         <article><span>Open Trades</span><b>0</b><small>${accountMode} positions</small></article>
         <article><span>KYC</span><b>${App.kycStatus(u.id).replace("_", " ")}</b><small>Verification</small></article>
         <article><span>Selected Pair</span><b>${selectedPair}</b><small>${pair.signal} bias</small></article>
@@ -769,14 +795,15 @@
       <section class="premium-card auto-card">
         <div class="card-row">
           <div><p>AI TRADE CONTROL</p><h2>Auto Trade Amount</h2><h4>Choose how much ${accountMode} balance AI can use for future automatic trades.</h4></div>
-          <button class="ai-power ${autoTradeOn ? "on" : ""}" onclick="AITradeXUser.toggleAutoTrade()">${autoTradeOn ? "ON" : "OFF"}</button>
+          <button class="ai-power ${ai.enabled ? "on" : ""}" onclick="AITradeXUser.toggleAutoTrade()">${ai.enabled ? "ON" : "OFF"}</button>
         </div>
         <div class="percent-grid">
-          ${[25, 50, 75, 100].map(v => `<button class="${autoPercent === v ? "active" : ""}" onclick="AITradeXUser.setAutoPercent(${v})">${v}%</button>`).join("")}
+          ${[25, 50, 75, 100].map(v => `<button class="${ai.percent === v ? "active" : ""}" onclick="AITradeXUser.setAutoPercent(${v})">${v}%</button>`).join("")}
         </div>
         <div class="auto-summary">
-          <article><span>Selected</span><b>${autoPercent}%</b></article>
-          <article><span>AI Trade Amount</span><b>${App.money(tradeAmount)}</b></article>
+          <article><span>Selected</span><b>${ai.percent}%</b></article>
+          <article><span>AI Trade Pool</span><b>${App.money(tradeAmount)}</b></article>
+          <article><span>Daily AI Trades</span><b>${usage.used}/${usage.limit}</b></article>
         </div>
       </section>
     `);
@@ -875,8 +902,8 @@
         </div>
 
         <div class="buy-sell-row">
-          <button class="buy-btn">BUY / LONG</button>
-          <button class="sell-btn">SELL / SHORT</button>
+          <button class="buy-btn" onclick="AITradeXUser.placeManualTrade('BUY')">BUY / LONG</button>
+          <button class="sell-btn" onclick="AITradeXUser.placeManualTrade('SELL')">SELL / SHORT</button>
         </div>
 
         <div class="confirm-summary">
@@ -1192,18 +1219,33 @@
     `);
   }
 
+  function historyTable(rows, emptyText) {
+    if (!rows.length) return `<div class="empty-state">${emptyText}</div>`;
+    return `
+      <div class="trade-history-table">
+        <span>Market</span><span>Pair</span><span>Side</span><span>Lev.</span><span>Amount</span><span>P/L</span><span>Status</span>
+        ${rows.map(t => `
+          <b>${App.escapeHtml(t.market || "-")}</b>
+          <b>${App.escapeHtml(t.pair || "-")}</b>
+          <b>${App.escapeHtml(t.side || "-")}</b>
+          <b>${Number(t.leverage || 1)}x</b>
+          <b>${App.money(t.marginAmount || t.amount || 0)}</b>
+          <b class="${Number(t.pnl || 0) >= 0 ? "profit-text" : "loss-text"}">${Number(t.pnl || 0) >= 0 ? "+" : ""}${App.money(t.pnl || 0)}</b>
+          <b>${App.escapeHtml(t.status || "CLOSED")}</b>
+        `).join("")}
+      </div>`;
+  }
+
   function historyPage() {
+    const aiRows = tradeRows("AI_AUTO");
+    const manualRows = tradeRows("MANUAL");
     shell(`
       <section class="premium-card history-table-card">
         <div class="card-row">
           <div><p>AI TRADE HISTORY</p><h2>AI Auto Trades</h2></div>
           <span class="history-mode">${accountMode}</span>
         </div>
-        <div class="trade-history-table">
-          <span>Market</span><span>Pair</span><span>Side</span><span>Lev.</span><span>Amount</span><span>P/L</span><span>Status</span>
-          <b>Crypto</b><b>BTC/USDT</b><b>BUY</b><b>10x</b><b>₹10,000</b><b class="profit-text">+₹0.00</b><b>Closed</b>
-          <b>Forex</b><b>EUR/USD</b><b>SELL</b><b>5x</b><b>₹5,000</b><b class="loss-text">-₹0.00</b><b>Closed</b>
-        </div>
+        ${historyTable(aiRows, "No AI auto trades yet. When admin executes AI Trade Control, entries will show here.")}
       </section>
 
       <section class="premium-card history-table-card">
@@ -1211,11 +1253,7 @@
           <div><p>MANUAL TRADE HISTORY</p><h2>Your Buy/Sell Trades</h2></div>
           <span class="history-mode">${accountMode}</span>
         </div>
-        <div class="trade-history-table">
-          <span>Market</span><span>Pair</span><span>Side</span><span>Lev.</span><span>Amount</span><span>P/L</span><span>Status</span>
-          <b>Crypto</b><b>BTC/USDT</b><b>BUY</b><b>20x</b><b>₹2,000</b><b class="profit-text">+₹0.00</b><b>Closed</b>
-          <b>Forex</b><b>XAU/USD</b><b>SELL</b><b>50x</b><b>₹1,500</b><b class="loss-text">-₹0.00</b><b>Closed</b>
-        </div>
+        ${historyTable(manualRows, "No manual trades yet. Trades placed by you will show here.")}
         <div class="empty-state small-note">Wallet history stays inside Wallet page only.</div>
       </section>
     `);
@@ -1955,14 +1993,60 @@
       selectorSheet = null;
       render();
     },
+    placeManualTrade(side) {
+      const u = user();
+      if (!u) return;
+      const margin = Number(tradeAmountPreview || 0);
+      if (!margin || margin <= 0) {
+        App.toast("Enter valid margin amount.");
+        return;
+      }
+      if (margin > currentBalance()) {
+        App.toast("Insufficient balance for this trade.");
+        return;
+      }
+      const pair = selectedPairData();
+      const trade = {
+        id: App.uid("trd"),
+        userId: u.id,
+        tradeType: "MANUAL",
+        accountType: accountMode,
+        market: selectedMarket,
+        pair: selectedPair,
+        side,
+        leverage: tradeLeveragePreview,
+        marginAmount: margin,
+        positionSize: margin * tradeLeveragePreview,
+        pnl: 0,
+        status: "OPEN",
+        source: "USER_MANUAL",
+        createdAt: new Date().toISOString(),
+        createdDate: App.todayKey()
+      };
+      App.state.trades.unshift(trade);
+      App.saveState();
+      App.toast(`${side} manual trade placed.`);
+      render();
+    },
     setAutoPercent(value) {
+      const u = user();
       autoPercent = Number(value);
       localStorage.setItem("AITradeX_AUTO_PERCENT", autoPercent);
+      if (u) {
+        u.aiTradePercent = autoPercent;
+        App.saveState();
+      }
       render();
     },
     toggleAutoTrade() {
+      const u = user();
       autoTradeOn = !autoTradeOn;
       localStorage.setItem("AITradeX_AUTO_ON", String(autoTradeOn));
+      if (u) {
+        u.aiTradeOn = autoTradeOn;
+        if (!u.aiTradePercent) u.aiTradePercent = autoPercent || 25;
+        App.saveState();
+      }
       render();
     },
     saveProfile() {

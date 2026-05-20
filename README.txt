@@ -397,3 +397,28 @@ Changed files in Phase 4.3:
 - auth.js
 - styles.css
 - README.txt
+
+
+AITradeX Phase 4.4 - AI Auto Trade Engine Base Clean
+- Base used: Phase 4.3 Admin Users Mobile Control Clean.
+- Admin Trade Control renamed to AI Trade Control.
+- Added admin AI trade execution form for market, pair, side, leverage, apply-to, AI pool usage and profit/loss %.
+- User AI ON/OFF and 25/50/75/100% allocation now save into user state, not only temporary browser display.
+- Admin AI trades apply only to active users with AI Auto Trading ON.
+- Daily free AI trade limit added through core helper: free users get 5 AI auto trades per day by default.
+- AI trade amount is calculated from user's real wallet balance and selected AI allocation.
+- Profit result credits user's real wallet; loss result debits user's real wallet with ledger entry.
+- AI Auto Trades go only to AI Auto Trade History.
+- Manual BUY/SELL from user trade page goes only to Manual Trade History.
+- Manual and AI trade history buckets are now separated by tradeType.
+- Added admin recent AI trade batches and latest user-wise AI auto trade entries.
+- Existing UI/design baseline preserved; no patch layer or hidden blocked code added.
+
+Changed files in Phase 4.4:
+- core.js
+- admin-app.js
+- user-app.js
+- styles.css
+- index.html
+- admin.html
+- README.txt

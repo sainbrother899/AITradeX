@@ -2896,3 +2896,44 @@
     grid-template-columns:1fr;
   }
 }
+
+
+/* AITradeX Phase 4.4 AI Trade Engine clean additions */
+.ai-control-preview .profile-note{
+  line-height:1.65;
+}
+.control-shell .admin-user-card{
+  border:1px solid var(--line);
+  background:linear-gradient(145deg,rgba(255,255,255,.055),rgba(255,255,255,.025));
+  border-radius:20px;
+  padding:14px;
+}
+.control-shell .admin-user-main{
+  display:grid;
+  grid-template-columns:1.5fr repeat(3, minmax(110px, .7fr));
+  gap:10px;
+  align-items:center;
+}
+.control-shell .admin-user-main b,
+.control-shell .admin-user-main span{
+  display:block;
+}
+.control-shell .admin-user-main span{
+  color:var(--muted);
+  font-size:12px;
+  margin-top:4px;
+}
+.control-shell .admin-user-stats{
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:9px;
+  background:rgba(255,255,255,.035);
+}
+.control-shell .admin-user-stats span{
+  margin:0 0 4px;
+}
+@media(max-width:760px){
+  .control-shell .admin-user-main{
+    grid-template-columns:1fr;
+  }
+}
