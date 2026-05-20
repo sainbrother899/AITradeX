@@ -902,19 +902,30 @@
       </aside>`;
   }
 
+  function navIcon(key) {
+    const icons = {
+      home: `<svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 11.2 12 4.7l7.5 6.5v7.6a1.7 1.7 0 0 1-1.7 1.7h-3.4v-5.8H9.6v5.8H6.2a1.7 1.7 0 0 1-1.7-1.7v-7.6Z"/><path d="M3 12.4 12 4l9 8.4"/></svg>`,
+      trade: `<svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5v14"/><path d="M4.5 7.5 7 5l2.5 2.5"/><path d="M4.5 16.5 7 19l2.5-2.5"/><path d="M17 5v14"/><path d="M14.5 7.5 17 5l2.5 2.5"/><path d="M14.5 16.5 17 19l2.5-2.5"/></svg>`,
+      orders: `<svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h10a2 2 0 0 1 2 2v13H5v-13a2 2 0 0 1 2-2Z"/><path d="M9 3h6v4H9V3Z"/><path d="M8 11h8"/><path d="M8 15h8"/></svg>`,
+      wallet: `<svg class="nav-svg wallet-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.7h15.2a2 2 0 0 1 2 2v8.1a2 2 0 0 1-2 2H4.8a2 2 0 0 1-2-2V6.9c0-1 .7-1.8 1.7-2l10.7-1.7c1-.2 1.9.6 1.9 1.6v2.9"/><path d="M16.1 12.2h5.1v4.3h-5.1a2.1 2.1 0 1 1 0-4.3Z"/><path d="M16.3 14.4h.1"/><path d="M6.4 7.5 15.1 6"/></svg>`,
+      history: `<svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.6 11.2a7.6 7.6 0 1 1 2.2 6.1"/><path d="M4 6.5v4.9h4.9"/><path d="M12 8v4.4l3 1.8"/></svg>`
+    };
+    return icons[key] || "";
+  }
+
   function bottomNav() {
     const nav = [
-      ["home", "⌂", "Home"],
-      ["trade", "⇅", "Trade"],
-      ["orders", "≡", "Orders"],
-      ["wallet", "▣", "Wallet"],
-      ["history", "☰", "History"]
+      ["home", "Home"],
+      ["trade", "Trade"],
+      ["orders", "Orders"],
+      ["wallet", "Wallet"],
+      ["history", "History"]
     ];
     return `
       <nav class="bottom-nav">
-        ${nav.map(([key, icon, label]) => `
+        ${nav.map(([key, label]) => `
           <button class="${page === key ? "active" : ""}" onclick="AITradeXUser.go('${key}')">
-            <i>${icon}</i><span>${label}</span>
+            <i>${navIcon(key)}</i><span>${label}</span>
           </button>`).join("")}
       </nav>`;
   }

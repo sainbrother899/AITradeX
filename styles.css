@@ -3508,3 +3508,31 @@
 .orders-position-card button{border:1px solid rgba(21,229,211,.25);background:rgba(21,229,211,.12);color:var(--cyan);border-radius:14px;min-height:40px;padding:0 14px;font-weight:1000}
 .orders-position-card.pending button{border-color:rgba(255,69,107,.25);background:rgba(255,69,107,.11);color:#ff9aac}
 @media(max-width:620px){.orders-position-card{grid-template-columns:1fr;align-items:start}.orders-position-card strong{text-align:left}.orders-position-card button{width:100%}}
+
+/* Phase 4.22 bottom nav SVG icon polish */
+.bottom-nav i{
+  display:grid!important;
+  place-items:center!important;
+  line-height:1!important;
+}
+.nav-svg{
+  width:20px;
+  height:20px;
+  display:block;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.bottom-nav button.active .nav-svg{
+  stroke:#07111f;
+}
+.wallet-svg{
+  width:22px;
+  height:22px;
+}
+@media(max-width:620px){
+  .nav-svg{width:18px;height:18px;}
+  .wallet-svg{width:20px;height:20px;}
+}

@@ -610,3 +610,10 @@ Phase 4.21 - Orders Page + Bottom Nav Update
 - Open Positions show pair, side, leverage, entry price, live price, live P/L and close action.
 - Open Orders section is ready for pending limit order management.
 - Existing manual live bottom bar, margin lock, AI trade, wallet, price feed and history logic preserved.
+
+Phase 4.22 - Bottom Nav SVG Icon Polish
+- Replaced text/emoji bottom navigation icons with clean inline SVG icons.
+- Added custom wallet SVG icon in code, not as an image file.
+- Kept bottom nav order: Home, Trade, Orders, Wallet, History.
+- No trading, wallet, AI, price feed, or admin logic was changed.
+Changed files: user-app.js, styles.css, README.txt
