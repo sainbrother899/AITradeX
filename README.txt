@@ -791,3 +791,11 @@ Phase 4.42 - Landing Page Branding Conversion Polish
 - Added How It Works, plans preview, KYC/security, referral/support and footer sections.
 - Login/register flow, app logic, admin logic, trading/wallet/KYC/referral/support modules untouched.
 - No backup files or patch layers included.
+
+
+Phase 4.43 — Landing Real TradingView Chart Clean
+- Removed the fake landing chart visual.
+- Added a real TradingView BTC/USDT live chart preview using BINANCE:BTCUSDT.
+- Landing chart is display-only and does not affect trade settlement logic.
+- Kept user, admin, wallet, KYC, referral, support and trading logic untouched.
+- No .bak files and no patch/block layer.

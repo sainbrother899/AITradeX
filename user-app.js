@@ -1139,6 +1139,74 @@
     updateManualLiveBar();
   }
 
+  function renderLandingTradingViewChart() {
+    const container = document.getElementById("landing_tradingview_chart_container");
+    if (!container) return;
+
+    container.innerHTML = `
+      <div class="chart-loading-state" id="aitx_landing_chart_loader">
+        <div class="chart-spinner"></div>
+        <b>BTC/USDT</b>
+        <span>Loading live chart...</span>
+      </div>`;
+
+    if (!window.TradingView || !window.TradingView.widget) {
+      setTimeout(renderLandingTradingViewChart, 800);
+      return;
+    }
+
+    setTimeout(() => {
+      const freshContainer = document.getElementById("landing_tradingview_chart_container");
+      if (!freshContainer) return;
+
+      freshContainer.innerHTML = `
+        <div class="chart-loading-state" id="aitx_landing_chart_loader">
+          <div class="chart-spinner"></div>
+          <b>BTC/USDT</b>
+          <span>Loading live chart...</span>
+        </div>`;
+
+      new window.TradingView.widget({
+        autosize: true,
+        symbol: "BINANCE:BTCUSDT",
+        interval: "15",
+        timezone: "Asia/Kolkata",
+        theme: "dark",
+        style: "1",
+        locale: "en",
+        toolbar_bg: "#050814",
+        enable_publishing: false,
+        hide_top_toolbar: true,
+        hide_side_toolbar: true,
+        allow_symbol_change: false,
+        save_image: false,
+        withdateranges: false,
+        calendar: false,
+        support_host: "https://www.tradingview.com",
+        container_id: "landing_tradingview_chart_container"
+      });
+
+      const revealChart = () => {
+        const frame = freshContainer.querySelector("iframe");
+        const loader = document.getElementById("aitx_landing_chart_loader");
+        if (frame) {
+          frame.classList.add("aitx-tv-ready");
+          if (loader) loader.classList.add("hide-loader");
+          setTimeout(() => loader?.remove(), 450);
+          return true;
+        }
+        return false;
+      };
+
+      if (!revealChart()) {
+        const timer = setInterval(() => {
+          if (revealChart()) clearInterval(timer);
+        }, 250);
+        setTimeout(() => clearInterval(timer), 5000);
+      }
+    }, 120);
+  }
+
   function landing() {
     const activePlans = (App.state.plans || []).filter(p => String(p.status || "ACTIVE").toUpperCase() === "ACTIVE").slice(0, 4);
     const planCards = activePlans.map(plan => `
@@ -1170,9 +1238,17 @@
             <div class="trust-pills"><span>Live Market Prices</span><span>Bank-only Withdrawals</span><span>AI Default ON</span></div>
           </div>
 
-          <div class="hero-terminal landing-terminal-v2">
-            <div class="terminal-head"><div><span>BTC/USDT Live</span><strong>$76,737.55</strong></div><em>Binance Stream</em></div>
-            <div class="fake-chart landing-chart-v2"></div>
+          <div class="hero-terminal landing-terminal-v2 landing-tv-card">
+            <div class="terminal-head"><div><span>Live Market Preview</span><strong>BTC/USDT</strong></div><em>TradingView · Binance</em></div>
+            <div class="landing-tv-frame">
+              <div id="landing_tradingview_chart_container" class="landing-tradingview-chart-container">
+                <div class="chart-loading-state">
+                  <div class="chart-spinner"></div>
+                  <b>BTC/USDT</b>
+                  <span>Loading live chart...</span>
+                </div>
+              </div>
+            </div>
             <div class="terminal-grid"><div><span>Order Types</span><b>Market / Limit</b></div><div><span>AI Trades</span><b>Trial + Plans</b></div><div><span>Wallet</span><b>INR Ledger</b></div></div>
           </div>
         </section>
@@ -1224,6 +1300,7 @@
           <span>© ${new Date().getFullYear()} AITradeX. All rights reserved.</span>
         </footer>
       </main>`;
+    setTimeout(renderLandingTradingViewChart, 120);
   }
 
   function loginForm() {
