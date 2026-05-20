@@ -449,3 +449,11 @@ Changed files in Phase 4.6:
 - admin-app.js
 - styles.css
 - README.txt
+
+Phase 4.7 - AI Trading Desk Leverage + P/L Calculator Clean
+- Added leverage selector in Admin AI Trading Desk: 1x, 2x, 5x, 10x.
+- Added Risk & P/L Preview before execution.
+- Preview shows valid users, skipped users, base AI amount, leverage exposure, per ₹1,000 impact, per ₹10,000 impact, estimated total P/L and skip reasons.
+- AI trade execution now uses leveraged exposure for profit/loss calculation.
+- Loss is capped so user real balance never goes below zero.
+- Removed explanatory logic helper text from the admin desk UI to keep the page practical and clean.

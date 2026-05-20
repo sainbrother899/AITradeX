@@ -3071,3 +3071,28 @@
     display:grid;
   }
 }
+
+/* AITradeX Phase 4.7 Leverage + P/L calculator clean */
+.ai-inline-fields{
+  display:grid;
+  grid-template-columns:1fr 150px;
+  gap:10px;
+}
+.ai-preview-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+}
+.ai-preview-grid article{
+  min-height:78px;
+}
+.ai-preview-grid article b{
+  word-break:break-word;
+}
+.ai-last-card{
+  margin-top:14px;
+}
+@media(max-width:620px){
+  .ai-inline-fields,
+  .ai-preview-grid{
+    grid-template-columns:1fr;
+  }
+}
