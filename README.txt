@@ -344,3 +344,15 @@ Phase 3.10 Deposit UTR Validation Clean Fix:
 - Deposit flow blocks Next/Submit unless UTR is exactly 12 digits.
 - Duplicate deposit UTR is blocked before submission.
 - Existing admin Deposits and Withdrawals split remains unchanged.
+
+Phase 4.0 Admin Payment Settings:
+- Base used: Phase 3.10 Deposit UTR Validation Clean.
+- admin-app.js clean updated with Payment Settings page.
+- Admin sidebar Settings is now Payment Settings.
+- Admin can edit UPI ID, QR image, bank name, account holder name, account number, IFSC, minimum deposit and minimum withdrawal.
+- User deposit step 3 now reads UPI, QR and bank details from admin payment settings instead of fixed hard-coded values.
+- User withdrawal minimum now reads from admin payment settings.
+- core.js default settings expanded for payment settings fallback.
+- styles.css updated only for QR image/payment settings preview polish; existing UI baseline preserved.
+- index.html and admin.html cache-buster versions updated.
+- No patch layer or hidden blocked old UI added.

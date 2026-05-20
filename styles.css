@@ -2560,3 +2560,32 @@
     grid-column:1 / -1;
   }
 }
+
+/* Phase 4.0 Payment Settings polish */
+.payment-settings-grid{
+  align-items:start;
+}
+.payment-settings-panel .payment-form-card{
+  margin:0;
+}
+.payment-settings-preview .upi-pay-card{
+  margin-top:0;
+}
+.qr-large-box img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  border-radius:20px;
+  display:block;
+}
+.settings-upi-preview{
+  align-items:center;
+}
+.payment-settings-panel input[type="file"]{
+  padding:13px 14px;
+}
+@media(max-width:900px){
+  .payment-settings-grid{
+    grid-template-columns:1fr!important;
+  }
+}

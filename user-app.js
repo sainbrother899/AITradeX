@@ -363,6 +363,25 @@
     localStorage.setItem(key, JSON.stringify(value));
   }
 
+  function platformSettings() {
+    const defaults = {
+      minDeposit: 500,
+      minWithdrawal: 1000,
+      depositUpiId: "aitradex@upi",
+      depositQrImage: "",
+      depositBankName: "AITradeX Bank",
+      depositAccountName: "AITradeX Private Wallet",
+      depositAccountNumber: "123456789012",
+      depositIfsc: "AITX0001234"
+    };
+    App.state.settings = { ...defaults, ...(App.state.settings || {}) };
+    return App.state.settings;
+  }
+
+  function jsArg(value) {
+    return JSON.stringify(String(value ?? ""));
+  }
+
   function currentKyc() {
     const u = user();
     if (!u) return null;
@@ -935,17 +954,18 @@
     const approvedMethods = approvedPaymentMethods();
     const deposits = depositRequests();
     const withdrawals = withdrawalRequests();
-    const minDeposit = Number(App.state.settings.minDeposit || 500);
-    const minWithdrawal = 1000;
+    const settings = platformSettings();
+    const minDeposit = Number(settings.minDeposit || 500);
+    const minWithdrawal = Number(settings.minWithdrawal || 1000);
     const selectedWithdrawalMethod = approvedMethods.find(m => m.id === withdrawalDraft.methodId) || approvedMethods[0] || null;
     const depositTitles = ["Enter Amount", "Select Payment Method", "Payment Details", "Review & Submit"];
     const withdrawalTitles = ["Enter Amount", "Select Approved Method", "Review Withdrawal", "Submit Request"];
-    const platformUpi = "aitradex@upi";
+    const platformUpi = settings.depositUpiId || "aitradex@upi";
     const bankDetails = {
-      accountName: "AITradeX Technologies",
-      bankName: "AITradeX Bank",
-      accountNumber: "123456789000",
-      ifsc: "AICB0001234"
+      accountName: settings.depositAccountName || "AITradeX Private Wallet",
+      bankName: settings.depositBankName || "AITradeX Bank",
+      accountNumber: settings.depositAccountNumber || "123456789012",
+      ifsc: settings.depositIfsc || "AITX0001234"
     };
 
     shell(`
@@ -1017,7 +1037,7 @@
             ${depositDraft.type === "UPI" ? `
               <div class="upi-pay-card">
                 <div class="qr-large-box">
-                  <div class="qr-grid-mark">QR</div>
+                  ${settings.depositQrImage ? `<img src="${App.escapeHtml(settings.depositQrImage)}" alt="Deposit QR"/>` : `<div class="qr-grid-mark">QR</div>`}
                 </div>
                 <div class="upi-pay-info">
                   <p>PAY VIA UPI</p>
@@ -1026,12 +1046,12 @@
                   <div class="copy-row">
                     <b>UPI ID</b>
                     <span>${platformUpi}</span>
-                    <button onclick="AITradeXUser.copyText('${platformUpi}')">Copy</button>
+                    <button onclick="AITradeXUser.copyText(${jsArg(platformUpi)})">Copy</button>
                   </div>
                   <div class="copy-row">
                     <b>Amount</b>
                     <span>${App.money(depositDraft.amount || 0)}</span>
-                    <button onclick="AITradeXUser.copyText('${depositDraft.amount || 0}')">Copy</button>
+                    <button onclick="AITradeXUser.copyText(${jsArg(depositDraft.amount || 0)})">Copy</button>
                   </div>
                 </div>
               </div>
@@ -1040,27 +1060,27 @@
                 <div class="copy-row">
                   <b>Account Name</b>
                   <span>${bankDetails.accountName}</span>
-                  <button onclick="AITradeXUser.copyText('${bankDetails.accountName}')">Copy</button>
+                  <button onclick="AITradeXUser.copyText(${jsArg(bankDetails.accountName)})">Copy</button>
                 </div>
                 <div class="copy-row">
                   <b>Bank Name</b>
                   <span>${bankDetails.bankName}</span>
-                  <button onclick="AITradeXUser.copyText('${bankDetails.bankName}')">Copy</button>
+                  <button onclick="AITradeXUser.copyText(${jsArg(bankDetails.bankName)})">Copy</button>
                 </div>
                 <div class="copy-row">
                   <b>Account Number</b>
                   <span>${bankDetails.accountNumber}</span>
-                  <button onclick="AITradeXUser.copyText('${bankDetails.accountNumber}')">Copy</button>
+                  <button onclick="AITradeXUser.copyText(${jsArg(bankDetails.accountNumber)})">Copy</button>
                 </div>
                 <div class="copy-row">
                   <b>IFSC Code</b>
                   <span>${bankDetails.ifsc}</span>
-                  <button onclick="AITradeXUser.copyText('${bankDetails.ifsc}')">Copy</button>
+                  <button onclick="AITradeXUser.copyText(${jsArg(bankDetails.ifsc)})">Copy</button>
                 </div>
                 <div class="copy-row">
                   <b>Amount</b>
                   <span>${App.money(depositDraft.amount || 0)}</span>
-                  <button onclick="AITradeXUser.copyText('${depositDraft.amount || 0}')">Copy</button>
+                  <button onclick="AITradeXUser.copyText(${jsArg(depositDraft.amount || 0)})">Copy</button>
                 </div>
               </div>
             `}
@@ -1099,7 +1119,7 @@
             <button class="save-profile-btn" onclick="AITradeXUser.go('kyc')">Go to KYC</button>
           ` : approvedMethods.length === 0 ? `
             <div class="kyc-required-box">No approved withdrawal method found. Add UPI/Bank in Payment Methods and wait for admin approval.</div>
-            <button class="save-profile-btn" onclick="AITradeXUser.go('payment')">Go to Payment Methods</button>
+            <button class="save-profile-btn" onclick="AITradeXUser.go('payments')">Go to Payment Methods</button>
           ` : `
             ${withdrawalStep === 1 ? `
               <label>Withdrawal Amount
@@ -1565,7 +1585,7 @@
       render();
     },
     nextDepositStep() {
-      const minDeposit = Number(App.state.settings.minDeposit || 500);
+      const minDeposit = Number(platformSettings().minDeposit || 500);
 
       if (depositStep === 1) {
         const amount = Number(document.getElementById("depositAmountInput")?.value || 0);
@@ -1601,7 +1621,7 @@
     },
     submitDepositRequest() {
       const amount = Number(depositDraft.amount || 0);
-      const minDeposit = Number(App.state.settings.minDeposit || 500);
+      const minDeposit = Number(platformSettings().minDeposit || 500);
       const utr = normalizeUtr(depositDraft.utr);
       if (!amount || amount < minDeposit || !/^\d{12}$/.test(utr)) {
         App.toast("Complete deposit details with exactly 12 digit UTR.");
@@ -1637,7 +1657,7 @@
       render();
     },
     nextWithdrawalStep() {
-      const minWithdrawal = 1000;
+      const minWithdrawal = Number(platformSettings().minWithdrawal || 1000);
       const approved = approvedPaymentMethods();
 
       if (currentKyc().status !== "APPROVED") {

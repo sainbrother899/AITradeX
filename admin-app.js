@@ -210,6 +210,28 @@
   function includesText(value, query) {
     return String(value || "").toLowerCase().includes(String(query || "").toLowerCase());
   }
+  function platformSettings() {
+    const defaults = {
+      minDeposit: 500,
+      minWithdrawal: 1000,
+      referralFirstDepositPercent: 10,
+      demoBalance: 100000,
+      platformName: "AITradeX",
+      depositUpiId: "aitradex@upi",
+      depositQrImage: "",
+      depositBankName: "AITradeX Bank",
+      depositAccountName: "AITradeX Private Wallet",
+      depositAccountNumber: "123456789012",
+      depositIfsc: "AITX0001234"
+    };
+    App.state.settings = { ...defaults, ...(App.state.settings || {}) };
+    return App.state.settings;
+  }
+
+  function inputValue(id) {
+    return (document.getElementById(id)?.value || "").trim();
+  }
+
 
   function dateLine(label, value) {
     if (!value) return "";
@@ -230,7 +252,7 @@
             ${navButton("deposits", "⬇️", "Deposits")}
             ${navButton("withdrawals", "⬆️", "Withdrawals")}
             ${navButton("trades", "📈", "Trade Control")}
-            ${navButton("settings", "⚙️", "Settings")}
+            ${navButton("settings", "⚙️", "Payment Settings")}
           </nav>
           <button class="logout-btn" onclick="AITradeXAdmin.logout()">🚪 Logout</button>
         </aside>
@@ -260,7 +282,7 @@
       deposits: "Deposits",
       withdrawals: "Withdrawals",
       trades: "Trade Control",
-      settings: "Settings"
+      settings: "Payment Settings"
     };
     return titles[page] || "Dashboard";
   }
@@ -648,10 +670,75 @@
   }
 
   function settingsPage() {
+    const settings = platformSettings();
     shell(`
-      <section class="panel-card">
-        <div class="section-head"><div><h3>Settings</h3><span>Platform settings will be connected later.</span></div></div>
-        <div class="empty-state">Later: UPI QR, bank deposit details, subscription plans, leverage limits and signals.</div>
+      <section class="panel-card payment-settings-panel">
+        <div class="section-head">
+          <div><h3>Payment Settings</h3><span>Control the deposit UPI, QR, bank details and wallet limits shown to users.</span></div>
+          <span class="admin-count-pill">Admin editable</span>
+        </div>
+
+        <div class="admin-grid-two payment-settings-grid">
+          <form class="payment-form-card form-grid" onsubmit="AITradeXAdmin.savePaymentSettings(event)">
+            <p>UPI / QR DETAILS</p>
+            <h2>Deposit Payment Setup</h2>
+            <label>UPI ID
+              <input id="settingUpiId" value="${esc(settings.depositUpiId)}" placeholder="aitradex@upi" required/>
+            </label>
+            <label>QR Image
+              <input id="settingQrImage" type="file" accept="image/*"/>
+            </label>
+            <div class="profile-note">Upload a new QR only when you want to replace the current QR. Saved QR is stored in this browser for now.</div>
+
+            <p>BANK DETAILS</p>
+            <label>Bank Name
+              <input id="settingBankName" value="${esc(settings.depositBankName)}" placeholder="Bank name" required/>
+            </label>
+            <label>Account Holder Name
+              <input id="settingAccountName" value="${esc(settings.depositAccountName)}" placeholder="Account holder name" required/>
+            </label>
+            <label>Account Number
+              <input id="settingAccountNumber" value="${esc(settings.depositAccountNumber)}" placeholder="Account number" required/>
+            </label>
+            <label>IFSC Code
+              <input id="settingIfsc" value="${esc(settings.depositIfsc)}" placeholder="IFSC code" required/>
+            </label>
+
+            <p>WALLET LIMITS</p>
+            <label>Minimum Deposit
+              <input id="settingMinDeposit" type="number" min="1" value="${Number(settings.minDeposit || 500)}" required/>
+            </label>
+            <label>Minimum Withdrawal
+              <input id="settingMinWithdrawal" type="number" min="1" value="${Number(settings.minWithdrawal || 1000)}" required/>
+            </label>
+            <button class="save-profile-btn">Save Payment Settings</button>
+          </form>
+
+          <section class="payment-form-card payment-settings-preview">
+            <p>USER SIDE PREVIEW</p>
+            <h2>Deposit Details Preview</h2>
+            <div class="upi-pay-card settings-upi-preview">
+              <div class="qr-large-box">
+                ${settings.depositQrImage ? `<img src="${esc(settings.depositQrImage)}" alt="Deposit QR"/>` : `<div class="qr-grid-mark">QR</div>`}
+              </div>
+              <div class="upi-pay-info">
+                <p>PAY VIA UPI</p>
+                <h2>${esc(settings.depositUpiId)}</h2>
+                <span>This is what users will see on deposit step 3.</span>
+              </div>
+            </div>
+            <div class="premium-bank-card">
+              <div class="copy-row"><b>Bank Name</b><span>${esc(settings.depositBankName)}</span><button type="button">Copy</button></div>
+              <div class="copy-row"><b>Account Name</b><span>${esc(settings.depositAccountName)}</span><button type="button">Copy</button></div>
+              <div class="copy-row"><b>Account No.</b><span>${esc(settings.depositAccountNumber)}</span><button type="button">Copy</button></div>
+              <div class="copy-row"><b>IFSC Code</b><span>${esc(settings.depositIfsc)}</span><button type="button">Copy</button></div>
+            </div>
+            <div class="review-grid compact-review">
+              <article><span>Minimum Deposit</span><b>${App.money(settings.minDeposit)}</b></article>
+              <article><span>Minimum Withdrawal</span><b>${App.money(settings.minWithdrawal)}</b></article>
+            </div>
+          </section>
+        </div>
       </section>
     `);
   }
@@ -741,6 +828,36 @@
       financeStatusFilter = value;
       localStorage.setItem("AITradeX_ADMIN_FINANCE_STATUS", financeStatusFilter);
       render();
+    },
+    savePaymentSettings(event) {
+      event.preventDefault();
+      const settings = platformSettings();
+      const file = document.getElementById("settingQrImage")?.files?.[0];
+      const apply = qrImage => {
+        App.state.settings = {
+          ...settings,
+          depositUpiId: inputValue("settingUpiId") || "aitradex@upi",
+          depositQrImage: qrImage ?? (settings.depositQrImage || ""),
+          depositBankName: inputValue("settingBankName") || "AITradeX Bank",
+          depositAccountName: inputValue("settingAccountName") || "AITradeX Private Wallet",
+          depositAccountNumber: inputValue("settingAccountNumber") || "123456789012",
+          depositIfsc: inputValue("settingIfsc").toUpperCase() || "AITX0001234",
+          minDeposit: Math.max(1, Number(inputValue("settingMinDeposit") || 500)),
+          minWithdrawal: Math.max(1, Number(inputValue("settingMinWithdrawal") || 1000))
+        };
+        App.saveState();
+        App.toast("Payment settings saved.");
+        render();
+      };
+
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = () => apply(String(reader.result || ""));
+        reader.onerror = () => App.toast("QR image could not be saved.");
+        reader.readAsDataURL(file);
+      } else {
+        apply(settings.depositQrImage || "");
+      }
     },
     approveDeposit(userId, requestId, button) {
       markButton(button, "Approving...");
