@@ -2014,3 +2014,242 @@
     justify-self:start;
   }
 }
+
+
+/* AITradeX Phase 3.5 User Wallet Flow */
+.wallet-flow-tabs{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-bottom:10px;
+}
+.wallet-flow-tabs button{
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.045);
+  color:#fff;
+  border-radius:16px;
+  min-height:48px;
+  font-weight:1000;
+}
+.wallet-flow-tabs button.active{
+  border-color:rgba(21,229,211,.48);
+  background:rgba(21,229,211,.12);
+  color:var(--cyan);
+}
+.wallet-stepper{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:7px;
+  margin-bottom:10px;
+}
+.wallet-stepper button{
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.04);
+  color:#fff;
+  border-radius:14px;
+  min-height:54px;
+  display:grid;
+  place-items:center;
+  gap:3px;
+}
+.wallet-stepper button.active{
+  border-color:rgba(21,229,211,.48);
+  background:rgba(21,229,211,.10);
+}
+.wallet-stepper b{
+  width:24px;
+  height:24px;
+  display:grid;
+  place-items:center;
+  border-radius:50%;
+  background:rgba(255,255,255,.08);
+  font-size:12px;
+}
+.wallet-stepper button.active b{
+  background:linear-gradient(135deg,var(--cyan),#1bd0ee);
+  color:#07111f;
+}
+.wallet-stepper span{
+  color:var(--muted);
+  font-size:10px;
+  font-weight:900;
+}
+.wallet-flow-card{
+  padding:14px!important;
+  border-radius:20px!important;
+}
+.wallet-flow-card label{
+  display:grid;
+  gap:7px;
+  color:var(--muted);
+  font-size:13px;
+  margin-top:12px;
+}
+.wallet-flow-card input,
+.wallet-flow-card select{
+  min-height:46px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:rgba(5,12,24,.72);
+  color:#fff;
+  padding:0 12px;
+  outline:0;
+}
+.wallet-method-choice{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-top:12px;
+}
+.wallet-method-choice button{
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:rgba(255,255,255,.045);
+  color:#fff;
+  min-height:54px;
+  font-weight:1000;
+}
+.wallet-method-choice button.active{
+  border-color:rgba(21,229,211,.48);
+  background:rgba(21,229,211,.12);
+  color:var(--cyan);
+}
+.payment-instruction-card{
+  display:grid;
+  grid-template-columns:auto 1fr;
+  gap:14px;
+  align-items:center;
+  border:1px solid rgba(21,229,211,.25);
+  background:rgba(21,229,211,.07);
+  border-radius:18px;
+  padding:14px;
+  margin:12px 0;
+}
+.qr-placeholder{
+  width:86px;
+  height:86px;
+  border-radius:18px;
+  display:grid;
+  place-items:center;
+  border:1px dashed rgba(21,229,211,.55);
+  background:rgba(255,255,255,.06);
+  color:var(--cyan);
+  font-weight:1000;
+}
+.payment-instruction-card p,
+.bank-instruction-card span{
+  color:var(--muted);
+  font-size:11px;
+  font-weight:1000;
+  margin:0;
+}
+.payment-instruction-card h2{
+  margin:5px 0!important;
+}
+.payment-instruction-card span{
+  color:#dfe8f7;
+  font-size:13px;
+}
+.bank-instruction-card{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin:12px 0;
+}
+.bank-instruction-card article{
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.045);
+  border-radius:15px;
+  padding:12px;
+}
+.bank-instruction-card b{
+  display:block;
+  margin-top:5px;
+}
+.approved-method-list{
+  display:grid;
+  gap:8px;
+  margin-top:12px;
+}
+.approved-method-list button{
+  text-align:left;
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.045);
+  color:#fff;
+  border-radius:16px;
+  padding:12px;
+}
+.approved-method-list button.active{
+  border-color:rgba(0,231,168,.42);
+  background:rgba(0,231,168,.08);
+}
+.approved-method-list b{
+  display:block;
+}
+.approved-method-list span{
+  display:block;
+  color:var(--muted);
+  font-size:12px;
+  margin-top:4px;
+}
+.wallet-request-list{
+  display:grid;
+  gap:9px;
+}
+.wallet-request-list article{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:center;
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.045);
+  border-radius:16px;
+  padding:12px;
+}
+.wallet-request-list article.pending{
+  border-color:rgba(248,189,122,.24);
+  background:rgba(248,189,122,.06);
+}
+.wallet-request-list article.approved{
+  border-color:rgba(0,231,168,.25);
+  background:rgba(0,231,168,.06);
+}
+.wallet-request-list article.rejected{
+  border-color:rgba(255,69,107,.24);
+  background:rgba(255,69,107,.06);
+}
+.wallet-request-list b,
+.wallet-request-list span,
+.wallet-request-list small{
+  display:block;
+}
+.wallet-request-list span,
+.wallet-request-list small{
+  color:var(--muted);
+  font-size:12px;
+  margin-top:3px;
+}
+@media(max-width:620px){
+  .wallet-stepper{
+    grid-template-columns:repeat(4,1fr);
+  }
+  .wallet-stepper span{
+    display:none;
+  }
+  .wallet-method-choice,
+  .bank-instruction-card,
+  .wallet-flow-tabs{
+    grid-template-columns:1fr;
+  }
+  .payment-instruction-card{
+    grid-template-columns:1fr;
+    text-align:center;
+  }
+  .qr-placeholder{
+    margin:auto;
+  }
+  .wallet-request-list article{
+    align-items:flex-start;
+    display:grid;
+  }
+}

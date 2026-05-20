@@ -289,3 +289,17 @@ Phase 3.4 User KYC Status Cards:
 - Rejected KYC shows rejection card + reason + resubmit button.
 - Payment method cards now have premium status styling for pending/approved/rejected.
 - No admin logic changed.
+
+
+Phase 3.5 User Wallet Flow:
+- User Wallet page rebuilt into real app style deposit/withdrawal flow.
+- Deposit flow: amount, UPI/Bank, payment details, UTR submit.
+- Minimum deposit remains ₹500.
+- Withdrawal flow: amount, select approved payment method, review, submit.
+- Minimum withdrawal changed to ₹1,000.
+- Withdrawal only shows approved payment methods. No manual account/UPI entry in withdrawal.
+- KYC approved is required for withdrawal.
+- Pending withdrawal is deducted from available real balance.
+- Wallet request history added.
+- Deposit/withdrawal requests sync into App.state for next admin approval phase.
+- Admin approval for wallet will be built in next phase.
