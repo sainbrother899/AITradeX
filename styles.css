@@ -2380,3 +2380,183 @@
     grid-template-columns:1fr;
   }
 }
+
+
+/* AITradeX Phase 3.7 Wallet premium deposit polish */
+.wallet-stepper{
+  display:none!important;
+}
+.premium-wallet-flow{
+  padding:14px!important;
+  border-radius:22px!important;
+  background:
+    radial-gradient(circle at 100% 0,rgba(21,229,211,.08),transparent 34%),
+    linear-gradient(145deg,rgba(15,29,52,.92),rgba(8,16,31,.98))!important;
+}
+.wallet-flow-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+  margin-bottom:12px;
+}
+.wallet-flow-head p{
+  margin:0!important;
+  color:var(--muted)!important;
+  font-size:11px!important;
+  letter-spacing:.12em!important;
+  font-weight:1000!important;
+}
+.wallet-flow-head h2{
+  margin:5px 0 0!important;
+  font-size:22px!important;
+}
+.wallet-flow-head>span{
+  border:1px solid rgba(21,229,211,.34);
+  background:rgba(21,229,211,.10);
+  color:var(--cyan);
+  border-radius:999px;
+  padding:7px 10px;
+  font-size:11px;
+  font-weight:1000;
+  white-space:nowrap;
+}
+.compact-method-choice button{
+  display:grid;
+  gap:4px;
+  padding:13px;
+  text-align:left;
+}
+.compact-method-choice b{
+  font-size:14px;
+}
+.compact-method-choice span{
+  color:var(--muted);
+  font-size:12px;
+}
+.upi-pay-card{
+  display:grid;
+  grid-template-columns:150px 1fr;
+  gap:14px;
+  border:1px solid rgba(21,229,211,.25);
+  background:
+    radial-gradient(circle at 0 0,rgba(21,229,211,.12),transparent 38%),
+    rgba(21,229,211,.055);
+  border-radius:20px;
+  padding:14px;
+  margin:12px 0;
+}
+.qr-large-box{
+  width:150px;
+  height:150px;
+  border-radius:22px;
+  display:grid;
+  place-items:center;
+  border:1px dashed rgba(21,229,211,.55);
+  background:
+    linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px),
+    linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),
+    rgba(5,12,24,.74);
+  background-size:14px 14px;
+}
+.qr-grid-mark{
+  width:94px;
+  height:94px;
+  border-radius:18px;
+  display:grid;
+  place-items:center;
+  background:rgba(21,229,211,.12);
+  color:var(--cyan);
+  font-weight:1000;
+  font-size:24px;
+  border:1px solid rgba(21,229,211,.24);
+}
+.upi-pay-info p{
+  margin:0!important;
+  color:var(--muted);
+  font-size:11px;
+  letter-spacing:.12em;
+  font-weight:1000;
+}
+.upi-pay-info h2{
+  margin:5px 0!important;
+  font-size:22px!important;
+}
+.upi-pay-info>span{
+  display:block;
+  color:#dfe8f7;
+  font-size:13px;
+  margin-bottom:10px;
+}
+.premium-bank-card{
+  display:grid;
+  gap:8px;
+  border:1px solid rgba(21,229,211,.18);
+  background:rgba(255,255,255,.035);
+  border-radius:20px;
+  padding:12px;
+  margin:12px 0;
+}
+.copy-row{
+  display:grid;
+  grid-template-columns:.8fr 1.2fr auto;
+  align-items:center;
+  gap:8px;
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.045);
+  border-radius:15px;
+  padding:10px;
+}
+.copy-row b{
+  color:var(--muted);
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:.07em;
+}
+.copy-row span{
+  color:#fff;
+  font-weight:900;
+  word-break:break-word;
+  font-size:13px;
+}
+.copy-row button{
+  border:1px solid rgba(21,229,211,.34);
+  background:rgba(21,229,211,.10);
+  color:var(--cyan);
+  border-radius:999px;
+  padding:7px 9px;
+  font-size:11px;
+  font-weight:1000;
+}
+.compact-review article{
+  padding:10px!important;
+  border-radius:14px!important;
+}
+.premium-approved-list button{
+  border-radius:15px!important;
+  padding:11px!important;
+}
+.compact-wallet-history{
+  padding:14px!important;
+}
+@media(max-width:620px){
+  .wallet-flow-head{
+    align-items:flex-start;
+  }
+  .upi-pay-card{
+    grid-template-columns:1fr;
+    text-align:center;
+  }
+  .qr-large-box{
+    width:min(210px,100%);
+    height:210px;
+    margin:auto;
+  }
+  .copy-row{
+    grid-template-columns:1fr auto;
+    text-align:left;
+  }
+  .copy-row b{
+    grid-column:1 / -1;
+  }
+}

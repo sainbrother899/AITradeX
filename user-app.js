@@ -924,6 +924,15 @@
     const minDeposit = Number(App.state.settings.minDeposit || 500);
     const minWithdrawal = 1000;
     const selectedWithdrawalMethod = approvedMethods.find(m => m.id === withdrawalDraft.methodId) || approvedMethods[0] || null;
+    const depositTitles = ["Enter Amount", "Select Payment Method", "Payment Details", "Review & Submit"];
+    const withdrawalTitles = ["Enter Amount", "Select Approved Method", "Review Withdrawal", "Submit Request"];
+    const platformUpi = "aitradex@upi";
+    const bankDetails = {
+      accountName: "AITradeX Technologies",
+      bankName: "AITradeX Bank",
+      accountNumber: "123456789000",
+      ifsc: "AICB0001234"
+    };
 
     shell(`
       <section class="wallet-hero-card compact-wallet-head">
@@ -961,17 +970,14 @@
       </section>
 
       ${walletMode === "DEPOSIT" ? `
-        <section class="wallet-stepper">
-          ${[1, 2, 3, 4].map(step => `
-            <button class="${depositStep === step ? "active" : ""}">
-              <b>${step}</b><span>${["Amount", "Method", "Payment", "Submit"][step - 1]}</span>
-            </button>
-          `).join("")}
-        </section>
-
-        <section class="premium-card wallet-flow-card">
-          <p>DEPOSIT</p>
-          <h2>${["Enter Amount", "Select Payment Method", "Make Payment", "Submit Request"][depositStep - 1]}</h2>
+        <section class="premium-card wallet-flow-card premium-wallet-flow">
+          <div class="wallet-flow-head">
+            <div>
+              <p>DEPOSIT REQUEST</p>
+              <h2>${depositTitles[depositStep - 1]}</h2>
+            </div>
+            <span>Step ${depositStep}/4</span>
+          </div>
 
           ${depositStep === 1 ? `
             <label>Deposit Amount
@@ -981,28 +987,67 @@
           ` : ""}
 
           ${depositStep === 2 ? `
-            <div class="wallet-method-choice">
-              <button class="${depositDraft.type === "UPI" ? "active" : ""}" onclick="AITradeXUser.setDepositType('UPI')">UPI / QR</button>
-              <button class="${depositDraft.type === "BANK" ? "active" : ""}" onclick="AITradeXUser.setDepositType('BANK')">Bank Transfer</button>
+            <div class="wallet-method-choice compact-method-choice">
+              <button class="${depositDraft.type === "UPI" ? "active" : ""}" onclick="AITradeXUser.setDepositType('UPI')">
+                <b>UPI / QR</b>
+                <span>Instant payment via UPI</span>
+              </button>
+              <button class="${depositDraft.type === "BANK" ? "active" : ""}" onclick="AITradeXUser.setDepositType('BANK')">
+                <b>Bank Transfer</b>
+                <span>NEFT / IMPS / Bank transfer</span>
+              </button>
             </div>
           ` : ""}
 
           ${depositStep === 3 ? `
             ${depositDraft.type === "UPI" ? `
-              <div class="payment-instruction-card">
-                <div class="qr-placeholder">QR</div>
-                <div>
+              <div class="upi-pay-card">
+                <div class="qr-large-box">
+                  <div class="qr-grid-mark">QR</div>
+                </div>
+                <div class="upi-pay-info">
                   <p>PAY VIA UPI</p>
-                  <h2>aitradex@upi</h2>
+                  <h2>${platformUpi}</h2>
                   <span>Pay exact amount: ${App.money(depositDraft.amount || 0)}</span>
+                  <div class="copy-row">
+                    <b>UPI ID</b>
+                    <span>${platformUpi}</span>
+                    <button onclick="AITradeXUser.copyText('${platformUpi}')">Copy</button>
+                  </div>
+                  <div class="copy-row">
+                    <b>Amount</b>
+                    <span>${App.money(depositDraft.amount || 0)}</span>
+                    <button onclick="AITradeXUser.copyText('${depositDraft.amount || 0}')">Copy</button>
+                  </div>
                 </div>
               </div>
             ` : `
-              <div class="bank-instruction-card">
-                <article><span>Account Name</span><b>AITradeX Technologies</b></article>
-                <article><span>Account Number</span><b>123456789000</b></article>
-                <article><span>IFSC</span><b>AICB0001234</b></article>
-                <article><span>Amount</span><b>${App.money(depositDraft.amount || 0)}</b></article>
+              <div class="premium-bank-card">
+                <div class="copy-row">
+                  <b>Account Name</b>
+                  <span>${bankDetails.accountName}</span>
+                  <button onclick="AITradeXUser.copyText('${bankDetails.accountName}')">Copy</button>
+                </div>
+                <div class="copy-row">
+                  <b>Bank Name</b>
+                  <span>${bankDetails.bankName}</span>
+                  <button onclick="AITradeXUser.copyText('${bankDetails.bankName}')">Copy</button>
+                </div>
+                <div class="copy-row">
+                  <b>Account Number</b>
+                  <span>${bankDetails.accountNumber}</span>
+                  <button onclick="AITradeXUser.copyText('${bankDetails.accountNumber}')">Copy</button>
+                </div>
+                <div class="copy-row">
+                  <b>IFSC Code</b>
+                  <span>${bankDetails.ifsc}</span>
+                  <button onclick="AITradeXUser.copyText('${bankDetails.ifsc}')">Copy</button>
+                </div>
+                <div class="copy-row">
+                  <b>Amount</b>
+                  <span>${App.money(depositDraft.amount || 0)}</span>
+                  <button onclick="AITradeXUser.copyText('${depositDraft.amount || 0}')">Copy</button>
+                </div>
               </div>
             `}
             <label>UTR / Transaction ID
@@ -1011,7 +1056,7 @@
           ` : ""}
 
           ${depositStep === 4 ? `
-            <div class="review-grid">
+            <div class="review-grid compact-review">
               <article><span>Amount</span><b>${App.money(depositDraft.amount || 0)}</b></article>
               <article><span>Payment Type</span><b>${depositDraft.type}</b></article>
               <article><span>UTR</span><b>${App.escapeHtml(depositDraft.utr || "-")}</b></article>
@@ -1025,17 +1070,14 @@
           </div>
         </section>
       ` : `
-        <section class="wallet-stepper">
-          ${[1, 2, 3, 4].map(step => `
-            <button class="${withdrawalStep === step ? "active" : ""}">
-              <b>${step}</b><span>${["Amount", "Method", "Review", "Submit"][step - 1]}</span>
-            </button>
-          `).join("")}
-        </section>
-
-        <section class="premium-card wallet-flow-card">
-          <p>WITHDRAWAL</p>
-          <h2>${["Enter Amount", "Select Approved Method", "Review Withdrawal", "Submit Request"][withdrawalStep - 1]}</h2>
+        <section class="premium-card wallet-flow-card premium-wallet-flow">
+          <div class="wallet-flow-head">
+            <div>
+              <p>WITHDRAWAL REQUEST</p>
+              <h2>${withdrawalTitles[withdrawalStep - 1]}</h2>
+            </div>
+            <span>Step ${withdrawalStep}/4</span>
+          </div>
 
           ${kyc.status !== "APPROVED" ? `
             <div class="kyc-required-box">KYC approval is required before withdrawal.</div>
@@ -1052,7 +1094,7 @@
             ` : ""}
 
             ${withdrawalStep === 2 ? `
-              <div class="approved-method-list">
+              <div class="approved-method-list premium-approved-list">
                 ${approvedMethods.map(m => `
                   <button class="${(withdrawalDraft.methodId || selectedWithdrawalMethod?.id) === m.id ? "active" : ""}" onclick="AITradeXUser.selectWithdrawalMethod('${m.id}')">
                     <b>${m.type === "UPI" ? "UPI" : "Bank"}</b>
@@ -1064,7 +1106,7 @@
             ` : ""}
 
             ${withdrawalStep === 3 || withdrawalStep === 4 ? `
-              <div class="review-grid">
+              <div class="review-grid compact-review">
                 <article><span>Amount</span><b>${App.money(withdrawalDraft.amount || 0)}</b></article>
                 <article><span>Method</span><b>${selectedWithdrawalMethod?.type || "-"}</b></article>
                 <article><span>Pay To</span><b>${App.escapeHtml(methodLabel(selectedWithdrawalMethod))}</b></article>
@@ -1081,7 +1123,7 @@
         </section>
       `}
 
-      <section class="premium-card wallet-history-card">
+      <section class="premium-card wallet-history-card compact-wallet-history">
         <p>WALLET HISTORY</p>
         <h2>Requests</h2>
         <div class="wallet-request-list">
@@ -1477,6 +1519,20 @@
     toggleDrawer(force) {
       drawerOpen = typeof force === "boolean" ? force : !drawerOpen;
       render();
+    },
+    copyText(value) {
+      const text = String(value || "");
+      if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(text).then(() => App.toast("Copied."));
+      } else {
+        const input = document.createElement("input");
+        input.value = text;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand("copy");
+        input.remove();
+        App.toast("Copied.");
+      }
     },
     setAccountMode(mode) {
       accountMode = mode === "DEMO" ? "DEMO" : "REAL";

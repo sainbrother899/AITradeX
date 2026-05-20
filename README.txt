@@ -314,3 +314,13 @@ Phase 3.6 Wallet Mode Polish:
 - Real wallet Withdrawal tab shows only Available Balance and Pending Withdrawal cards.
 - Demo balance card and extra wallet metric cards removed from real wallet flow.
 - Wallet history remains visible for real account.
+
+
+Phase 3.7 Wallet Premium Deposit Polish:
+- Removed bulky 1/2/3/4 stepper from Deposit and Withdrawal.
+- Added compact Step X/4 badge inside wallet flow card.
+- Enlarged UPI QR placeholder.
+- Added copy buttons for UPI ID and amount.
+- Added bank name in bank transfer details.
+- Added copy buttons for account name, bank name, account number, IFSC and amount.
+- Wallet flow UI made more compact and premium.
