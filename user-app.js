@@ -1140,51 +1140,89 @@
   }
 
   function landing() {
+    const activePlans = (App.state.plans || []).filter(p => String(p.status || "ACTIVE").toUpperCase() === "ACTIVE").slice(0, 4);
+    const planCards = activePlans.map(plan => `
+      <article class="landing-plan-card">
+        <div><p>${App.escapeHtml(plan.name || "Plan")}</p><h3>${Number(plan.price || 0) ? App.money(plan.price) : "Free"}</h3></div>
+        <span>${Number(plan.signals || 0)} AI trades/day</span>
+      </article>`).join("");
     root.innerHTML = `
-      <main class="public-wrap">
-        <nav class="public-nav">
+      <main class="public-wrap landing-premium">
+        <nav class="public-nav landing-nav">
           <div class="brand aitx-public-logo">${App.logoHtml("full", "aitx-logo-full")}</div>
           <div class="public-actions">
+            <a href="#how">How it works</a>
             <a href="#plans">Plans</a>
             <a href="#security">Security</a>
             <button onclick="AITradeXUser.scrollAuth()" class="btn small">Get Started</button>
           </div>
         </nav>
 
-        <section class="hero-section">
+        <section class="hero-section landing-hero-v2">
           <div class="hero-copy">
-            <p class="eyebrow">AI Real Trading Platform</p>
-            <h1>AI powered trading experience with secure INR wallet.</h1>
-            <p class="hero-text">AITradeX combines a premium trading dashboard, TradingView style charts, real and demo account modes, KYC verification, subscriptions, referrals and a clean wallet ledger.</p>
+            <p class="eyebrow">AI Powered Trading Dashboard</p>
+            <h1>Trade smarter with AI auto trading, live prices and INR wallet.</h1>
+            <p class="hero-text">AITradeX brings manual market/limit orders, AI auto trades, subscriptions, referrals, Aadhaar KYC, verified bank withdrawals and support tickets into one premium dashboard.</p>
             <div class="hero-buttons">
               <button onclick="AITradeXUser.scrollAuth()" class="btn">Create Account</button>
               <button onclick="AITradeXUser.setAuthMode('login')" class="btn ghost">User Login</button>
             </div>
-            <div class="trust-pills"><span>KYC Verified</span><span>INR Wallet</span><span>Real + Demo</span></div>
+            <div class="trust-pills"><span>Live Market Prices</span><span>Bank-only Withdrawals</span><span>AI Default ON</span></div>
           </div>
 
-          <div class="hero-terminal">
-            <div class="terminal-head"><div><span>BTC/USDT</span><strong>₹58,42,210</strong></div><em>+2.84%</em></div>
-            <div class="fake-chart"></div>
-            <div class="terminal-grid"><div><span>AI Signal</span><b>BUY</b></div><div><span>Leverage</span><b>2000x</b></div><div><span>Risk</span><b>Adaptive</b></div></div>
+          <div class="hero-terminal landing-terminal-v2">
+            <div class="terminal-head"><div><span>BTC/USDT Live</span><strong>$76,737.55</strong></div><em>Binance Stream</em></div>
+            <div class="fake-chart landing-chart-v2"></div>
+            <div class="terminal-grid"><div><span>Order Types</span><b>Market / Limit</b></div><div><span>AI Trades</span><b>Trial + Plans</b></div><div><span>Wallet</span><b>INR Ledger</b></div></div>
           </div>
         </section>
 
-        <section id="plans" class="landing-grid">
-          <article><i>💰</i><h3>Secure Wallet</h3><p>Deposit, withdrawal, pending funds and ledger-based balance.</p></article>
-          <article><i>📈</i><h3>AI Trading</h3><p>Buy/Sell, pairs, amount, leverage up to 2000x, real and demo accounts.</p></article>
-          <article><i>🤝</i><h3>Referral</h3><p>10% one-time commission only on first approved deposit.</p></article>
+        <section class="landing-grid landing-feature-grid">
+          <article><i>📈</i><h3>Manual Trading</h3><p>Place market or limit orders, lock entry price, track live P/L and close positions from the Orders flow.</p></article>
+          <article><i>🤖</i><h3>AI Auto Trading</h3><p>AI trading starts ON with 75% allocation by default. Users can change allocation anytime.</p></article>
+          <article><i>💳</i><h3>INR Wallet</h3><p>Deposit requests, bank-only withdrawals, wallet ledger and admin approval flow are built in.</p></article>
         </section>
 
-        <section id="authBox" class="auth-section">
-          <div class="auth-copy"><p class="eyebrow">User Access</p><h2>${authMode === "login" ? "Login to AITradeX" : "Create AITradeX account"}</h2><p>User panel is fully separate from the control center. No control wording is shown here.</p></div>
+        <section id="how" class="landing-section-card">
+          <div class="landing-section-head"><p class="eyebrow">How It Works</p><h2>Start in four clean steps</h2></div>
+          <div class="landing-steps-grid">
+            <article><b>01</b><h3>Create Account</h3><p>Register with email, mobile and optional referral code.</p></article>
+            <article><b>02</b><h3>Complete KYC</h3><p>Submit Aadhaar, selfie and personal details for review.</p></article>
+            <article><b>03</b><h3>Add Funds</h3><p>Use INR wallet deposits and verified bank withdrawals.</p></article>
+            <article><b>04</b><h3>Trade</h3><p>Use manual orders or AI auto trading with daily plan limits.</p></article>
+          </div>
+        </section>
+
+        <section id="plans" class="landing-section-card landing-plans-preview">
+          <div class="landing-section-head"><p class="eyebrow">Subscription Plans</p><h2>Unlock more daily AI trades</h2></div>
+          <div class="landing-plan-grid">${planCards || `<article class="landing-plan-card"><div><p>Free Trial</p><h3>Free</h3></div><span>5 AI trades/day</span></article>`}</div>
+          <button onclick="AITradeXUser.scrollAuth()" class="btn small">Create Account to View Plans</button>
+        </section>
+
+        <section class="landing-grid landing-feature-grid">
+          <article><i>🛡️</i><h3>KYC Security</h3><p>Required Aadhaar KYC, selfie verification and admin review help reduce account misuse.</p></article>
+          <article><i>🤝</i><h3>Referral Rewards</h3><p>Earn rewards when invited users complete their first approved deposit or paid plan purchase.</p></article>
+          <article><i>💬</i><h3>Support + WhatsApp</h3><p>Raise support tickets inside the app and use WhatsApp quick help for urgent issues.</p></article>
+        </section>
+
+        <section id="authBox" class="auth-section landing-auth-v2">
+          <div class="auth-copy"><div class="auth-logo-box">${App.logoHtml("full", "aitx-logo-full")}</div><p class="eyebrow">User Access</p><h2>${authMode === "login" ? "Login to AITradeX" : "Create AITradeX account"}</h2><p>Start with AI auto trading enabled, complete KYC, add funds and manage trades from a clean mobile-first dashboard.</p></div>
           <div class="auth-card">
             <div class="auth-tabs"><button class="${authMode === "login" ? "active" : ""}" onclick="AITradeXUser.setAuthMode('login')">Login</button><button class="${authMode === "register" ? "active" : ""}" onclick="AITradeXUser.setAuthMode('register')">Register</button></div>
             ${authMode === "login" ? loginForm() : registerForm()}
           </div>
         </section>
 
-        <section id="security" class="security-note"><b>AITradeX Security:</b> KYC approval and verified bank accounts help reduce fraud risk before withdrawals.</section>
+        <section id="security" class="landing-security-band">
+          <div><b>Security-first trading flow</b><span>Aadhaar KYC · Verified bank accounts · Deposit proof review · Ticket records · Admin control center</span></div>
+          <button onclick="AITradeXUser.scrollAuth()" class="btn ghost small">Join Now</button>
+        </section>
+
+        <footer class="landing-footer">
+          <div>${App.logoHtml("full", "aitx-logo-full")}</div>
+          <p>AITradeX is a digital trading dashboard experience with wallet, KYC, subscription, referral and support modules.</p>
+          <span>© ${new Date().getFullYear()} AITradeX. All rights reserved.</span>
+        </footer>
       </main>`;
   }
 
