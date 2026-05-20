@@ -370,3 +370,14 @@ Changed files in Phase 4.1:
 - styles.css
 - admin.html
 - README.txt
+
+
+============================================================
+AITradeX Phase 4.2 - QR Fit Responsive Clean
+============================================================
+- Base used: Phase 4.1 Admin Mobile Responsive Clean.
+- Fixed uploaded QR image fitting on user deposit screen and admin payment settings preview.
+- QR now stays inside a square container with contain-fit, so it does not crop or overflow.
+- Added white QR background padding to improve scanner readability.
+- Desktop and mobile admin/user UI baseline preserved.
+- Changed files: styles.css, README.txt.
