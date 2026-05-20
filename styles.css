@@ -1415,3 +1415,190 @@
     align-items:flex-start;
   }
 }
+
+
+/* AITradeX Phase 2.9 KYC + Payment premium compact polish */
+.kyc-status-card,
+.payment-head-card{
+  padding:14px!important;
+  border-radius:20px!important;
+  background:
+    radial-gradient(circle at 90% 0,rgba(21,229,211,.10),transparent 34%),
+    linear-gradient(145deg,rgba(15,29,52,.90),rgba(8,16,31,.96))!important;
+}
+.kyc-status-card h2,
+.payment-head-card h2{
+  font-size:22px!important;
+  margin:5px 0!important;
+}
+.kyc-status-card .ticket-mode,
+.payment-head-card .ticket-mode{
+  font-size:11px!important;
+}
+.status-pill{
+  padding:7px 9px!important;
+  font-size:10px!important;
+  letter-spacing:.05em!important;
+}
+.kyc-stepper{
+  gap:6px!important;
+  margin-bottom:8px!important;
+}
+.kyc-stepper button{
+  min-height:58px!important;
+  border-radius:14px!important;
+  padding:8px 6px!important;
+  background:rgba(255,255,255,.035)!important;
+}
+.kyc-stepper b{
+  width:24px!important;
+  height:24px!important;
+  font-size:12px!important;
+}
+.kyc-stepper span{
+  font-size:10px!important;
+}
+.kyc-form-card,
+.payment-form-card{
+  padding:14px!important;
+  border-radius:20px!important;
+}
+.kyc-form-card h2,
+.payment-form-card h2{
+  font-size:22px!important;
+  margin:5px 0 12px!important;
+}
+.kyc-grid,
+.form-grid{
+  gap:9px!important;
+}
+.form-grid label,
+.kyc-grid label{
+  gap:6px!important;
+  font-size:12px!important;
+}
+.form-grid input,
+.form-grid select,
+.kyc-grid input,
+.kyc-grid select{
+  min-height:44px!important;
+  border-radius:13px!important;
+  font-size:13px!important;
+}
+.upload-grid{
+  gap:8px!important;
+}
+.upload-box{
+  border-radius:15px!important;
+  padding:11px!important;
+  min-height:112px!important;
+}
+.upload-box span{
+  font-size:11px!important;
+}
+.upload-box b{
+  font-size:11px!important;
+  color:#dfe8f7!important;
+}
+.upload-box input{
+  font-size:11px!important;
+}
+.profile-note{
+  padding:10px!important;
+  border-radius:13px!important;
+  font-size:12px!important;
+}
+.review-grid{
+  gap:8px!important;
+}
+.review-grid article{
+  padding:10px!important;
+  border-radius:13px!important;
+}
+.review-grid span{
+  font-size:11px!important;
+  margin-bottom:4px!important;
+}
+.review-grid b{
+  font-size:13px!important;
+}
+.wizard-actions{
+  gap:8px!important;
+  margin-top:12px!important;
+}
+.wizard-actions .btn,
+.payment-form-card .save-profile-btn{
+  min-height:46px!important;
+  border-radius:14px!important;
+  font-size:13px!important;
+}
+.payment-type-tabs{
+  gap:7px!important;
+  margin-bottom:8px!important;
+}
+.payment-type-tabs button{
+  min-height:44px!important;
+  border-radius:14px!important;
+  font-size:13px!important;
+}
+.verified-name-box,
+.kyc-required-box,
+.reject-box{
+  margin-top:10px!important;
+  padding:10px!important;
+  border-radius:14px!important;
+  font-size:12px!important;
+}
+.payment-method-list{
+  gap:8px!important;
+}
+.payment-method-list article{
+  border-radius:15px!important;
+  padding:11px!important;
+}
+.payment-method-list b{
+  font-size:14px!important;
+}
+.payment-method-list span,
+.payment-method-list small{
+  font-size:11px!important;
+}
+.kyc-status-card .card-row,
+.payment-head-card .card-row,
+.kyc-form-card .card-row,
+.payment-form-card .card-row{
+  align-items:center!important;
+}
+.kyc-form-card p,
+.payment-form-card p{
+  font-size:11px!important;
+}
+@media(max-width:620px){
+  .kyc-stepper{
+    grid-template-columns:repeat(4,1fr)!important;
+  }
+  .kyc-stepper button{
+    min-height:52px!important;
+    padding:6px 4px!important;
+  }
+  .kyc-stepper span{
+    display:none!important;
+  }
+  .kyc-stepper b{
+    width:28px!important;
+    height:28px!important;
+  }
+  .kyc-status-card,
+  .payment-head-card,
+  .kyc-form-card,
+  .payment-form-card{
+    padding:12px!important;
+  }
+  .upload-box{
+    min-height:96px!important;
+  }
+  .payment-method-list article{
+    display:grid!important;
+    gap:8px!important;
+  }
+}
