@@ -246,6 +246,32 @@
   }
 
 
+  function marketPairs() {
+    return App.marketPairs || { CRYPTO: [], FOREX: [] };
+  }
+
+  function allTradePairs() {
+    const pairs = marketPairs();
+    return Object.keys(pairs).flatMap(market => (pairs[market] || []).map(item => ({ ...item, market })));
+  }
+
+  function pairDataByPair(pair) {
+    const cleanPair = String(pair || "").trim().toUpperCase();
+    return allTradePairs().find(item => String(item.pair || "").toUpperCase() === cleanPair) || allTradePairs()[0] || { market: "CRYPTO", pair: "BTC/USDT" };
+  }
+
+  function aiTradePairOptions(selected = "BTC/USDT") {
+    const pairs = marketPairs();
+    return Object.keys(pairs).map(market => `
+      <optgroup label="${esc(market)}">
+        ${(pairs[market] || []).map(item => `
+          <option value="${esc(item.pair)}" ${String(item.pair).toUpperCase() === String(selected).toUpperCase() ? "selected" : ""}>${esc(item.pair)} · ${esc(item.inr || item.symbol || market)}</option>
+        `).join("")}
+      </optgroup>
+    `).join("");
+  }
+
+
   function dateLine(label, value) {
     if (!value) return "";
     return `<div class="admin-date-line"><span>${label}</span><b>${new Date(value).toLocaleString()}</b></div>`;
@@ -759,6 +785,7 @@
       <section class="metrics-grid">
         ${metric("🤖", "AI ON Users", aiOnCount)}
         ${metric("✅", "Eligible Now", eligibleNow)}
+        ${metric("📊", "Market Pairs", allTradePairs().length)}
         ${metric("🎁", "Free AI / Day", Number(settings.freeAiTradesPerDay || 5))}
         ${metric("📜", "AI Trades", (App.state.trades || []).filter(t => t.tradeType === "AI_AUTO").length)}
       </section>
@@ -773,14 +800,11 @@
           <form class="payment-form-card form-grid" onsubmit="AITradeXAdmin.executeAiTrade(event)">
             <p>AI AUTO TRADE SETUP</p>
             <h2>Execute AI Trade</h2>
-            <label>Market
-              <select id="aiTradeMarket">
-                <option>CRYPTO</option>
-                <option>FOREX</option>
+            <label>User Market Pair
+              <select id="aiTradePair" required>
+                ${aiTradePairOptions("BTC/USDT")}
               </select>
-            </label>
-            <label>Pair
-              <input id="aiTradePair" value="BTC/USDT" placeholder="BTC/USDT" required/>
+              <small>Same full pair list as user trade page.</small>
             </label>
             <label>Side
               <select id="aiTradeSide">
@@ -1100,8 +1124,9 @@
     },
     executeAiTrade(event) {
       event.preventDefault();
-      const market = inputValue("aiTradeMarket") || "CRYPTO";
-      const pair = inputValue("aiTradePair").toUpperCase() || "BTC/USDT";
+      const selectedPairData = pairDataByPair(inputValue("aiTradePair") || "BTC/USDT");
+      const market = selectedPairData.market || "CRYPTO";
+      const pair = String(selectedPairData.pair || "BTC/USDT").toUpperCase();
       const side = inputValue("aiTradeSide") || "BUY";
       const leverage = Math.max(1, Number(inputValue("aiTradeLeverage") || 1));
       const applyTo = inputValue("aiTradeApplyTo") || "ALL";

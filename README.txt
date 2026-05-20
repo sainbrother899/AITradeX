@@ -422,3 +422,11 @@ Changed files in Phase 4.4:
 - index.html
 - admin.html
 - README.txt
+
+
+PHASE 4.5 - ADMIN AI TRADE FULL USER PAIR LIST
+- AI Trade Control now uses the same shared market-pair list as the user trade page.
+- Admin pair field is now a full dropdown with all CRYPTO and FOREX/user pairs.
+- Market is automatically detected from the selected pair, preventing CRYPTO/FOREX mismatch.
+- User manual trade history and AI Auto Trade history remain separate.
+- No UI redesign, no patch layer, clean file replacement only.
