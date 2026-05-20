@@ -95,25 +95,34 @@ App.refreshLivePrices=async(pairs,onEach)=>{
 
 const cryptoStreamSymbol=pair=>normPair(pair).replace("/","").toLowerCase();
 let cryptoTickerSocket=null,cryptoTickerKey="",cryptoTickerRetry=null,cryptoTickerSaveTimer=0;
+function cryptoPairBySymbol(symbol){
+  const clean=String(symbol||"").toUpperCase();
+  return (MARKET_PAIRS.CRYPTO||[]).find(x=>normPair(x.pair).replace("/","")===clean)||null;
+}
 function cryptoTickerRow(data){
   const symbol=String(data?.s||"").toUpperCase();
-  const item=(MARKET_PAIRS.CRYPTO||[]).find(x=>normPair(x.pair).replace("/","")===symbol);
+  const item=cryptoPairBySymbol(symbol);
   if(!item)return null;
-  const price=Number(data.c);
+  const eventType=String(data?.e||"").toLowerCase();
+  const cached=liveCache[normPair(item.pair)]||{};
+  const rawPrice=eventType==="trade"?data.p:data.c;
+  const price=Number(rawPrice);
   if(!Number.isFinite(price))return null;
-  const changePct=Number(data.P||0);
-  return {
+  const changePct=eventType==="trade"?Number(String(cached.change||"0").replace("%","").replace("+","")):Number(data.P||0);
+  const row={
     ok:true,
     pair:normPair(item.pair),
     price,
     display:fmtPrice(price,"CRYPTO"),
-    change:fmtChange(changePct),
-    mood:changePct>=0?"up":"down",
-    source:"Binance WebSocket",
-    sourceType:"LIVE_WEBSOCKET",
+    change:eventType==="trade"?(cached.change||"Live"):fmtChange(changePct),
+    mood:eventType==="trade"?(cached.mood||"up"):(changePct>=0?"up":"down"),
+    source:eventType==="trade"?"Binance Trade Stream":"Binance Ticker Stream",
+    sourceType:eventType==="trade"?"LIVE_TRADE_STREAM":"LIVE_TICKER_STREAM",
     fetchedAt:new Date().toISOString(),
     fetchedMs:Date.now()
   };
+  if(eventType!=="trade")return {...cached,...row,price:cached.price||row.price,display:cached.display||row.display,source:cached.source||row.source,sourceType:cached.sourceType||row.sourceType,fetchedAt:cached.fetchedAt||row.fetchedAt,fetchedMs:cached.fetchedMs||row.fetchedMs,change:row.change,mood:row.mood};
+  return row;
 }
 function saveTickerCacheSoon(){
   const t=Date.now();
@@ -129,7 +138,7 @@ App.stopCryptoLiveTicker=()=>{
 App.startCryptoLiveTicker=(pairs,onEach)=>{
   const cryptoPairs=[...new Set((pairs||[]).map(x=>typeof x==="string"?x:x?.pair).filter(Boolean).map(normPair).filter(isCryptoPair))];
   if(!cryptoPairs.length||!("WebSocket" in window)){return false;}
-  const streams=cryptoPairs.map(p=>`${cryptoStreamSymbol(p)}@ticker`).sort();
+  const streams=cryptoPairs.flatMap(p=>[`${cryptoStreamSymbol(p)}@trade`,`${cryptoStreamSymbol(p)}@ticker`]).sort();
   const key=streams.join("/");
   if(key===cryptoTickerKey&&cryptoTickerSocket&&[WebSocket.OPEN,WebSocket.CONNECTING].includes(cryptoTickerSocket.readyState))return true;
   App.stopCryptoLiveTicker();
@@ -141,7 +150,8 @@ App.startCryptoLiveTicker=(pairs,onEach)=>{
       cryptoTickerSocket.onmessage=event=>{
         try{
           const payload=JSON.parse(event.data||"{}");
-          const row=cryptoTickerRow(payload.data||payload);
+          const data=payload.data||payload;
+          const row=cryptoTickerRow(data);
           if(!row)return;
           liveCache[row.pair]=row;
           saveTickerCacheSoon();

@@ -486,3 +486,9 @@ Phase 4.9 - Crypto Live WebSocket Ticker Clean
 - XAU/USD and XAG/USD remain manual-rate based; no random rate is used.
 - Existing API fallback remains in place if the WebSocket disconnects or is unavailable.
 - Admin AI Trading Desk entry price lock remains separate and safe for history/settlement.
+
+Phase 4.10 — Crypto Chart Price Sync Clean
+- Crypto price cards now use Binance @trade stream for the last traded price instead of only 24h ticker last price.
+- Ticker stream is still used for 24h change/mood, but visible card price follows the faster trade stream.
+- This makes TradingView BINANCE chart price and platform crypto card price much closer. Tiny differences can still appear from chart refresh timing/rounding.
+- No UI redesign, no patch layer; common live price logic was cleanly updated in core.js.
