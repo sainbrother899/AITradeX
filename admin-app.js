@@ -4,6 +4,11 @@
   const root = document.getElementById("adminApp");
 
   let page = localStorage.getItem("AITradeX_ADMIN_PAGE") || "dashboard";
+  let kycSearch = localStorage.getItem("AITradeX_ADMIN_KYC_SEARCH") || "";
+  let kycFilter = localStorage.getItem("AITradeX_ADMIN_KYC_FILTER") || "ALL";
+  let paymentSearch = localStorage.getItem("AITradeX_ADMIN_PAYMENT_SEARCH") || "";
+  let paymentStatusFilter = localStorage.getItem("AITradeX_ADMIN_PAYMENT_STATUS") || "ALL";
+  let paymentTypeFilter = localStorage.getItem("AITradeX_ADMIN_PAYMENT_TYPE_FILTER") || "ALL";
 
   function adminUser() {
     return App.currentUser();
@@ -34,7 +39,36 @@
   }
 
   function kycFor(user) {
-    return readJson(userKey(user.id, "KYC"), {
+    const local = readJson(userKey(user.id, "KYC"), null);
+    if (local) return local;
+
+    const stateRow = (App.state.kycRequests || []).find(x => x.userId === user.id);
+    if (stateRow) {
+      return {
+        status: stateRow.status || "NOT_SUBMITTED",
+        personal: stateRow.personal || {
+          fullName: displayNameFor(user),
+          mobile: user.mobile || "",
+          email: user.email || "",
+          dob: ""
+        },
+        id: stateRow.idDetails || stateRow.id || {
+          type: "PAN Card",
+          number: ""
+        },
+        uploads: stateRow.uploads || {
+          frontName: "",
+          backName: "",
+          selfieName: ""
+        },
+        submittedAt: stateRow.submittedAt || "",
+        approvedAt: stateRow.approvedAt || "",
+        rejectedAt: stateRow.rejectedAt || "",
+        rejectReason: stateRow.rejectReason || ""
+      };
+    }
+
+    return {
       status: "NOT_SUBMITTED",
       personal: {
         fullName: displayNameFor(user),
@@ -52,20 +86,58 @@
         selfieName: ""
       },
       submittedAt: "",
+      approvedAt: "",
+      rejectedAt: "",
       rejectReason: ""
-    });
+    };
   }
 
   function saveKyc(user, kyc) {
     writeJson(userKey(user.id, "KYC"), kyc);
+
+    const existing = (App.state.kycRequests || []).find(x => x.userId === user.id);
+    const row = {
+      id: existing?.id || App.uid("kyc"),
+      userId: user.id,
+      status: kyc.status,
+      personal: kyc.personal,
+      idDetails: kyc.id,
+      uploads: kyc.uploads,
+      submittedAt: kyc.submittedAt || "",
+      approvedAt: kyc.approvedAt || "",
+      rejectedAt: kyc.rejectedAt || "",
+      rejectReason: kyc.rejectReason || "",
+      updatedAt: App.now()
+    };
+
+    if (existing) Object.assign(existing, row);
+    else App.state.kycRequests.push(row);
+
+    App.saveState();
   }
 
   function paymentMethodsFor(user) {
-    return readJson(userKey(user.id, "PAYMENT_METHODS"), []);
+    const local = readJson(userKey(user.id, "PAYMENT_METHODS"), []);
+    if (local.length) return local;
+
+    return (App.state.paymentMethods || [])
+      .filter(m => m.userId === user.id)
+      .map(m => ({ ...m }));
   }
 
   function savePaymentMethods(user, methods) {
     writeJson(userKey(user.id, "PAYMENT_METHODS"), methods);
+
+    App.state.paymentMethods = (App.state.paymentMethods || []).filter(m => m.userId !== user.id);
+    methods.forEach(m => {
+      App.state.paymentMethods.push({
+        ...m,
+        userId: user.id,
+        source: "ADMIN_PAYMENT_METHOD"
+      });
+    });
+
+    App.saveState();
   }
 
   function statusPill(status) {
@@ -76,6 +148,19 @@
 
   function avatar(name) {
     return `<span class="admin-avatar">${String(name || "A").trim().charAt(0).toUpperCase()}</span>`;
+  }
+
+  function esc(value) {
+    return App.escapeHtml(value || "");
+  }
+
+  function includesText(value, query) {
+    return String(value || "").toLowerCase().includes(String(query || "").toLowerCase());
+  }
+
+  function dateLine(label, value) {
+    if (!value) return "";
+    return `<div class="admin-date-line"><span>${label}</span><b>${new Date(value).toLocaleString()}</b></div>`;
   }
 
   function shell(content) {
@@ -101,7 +186,7 @@
               <p>Control Center</p>
               <h1>${pageTitle()}</h1>
             </div>
-            <div class="admin-profile-chip">${avatar(admin?.name || "A")}<b>${App.escapeHtml(admin?.name || "Admin")}</b></div>
+            <div class="admin-profile-chip">${avatar(admin?.name || "A")}<b>${esc(admin?.name || "Admin")}</b></div>
           </div>
           ${content}
         </main>
@@ -133,8 +218,8 @@
           <p class="eyebrow">Control Center</p>
           <h1>Admin Login</h1>
           <form onsubmit="AITradeXAdmin.login(event)" class="form-grid">
-            <label>Email<input id="adminEmail" type="email" required placeholder="admin@aitradex.com"/></label>
-            <label>Password<input id="adminPassword" type="password" required placeholder="Password"/></label>
+            <label>Email<input id="adminEmail" type="email" required placeholder="control@aitradex.com"/></label>
+            <label>Password<input id="adminPassword" type="password" required placeholder="admin123"/></label>
             <button class="btn">Login</button>
           </form>
         </section>
@@ -185,7 +270,7 @@
     return `
       <article class="admin-small-row">
         ${avatar(displayNameFor(user))}
-        <div><b>${App.escapeHtml(title || displayNameFor(user))}</b><span>${App.escapeHtml(user.email)} · ${type}</span></div>
+        <div><b>${esc(title || displayNameFor(user))}</b><span>${esc(user.email)} · ${type}</span></div>
         ${statusPill(status)}
       </article>`;
   }
@@ -200,9 +285,9 @@
           ${users.map(u => {
             const kyc = kycFor(u);
             return `
-              <b>${App.escapeHtml(displayNameFor(u))}</b>
-              <b>${App.escapeHtml(u.email)}</b>
-              <b>${App.escapeHtml(u.mobile || "-")}</b>
+              <b>${esc(displayNameFor(u))}</b>
+              <b>${esc(u.email)}</b>
+              <b>${esc(u.mobile || "-")}</b>
               <b>${statusPill(kyc.status)}</b>
               <b>${App.money(App.realBalance(u.id))}</b>
               <b>${App.money(App.demoBalance(u.id))}</b>`;
@@ -212,67 +297,134 @@
     `);
   }
 
+  function filterBarKyc() {
+    return `
+      <section class="admin-filter-bar">
+        <input value="${esc(kycSearch)}" oninput="AITradeXAdmin.setKycSearch(this.value)" placeholder="Search name, email, mobile, document no."/>
+        <div class="filter-chips">
+          ${["ALL", "PENDING", "APPROVED", "REJECTED"].map(s => `<button class="${kycFilter === s ? "active" : ""}" onclick="AITradeXAdmin.setKycFilter('${s}')">${s}</button>`).join("")}
+        </div>
+      </section>`;
+  }
+
   function kycPage() {
-    const items = allUsers().map(user => ({ user, kyc: kycFor(user) })).filter(x => x.kyc.status !== "NOT_SUBMITTED");
+    const query = kycSearch.trim().toLowerCase();
+    const items = allUsers()
+      .map(user => ({ user, kyc: kycFor(user) }))
+      .filter(x => x.kyc.status !== "NOT_SUBMITTED")
+      .filter(x => kycFilter === "ALL" || x.kyc.status === kycFilter)
+      .filter(({ user, kyc }) => {
+        if (!query) return true;
+        return [
+          displayNameFor(user),
+          user.email,
+          user.mobile,
+          kyc.personal.fullName,
+          kyc.personal.mobile,
+          kyc.id.number,
+          kyc.id.type
+        ].some(v => includesText(v, query));
+      });
 
     shell(`
+      ${filterBarKyc()}
       <section class="panel-card">
         <div class="section-head">
           <div><h3>KYC Requests</h3><span>Approve or reject user identity verification</span></div>
+          <span class="admin-count-pill">${items.length} result</span>
         </div>
         <div class="admin-request-list">
-          ${items.length ? items.map(({ user, kyc }) => kycRequestCard(user, kyc)).join("") : `<div class="empty-state">No KYC submissions yet.</div>`}
+          ${items.length ? items.map(({ user, kyc }) => kycRequestCard(user, kyc)).join("") : `<div class="empty-state">No KYC requests found.</div>`}
         </div>
       </section>
     `);
   }
 
   function kycRequestCard(user, kyc) {
+    const isPending = kyc.status === "PENDING";
     return `
       <article class="admin-request-card">
         <div class="request-head">
           <div class="request-user">
             ${avatar(kyc.personal.fullName || displayNameFor(user))}
             <div>
-              <b>${App.escapeHtml(kyc.personal.fullName || displayNameFor(user))}</b>
-              <span>${App.escapeHtml(user.email)} · ${App.escapeHtml(kyc.personal.mobile || user.mobile || "-")}</span>
+              <b>${esc(kyc.personal.fullName || displayNameFor(user))}</b>
+              <span>${esc(user.email)} · ${esc(kyc.personal.mobile || user.mobile || "-")}</span>
             </div>
           </div>
           ${statusPill(kyc.status)}
         </div>
 
         <div class="request-grid">
-          <article><span>DOB</span><b>${App.escapeHtml(kyc.personal.dob || "-")}</b></article>
-          <article><span>Document</span><b>${App.escapeHtml(kyc.id.type || "-")}</b></article>
-          <article><span>Document No.</span><b>${App.escapeHtml(kyc.id.number || "-")}</b></article>
+          <article><span>DOB</span><b>${esc(kyc.personal.dob || "-")}</b></article>
+          <article><span>Document</span><b>${esc(kyc.id.type || "-")}</b></article>
+          <article><span>Document No.</span><b>${esc(kyc.id.number || "-")}</b></article>
           <article><span>Submitted</span><b>${kyc.submittedAt ? new Date(kyc.submittedAt).toLocaleString() : "-"}</b></article>
-          <article><span>ID Front</span><b>${App.escapeHtml(kyc.uploads.frontName || "-")}</b></article>
-          <article><span>ID Back</span><b>${App.escapeHtml(kyc.uploads.backName || "-")}</b></article>
-          <article><span>Selfie</span><b>${App.escapeHtml(kyc.uploads.selfieName || "-")}</b></article>
+          <article><span>ID Front</span><b>${esc(kyc.uploads.frontName || "-")}</b></article>
+          <article><span>ID Back</span><b>${esc(kyc.uploads.backName || "-")}</b></article>
+          <article><span>Selfie</span><b>${esc(kyc.uploads.selfieName || "-")}</b></article>
         </div>
 
-        ${kyc.rejectReason ? `<div class="reject-box">${App.escapeHtml(kyc.rejectReason)}</div>` : ""}
+        ${dateLine("Approved", kyc.approvedAt)}
+        ${dateLine("Rejected", kyc.rejectedAt)}
+        ${kyc.rejectReason ? `<div class="reject-box">${esc(kyc.rejectReason)}</div>` : ""}
 
-        <div class="admin-action-row">
-          <button class="approve-btn" onclick="AITradeXAdmin.approveKyc('${user.id}')">Approve KYC</button>
-          <button class="reject-btn" onclick="AITradeXAdmin.rejectKyc('${user.id}')">Reject</button>
-        </div>
+        ${isPending ? `
+          <div class="admin-action-row">
+            <button class="approve-btn" onclick="AITradeXAdmin.approveKyc('${user.id}', this)">Approve KYC</button>
+            <button class="reject-btn" onclick="AITradeXAdmin.rejectKyc('${user.id}', this)">Reject</button>
+          </div>
+        ` : `<div class="action-locked">Action completed. Status cannot be changed again from this card.</div>`}
       </article>`;
   }
 
+  function filterBarPayments() {
+    return `
+      <section class="admin-filter-bar payment-filter-bar">
+        <input value="${esc(paymentSearch)}" oninput="AITradeXAdmin.setPaymentSearch(this.value)" placeholder="Search name, email, UPI, bank, account last 4"/>
+        <div class="filter-chips">
+          ${["ALL", "PENDING", "APPROVED", "REJECTED"].map(s => `<button class="${paymentStatusFilter === s ? "active" : ""}" onclick="AITradeXAdmin.setPaymentStatusFilter('${s}')">${s}</button>`).join("")}
+        </div>
+        <div class="filter-chips">
+          ${["ALL", "UPI", "BANK"].map(s => `<button class="${paymentTypeFilter === s ? "active" : ""}" onclick="AITradeXAdmin.setPaymentTypeFilter('${s}')">${s}</button>`).join("")}
+        </div>
+      </section>`;
+  }
+
   function paymentsPage() {
-    const items = allUsers().flatMap(user => {
-      const kyc = kycFor(user);
-      return paymentMethodsFor(user).map(method => ({ user, kyc, method }));
-    });
+    const query = paymentSearch.trim().toLowerCase();
+    const items = allUsers()
+      .flatMap(user => {
+        const kyc = kycFor(user);
+        return paymentMethodsFor(user).map(method => ({ user, kyc, method }));
+      })
+      .filter(x => paymentStatusFilter === "ALL" || x.method.status === paymentStatusFilter)
+      .filter(x => paymentTypeFilter === "ALL" || x.method.type === paymentTypeFilter)
+      .filter(({ user, kyc, method }) => {
+        if (!query) return true;
+        return [
+          displayNameFor(user),
+          user.email,
+          user.mobile,
+          kyc.personal.fullName,
+          method.holderName,
+          method.upiId,
+          method.bankName,
+          method.accountNumber,
+          String(method.accountNumber || "").slice(-4),
+          method.ifsc
+        ].some(v => includesText(v, query));
+      });
 
     shell(`
+      ${filterBarPayments()}
       <section class="panel-card">
         <div class="section-head">
           <div><h3>Payment Method Requests</h3><span>Approve UPI and bank accounts after matching KYC name</span></div>
+          <span class="admin-count-pill">${items.length} result</span>
         </div>
         <div class="admin-request-list">
-          ${items.length ? items.map(({ user, kyc, method }) => paymentRequestCard(user, kyc, method)).join("") : `<div class="empty-state">No payment methods submitted yet.</div>`}
+          ${items.length ? items.map(({ user, kyc, method }) => paymentRequestCard(user, kyc, method)).join("") : `<div class="empty-state">No payment methods found.</div>`}
         </div>
       </section>
     `);
@@ -281,6 +433,7 @@
   function paymentRequestCard(user, kyc, method) {
     const kycName = kyc?.personal?.fullName || displayNameFor(user);
     const holderMatch = String(method.holderName || "").trim().toLowerCase() === String(kycName || "").trim().toLowerCase();
+    const isPending = method.status === "PENDING";
 
     return `
       <article class="admin-request-card">
@@ -289,31 +442,37 @@
             ${avatar(method.holderName || displayNameFor(user))}
             <div>
               <b>${method.type === "UPI" ? "UPI Method" : "Bank Account"}</b>
-              <span>${App.escapeHtml(user.email)} · ${method.type}</span>
+              <span>${esc(user.email)} · ${method.type}</span>
             </div>
           </div>
           ${statusPill(method.status)}
         </div>
 
         <div class="request-grid">
-          <article><span>KYC Name</span><b>${App.escapeHtml(kycName)}</b></article>
-          <article><span>Holder Name</span><b>${App.escapeHtml(method.holderName || "-")}</b></article>
+          <article><span>KYC Name</span><b>${esc(kycName)}</b></article>
+          <article><span>Holder Name</span><b>${esc(method.holderName || "-")}</b></article>
           <article><span>Name Match</span><b class="${holderMatch ? "profit-text" : "loss-text"}">${holderMatch ? "Matched" : "Mismatch"}</b></article>
           ${method.type === "UPI" ? `
-            <article><span>UPI ID</span><b>${App.escapeHtml(method.upiId || "-")}</b></article>
+            <article><span>UPI ID</span><b>${esc(method.upiId || "-")}</b></article>
           ` : `
-            <article><span>Bank</span><b>${App.escapeHtml(method.bankName || "-")}</b></article>
+            <article><span>Bank</span><b>${esc(method.bankName || "-")}</b></article>
             <article><span>Account</span><b>****${String(method.accountNumber || "").slice(-4)}</b></article>
-            <article><span>IFSC</span><b>${App.escapeHtml(method.ifsc || "-")}</b></article>
-            <article><span>Type</span><b>${App.escapeHtml(method.accountType || "-")}</b></article>
+            <article><span>IFSC</span><b>${esc(method.ifsc || "-")}</b></article>
+            <article><span>Type</span><b>${esc(method.accountType || "-")}</b></article>
           `}
         </div>
 
-        ${method.rejectReason ? `<div class="reject-box">${App.escapeHtml(method.rejectReason)}</div>` : ""}
+        ${dateLine("Approved", method.approvedAt)}
+        ${dateLine("Rejected", method.rejectedAt)}
+        ${method.deletedAt ? dateLine("Deleted", method.deletedAt) : ""}
+        ${method.rejectReason ? `<div class="reject-box">${esc(method.rejectReason)}</div>` : ""}
 
-        <div class="admin-action-row">
-          <button class="approve-btn" onclick="AITradeXAdmin.approvePaymentMethod('${user.id}', '${method.id}')">Approve Method</button>
-          <button class="reject-btn" onclick="AITradeXAdmin.rejectPaymentMethod('${user.id}', '${method.id}')">Reject</button>
+        <div class="admin-action-row ${isPending ? "" : "single-delete"}">
+          ${isPending ? `
+            <button class="approve-btn" onclick="AITradeXAdmin.approvePaymentMethod('${user.id}', '${method.id}', this)">Approve Method</button>
+            <button class="reject-btn" onclick="AITradeXAdmin.rejectPaymentMethod('${user.id}', '${method.id}', this)">Reject</button>
+          ` : ""}
+          <button class="delete-btn" onclick="AITradeXAdmin.deletePaymentMethod('${user.id}', '${method.id}', this)">Delete Method</button>
         </div>
       </article>`;
   }
@@ -345,6 +504,13 @@
     `);
   }
 
+  function markButton(button, text) {
+    if (!button) return;
+    button.disabled = true;
+    button.dataset.oldText = button.textContent;
+    button.textContent = text;
+  }
+
   function render() {
     const current = adminUser();
     if (!current || current.role !== "admin") return loginPage();
@@ -363,7 +529,8 @@
     login(event) {
       event.preventDefault();
       try {
-        Auth.loginAdmin({
+        const login = Auth.loginAdmin || Auth.loginControl;
+        login({
           email: adminEmail.value,
           password: adminPassword.value
         });
@@ -386,56 +553,125 @@
       localStorage.setItem("AITradeX_ADMIN_PAGE", page);
       render();
     },
-    approveKyc(userId) {
+    setKycSearch(value) {
+      kycSearch = value;
+      localStorage.setItem("AITradeX_ADMIN_KYC_SEARCH", kycSearch);
+      render();
+    },
+    setKycFilter(value) {
+      kycFilter = value;
+      localStorage.setItem("AITradeX_ADMIN_KYC_FILTER", kycFilter);
+      render();
+    },
+    setPaymentSearch(value) {
+      paymentSearch = value;
+      localStorage.setItem("AITradeX_ADMIN_PAYMENT_SEARCH", paymentSearch);
+      render();
+    },
+    setPaymentStatusFilter(value) {
+      paymentStatusFilter = value;
+      localStorage.setItem("AITradeX_ADMIN_PAYMENT_STATUS", paymentStatusFilter);
+      render();
+    },
+    setPaymentTypeFilter(value) {
+      paymentTypeFilter = value;
+      localStorage.setItem("AITradeX_ADMIN_PAYMENT_TYPE_FILTER", paymentTypeFilter);
+      render();
+    },
+    approveKyc(userId, button) {
+      markButton(button, "Approving...");
       const target = allUsers().find(u => u.id === userId);
       if (!target) return;
       const kyc = kycFor(target);
+      if (kyc.status !== "PENDING") {
+        App.toast("KYC action already completed.");
+        render();
+        return;
+      }
       kyc.status = "APPROVED";
       kyc.rejectReason = "";
       kyc.approvedAt = new Date().toISOString();
+      kyc.rejectedAt = "";
       saveKyc(target, kyc);
-      App.toast("KYC approved.");
+      App.toast("KYC approved successfully.");
       render();
     },
-    rejectKyc(userId) {
+    rejectKyc(userId, button) {
       const target = allUsers().find(u => u.id === userId);
       if (!target) return;
+      const kyc = kycFor(target);
+      if (kyc.status !== "PENDING") {
+        App.toast("KYC action already completed.");
+        render();
+        return;
+      }
       const reason = prompt("Reject reason:", "Document details do not match.");
       if (reason === null) return;
-      const kyc = kycFor(target);
+      markButton(button, "Rejecting...");
       kyc.status = "REJECTED";
       kyc.rejectReason = reason || "Rejected by admin.";
       kyc.rejectedAt = new Date().toISOString();
+      kyc.approvedAt = "";
       saveKyc(target, kyc);
-      App.toast("KYC rejected.");
+      App.toast("KYC rejected successfully.");
       render();
     },
-    approvePaymentMethod(userId, methodId) {
+    approvePaymentMethod(userId, methodId, button) {
+      markButton(button, "Approving...");
       const target = allUsers().find(u => u.id === userId);
       if (!target) return;
       const methods = paymentMethodsFor(target);
       const method = methods.find(m => m.id === methodId);
       if (!method) return;
+      if (method.status !== "PENDING") {
+        App.toast("Payment method action already completed.");
+        render();
+        return;
+      }
       method.status = "APPROVED";
       method.rejectReason = "";
       method.approvedAt = new Date().toISOString();
+      method.rejectedAt = "";
       savePaymentMethods(target, methods);
-      App.toast("Payment method approved.");
+      App.toast("Payment method approved successfully.");
       render();
     },
-    rejectPaymentMethod(userId, methodId) {
+    rejectPaymentMethod(userId, methodId, button) {
       const target = allUsers().find(u => u.id === userId);
       if (!target) return;
-      const reason = prompt("Reject reason:", "Holder name does not match KYC.");
-      if (reason === null) return;
       const methods = paymentMethodsFor(target);
       const method = methods.find(m => m.id === methodId);
       if (!method) return;
+      if (method.status !== "PENDING") {
+        App.toast("Payment method action already completed.");
+        render();
+        return;
+      }
+      const reason = prompt("Reject reason:", "Holder name does not match KYC.");
+      if (reason === null) return;
+      markButton(button, "Rejecting...");
       method.status = "REJECTED";
       method.rejectReason = reason || "Rejected by admin.";
       method.rejectedAt = new Date().toISOString();
+      method.approvedAt = "";
       savePaymentMethods(target, methods);
-      App.toast("Payment method rejected.");
+      App.toast("Payment method rejected successfully.");
+      render();
+    },
+    deletePaymentMethod(userId, methodId, button) {
+      const target = allUsers().find(u => u.id === userId);
+      if (!target) return;
+      const methods = paymentMethodsFor(target);
+      const method = methods.find(m => m.id === methodId);
+      if (!method) return;
+
+      const label = method.type === "UPI" ? method.upiId : `${method.bankName} ****${String(method.accountNumber || "").slice(-4)}`;
+      if (!confirm(`Delete this payment method?\n${label}`)) return;
+
+      markButton(button, "Deleting...");
+      const next = methods.filter(m => m.id !== methodId);
+      savePaymentMethods(target, next);
+      App.toast("Payment method deleted.");
       render();
     }
   };

@@ -385,6 +385,46 @@
 
   function saveKycData(data) {
     writeJson(userKey("KYC"), data);
+    syncKycToState(data);
+  }
+
+  function syncKycToState(data) {
+    const u = user();
+    if (!u || !App.state.kycRequests) return;
+
+    const existing = App.state.kycRequests.find(x => x.userId === u.id);
+    const row = {
+      id: existing?.id || App.uid("kyc"),
+      userId: u.id,
+      status: data.status,
+      personal: data.personal,
+      idDetails: data.id,
+      uploads: data.uploads,
+      submittedAt: data.submittedAt || "",
+      rejectReason: data.rejectReason || "",
+      updatedAt: App.now()
+    };
+
+    if (existing) Object.assign(existing, row);
+    else App.state.kycRequests.push(row);
+
+    App.saveState();
+  }
+
+  function syncPaymentMethodsToState(methods) {
+    const u = user();
+    if (!u || !App.state.paymentMethods) return;
+
+    App.state.paymentMethods = App.state.paymentMethods.filter(m => m.userId !== u.id);
+    methods.forEach(m => {
+      App.state.paymentMethods.push({
+        ...m,
+        userId: u.id,
+        source: "USER_PAYMENT_METHOD"
+      });
+    });
+
+    App.saveState();
   }
 
   function verifiedKycName() {
@@ -398,6 +438,7 @@
 
   function savePaymentMethods(methods) {
     writeJson(userKey("PAYMENT_METHODS"), methods);
+    syncPaymentMethodsToState(methods);
   }
 
   function paymentCounts() {

@@ -1781,3 +1781,108 @@
     grid-template-columns:1fr;
   }
 }
+
+
+/* AITradeX Phase 3.3 Admin filters/actions/delete */
+.admin-filter-bar{
+  display:grid;
+  grid-template-columns:1.2fr auto;
+  gap:10px;
+  align-items:center;
+  background:linear-gradient(145deg,rgba(15,29,52,.90),rgba(8,16,31,.96));
+  border:1px solid var(--line);
+  border-radius:20px;
+  padding:12px;
+  margin-bottom:12px;
+}
+.payment-filter-bar{
+  grid-template-columns:1.2fr auto auto;
+}
+.admin-filter-bar input{
+  min-height:44px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:rgba(5,12,24,.72);
+  color:#fff;
+  padding:0 12px;
+  outline:0;
+}
+.filter-chips{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+}
+.filter-chips button{
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.045);
+  color:#dfe8f7;
+  border-radius:999px;
+  padding:8px 10px;
+  font-size:11px;
+  font-weight:1000;
+}
+.filter-chips button.active{
+  background:rgba(21,229,211,.14);
+  color:var(--cyan);
+  border-color:rgba(21,229,211,.45);
+}
+.admin-count-pill{
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.045);
+  color:var(--muted);
+  border-radius:999px;
+  padding:8px 10px;
+  font-size:12px;
+  font-weight:1000;
+}
+.action-locked{
+  margin-top:12px;
+  border:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.035);
+  color:var(--muted);
+  border-radius:14px;
+  padding:11px;
+  font-size:12px;
+  font-weight:850;
+}
+.admin-date-line{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.035);
+  border-radius:14px;
+  padding:10px;
+  margin-top:10px;
+}
+.admin-date-line span{
+  color:var(--muted);
+  font-size:12px;
+}
+.admin-date-line b{
+  font-size:12px;
+}
+.delete-btn{
+  border:0;
+  border-radius:15px;
+  min-height:46px;
+  font-weight:1000;
+  background:rgba(255,255,255,.07);
+  color:#ffb6c4;
+  border:1px solid rgba(255,69,107,.25);
+}
+.admin-action-row.single-delete{
+  grid-template-columns:1fr;
+}
+.approve-btn:disabled,
+.reject-btn:disabled,
+.delete-btn:disabled{
+  opacity:.55;
+  cursor:not-allowed;
+}
+@media(max-width:900px){
+  .admin-filter-bar,
+  .payment-filter-bar{
+    grid-template-columns:1fr;
+  }
+}

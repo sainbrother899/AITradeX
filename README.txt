@@ -256,3 +256,27 @@ Phase 3.1 Admin Fix:
 - auth.js extended with loginAdmin compatibility if missing.
 - Admin login and admin render root should now work.
 - User side logic untouched.
+
+
+Phase 3.2 KYC/Admin Sync Fix:
+- user-app.js now mirrors submitted KYC into App.state.kycRequests.
+- user-app.js now mirrors payment methods into App.state.paymentMethods.
+- admin-app.js now reads KYC from localStorage first, then App.state.kycRequests fallback.
+- admin-app.js now reads payment methods from localStorage first, then App.state.paymentMethods fallback.
+- Admin approve/reject writes to both localStorage and App.state.
+- This makes user-submitted KYC/payment methods show more reliably in admin side during localStorage testing.
+- Use the same browser and same domain/origin for user and admin testing.
+
+
+Phase 3.3 Admin Filters + Safer Actions:
+- admin-app.js fully rebuilt for safer KYC/payment actions.
+- KYC search added by name, email, mobile and document number.
+- KYC status filter added: All / Pending / Approved / Rejected.
+- KYC Approve/Reject buttons show only while status is Pending.
+- Approved/Rejected cards show completed status and timestamps.
+- Payment search added by name, email, UPI, bank and account last 4.
+- Payment filters added: status and method type.
+- Payment Approve/Reject buttons show only while status is Pending.
+- Delete Method button added for payment methods.
+- Delete removes the method from user side storage too.
+- Buttons show action feedback while processing.
