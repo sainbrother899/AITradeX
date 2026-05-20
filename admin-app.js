@@ -9,9 +9,8 @@
   let paymentSearch = localStorage.getItem("AITradeX_ADMIN_PAYMENT_SEARCH") || "";
   let paymentStatusFilter = localStorage.getItem("AITradeX_ADMIN_PAYMENT_STATUS") || "ALL";
   let paymentTypeFilter = localStorage.getItem("AITradeX_ADMIN_PAYMENT_TYPE_FILTER") || "ALL";
-  let walletSearch = localStorage.getItem("AITradeX_ADMIN_WALLET_SEARCH") || "";
-  let walletStatusFilter = localStorage.getItem("AITradeX_ADMIN_WALLET_STATUS") || "ALL";
-  let walletTypeFilter = localStorage.getItem("AITradeX_ADMIN_WALLET_TYPE") || "ALL";
+  let financeSearch = localStorage.getItem("AITradeX_ADMIN_FINANCE_SEARCH") || "";
+  let financeStatusFilter = localStorage.getItem("AITradeX_ADMIN_FINANCE_STATUS") || "ALL";
 
   function adminUser() {
     return App.currentUser();
@@ -180,14 +179,18 @@
     return [...deposits, ...withdrawals].sort((a, b) => Date.parse(b.request.createdAt || 0) - Date.parse(a.request.createdAt || 0));
   }
 
-  function walletStats() {
-    const items = allWalletRequests();
+  function financeStats(type) {
+    const items = allWalletRequests().filter(x => x.type === type);
     return {
       total: items.length,
       pending: items.filter(x => x.request.status === "PENDING").length,
       approved: items.filter(x => x.request.status === "APPROVED").length,
       rejected: items.filter(x => x.request.status === "REJECTED").length
     };
+  }
+
+  function pendingFinanceCount(type) {
+    return allWalletRequests().filter(x => x.type === type && x.request.status === "PENDING").length;
   }
 
   function statusPill(status) {
@@ -224,7 +227,8 @@
             ${navButton("users", "👥", "Users")}
             ${navButton("kyc", "🛡️", "KYC Requests")}
             ${navButton("payments", "💳", "Payment Methods")}
-            ${navButton("wallet", "🏦", "Wallet Requests")}
+            ${navButton("deposits", "⬇️", "Deposits")}
+            ${navButton("withdrawals", "⬆️", "Withdrawals")}
             ${navButton("trades", "📈", "Trade Control")}
             ${navButton("settings", "⚙️", "Settings")}
           </nav>
@@ -253,7 +257,8 @@
       users: "User Management",
       kyc: "KYC Requests",
       payments: "Payment Method Requests",
-      wallet: "Wallet Requests",
+      deposits: "Deposits",
+      withdrawals: "Withdrawals",
       trades: "Trade Control",
       settings: "Settings"
     };
@@ -280,14 +285,16 @@
     const users = allUsers();
     const kycRequests = users.map(u => ({ user: u, kyc: kycFor(u) })).filter(x => x.kyc.status === "PENDING");
     const paymentPending = users.flatMap(u => paymentMethodsFor(u).map(m => ({ user: u, method: m }))).filter(x => x.method.status === "PENDING");
-    const pendingWallet = allWalletRequests().filter(x => x.request.status === "PENDING").length;
+    const pendingDeposits = pendingFinanceCount("DEPOSIT");
+    const pendingWithdrawals = pendingFinanceCount("WITHDRAWAL");
 
     shell(`
       <section class="metrics-grid">
         ${metric("👥", "Total Users", users.length)}
         ${metric("🛡️", "Pending KYC", kycRequests.length)}
         ${metric("💳", "Pending Methods", paymentPending.length)}
-        ${metric("🏦", "Wallet Requests", pendingWallet)}
+        ${metric("⬇️", "Pending Deposits", pendingDeposits)}
+        ${metric("⬆️", "Pending Withdrawals", pendingWithdrawals)}
       </section>
 
       <section class="admin-grid-two">
@@ -528,30 +535,27 @@
       </article>`;
   }
 
-  function filterBarWallet() {
+  function filterBarFinance(sectionType) {
+    const placeholder = sectionType === "DEPOSIT" ? "Search user, email, UTR, amount..." : "Search user, email, method, account...";
     return `
       <section class="admin-filter-card">
-        <input value="${esc(walletSearch)}" oninput="AITradeXAdmin.setWalletSearch(this.value)" placeholder="Search user, email, UTR, method..."/>
-        <select onchange="AITradeXAdmin.setWalletStatusFilter(this.value)">
-          <option value="ALL" ${walletStatusFilter === "ALL" ? "selected" : ""}>All Status</option>
-          <option value="PENDING" ${walletStatusFilter === "PENDING" ? "selected" : ""}>Pending</option>
-          <option value="APPROVED" ${walletStatusFilter === "APPROVED" ? "selected" : ""}>Approved</option>
-          <option value="REJECTED" ${walletStatusFilter === "REJECTED" ? "selected" : ""}>Rejected</option>
-        </select>
-        <select onchange="AITradeXAdmin.setWalletTypeFilter(this.value)">
-          <option value="ALL" ${walletTypeFilter === "ALL" ? "selected" : ""}>All Types</option>
-          <option value="DEPOSIT" ${walletTypeFilter === "DEPOSIT" ? "selected" : ""}>Deposit</option>
-          <option value="WITHDRAWAL" ${walletTypeFilter === "WITHDRAWAL" ? "selected" : ""}>Withdrawal</option>
+        <input value="${esc(financeSearch)}" oninput="AITradeXAdmin.setFinanceSearch(this.value)" placeholder="${placeholder}"/>
+        <select onchange="AITradeXAdmin.setFinanceStatusFilter(this.value)">
+          <option value="ALL" ${financeStatusFilter === "ALL" ? "selected" : ""}>All Status</option>
+          <option value="PENDING" ${financeStatusFilter === "PENDING" ? "selected" : ""}>Pending</option>
+          <option value="APPROVED" ${financeStatusFilter === "APPROVED" ? "selected" : ""}>Approved</option>
+          <option value="REJECTED" ${financeStatusFilter === "REJECTED" ? "selected" : ""}>Rejected</option>
         </select>
       </section>`;
   }
 
-  function walletPage() {
-    const stats = walletStats();
-    const query = walletSearch.trim().toLowerCase();
+  function financeRequestPage(sectionType) {
+    const isDepositSection = sectionType === "DEPOSIT";
+    const stats = financeStats(sectionType);
+    const query = financeSearch.trim().toLowerCase();
     const items = allWalletRequests()
-      .filter(x => walletStatusFilter === "ALL" || x.request.status === walletStatusFilter)
-      .filter(x => walletTypeFilter === "ALL" || x.type === walletTypeFilter)
+      .filter(x => x.type === sectionType)
+      .filter(x => financeStatusFilter === "ALL" || x.request.status === financeStatusFilter)
       .filter(({ user, request, type }) => {
         if (!query) return true;
         const haystack = [
@@ -576,16 +580,16 @@
         ${metric("⌛", "Pending", stats.pending)}
         ${metric("✅", "Approved", stats.approved)}
         ${metric("❌", "Rejected", stats.rejected)}
-        ${metric("🏦", "Total Requests", stats.total)}
+        ${metric(isDepositSection ? "⬇️" : "⬆️", "Total", stats.total)}
       </section>
-      ${filterBarWallet()}
+      ${filterBarFinance(sectionType)}
       <section class="panel-card">
         <div class="section-head">
-          <div><h3>Wallet Requests</h3><span>Approve or reject deposit and withdrawal requests</span></div>
+          <div><h3>${isDepositSection ? "Deposit Requests" : "Withdrawal Requests"}</h3><span>${isDepositSection ? "Approve user deposits and credit real balance" : "Approve user withdrawals and debit real balance"}</span></div>
           <span class="admin-count-pill">${items.length} result</span>
         </div>
         <div class="admin-request-list">
-          ${items.length ? items.map(({ user, request, type }) => walletRequestCard(user, request, type)).join("") : `<div class="empty-state">No wallet requests found.</div>`}
+          ${items.length ? items.map(({ user, request, type }) => walletRequestCard(user, request, type)).join("") : `<div class="empty-state">No ${isDepositSection ? "deposit" : "withdrawal"} requests found.</div>`}
         </div>
       </section>
     `);
@@ -667,7 +671,9 @@
     if (page === "users") return usersPage();
     if (page === "kyc") return kycPage();
     if (page === "payments") return paymentsPage();
-    if (page === "wallet") return walletPage();
+    if (page === "wallet") { page = "deposits"; localStorage.setItem("AITradeX_ADMIN_PAGE", page); }
+    if (page === "deposits") return financeRequestPage("DEPOSIT");
+    if (page === "withdrawals") return financeRequestPage("WITHDRAWAL");
     if (page === "trades") return tradesPage();
     if (page === "settings") return settingsPage();
     return dashboardPage();
@@ -726,19 +732,14 @@
       localStorage.setItem("AITradeX_ADMIN_PAYMENT_TYPE_FILTER", paymentTypeFilter);
       render();
     },
-    setWalletSearch(value) {
-      walletSearch = value;
-      localStorage.setItem("AITradeX_ADMIN_WALLET_SEARCH", walletSearch);
+    setFinanceSearch(value) {
+      financeSearch = value;
+      localStorage.setItem("AITradeX_ADMIN_FINANCE_SEARCH", financeSearch);
       render();
     },
-    setWalletStatusFilter(value) {
-      walletStatusFilter = value;
-      localStorage.setItem("AITradeX_ADMIN_WALLET_STATUS", walletStatusFilter);
-      render();
-    },
-    setWalletTypeFilter(value) {
-      walletTypeFilter = value;
-      localStorage.setItem("AITradeX_ADMIN_WALLET_TYPE", walletTypeFilter);
+    setFinanceStatusFilter(value) {
+      financeStatusFilter = value;
+      localStorage.setItem("AITradeX_ADMIN_FINANCE_STATUS", financeStatusFilter);
       render();
     },
     approveDeposit(userId, requestId, button) {
