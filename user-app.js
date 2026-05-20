@@ -30,6 +30,8 @@
   let priceRefreshTimer = null;
   let manualRiskCloseLock = false;
   let manualCloseSelectorOpen = false;
+  let manualHistoryPageIndex = Number(localStorage.getItem("AITradeX_MANUAL_HISTORY_PAGE") || 0);
+  let aiHistoryPageIndex = Number(localStorage.getItem("AITradeX_AI_HISTORY_PAGE") || 0);
 
   const marketPairs = App.marketPairs || { CRYPTO: [], FOREX: [] };
   function pairsForMarket() {
@@ -1650,9 +1652,44 @@
       </article>`;
   }
 
+  function historyPagingState(type) {
+    const isAi = type === "AI_AUTO";
+    return {
+      index: isAi ? aiHistoryPageIndex : manualHistoryPageIndex,
+      storageKey: isAi ? "AITradeX_AI_HISTORY_PAGE" : "AITradeX_MANUAL_HISTORY_PAGE",
+      fn: isAi ? "setAiHistoryPage" : "setManualHistoryPage"
+    };
+  }
+
   function historyCards(rows, type, emptyText) {
     if (!rows.length) return `<div class="empty-state">${emptyText}</div>`;
-    return `<div class="unified-history-grid">${rows.map(t => tradeHistoryCard(t, type)).join("")}</div>`;
+
+    const state = historyPagingState(type);
+    const maxIndex = Math.max(0, rows.length - 1);
+    const currentIndex = Math.min(Math.max(0, Number(state.index || 0)), maxIndex);
+    const current = rows[currentIndex];
+
+    if (type === "AI_AUTO") {
+      aiHistoryPageIndex = currentIndex;
+    } else {
+      manualHistoryPageIndex = currentIndex;
+    }
+    localStorage.setItem(state.storageKey, String(currentIndex));
+
+    const prevDisabled = currentIndex <= 0 ? "disabled" : "";
+    const nextDisabled = currentIndex >= maxIndex ? "disabled" : "";
+    return `
+      <div class="history-pager-wrap">
+        <div class="history-pager-status">
+          <span>${currentIndex + 1} / ${rows.length}</span>
+          <small>${type === "AI_AUTO" ? "AI auto trade card" : "Manual trade card"}</small>
+        </div>
+        <div class="unified-history-grid single-history-card">${tradeHistoryCard(current, type)}</div>
+        <div class="history-pager-controls">
+          <button ${prevDisabled} onclick="AITradeXUser.${state.fn}(${currentIndex - 1})">Previous</button>
+          <button ${nextDisabled} onclick="AITradeXUser.${state.fn}(${currentIndex + 1})">Next</button>
+        </div>
+      </div>`;
   }
 
   function historySummaryCard(label, rows) {
@@ -1668,8 +1705,8 @@
   }
 
   function historyPage() {
-    const aiRows = tradeRows("AI_AUTO");
-    const manualRows = tradeRows("MANUAL");
+    const aiRows = tradeRows("AI_AUTO").filter(t => String(t.status || "").toUpperCase() === "CLOSED");
+    const manualRows = tradeRows("MANUAL").filter(t => String(t.status || "").toUpperCase() === "CLOSED");
     const allRows = [...aiRows, ...manualRows];
     shell(`
       <section class="compact-grid trade-history-summary">
@@ -2634,6 +2671,20 @@
       target.cancelledAt = new Date().toISOString();
       App.saveState();
       App.toast("Pending limit order cancelled.");
+      render();
+    },
+    setManualHistoryPage(index) {
+      const rows = tradeRows("MANUAL").filter(t => String(t.status || "").toUpperCase() === "CLOSED");
+      const maxIndex = Math.max(0, rows.length - 1);
+      manualHistoryPageIndex = Math.min(Math.max(0, Number(index || 0)), maxIndex);
+      localStorage.setItem("AITradeX_MANUAL_HISTORY_PAGE", String(manualHistoryPageIndex));
+      render();
+    },
+    setAiHistoryPage(index) {
+      const rows = tradeRows("AI_AUTO").filter(t => String(t.status || "").toUpperCase() === "CLOSED");
+      const maxIndex = Math.max(0, rows.length - 1);
+      aiHistoryPageIndex = Math.min(Math.max(0, Number(index || 0)), maxIndex);
+      localStorage.setItem("AITradeX_AI_HISTORY_PAGE", String(aiHistoryPageIndex));
       render();
     },
     setAutoPercent(value) {

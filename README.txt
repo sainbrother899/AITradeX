@@ -635,3 +635,10 @@ Changed files in Phase 4.23:
 - user-app.js
 - styles.css
 - README.txt
+
+Phase 4.24 - Trade History Paging Cards Clean
+- Manual Trade History now shows one premium card at a time with Previous/Next controls.
+- AI Auto Trade History now shows one premium card at a time with separate Previous/Next controls.
+- Each history section keeps its own card position and count indicator.
+- Long history pages stay compact on mobile.
+- Trading, wallet, AI trade, price feed, admin flow, limit orders and bottom navigation were not changed.
