@@ -601,3 +601,12 @@ Phase 4.20 - Unified Trade History Polish
 - Manual history cards show entry price, close price, margin, exposure, leverage, open/close time, and close status.
 - AI history cards show entry price, settlement, AI amount, exposure, leverage, execution time, result type, and price source.
 - Wallet history remains separate inside the Wallet page.
+
+Phase 4.21 - Orders Page + Bottom Nav Update
+- Bottom navigation updated to: Home, Trade, Orders, Wallet, History.
+- Old P/L bottom nav item has been replaced with Orders.
+- Orders page added for open manual positions and pending limit orders.
+- Trade page now stays focused on placing trades; active position management moved to Orders.
+- Open Positions show pair, side, leverage, entry price, live price, live P/L and close action.
+- Open Orders section is ready for pending limit order management.
+- Existing manual live bottom bar, margin lock, AI trade, wallet, price feed and history logic preserved.

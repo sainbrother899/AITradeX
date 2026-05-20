@@ -118,7 +118,19 @@
     return App.state.trades.filter(t =>
       t.userId === u.id &&
       t.tradeType === "MANUAL" &&
-      t.status === "OPEN"
+      t.status === "OPEN" &&
+      (t.accountType || accountMode) === accountMode
+    );
+  }
+
+  function pendingManualOrders() {
+    const u = user();
+    if (!u) return [];
+    return (App.state.trades || []).filter(t =>
+      t.userId === u.id &&
+      t.tradeType === "MANUAL" &&
+      ["PENDING", "LIMIT_PENDING"].includes(String(t.status || "").toUpperCase()) &&
+      (t.accountType || accountMode) === accountMode
     );
   }
 
@@ -894,8 +906,8 @@
     const nav = [
       ["home", "⌂", "Home"],
       ["trade", "⇅", "Trade"],
+      ["orders", "≡", "Orders"],
       ["wallet", "▣", "Wallet"],
-      ["pnl", "↗", "P/L"],
       ["history", "☰", "History"]
     ];
     return `
@@ -1193,22 +1205,6 @@
         </div>
       </section>
 
-      <section class="premium-card">
-        <p>OPEN POSITIONS</p>
-        <h2>Active Manual Trades</h2>
-        ${manualOpenPositions().length ? `
-          <div class="manual-open-list">
-            ${manualOpenPositions().map(position => {
-              const pnl = manualPositionPnl(position);
-              return `
-                <article>
-                  <div><b>${App.escapeHtml(position.pair)}</b><span>${App.escapeHtml(position.side)} · ${Number(position.leverage || 1)}x · ${App.escapeHtml(position.accountType || accountMode)} · Entry ${App.escapeHtml(position.entryPriceDisplay || String(position.entryPrice || "--"))} · Live <em data-manual-current="${position.id}">${App.escapeHtml(positionCurrentDisplay(position))}</em></span></div>
-                  <strong data-manual-pnl="${position.id}" class="${pnl >= 0 ? "profit-text" : "loss-text"}">${pnl >= 0 ? "+" : ""}${App.money(pnl)}</strong>
-                </article>`;
-            }).join("")}
-          </div>
-        ` : `<div class="empty-state">No active manual positions yet.</div>`}
-      </section>
     `);
 
     refreshVisiblePrices(pairsForMarket());
@@ -1463,16 +1459,61 @@
     `);
   }
 
-  function pnlPage() {
-    const pnl = pnlValue();
+  function orderPositionCard(position) {
+    const pnl = manualPositionPnl(position);
+    return `
+      <article class="orders-position-card">
+        <div>
+          <b>${App.escapeHtml(position.pair)} <span>${App.escapeHtml(position.side || "BUY")}</span></b>
+          <small>${Number(position.leverage || 1)}x · Margin ${App.money(position.marginAmount || 0)} · Entry ${App.escapeHtml(position.entryPriceDisplay || String(position.entryPrice || "--"))}</small>
+          <small>Live <em data-manual-current="${position.id}">${App.escapeHtml(positionCurrentDisplay(position))}</em></small>
+        </div>
+        <strong data-manual-pnl="${position.id}" class="${pnl >= 0 ? "profit-text" : "loss-text"}">${pnl >= 0 ? "+" : ""}${App.money(pnl)}</strong>
+        <button onclick="AITradeXUser.closeManualPositionById('${position.id}')">Close</button>
+      </article>`;
+  }
+
+  function pendingOrderCard(order) {
+    return `
+      <article class="orders-position-card pending">
+        <div>
+          <b>${App.escapeHtml(order.pair || "-")} <span>${App.escapeHtml(order.side || "-")}</span></b>
+          <small>${App.escapeHtml(order.orderType || "Limit")} · Limit ${App.escapeHtml(order.limitPriceDisplay || order.limitPrice || "-")} · ${Number(order.leverage || 1)}x</small>
+          <small>Margin ${App.money(order.marginAmount || 0)} · ${formatHistoryDate(order.createdAt)}</small>
+        </div>
+        <strong>Pending</strong>
+        <button onclick="AITradeXUser.cancelPendingOrder('${order.id}')">Cancel</button>
+      </article>`;
+  }
+
+  function ordersPage() {
+    const positions = manualOpenPositions();
+    const pending = pendingManualOrders();
+    const livePnl = positions.reduce((sum, position) => sum + manualPositionPnl(position), 0);
+    const lockedMargin = positions.reduce((sum, position) => sum + Math.max(0, Number(position.marginAmount || 0)), 0);
     shell(`
-      <section class="compact-grid">
-        <article><span>Total Trades</span><b>0</b><small>${accountMode} trades</small></article>
-        <article><span>Total P/L</span><b class="${pnl >= 0 ? "profit-text" : "loss-text"}">${App.money(pnl)}</b><small>Closed trades</small></article>
-        <article><span>Win Rate</span><b>0%</b><small>Performance</small></article>
-        <article><span>Referral Bonus</span><b>₹0</b><small>One-time credit</small></article>
+      <section class="compact-grid orders-summary-grid">
+        <article><span>Open Positions</span><b>${positions.length}</b><small>${accountMode} manual trades</small></article>
+        <article><span>Live P/L</span><b class="${livePnl >= 0 ? "profit-text" : "loss-text"}">${livePnl >= 0 ? "+" : ""}${App.money(livePnl)}</b><small>Real-time movement</small></article>
+        <article><span>Locked Margin</span><b>${App.money(lockedMargin)}</b><small>Reserved in trades</small></article>
+        <article><span>Open Orders</span><b>${pending.length}</b><small>Pending limit orders</small></article>
       </section>
-      <section class="premium-card"><p>P/L ANALYTICS</p><h2>Performance Overview</h2><div class="analytics-graph"><i></i></div></section>
+
+      <section class="premium-card orders-card">
+        <div class="card-row">
+          <div><p>ORDERS</p><h2>Open Positions</h2></div>
+          <span class="history-mode">${accountMode}</span>
+        </div>
+        ${positions.length ? `<div class="orders-position-list">${positions.map(orderPositionCard).join("")}</div>` : `<div class="empty-state">No open manual positions. New trades opened from Trade page will appear here.</div>`}
+      </section>
+
+      <section class="premium-card orders-card">
+        <div class="card-row">
+          <div><p>ORDERS</p><h2>Open Orders</h2></div>
+          <span class="history-mode">Limit</span>
+        </div>
+        ${pending.length ? `<div class="orders-position-list">${pending.map(pendingOrderCard).join("")}</div>` : `<div class="empty-state">No pending limit orders yet. Market and limit order logic will use this section for order management.</div>`}
+      </section>
     `);
   }
 
@@ -1851,9 +1892,13 @@
     if (!u || u.role !== "user") return landing();
 
     if (page === "home") return homePage();
+    if (page === "pnl") {
+      page = "orders";
+      localStorage.setItem("AITradeX_ACTIVE_PAGE", page);
+    }
     if (page === "trade") return tradePage();
+    if (page === "orders") return ordersPage();
     if (page === "wallet") return walletPage();
-    if (page === "pnl") return pnlPage();
     if (page === "history") return historyPage();
     if (page === "kyc") return kycPage();
     if (page === "payments") return paymentPage();
@@ -2420,6 +2465,19 @@
       } catch (error) {
         App.toast(error.message || "Position close failed.");
       }
+    },
+    cancelPendingOrder(orderId) {
+      const target = pendingManualOrders().find(order => order.id === orderId);
+      if (!target) {
+        App.toast("Pending order not found.");
+        render();
+        return;
+      }
+      target.status = "CANCELLED";
+      target.cancelledAt = new Date().toISOString();
+      App.saveState();
+      App.toast("Pending order cancelled.");
+      render();
     },
     setAutoPercent(value) {
       const u = user();
