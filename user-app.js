@@ -456,7 +456,7 @@
     return [
       `${Number(plan?.signals || 0)} daily AI trades`,
       `${plan?.aiAccess || "AI"} access`,
-      plan?.tradeLimit ? `Max AI amount up to ${App.money(plan.tradeLimit)}` : "Manual trading access"
+      "Manual trading access"
     ];
   }
 

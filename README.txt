@@ -685,5 +685,13 @@ Phase 4.29 — Free Trial AI Trades Clean
 - After the trial ends, free users keep 1 AI auto trade/day so the platform remains useful.
 - Paid plans still control higher daily AI trade limits.
 - Admin Plans page can edit Free Trial days, trial AI trades/day and after-trial AI trades/day.
-- Wording cleaned from capacity-style language to Daily AI Trades / Max AI Amount.
+- Subscription wording now uses Daily AI Trades.
 - Subscription purchase still deducts only from Real Wallet.
+
+
+Phase 4.30 - Subscription Amount Limit Cleanup
+- Removed subscription amount-limit wording from user subscription plan cards.
+- Removed subscription amount-limit field from admin Plans editor.
+- Removed subscription amount-limit data from core plan defaults and normalization.
+- Kept Daily AI Trades, duration, price, status, and benefits as the clear plan controls.
+- Limit order trigger price logic remains untouched because it is part of manual trading.

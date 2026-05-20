@@ -1124,9 +1124,6 @@
           <label>AI Access Label
             <input id="plan_${clean.id}_access" value="${esc(clean.aiAccess)}" required/>
           </label>
-          <label>Max AI Amount
-            <input id="plan_${clean.id}_tradeLimit" type="number" min="0" value="${Number(clean.tradeLimit || 0)}"/>
-          </label>
           <label>Status
             <select id="plan_${clean.id}_status" ${clean.id === "free" ? "disabled" : ""}>
               <option value="ACTIVE" ${clean.status === "ACTIVE" ? "selected" : ""}>Active</option>
@@ -1394,7 +1391,6 @@
         signals: Math.max(0, Number(get("signals")?.value || 0)),
         durationDays: Math.max(0, Number(get("duration")?.value || 0)),
         aiAccess: String(get("access")?.value || "AI Access").trim(),
-        tradeLimit: Math.max(0, Number(get("tradeLimit")?.value || 0)),
         status: planId === "free" ? "ACTIVE" : String(get("status")?.value || "ACTIVE").toUpperCase(),
         benefits: String(get("benefits")?.value || "").split("\n").map(x => x.trim()).filter(Boolean)
       };
