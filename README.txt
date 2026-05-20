@@ -812,3 +812,10 @@ Phase 4.45 — Home AI Trading Activity Card Clean
 - Shows AI OFF, daily limit completed, no AI trade yet, or latest AI auto trade state based on real user data.
 - Removed static confidence/target/stop-loss/expires copy from the home dashboard.
 - Current Plan card and AI Trade Control card remain unchanged.
+
+
+Phase 4.46 — Home Dashboard Runtime Fix Clean
+- Fixed AI Trading Activity card runtime issue caused by an undefined time formatter.
+- User dashboard now renders safely when a latest AI auto trade exists.
+- No patch/block layer or backup files included.
+Changed files: user-app.js, README.txt

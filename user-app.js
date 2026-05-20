@@ -509,7 +509,7 @@
           <div>
             <p>AI TRADING ACTIVITY</p>
             <h2>${App.escapeHtml(latest.pair || "AI Trade")} · ${App.escapeHtml(latest.side || "")}</h2>
-            <h4>Latest AI auto trade completed ${formatTime(latest.createdAt)}.</h4>
+            <h4>Latest AI auto trade completed ${formatHistoryDate(latest.createdAt)}.</h4>
           </div>
           <span class="activity-pill ${pnl >= 0 ? "profit" : "loss"}">${resultLabel}</span>
         </div>
