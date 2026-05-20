@@ -303,3 +303,14 @@ Phase 3.5 User Wallet Flow:
 - Wallet request history added.
 - Deposit/withdrawal requests sync into App.state for next admin approval phase.
 - Admin approval for wallet will be built in next phase.
+
+
+Phase 3.6 Wallet Mode Polish:
+- Wallet now respects selected Real/Demo account mode.
+- Demo account mode shows only a centered premium message card.
+- Deposit and withdrawal are hidden in Demo mode.
+- Demo wallet card includes Switch to Real Account button.
+- Real wallet Deposit tab shows only Available Balance and Pending Deposit cards.
+- Real wallet Withdrawal tab shows only Available Balance and Pending Withdrawal cards.
+- Demo balance card and extra wallet metric cards removed from real wallet flow.
+- Wallet history remains visible for real account.

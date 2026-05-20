@@ -898,6 +898,25 @@
     scheduleTradingViewChart();
   }
   function walletPage() {
+    if (accountMode === "DEMO") {
+      shell(`
+        <section class="demo-wallet-center">
+          <div class="demo-wallet-card">
+            <div class="demo-wallet-icon">🧪</div>
+            <p>DEMO ACCOUNT MODE</p>
+            <h1>You are now in Demo Account Mode</h1>
+            <h4>Deposit and withdrawal features are not available in demo mode. Demo balance is only for practice trading.</h4>
+            <div class="demo-wallet-balance">
+              <span>Demo Balance</span>
+              <b>${App.money(demoBalance())}</b>
+            </div>
+            <button onclick="AITradeXUser.setAccountMode('REAL')">Switch to Real Account</button>
+          </div>
+        </section>
+      `);
+      return;
+    }
+
     const kyc = currentKyc();
     const approvedMethods = approvedPaymentMethods();
     const deposits = depositRequests();
@@ -907,21 +926,32 @@
     const selectedWithdrawalMethod = approvedMethods.find(m => m.id === withdrawalDraft.methodId) || approvedMethods[0] || null;
 
     shell(`
-      <section class="wallet-hero-card">
+      <section class="wallet-hero-card compact-wallet-head">
         <div class="card-row">
           <div>
             <p>REAL WALLET</p>
-            <h1>Wallet Center</h1>
-            <span class="ticket-mode">Deposits and withdrawals are available for real account only.</span>
+            <h1>${walletMode === "DEPOSIT" ? "Deposit Center" : "Withdrawal Center"}</h1>
+            <span class="ticket-mode">Real account wallet operations only.</span>
           </div>
           ${statusPill(kyc.status)}
         </div>
-        <strong>${App.money(availableRealBalance())}</strong>
-        <div class="wallet-grid">
-          <article><span>Real Balance</span><b>${App.money(realBalance())}</b></article>
-          <article><span>Pending Deposit</span><b>${App.money(pendingDepositAmount())}</b></article>
-          <article><span>Pending Withdrawal</span><b>${App.money(pendingWithdrawalAmount())}</b></article>
-          <article><span>Demo Balance</span><b>${App.money(demoBalance())}</b></article>
+
+        <div class="wallet-focus-grid ${walletMode.toLowerCase()}">
+          <article>
+            <span>Available Balance</span>
+            <b>${App.money(availableRealBalance())}</b>
+          </article>
+          ${walletMode === "DEPOSIT" ? `
+            <article>
+              <span>Pending Deposit</span>
+              <b>${App.money(pendingDepositAmount())}</b>
+            </article>
+          ` : `
+            <article>
+              <span>Pending Withdrawal</span>
+              <b>${App.money(pendingWithdrawalAmount())}</b>
+            </article>
+          `}
         </div>
       </section>
 
