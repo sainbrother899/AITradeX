@@ -775,3 +775,11 @@ Phase 4.40 - User Header Logo Size Polish
 - Menu button placement remains unchanged.
 - No trading, wallet, admin, KYC, referral, or support logic was touched.
 - Changed files: styles.css, README.txt.
+
+
+AITradeX Phase 4.41 — Mobile Header Logo Bold Polish
+- Fixed mobile header logo sizing where full AITradeX wordmark looked too small/thin.
+- Rebuilt SVG wordmark text with heavier weight and slightly wider viewBox.
+- Increased user header logo width on mobile while keeping the menu button in place.
+- No trading, wallet, KYC, referral, support, admin, or database logic changed.
+- No backup/patch/block files included.

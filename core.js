@@ -113,7 +113,7 @@ App.logoHtml=(variant="full",className="")=>{
     <rect x="39.6" y="33" width="5.6" height="17" rx="2.8" fill="#6fff35" opacity=".94"/>
   </g>`;
   if(mode==="icon")return `<span class="aitx-logo-wrap aitx-logo-icon-wrap ${cls}" aria-label="AITradeX logo"><svg class="aitx-logo-svg" viewBox="0 0 64 64" role="img" aria-hidden="true">${defs}${icon}</svg></span>`;
-  return `<span class="aitx-logo-wrap aitx-logo-full-wrap ${cls}" aria-label="AITradeX logo"><svg class="aitx-logo-svg" viewBox="0 0 260 64" role="img" aria-hidden="true">${defs}${icon}<text x="74" y="42" font-family="Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif" font-size="31" font-weight="900" letter-spacing="-1.8"><tspan fill="url(#${blue})">AI</tspan><tspan fill="#f5f8ff">Trade</tspan><tspan fill="url(#${green})">X</tspan></text></svg></span>`;
+  return `<span class="aitx-logo-wrap aitx-logo-full-wrap ${cls}" aria-label="AITradeX logo"><svg class="aitx-logo-svg" viewBox="0 0 286 64" role="img" aria-hidden="true">${defs}${icon}<text x="72" y="43" font-family="Inter,Arial Black,system-ui,-apple-system,Segoe UI,Arial,sans-serif" font-size="35" font-weight="1000" letter-spacing="-2.15" paint-order="stroke fill" stroke="rgba(5,8,20,.42)" stroke-width="1.05" stroke-linejoin="round"><tspan fill="url(#${blue})">AI</tspan><tspan fill="#ffffff">Trade</tspan><tspan fill="url(#${green})">X</tspan></text></svg></span>`;
 };
 App.state.settings={freeAiTradesPerDay:5,postTrialFreeAiTradesPerDay:1,freeTrialDays:7,...(App.state.settings||{})};
 if(!Array.isArray(App.state.plans))App.state.plans=initial().plans;
