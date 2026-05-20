@@ -280,3 +280,12 @@ Phase 3.3 Admin Filters + Safer Actions:
 - Delete Method button added for payment methods.
 - Delete removes the method from user side storage too.
 - Buttons show action feedback while processing.
+
+
+Phase 3.4 User KYC Status Cards:
+- User KYC page now hides the full form after Pending or Approved status.
+- Pending KYC shows submitted successfully card + submitted details.
+- Approved KYC shows approved successfully card + verified details.
+- Rejected KYC shows rejection card + reason + resubmit button.
+- Payment method cards now have premium status styling for pending/approved/rejected.
+- No admin logic changed.

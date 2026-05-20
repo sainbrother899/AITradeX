@@ -455,6 +455,34 @@
     return `<span class="status-pill ${cls}">${clean}</span>`;
   }
 
+  function maskDocNumber(value) {
+    const text = String(value || "");
+    if (text.length <= 4) return text || "-";
+    return "XXXXXX" + text.slice(-4);
+  }
+
+  function kycDetailsGrid(kyc, title = "Verified Details") {
+    return `
+      <section class="premium-card kyc-result-details">
+        <p>${title}</p>
+        <h2>${App.escapeHtml(kyc.personal.fullName || "-")}</h2>
+        <div class="review-grid">
+          <article><span>Full Name</span><b>${App.escapeHtml(kyc.personal.fullName || "-")}</b></article>
+          <article><span>Mobile</span><b>${App.escapeHtml(kyc.personal.mobile || "-")}</b></article>
+          <article><span>Email</span><b>${App.escapeHtml(kyc.personal.email || "-")}</b></article>
+          <article><span>DOB</span><b>${App.escapeHtml(kyc.personal.dob || "-")}</b></article>
+          <article><span>Document</span><b>${App.escapeHtml(kyc.id.type || "-")}</b></article>
+          <article><span>Document No.</span><b>${App.escapeHtml(maskDocNumber(kyc.id.number))}</b></article>
+          <article><span>ID Front</span><b>${App.escapeHtml(kyc.uploads.frontName || "-")}</b></article>
+          <article><span>ID Back</span><b>${App.escapeHtml(kyc.uploads.backName || "-")}</b></article>
+          <article><span>Selfie</span><b>${App.escapeHtml(kyc.uploads.selfieName || "-")}</b></article>
+          ${kyc.submittedAt ? `<article><span>Submitted On</span><b>${new Date(kyc.submittedAt).toLocaleString()}</b></article>` : ""}
+          ${kyc.approvedAt ? `<article><span>Approved On</span><b>${new Date(kyc.approvedAt).toLocaleString()}</b></article>` : ""}
+          ${kyc.rejectedAt ? `<article><span>Rejected On</span><b>${new Date(kyc.rejectedAt).toLocaleString()}</b></article>` : ""}
+        </div>
+      </section>`;
+  }
+
   function accountSwitch(compact = false) {
     return `
       <div class="account-segment ${compact ? "compact" : ""}" aria-label="Account mode">
@@ -882,7 +910,50 @@
 
   function kycPage() {
     const kyc = currentKyc();
-    const locked = kyc.status === "PENDING" || kyc.status === "APPROVED";
+
+    if (kyc.status === "APPROVED") {
+      shell(`
+        <section class="premium-card kyc-result-card approved">
+          <div class="result-icon">✓</div>
+          <p>KYC APPROVED</p>
+          <h2>KYC Approved Successfully</h2>
+          <h4>Your identity verification has been approved. You can now add payment methods and request withdrawals after approval.</h4>
+          ${statusPill(kyc.status)}
+        </section>
+        ${kycDetailsGrid(kyc, "VERIFIED DETAILS")}
+      `);
+      return;
+    }
+
+    if (kyc.status === "PENDING") {
+      shell(`
+        <section class="premium-card kyc-result-card pending">
+          <div class="result-icon">⌛</div>
+          <p>KYC SUBMITTED</p>
+          <h2>KYC Submitted Successfully</h2>
+          <h4>Your KYC is under verification. Admin will review your submitted details shortly.</h4>
+          ${statusPill(kyc.status)}
+        </section>
+        ${kycDetailsGrid(kyc, "SUBMITTED DETAILS")}
+      `);
+      return;
+    }
+
+    if (kyc.status === "REJECTED") {
+      shell(`
+        <section class="premium-card kyc-result-card rejected">
+          <div class="result-icon">!</div>
+          <p>KYC REJECTED</p>
+          <h2>KYC Verification Rejected</h2>
+          <h4>Your KYC was rejected. Please check the reason and resubmit your details.</h4>
+          ${statusPill(kyc.status)}
+          ${kyc.rejectReason ? `<div class="reject-box">${App.escapeHtml(kyc.rejectReason)}</div>` : ""}
+          <button class="save-profile-btn" onclick="AITradeXUser.resubmitKyc()">Resubmit KYC</button>
+        </section>
+        ${kycDetailsGrid(kyc, "REJECTED DETAILS")}
+      `);
+      return;
+    }
 
     shell(`
       <section class="premium-card kyc-status-card">
@@ -894,7 +965,6 @@
           </div>
           ${statusPill(kyc.status)}
         </div>
-        ${kyc.status === "REJECTED" && kyc.rejectReason ? `<div class="reject-box">${App.escapeHtml(kyc.rejectReason)}</div>` : ""}
       </section>
 
       <section class="kyc-stepper">
@@ -911,10 +981,10 @@
           <p>STEP 1</p>
           <h2>Personal Details</h2>
           <div class="form-grid kyc-grid">
-            <label>Full Name<input id="kycFullName" ${locked ? "disabled" : ""} value="${App.escapeHtml(kyc.personal.fullName || "")}" placeholder="As per document"/></label>
-            <label>Mobile<input id="kycMobile" ${locked ? "disabled" : ""} value="${App.escapeHtml(kyc.personal.mobile || "")}" placeholder="10 digit mobile"/></label>
+            <label>Full Name<input id="kycFullName" value="${App.escapeHtml(kyc.personal.fullName || "")}" placeholder="As per document"/></label>
+            <label>Mobile<input id="kycMobile" value="${App.escapeHtml(kyc.personal.mobile || "")}" placeholder="10 digit mobile"/></label>
             <label>Email<input id="kycEmail" disabled value="${App.escapeHtml(kyc.personal.email || "")}"/></label>
-            <label>Date of Birth<input id="kycDob" ${locked ? "disabled" : ""} type="date" value="${App.escapeHtml(kyc.personal.dob || "")}"/></label>
+            <label>Date of Birth<input id="kycDob" type="date" value="${App.escapeHtml(kyc.personal.dob || "")}"/></label>
           </div>
         ` : ""}
 
@@ -923,11 +993,11 @@
           <h2>ID Details</h2>
           <div class="form-grid kyc-grid">
             <label>Document Type
-              <select id="kycDocType" ${locked ? "disabled" : ""}>
+              <select id="kycDocType">
                 ${["PAN Card", "Aadhaar Card", "Passport", "Driving License"].map(t => `<option ${kyc.id.type === t ? "selected" : ""}>${t}</option>`).join("")}
               </select>
             </label>
-            <label>Document Number<input id="kycDocNumber" ${locked ? "disabled" : ""} value="${App.escapeHtml(kyc.id.number || "")}" placeholder="Enter document number"/></label>
+            <label>Document Number<input id="kycDocNumber" value="${App.escapeHtml(kyc.id.number || "")}" placeholder="Enter document number"/></label>
           </div>
         ` : ""}
 
@@ -937,17 +1007,17 @@
           <div class="upload-grid">
             <label class="upload-box">
               <span>ID Front</span>
-              <input id="kycFront" ${locked ? "disabled" : ""} type="file" accept="image/*,.pdf"/>
+              <input id="kycFront" type="file" accept="image/*,.pdf"/>
               <b>${App.escapeHtml(kyc.uploads.frontName || "Upload front side")}</b>
             </label>
             <label class="upload-box">
               <span>ID Back</span>
-              <input id="kycBack" ${locked ? "disabled" : ""} type="file" accept="image/*,.pdf"/>
+              <input id="kycBack" type="file" accept="image/*,.pdf"/>
               <b>${App.escapeHtml(kyc.uploads.backName || "Upload back side")}</b>
             </label>
             <label class="upload-box">
               <span>Selfie</span>
-              <input id="kycSelfie" ${locked ? "disabled" : ""} type="file" accept="image/*"/>
+              <input id="kycSelfie" type="file" accept="image/*"/>
               <b>${App.escapeHtml(kyc.uploads.selfieName || "Upload selfie")}</b>
             </label>
           </div>
@@ -963,7 +1033,7 @@
             <article><span>Email</span><b>${App.escapeHtml(kyc.personal.email || "-")}</b></article>
             <article><span>DOB</span><b>${App.escapeHtml(kyc.personal.dob || "-")}</b></article>
             <article><span>Document</span><b>${App.escapeHtml(kyc.id.type || "-")}</b></article>
-            <article><span>Document No.</span><b>${App.escapeHtml(kyc.id.number || "-")}</b></article>
+            <article><span>Document No.</span><b>${App.escapeHtml(maskDocNumber(kyc.id.number))}</b></article>
             <article><span>ID Front</span><b>${App.escapeHtml(kyc.uploads.frontName || "-")}</b></article>
             <article><span>ID Back</span><b>${App.escapeHtml(kyc.uploads.backName || "-")}</b></article>
             <article><span>Selfie</span><b>${App.escapeHtml(kyc.uploads.selfieName || "-")}</b></article>
@@ -972,7 +1042,7 @@
 
         <div class="wizard-actions">
           <button class="btn ghost" onclick="AITradeXUser.prevKycStep()" ${kycStep === 1 ? "disabled" : ""}>Back</button>
-          ${kycStep < 4 ? `<button class="btn" onclick="AITradeXUser.saveKycStep()">Save & Next</button>` : `<button class="btn" onclick="AITradeXUser.submitKyc()" ${locked ? "disabled" : ""}>Submit KYC</button>`}
+          ${kycStep < 4 ? `<button class="btn" onclick="AITradeXUser.saveKycStep()">Save & Next</button>` : `<button class="btn" onclick="AITradeXUser.submitKyc()">Submit KYC</button>`}
         </div>
       </section>
     `);
@@ -1036,11 +1106,15 @@
         <h2>Your Methods</h2>
         <div class="payment-method-list">
           ${methods.length ? methods.map(m => `
-            <article>
+            <article class="method-card ${String(m.status || "").toLowerCase()}">
+              <div class="method-icon">${m.status === "APPROVED" ? "✓" : m.status === "REJECTED" ? "!" : "⌛"}</div>
               <div>
                 <b>${m.type === "UPI" ? "UPI" : "Bank Account"}</b>
                 <span>${m.type === "UPI" ? App.escapeHtml(m.upiId) : `${App.escapeHtml(m.bankName)} · ****${String(m.accountNumber || "").slice(-4)}`}</span>
                 <small>Holder: ${App.escapeHtml(m.holderName)}</small>
+                ${m.approvedAt ? `<small>Approved: ${new Date(m.approvedAt).toLocaleString()}</small>` : ""}
+                ${m.rejectedAt ? `<small>Rejected: ${new Date(m.rejectedAt).toLocaleString()}</small>` : ""}
+                ${m.rejectReason ? `<small class="loss-text">Reason: ${App.escapeHtml(m.rejectReason)}</small>` : ""}
               </div>
               ${statusPill(m.status)}
             </article>
@@ -1171,6 +1245,18 @@
     setAccountMode(mode) {
       accountMode = mode === "DEMO" ? "DEMO" : "REAL";
       localStorage.setItem("AITradeX_ACCOUNT_MODE", accountMode);
+      render();
+    },
+    resubmitKyc() {
+      const kyc = currentKyc();
+      kyc.status = "NOT_SUBMITTED";
+      kyc.rejectReason = "";
+      kyc.rejectedAt = "";
+      kyc.approvedAt = "";
+      saveKycData(kyc);
+      kycStep = 1;
+      localStorage.setItem("AITradeX_KYC_STEP", "1");
+      App.toast("You can resubmit KYC now.");
       render();
     },
     setKycStep(step) {
