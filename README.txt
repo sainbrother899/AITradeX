@@ -533,3 +533,13 @@ Phase 4.13 - Manual Trading Logic Clean
 Changed files in Phase 4.13:
 - user-app.js
 - README.txt
+
+
+Phase 4.14 - Manual Trade Risk & Bottom Live Bar Clean
+- Manual live position bar moved from top/header area to just above the bottom navigation.
+- Manual live position bar stays hidden when there is no active manual trade.
+- Manual trade page active card now refreshes live price and live P/L from the shared live price cache.
+- Manual trades now auto-close if the live loss reaches available account balance, preventing balance from going negative.
+- Removed the one-active-position limit; multiple manual positions can be opened.
+- Close button now asks which manual position to close when multiple positions are active.
+- AI auto trade flow was not changed.
