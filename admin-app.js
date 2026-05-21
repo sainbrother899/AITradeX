@@ -737,8 +737,8 @@
         ${metric("⌛", "Pending Withdrawals", `${stats.withdrawals.pending} · ${App.money(stats.withdrawals.pendingAmount)}`)}
         ${metric("📈", "Running AI Positions", stats.livePositions)}
         ${metric("🔒", "Locked AI Amount", App.money(stats.lockedAmount))}
-        ${metric("🤖", "Today AI P/L", `${stats.todayAiPnl >= 0 ? "+" : ""}${App.money(stats.todayAiPnl)}`)}
-        ${metric("📊", "Total AI P/L", `${stats.totalAiPnl >= 0 ? "+" : ""}${App.money(stats.totalAiPnl)}`)}
+        ${metric("🤖", "Today AI P/L", `${stats.todayAiPnl >= 0 ? "+" : ""}${App.money(stats.todayAiPnl)}`, stats.todayAiPnl >= 0 ? "profit" : "loss")}
+        ${metric("📊", "Total AI P/L", `${stats.totalAiPnl >= 0 ? "+" : ""}${App.money(stats.totalAiPnl)}`, stats.totalAiPnl >= 0 ? "profit" : "loss")}
       </section>
 
       <section class="admin-grid-two dashboard-control-grid">
@@ -778,11 +778,12 @@
     `);
   }
 
-  function metric(icon, label, value) {
+  function metric(icon, label, value, tone = "") {
+    const toneClass = tone === "profit" ? "profit-text" : tone === "loss" ? "loss-text" : "";
     return `
       <article class="metric-card">
         <div class="metric-top"><span>${label}</span><i>${icon}</i></div>
-        <strong>${value}</strong>
+        <strong class="${toneClass}">${value}</strong>
         <small>AITradeX control</small>
       </article>`;
   }

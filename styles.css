@@ -6202,3 +6202,82 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   .compact-profile-editor .profile-form { grid-template-columns: 1fr; }
   .drawer-mini-grid b { font-size: 11px; }
 }
+
+/* AITradeX Phase 4.81 — global P/L color consistency + active-position selector fix */
+.profit-text,
+.green,
+[class*="profit-text"]{
+  color:var(--green)!important;
+}
+.loss-text,
+.red,
+[class*="loss-text"]{
+  color:var(--red)!important;
+}
+.top-live-position-bar.premium-active-bar.profit .active-bar-main em,
+.top-live-position-bar.premium-active-bar.profit #manualLivePositionMeta em,
+.top-live-position-bar.premium-active-bar.profit #aiLivePositionMeta em{
+  color:var(--green)!important;
+  font-style:normal;
+  font-weight:1000;
+}
+.top-live-position-bar.premium-active-bar.loss .active-bar-main em,
+.top-live-position-bar.premium-active-bar.loss #manualLivePositionMeta em,
+.top-live-position-bar.premium-active-bar.loss #aiLivePositionMeta em{
+  color:var(--red)!important;
+  font-style:normal;
+  font-weight:1000;
+}
+.top-live-position-bar.premium-active-bar.profit{
+  background:linear-gradient(135deg,rgba(4,34,31,.96),rgba(8,14,27,.98));
+}
+.top-live-position-bar.premium-active-bar.loss{
+  background:linear-gradient(135deg,rgba(42,12,22,.96),rgba(8,14,27,.98));
+}
+.manual-close-backdrop{
+  z-index:180!important;
+  background:rgba(1,5,12,.78)!important;
+}
+.manual-close-modal{
+  z-index:181!important;
+  bottom:calc(92px + env(safe-area-inset-bottom))!important;
+  max-height:calc(100vh - 170px)!important;
+  overflow-y:auto!important;
+  overscroll-behavior:contain;
+  padding-bottom:18px!important;
+}
+.manual-close-list{
+  padding-bottom:8px;
+}
+.manual-close-list article{
+  position:relative;
+  z-index:1;
+}
+.manual-close-list strong.profit-text,
+.manual-close-list strong.loss-text{
+  font-weight:1000!important;
+}
+.history-stat-card.profit strong,
+.history-pnl-cell.profit-text,
+.orders-position-row .profit-text,
+.dashboard-kpi .profit-text,
+.metric-card .profit-text{
+  color:var(--green)!important;
+}
+.history-stat-card.loss strong,
+.history-pnl-cell.loss-text,
+.orders-position-row .loss-text,
+.dashboard-kpi .loss-text,
+.metric-card .loss-text{
+  color:var(--red)!important;
+}
+@media(max-width:620px){
+  .manual-close-modal{
+    bottom:calc(96px + env(safe-area-inset-bottom))!important;
+    max-height:calc(100vh - 158px)!important;
+    width:calc(100% - 18px)!important;
+  }
+  .manual-close-list article{
+    grid-template-columns:1fr!important;
+  }
+}

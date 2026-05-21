@@ -499,7 +499,7 @@
           <i>📈</i>
           <div>
             <b id="manualLivePositionText">Manual · ${countText}</b>
-            <span id="manualLivePositionMeta">Locked ${App.money(locked)} · Live ${pnl >= 0 ? "+" : ""}${App.money(pnl)} ${label}</span>
+            <span id="manualLivePositionMeta">Locked ${App.money(locked)} · Live <em class="${pnl >= 0 ? "profit-text" : "loss-text"}">${pnl >= 0 ? "+" : ""}${App.money(pnl)}</em> ${label}</span>
           </div>
         </div>
         <button onclick="AITradeXUser.closeManualLivePositions()">Close</button>
@@ -520,7 +520,7 @@
           <i>🤖</i>
           <div>
             <b id="aiLivePositionText">AI · ${countText}</b>
-            <span id="aiLivePositionMeta">Locked ${App.money(locked)} · Live ${pnl >= 0 ? "+" : ""}${App.money(pnl)} ${label}</span>
+            <span id="aiLivePositionMeta">Locked ${App.money(locked)} · Live <em class="${pnl >= 0 ? "profit-text" : "loss-text"}">${pnl >= 0 ? "+" : ""}${App.money(pnl)}</em> ${label}</span>
           </div>
         </div>
         <button onclick="AITradeXUser.go('orders')">View</button>
@@ -593,7 +593,7 @@
         const meta = document.getElementById("manualLivePositionMeta");
         const locked = positions.reduce((sum, position) => sum + Number(position.marginAmount || 0), 0);
         if (text) text.textContent = `Manual · ${countText}`;
-        if (meta) meta.textContent = `Locked ${App.money(locked)} · Live ${pnl >= 0 ? "+" : ""}${App.money(pnl)} ${label}`;
+        if (meta) meta.innerHTML = `Locked ${App.money(locked)} · Live <em class="${pnl >= 0 ? "profit-text" : "loss-text"}">${pnl >= 0 ? "+" : ""}${App.money(pnl)}</em> ${label}`;
       }
     }
 
@@ -628,7 +628,7 @@
         const meta = document.getElementById("aiLivePositionMeta");
         const locked = positions.reduce((sum, position) => sum + Number(position.marginAmount || position.amount || 0), 0);
         if (text) text.textContent = `AI · ${countText}`;
-        if (meta) meta.textContent = `Locked ${App.money(locked)} · Live ${pnl >= 0 ? "+" : ""}${App.money(pnl)} ${label}`;
+        if (meta) meta.innerHTML = `Locked ${App.money(locked)} · Live <em class="${pnl >= 0 ? "profit-text" : "loss-text"}">${pnl >= 0 ? "+" : ""}${App.money(pnl)}</em> ${label}`;
       }
     }
 
