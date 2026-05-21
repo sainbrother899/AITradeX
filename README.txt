@@ -836,3 +836,11 @@ Phase 4.48 - Forex Position P/L Refresh Clean
 - Forex/metal chart-feed refresh attempt is faster, and non-crypto pairs also run a stable periodic refresh fallback.
 - Crypto Binance WebSocket flow remains unchanged.
 - No backup files, no patch layer, no blocked old code.
+
+Phase 4.49 — Manual Trade Card Price Lock Clean
+- Manual BUY/SELL now locks the entry price from the visible price card first.
+- Manual open positions use the visible card price for live P/L when available.
+- Limit orders use the same visible card/current price source before falling back to cached/API price.
+- Price card elements now store raw price/source metadata for safer calculations.
+- Forex chart-feed fallback remains available, but manual trade settlement no longer depends only on chart-feed response.
+- No backup files, patch layers, or hidden old code were added.

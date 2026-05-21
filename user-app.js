@@ -140,7 +140,38 @@
     );
   }
 
+  function numericPriceFromText(value) {
+    const cleaned = String(value || "").replace(/,/g, "").match(/[-+]?\d*\.?\d+/);
+    const num = cleaned ? Number(cleaned[0]) : 0;
+    return Number.isFinite(num) && num > 0 ? num : 0;
+  }
+
+  function visiblePairCardPrice(pair) {
+    const clean = String(pair || "").toUpperCase();
+    if (!clean || typeof document === "undefined") return null;
+    const escapedPair = window.CSS && CSS.escape ? CSS.escape(pair) : String(pair).replace(/"/g, '\\"');
+    const node = document.querySelector(`[data-price-card="true"][data-live-pair="${escapedPair}"]`);
+    if (!node) return null;
+    const raw = Number(node.dataset.rawPrice || 0) || numericPriceFromText(node.textContent);
+    if (!Number.isFinite(raw) || raw <= 0) return null;
+    const meta = [...marketPairs.CRYPTO, ...marketPairs.FOREX].find(item => item.pair === pair);
+    return {
+      ok: true,
+      pair,
+      price: raw,
+      display: node.dataset.displayPrice || node.textContent.trim() || formatPairPrice(pair, raw),
+      change: node.dataset.priceChange || "Card",
+      mood: node.dataset.priceMood || meta?.mood || "up",
+      source: node.dataset.priceSource || "Price Card",
+      sourceType: "PRICE_CARD",
+      fetchedAt: node.dataset.fetchedAt || new Date().toISOString(),
+      fetchedMs: Date.now()
+    };
+  }
+
   function positionPriceRow(position) {
+    const visible = visiblePairCardPrice(position.pair);
+    if (visible) return visible;
     const fresh = App.getCachedPairPrice ? App.getCachedPairPrice(position.pair) : null;
     const last = App.getLastPairPrice ? App.getLastPairPrice(position.pair) : null;
     return fresh || last || null;
@@ -647,6 +678,12 @@
       const type = el.getAttribute("data-live-type") || "price";
       if (type === "price") {
         el.textContent = row.display;
+        el.dataset.rawPrice = String(row.price || "");
+        el.dataset.displayPrice = row.display || "";
+        el.dataset.priceSource = row.source || "Live API";
+        el.dataset.priceChange = row.change || "Live";
+        el.dataset.priceMood = row.mood || "up";
+        el.dataset.fetchedAt = row.fetchedAt || new Date().toISOString();
         el.classList.add("live-price-tick");
         setTimeout(() => el.classList.remove("live-price-tick"), 350);
       }
@@ -655,7 +692,15 @@
         el.classList.toggle("profit-text", row.mood !== "down");
         el.classList.toggle("loss-text", row.mood === "down");
       }
-      if (type === "line") el.innerHTML = `${row.display} · <em class="${row.mood === "down" ? "loss-text" : "profit-text"}">${row.change || "Live"}</em> · ${row.source}`;
+      if (type === "line") {
+        el.innerHTML = `${row.display} · <em class="${row.mood === "down" ? "loss-text" : "profit-text"}">${row.change || "Live"}</em> · ${row.source}`;
+        el.dataset.rawPrice = String(row.price || "");
+        el.dataset.displayPrice = row.display || "";
+        el.dataset.priceSource = row.source || "Live API";
+        el.dataset.priceChange = row.change || "Live";
+        el.dataset.priceMood = row.mood || "up";
+        el.dataset.fetchedAt = row.fetchedAt || new Date().toISOString();
+      }
       if (type === "source") el.textContent = row.source || "Live API";
     });
     updateManualLiveBar();
@@ -695,7 +740,7 @@
             ${pairsForMarket().map(raw => { const p = pairView(raw); return `
               <button class="${selectedPair === p.pair ? "active" : ""}" onclick="AITradeXUser.selectPair('${p.pair}')">
                 <b>${p.pair}</b>
-                <span data-live-pair="${p.pair}" data-live-type="price">${p.price}</span>
+                <span data-price-card="true" data-live-pair="${p.pair}" data-live-type="price">${p.price}</span>
                 <em data-live-pair="${p.pair}" data-live-type="change" class="${changeClass(p.change)}">${p.change}</em>
               </button>
             `; }).join("")}
@@ -1426,7 +1471,7 @@
         ${allTrendingPairs().map(raw => { const p = pairView(raw); return `
           <article class="ticker-card ${p.mood} ${selectedPair === p.pair ? "selected" : ""}" onclick="AITradeXUser.selectPair('${p.pair}')">
             <div><h3>${p.pair}</h3><small data-live-pair="${p.pair}" data-live-type="source">${p.priceSource || p.inr}</small></div>
-            <strong data-live-pair="${p.pair}" data-live-type="price">${p.price}</strong>
+            <strong data-price-card="true" data-live-pair="${p.pair}" data-live-type="price">${p.price}</strong>
             <span data-live-pair="${p.pair}" data-live-type="change" class="${changeClass(p.change)}">${p.change}</span>
           </article>`; }).join("")}
       </section>
@@ -1482,7 +1527,7 @@
         <div>
           <p>${selectedMarket} MARKET</p>
           <h1>${selectedPair}</h1>
-          <span data-live-pair="${pair.pair}" data-live-type="line">${pair.price} · ${pair.inr} · <em class="${changeClass(pair.change)}">${pair.change}</em></span>
+          <span data-price-card="true" data-live-pair="${pair.pair}" data-live-type="line">${pair.price} · ${pair.inr} · <em class="${changeClass(pair.change)}">${pair.change}</em></span>
         </div>
         <button class="change-pair-btn" onclick="AITradeXUser.openSheet('pair')">Change Pair</button>
       </section>
@@ -1498,7 +1543,7 @@
         ${pairsForMarket().map(raw => { const p = pairView(raw); return `
           <button class="${selectedPair === p.pair ? "active" : ""}" onclick="AITradeXUser.selectPair('${p.pair}')">
             <b>${p.pair}</b>
-            <span data-live-pair="${p.pair}" data-live-type="price">${p.price}</span>
+            <span data-price-card="true" data-live-pair="${p.pair}" data-live-type="price">${p.price}</span>
             <em data-live-pair="${p.pair}" data-live-type="change" class="${changeClass(p.change)}">${p.change}</em>
           </button>
         `; }).join("")}
@@ -3112,7 +3157,7 @@
 
       const tradeId = App.uid(orderType === "LIMIT" ? "lmt" : "trd");
       const pair = selectedPairData();
-      const marketNow = App.getCachedPairPrice ? App.getCachedPairPrice(selectedPair) : null;
+      const marketNow = visiblePairCardPrice(selectedPair) || (App.getCachedPairPrice ? App.getCachedPairPrice(selectedPair) : null);
 
       if (orderType === "LIMIT") {
         const limitPrice = Number(tradeLimitPrice || 0);
@@ -3164,12 +3209,14 @@
         return;
       }
 
-      App.toast("Locking live entry price...");
-      let lockedPrice = null;
-      try {
-        lockedPrice = App.getLivePairPrice ? await App.getLivePairPrice(selectedPair) : null;
-      } catch (error) {
-        lockedPrice = App.getCachedPairPrice ? App.getCachedPairPrice(selectedPair) : null;
+      App.toast("Locking card entry price...");
+      let lockedPrice = visiblePairCardPrice(selectedPair);
+      if (!lockedPrice) {
+        try {
+          lockedPrice = App.getLivePairPrice ? await App.getLivePairPrice(selectedPair) : null;
+        } catch (error) {
+          lockedPrice = App.getCachedPairPrice ? App.getCachedPairPrice(selectedPair) : null;
+        }
       }
       const entryPrice = Number(lockedPrice?.price || pair.rawPrice || 0);
       if (!Number.isFinite(entryPrice) || entryPrice <= 0) {
