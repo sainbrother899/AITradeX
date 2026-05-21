@@ -4951,3 +4951,41 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   .clean-home-hero .account-segment button { width: 100%; }
   .clean-ai-control-card .auto-summary { grid-template-columns: 1fr; }
 }
+
+/* Phase 4.70 Home Text Contrast Fix */
+.clean-plan-card,
+.clean-ai-control-card {
+  background: linear-gradient(145deg, rgba(12, 25, 48, .96), rgba(7, 14, 28, .98)) !important;
+}
+.clean-plan-card .card-row > div > p,
+.clean-ai-control-card .card-row > div > p {
+  color: rgba(21, 229, 211, .92) !important;
+}
+.clean-plan-card h2,
+.clean-ai-control-card h2 {
+  color: #ffffff !important;
+  text-shadow: 0 8px 26px rgba(0, 0, 0, .22);
+}
+.clean-plan-card h4,
+.clean-ai-control-card h4 {
+  color: #aab8d4 !important;
+}
+.clean-plan-card .upgrade-inline-note,
+.clean-ai-control-card .ai-status-banner span {
+  color: #d7e4fb !important;
+}
+.clean-ai-control-card .auto-summary article {
+  background: rgba(255,255,255,.055) !important;
+  border-color: rgba(255,255,255,.11) !important;
+}
+.clean-ai-control-card .auto-summary article span,
+.clean-plan-card .card-row span {
+  color: #9fb0cf !important;
+}
+.clean-ai-control-card .auto-summary article b {
+  color: #f8fbff !important;
+}
+.clean-plan-card .change-pair-btn,
+.clean-ai-control-card .ai-power.on {
+  box-shadow: 0 14px 32px rgba(21, 229, 211, .18);
+}
