@@ -5236,23 +5236,26 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   .risk-preset-row.compact{grid-template-columns:1fr 1fr;}
 }
 
-/* AITradeX Phase 4.73 - Chart-integrated trading layout + top action buttons */
+/* AITradeX Phase 4.74 - Trade action labels cleanup + premium chart balance */
 .tradingview-shell{
-  padding:12px!important;
+  padding:10px!important;
   border-radius:26px!important;
-  background:linear-gradient(180deg,rgba(7,14,27,.98),rgba(5,9,18,.98))!important;
-  border-color:rgba(255,255,255,.075)!important;
-  box-shadow:0 18px 48px rgba(0,0,0,.26)!important;
+  background:
+    radial-gradient(circle at 12% 0%,rgba(21,229,211,.08),transparent 32%),
+    linear-gradient(180deg,rgba(7,14,27,.98),rgba(5,9,18,.98))!important;
+  border-color:rgba(255,255,255,.085)!important;
+  box-shadow:0 18px 42px rgba(0,0,0,.24)!important;
   margin-bottom:10px!important;
   overflow:hidden;
 }
 .tradingview-shell .chart-toolbar{
-  padding:0 0 9px!important;
-  gap:8px!important;
+  padding:0 0 8px!important;
+  gap:7px!important;
 }
 .tradingview-shell .chart-toolbar button{
   padding:7px 10px!important;
   background:rgba(255,255,255,.035)!important;
+  border-color:rgba(255,255,255,.07)!important;
 }
 .tradingview-shell .chart-toolbar button.active{
   background:rgba(21,229,211,.12)!important;
@@ -5260,7 +5263,7 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   color:#bffdf6!important;
 }
 .tradingview-shell .responsive-chart{
-  height:clamp(620px,78vh,1180px)!important;
+  height:clamp(480px,64vh,920px)!important;
   border-radius:20px!important;
   border-color:rgba(255,255,255,.07)!important;
   background:#050814!important;
@@ -5269,16 +5272,29 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
 .pro-order-ticket.compact-trade-ticket{
   margin-top:0!important;
   border-color:rgba(21,229,211,.14)!important;
-  background:linear-gradient(145deg,rgba(10,20,37,.96),rgba(6,12,23,.98))!important;
+  background:
+    radial-gradient(circle at 85% -10%,rgba(248,189,122,.10),transparent 34%),
+    linear-gradient(145deg,rgba(10,20,37,.96),rgba(6,12,23,.98))!important;
+  box-shadow:0 16px 44px rgba(0,0,0,.22)!important;
 }
 .priority-actions{
   margin:8px 0 9px!important;
 }
 .fast-buy-sell-row.priority-actions .sell-btn,
 .fast-buy-sell-row.priority-actions .buy-btn{
-  min-height:64px!important;
-  font-size:17px!important;
-  border-radius:19px!important;
+  min-height:60px!important;
+  font-size:16px!important;
+  border-radius:18px!important;
+  letter-spacing:.02em;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  text-align:center!important;
+  gap:0!important;
+}
+.fast-buy-sell-row.priority-actions .sell-btn small,
+.fast-buy-sell-row.priority-actions .buy-btn small{
+  display:none!important;
 }
 .top-action-summary{
   margin:0 0 10px!important;
@@ -5289,14 +5305,18 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
 .compact-risk-details{
   margin-top:9px!important;
 }
+.compact-trade-summary span{
+  background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.028))!important;
+  border-color:rgba(255,255,255,.085)!important;
+}
 @media(min-width:900px){
   .tradingview-shell .responsive-chart{
-    height:clamp(700px,84vh,1220px)!important;
+    height:clamp(540px,68vh,920px)!important;
   }
 }
 @media(max-width:620px){
   .tradingview-shell{padding:9px!important;border-radius:22px!important;margin-bottom:8px!important;}
-  .tradingview-shell .responsive-chart{height:76vh!important;border-radius:18px!important;}
+  .tradingview-shell .responsive-chart{height:58vh!important;border-radius:18px!important;}
   .fast-buy-sell-row.priority-actions .sell-btn,
-  .fast-buy-sell-row.priority-actions .buy-btn{min-height:60px!important;font-size:15px!important;}
+  .fast-buy-sell-row.priority-actions .buy-btn{min-height:56px!important;font-size:14px!important;}
 }

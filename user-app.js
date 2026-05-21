@@ -2075,8 +2075,8 @@
 
         ${tradeIsActive ? `
           <div class="fast-buy-sell-row priority-actions">
-            <button class="sell-btn" onclick="AITradeXUser.placeManualTrade('SELL')"><small>LEFT</small>SELL / SHORT</button>
-            <button class="buy-btn" onclick="AITradeXUser.placeManualTrade('BUY')"><small>RIGHT</small>BUY / LONG</button>
+            <button class="sell-btn" onclick="AITradeXUser.placeManualTrade('SELL')">SELL / SHORT</button>
+            <button class="buy-btn" onclick="AITradeXUser.placeManualTrade('BUY')">BUY / LONG</button>
           </div>
         ` : `
           <div class="coming-soon-trade-bar compact priority-actions">

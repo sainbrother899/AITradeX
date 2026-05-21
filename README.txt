@@ -904,3 +904,6 @@ Phase 4.73 - Trade Action Top + Integrated Bigger Chart:
 - Remaining order controls like amount, leverage, order type, limit price and TP/SL now stay below the fast action buttons.
 - Left SELL and right BUY layout retained for faster trading experience.
 - No duplicate active-position bar added; existing global active bar remains unchanged.
+
+
+Phase 4.74: Trade button label cleanup, chart height restored to previous balanced size, and premium trade area polish.
