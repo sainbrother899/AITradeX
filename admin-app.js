@@ -1209,8 +1209,112 @@
   function aiRecentTrades() {
     return (App.state.trades || [])
       .filter(t => t.tradeType === "AI_AUTO")
-      .sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0))
-      .slice(0, 8);
+      .sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0));
+  }
+
+  const AI_HISTORY_PAGE_SIZE = 5;
+
+  function getAiHistoryPage(kind) {
+    return Math.max(1, Number(localStorage.getItem(`AITradeX_ADMIN_${kind}_PAGE`) || 1));
+  }
+
+  function sliceAiHistory(rows, kind) {
+    const totalPages = Math.max(1, Math.ceil(rows.length / AI_HISTORY_PAGE_SIZE));
+    const currentPage = Math.min(getAiHistoryPage(kind), totalPages);
+    if (currentPage !== getAiHistoryPage(kind)) localStorage.setItem(`AITradeX_ADMIN_${kind}_PAGE`, String(currentPage));
+    const start = (currentPage - 1) * AI_HISTORY_PAGE_SIZE;
+    return { totalPages, currentPage, rows: rows.slice(start, start + AI_HISTORY_PAGE_SIZE) };
+  }
+
+  function aiPagerHtml(kind, pageData) {
+    if (pageData.totalPages <= 1) return "";
+    return `
+      <div class="admin-pagination ai-history-pagination">
+        <button type="button" class="ghost-action" ${pageData.currentPage <= 1 ? "disabled" : ""} onclick="AITradeXAdmin.changeAiHistoryPage('${kind}', -1)">Prev</button>
+        <span>Page ${pageData.currentPage} of ${pageData.totalPages}</span>
+        <button type="button" class="ghost-action" ${pageData.currentPage >= pageData.totalPages ? "disabled" : ""} onclick="AITradeXAdmin.changeAiHistoryPage('${kind}', 1)">Next</button>
+      </div>`;
+  }
+
+  function aiLiveHistoryRows() {
+    return (App.state.trades || [])
+      .filter(t => (t.tradeType === "AI_LIVE" || t.source === "ADMIN_AI_LIVE_CLOSE") && String(t.status || "").toUpperCase() === "CLOSED")
+      .sort((a, b) => Date.parse(b.closedAt || b.createdAt || 0) - Date.parse(a.closedAt || a.createdAt || 0));
+  }
+
+  function aiInstantHistoryHtml() {
+    const batches = aiTradeBatches();
+    const pageData = sliceAiHistory(batches, "AI_INSTANT_HISTORY");
+    return `
+      <section class="panel-card ai-history-panel instant-history-panel">
+        <div class="section-head"><div><h3>Instant AI Trade History</h3><span>One-click AI result batches. This history is separate from Live Position Trade.</span></div><span class="admin-count-pill">${batches.length} total</span></div>
+        <div class="admin-list">
+          ${pageData.rows.length ? pageData.rows.map(batch => `
+            <article class="admin-user-card ai-batch-card">
+              <div class="admin-user-main">
+                <div><b>${esc(batch.pair)} · ${esc(batch.side)}</b><span>${esc(batch.market)} · ${esc(batch.resultType)} ${Number(batch.resultPercent || 0)}% · ${Number(batch.leverage || 1)}x · Entry ${esc(batch.entryPriceDisplay || batch.entryPrice || "-")}</span></div>
+                <div class="admin-user-stats"><span>Applied</span><b>${batch.appliedCount || 0}</b></div>
+                <div class="admin-user-stats"><span>Skipped</span><b>${batch.skippedCount || 0}</b></div>
+                <div class="admin-user-stats"><span>Exposure</span><b>${App.money(batch.totalExposure || 0)}</b></div>
+                <div class="admin-user-stats"><span>Total P/L</span><b class="${Number(batch.totalPnl || 0) >= 0 ? "profit-text" : "loss-text"}">${App.money(batch.totalPnl || 0)}</b></div>
+              </div>
+              <div class="ai-skip-line">${esc(skipReasonLine(batch.skipReasons || {}))}</div>
+            </article>
+          `).join("") : `<div class="empty-state">No Instant AI trade history yet.</div>`}
+        </div>
+        ${aiPagerHtml("AI_INSTANT_HISTORY", pageData)}
+      </section>`;
+  }
+
+  function aiLiveHistoryHtml() {
+    const rows = aiLiveHistoryRows();
+    const pageData = sliceAiHistory(rows, "AI_LIVE_HISTORY");
+    return `
+      <section class="panel-card ai-history-panel live-history-panel">
+        <div class="section-head"><div><h3>Live Position Trade History</h3><span>Closed running AI positions only. Instant AI trades will not show here.</span></div><span class="admin-count-pill">${rows.length} closed</span></div>
+        <div class="admin-list">
+          ${pageData.rows.length ? pageData.rows.map(pos => {
+            const target = allUsers().find(u => u.id === pos.userId) || {};
+            return `
+              <article class="admin-user-card ai-live-history-card">
+                <div class="admin-user-main">
+                  <div><b>${esc(pos.pair)} · ${esc(pos.side)}</b><span>${esc(displayNameFor(target))} · ${Number(pos.leverage || 1)}x · Entry ${esc(pos.entryPriceDisplay || pos.entryPrice || "-")} → Exit ${esc(pos.exitPriceDisplay || pos.exitPrice || "-")}</span></div>
+                  <div class="admin-user-stats"><span>AI Amount</span><b>${App.money(pos.marginAmount || 0)}</b></div>
+                  <div class="admin-user-stats"><span>Exposure</span><b>${App.money(pos.positionSize || 0)}</b></div>
+                  <div class="admin-user-stats"><span>P/L</span><b class="${Number(pos.pnl || 0) >= 0 ? "profit-text" : "loss-text"}">${Number(pos.pnl || 0) >= 0 ? "+" : ""}${App.money(pos.pnl || 0)}</b></div>
+                  <div class="admin-user-stats"><span>Settled</span><b>${App.money(pos.settlementAmount || 0)}</b></div>
+                </div>
+                <div class="ai-skip-line">Closed: ${pos.closedAt ? new Date(pos.closedAt).toLocaleString() : "-"} · Reason: ${esc(pos.closeReason || "Target/Admin")}</div>
+              </article>`;
+          }).join("") : `<div class="empty-state">No closed Live Position trade history yet.</div>`}
+        </div>
+        ${aiPagerHtml("AI_LIVE_HISTORY", pageData)}
+      </section>`;
+  }
+
+  function aiRecentEntriesHtml() {
+    const rows = aiRecentTrades();
+    const pageData = sliceAiHistory(rows, "AI_INSTANT_ENTRIES");
+    return `
+      <section class="panel-card ai-history-panel">
+        <div class="section-head"><div><h3>Instant AI User Entries</h3><span>User-wise entries created by Instant AI Trade only.</span></div><span class="admin-count-pill">${rows.length} entries</span></div>
+        <div class="admin-list">
+          ${pageData.rows.length ? pageData.rows.map(t => {
+            const target = allUsers().find(u => u.id === t.userId);
+            return `
+              <article class="admin-user-card">
+                <div class="admin-user-main">
+                  <div><b>${esc(t.pair)} · ${esc(t.side)}</b><span>${esc(displayNameFor(target || {}))} · Entry ${esc(t.entryPriceDisplay || t.entryPrice || "-")} · ${esc(t.priceSource || "-")}</span></div>
+                  <div class="admin-user-stats"><span>AI Amount</span><b>${App.money(t.marginAmount || 0)}</b></div>
+                  <div class="admin-user-stats"><span>Exposure</span><b>${App.money(t.positionSize || 0)}</b></div>
+                  <div class="admin-user-stats"><span>P/L</span><b class="${Number(t.pnl || 0) >= 0 ? "profit-text" : "loss-text"}">${App.money(t.pnl || 0)}</b></div>
+                  <div class="admin-user-stats"><span>Leverage</span><b>${Number(t.leverage || 1)}x</b></div>
+                </div>
+              </article>`;
+          }).join("") : `<div class="empty-state">Instant AI user entries will appear here after execution.</div>`}
+        </div>
+        ${aiPagerHtml("AI_INSTANT_ENTRIES", pageData)}
+      </section>`;
   }
 
   function tradesPage() {
@@ -1231,25 +1335,25 @@
         ${metric("🎁", "Free AI / Day", Number(settings.freeAiTradesPerDay || 5))}
       </section>
 
-      <section class="panel-card ai-simple-guide">
-        <div class="section-head">
-          <div><h3>Simple AI Control Flow</h3><span>Use this order: user check → open live position → target/admin close → wallet settlement.</span></div>
-          <span class="admin-count-pill">Leverage up to 2000x</span>
-        </div>
-        <div class="review-grid compact-review ai-preview-grid">
-          <article><span>1. User Check</span><b>AI ON + Limit</b></article>
-          <article><span>2. Wallet</span><b>Cut on Open</b></article>
-          <article><span>3. Live Trade</span><b>Target/Admin</b></article>
-          <article><span>4. Settlement</span><b>P/L Update</b></article>
-        </div>
+      <section class="ai-control-split-bars">
+        <article class="ai-control-mode-bar instant">
+          <p>SECTION A</p>
+          <h3>Instant AI Trade</h3>
+          <span>Direct result entry: admin selects profit/loss and wallet updates immediately.</span>
+        </article>
+        <article class="ai-control-mode-bar live">
+          <p>SECTION B</p>
+          <h3>Live Position Trade</h3>
+          <span>Running position: wallet amount cuts on open and settles on target/admin close.</span>
+        </article>
       </section>
 
       ${aiValidationOverviewHtml(previewReport)}
 
-      <section class="panel-card ai-desk-panel">
+      <section class="panel-card ai-desk-panel instant-ai-control-panel">
         <div class="section-head ai-desk-head">
-          <div><h3>Advanced Instant AI Trade</h3><span>Optional one-click profit/loss entry. Use Live AI Position below for running positions.</span></div>
-          <span class="admin-count-pill">Auto eligibility</span>
+          <div><h3>Instant AI Trade Control</h3><span>Separate instant-result trade only. This will not open a running live position.</span></div>
+          <span class="admin-count-pill">Instant section</span>
         </div>
 
         <div class="admin-grid-two ai-desk-grid">
@@ -1344,8 +1448,8 @@
 
       <section class="panel-card ai-desk-panel ai-live-open-panel">
         <div class="section-head ai-desk-head">
-          <div><h3>Main AI Control: Open Live Position</h3><span>Simple running AI trade. Amount cuts from wallet on open, then target/admin close settles P/L.</span></div>
-          <span class="admin-count-pill">Live market P/L</span>
+          <div><h3>Live Position Trade Control</h3><span>Separate live-running AI position only. This is not Instant AI Trade.</span></div>
+          <span class="admin-count-pill">Live section</span>
         </div>
         <div class="admin-grid-two ai-desk-grid">
           <form class="payment-form-card ai-desk-form" onsubmit="AITradeXAdmin.openLiveAiPosition(event)">
@@ -1419,42 +1523,11 @@
 
       ${aiLiveRunningHtml()}
 
-      <section class="panel-card">
-        <div class="section-head"><div><h3>AI Trade Execution Summary</h3><span>Completed AI auto trade batches</span></div></div>
-        <div class="admin-list">
-          ${batches.length ? batches.slice(0, 8).map(batch => `
-            <article class="admin-user-card ai-batch-card">
-              <div class="admin-user-main">
-                <div><b>${esc(batch.pair)} · ${esc(batch.side)}</b><span>${esc(batch.market)} · ${esc(batch.resultType)} ${Number(batch.resultPercent || 0)}% · ${Number(batch.leverage || 1)}x · Entry ${esc(batch.entryPriceDisplay || batch.entryPrice || "-")} · ${esc(batch.priceSource || "-")}</span></div>
-                <div class="admin-user-stats"><span>Applied</span><b>${batch.appliedCount || 0}</b></div>
-                <div class="admin-user-stats"><span>Skipped</span><b>${batch.skippedCount || 0}</b></div>
-                <div class="admin-user-stats"><span>Exposure</span><b>${App.money(batch.totalExposure || 0)}</b></div>
-                <div class="admin-user-stats"><span>Total P/L</span><b class="${Number(batch.totalPnl || 0) >= 0 ? "profit-text" : "loss-text"}">${App.money(batch.totalPnl || 0)}</b></div>
-              </div>
-              <div class="ai-skip-line">${esc(skipReasonLine(batch.skipReasons || {}))}</div>
-            </article>
-          `).join("") : `<div class="empty-state">No AI trade batches executed yet.</div>`}
-        </div>
-      </section>
+      ${aiInstantHistoryHtml()}
 
-      <section class="panel-card">
-        <div class="section-head"><div><h3>Latest AI Auto Trade Entries</h3><span>User-wise AI auto trades</span></div></div>
-        <div class="admin-list">
-          ${recentTrades.length ? recentTrades.map(t => {
-            const target = allUsers().find(u => u.id === t.userId);
-            return `
-              <article class="admin-user-card">
-                <div class="admin-user-main">
-                  <div><b>${esc(t.pair)} · ${esc(t.side)}</b><span>${esc(displayNameFor(target || {}))} · Entry ${esc(t.entryPriceDisplay || t.entryPrice || "-")} · ${esc(t.priceSource || "-")}</span></div>
-                  <div class="admin-user-stats"><span>AI Amount</span><b>${App.money(t.marginAmount || 0)}</b></div>
-                  <div class="admin-user-stats"><span>Exposure</span><b>${App.money(t.positionSize || 0)}</b></div>
-                  <div class="admin-user-stats"><span>P/L</span><b class="${Number(t.pnl || 0) >= 0 ? "profit-text" : "loss-text"}">${App.money(t.pnl || 0)}</b></div>
-                  <div class="admin-user-stats"><span>Leverage</span><b>${Number(t.leverage || 1)}x</b></div>
-                </div>
-              </article>`;
-          }).join("") : `<div class="empty-state">AI auto trade entries will appear here after execution.</div>`}
-        </div>
-      </section>
+      ${aiRecentEntriesHtml()}
+
+      ${aiLiveHistoryHtml()}
     `);
   }
 
@@ -1853,6 +1926,12 @@
   }
 
   window.AITradeXAdmin = {
+    changeAiHistoryPage(kind, delta) {
+      const key = `AITradeX_ADMIN_${kind}_PAGE`;
+      const current = Math.max(1, Number(localStorage.getItem(key) || 1));
+      localStorage.setItem(key, String(Math.max(1, current + Number(delta || 0))));
+      render();
+    },
     login(event) {
       event.preventDefault();
       try {
