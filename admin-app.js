@@ -1037,7 +1037,6 @@
           leverage: pos.leverage,
           targetType: pos.targetType,
           targetPercent: pos.targetPercent,
-          maxDurationMinutes: pos.maxDurationMinutes,
           openedAt: pos.openedAt || pos.createdAt,
           users: 0,
           totalMargin: 0,
@@ -1086,16 +1085,17 @@
     const batches = aiLiveBatches();
     return `
       <section class="panel-card">
-        <div class="section-head"><div><h3>Running AI Live Positions</h3><span>Market-connected AI positions awaiting target or duration close</span></div></div>
+        <div class="section-head"><div><h3>Running AI Live Positions</h3><span>Market-connected AI positions remain active until target hit or admin closes them</span></div></div>
         <div class="admin-list">
           ${batches.length ? batches.map(batch => `
             <article class="admin-user-card ai-live-batch-card">
               <div class="admin-user-main">
-                <div><b>${esc(batch.pair)} · ${esc(batch.side)}</b><span>Entry ${esc(batch.entryPriceDisplay || batch.entryPrice || "-")} · ${Number(batch.leverage || 1)}x · Target ${esc(batch.targetType || "PROFIT")} ${Number(batch.targetPercent || 0)}% · ${Number(batch.maxDurationMinutes || 0)} min</span></div>
+                <div><b>${esc(batch.pair)} · ${esc(batch.side)}</b><span>Entry ${esc(batch.entryPriceDisplay || batch.entryPrice || "-")} · ${Number(batch.leverage || 1)}x · Target ${esc(batch.targetType || "PROFIT")} ${Number(batch.targetPercent || 0)}%</span></div>
                 <div class="admin-user-stats"><span>Users</span><b>${batch.users}</b></div>
                 <div class="admin-user-stats"><span>AI Amount</span><b>${App.money(batch.totalMargin)}</b></div>
                 <div class="admin-user-stats"><span>Exposure</span><b>${App.money(batch.totalExposure)}</b></div>
                 <div class="admin-user-stats"><span>Live P/L</span><b class="${batch.totalLivePnl >= 0 ? "profit-text" : "loss-text"}">${batch.totalLivePnl >= 0 ? "+" : ""}${App.money(batch.totalLivePnl)}</b></div>
+                <button class="ghost-action" type="button" onclick="AITradeXAdmin.closeAiLiveBatch('${batch.id}', this)">Close Trade</button>
               </div>
             </article>
           `).join("") : `<div class="empty-state">No AI live positions running.</div>`}
@@ -1269,18 +1269,13 @@
               </div>
             </div>
             <div class="ai-step-card">
-              <div class="ai-step-label"><b>3</b><span>Close rule</span></div>
+              <div class="ai-step-label"><b>3</b><span>Admin close rule</span></div>
               <div class="ai-inline-fields">
-                <label>Max Duration
-                  <select id="aiLiveMaxDuration" onchange="AITradeXAdmin.updateAiLivePreview()">
-                    <option value="5">5 min</option>
-                    <option value="15" selected>15 min</option>
-                    <option value="30">30 min</option>
-                    <option value="60">1 hour</option>
-                  </select>
-                </label>
                 <label>Minimum Real Balance
                   <input id="aiLiveMinBalance" type="number" min="0" value="0" oninput="AITradeXAdmin.updateAiLivePreview()"/>
+                </label>
+                <label>Close Mode
+                  <input value="Target hit or Admin Close" readonly/>
                 </label>
               </div>
               <label>Position Note
@@ -1299,10 +1294,10 @@
               <article><span>Total AI amount</span><b id="aiLivePreviewMargin">${App.money(aiLivePreviewStats(1,0).totalMargin)}</b></article>
               <article><span>Exposure</span><b id="aiLivePreviewExposure">${App.money(aiLivePreviewStats(1,0).totalExposure)}</b></article>
               <article><span>Target</span><b id="aiLivePreviewTarget">Profit 2%</b></article>
-              <article><span>Auto close</span><b id="aiLivePreviewDuration">15 min</b></article>
+              <article><span>Close rule</span><b id="aiLivePreviewDuration">Target/Admin</b></article>
             </div>
             <div class="premium-bank-card ai-last-card">
-              <div class="copy-row"><b>Live position rule</b><span>Entry price locks on open. Close price locks on target or duration close.</span><button type="button">Ready</button></div>
+              <div class="copy-row"><b>Live position rule</b><span>Entry price locks on open. Close price locks only when target hits or admin closes manually.</span><button type="button">Ready</button></div>
             </div>
           </section>
         </div>
@@ -1696,6 +1691,42 @@
     if (page === "support") return supportPage();
     if (page === "settings") return settingsPage();
     return dashboardPage();
+  }
+
+
+  function settleAiLivePositionByAdmin(position, reason = "ADMIN_CLOSE") {
+    if (!position || String(position.status || "").toUpperCase() !== "OPEN") return false;
+    const cached = App.getCachedPairPrice ? App.getCachedPairPrice(position.pair) : null;
+    const current = Number(cached?.price || position.entryPrice || 0);
+    let pnl = aiLivePositionPnl(position);
+    const balanceBefore = App.realBalance(position.userId);
+    if (pnl < 0 && Math.abs(pnl) > balanceBefore) pnl = -balanceBefore;
+    const now = new Date().toISOString();
+    position.tradeType = "AI_AUTO";
+    position.status = "CLOSED";
+    position.exitPrice = current;
+    position.exitPriceDisplay = cached?.display || String(current || position.entryPrice || "-");
+    position.exitPriceSource = cached?.source || position.priceSource || "Live market";
+    position.closedAt = now;
+    position.closeReason = reason;
+    position.resultType = pnl >= 0 ? "PROFIT" : "LOSS";
+    position.resultPercent = Number(position.targetPercent || 0);
+    position.pnl = Number(pnl.toFixed(2));
+    position.balanceAfter = Number((balanceBefore + position.pnl).toFixed(2));
+    position.source = "ADMIN_AI_LIVE_CLOSE";
+    if (position.pnl !== 0) {
+      App.addLedger({
+        userId: position.userId,
+        accountType: "REAL",
+        type: position.pnl >= 0 ? "AI_LIVE_PROFIT" : "AI_LIVE_LOSS",
+        amount: position.pnl,
+        referenceId: position.id,
+        note: `${position.pair} AI live ${position.side} closed by admin`
+      });
+    } else {
+      App.saveState();
+    }
+    return true;
   }
 
   window.AITradeXAdmin = {
@@ -2101,7 +2132,6 @@
       const minBalance = Math.max(0, Number(inputValue("aiLiveMinBalance") || 0));
       const targetType = document.querySelector('input[name="aiLiveTargetType"]:checked')?.value || "PROFIT";
       const targetPercent = Math.max(0, Number(inputValue("aiLiveTargetPercent") || 0));
-      const duration = Math.max(1, Number(inputValue("aiLiveMaxDuration") || 15));
       const stats = aiLivePreviewStats(leverage, minBalance);
       const setText = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
       setText("aiLivePreviewValid", stats.report.eligible.length);
@@ -2109,7 +2139,7 @@
       setText("aiLivePreviewMargin", App.money(stats.totalMargin));
       setText("aiLivePreviewExposure", App.money(stats.totalExposure));
       setText("aiLivePreviewTarget", `${targetType === "LOSS" ? "Loss" : "Profit"} ${targetPercent}%`);
-      setText("aiLivePreviewDuration", `${duration} min`);
+      setText("aiLivePreviewDuration", "Target/Admin");
     },
     async openLiveAiPosition(event) {
       event.preventDefault();
@@ -2124,7 +2154,6 @@
       const leverage = Math.max(1, Number(inputValue("aiLiveLeverage") || 1));
       const targetType = document.querySelector('input[name="aiLiveTargetType"]:checked')?.value || "PROFIT";
       const targetPercent = Math.max(0.01, Number(inputValue("aiLiveTargetPercent") || 0));
-      const maxDurationMinutes = Math.max(1, Number(inputValue("aiLiveMaxDuration") || 15));
       const minBalance = Math.max(0, Number(inputValue("aiLiveMinBalance") || 0));
       const note = inputValue("aiLiveNote") || "AI live position opened";
       let priceRow;
@@ -2144,7 +2173,6 @@
       let totalMargin = 0;
       let totalExposure = 0;
       const openedAt = new Date().toISOString();
-      const autoCloseAt = new Date(Date.now() + maxDurationMinutes * 60000).toISOString();
       report.eligible.forEach(target => {
         const balanceBefore = App.realBalance(target.id);
         const margin = Math.min(balanceBefore, App.aiAllowedAmount(target));
@@ -2173,8 +2201,6 @@
           positionSize: Number(exposure.toFixed(2)),
           targetType,
           targetPercent,
-          maxDurationMinutes,
-          autoCloseAt,
           status: "OPEN",
           source: "ADMIN_AI_LIVE_POSITION",
           note,
@@ -2201,8 +2227,6 @@
         leverage,
         targetType,
         targetPercent,
-        maxDurationMinutes,
-        autoCloseAt,
         minBalance,
         note,
         appliedCount,
@@ -2215,6 +2239,29 @@
       });
       App.saveState();
       App.toast(appliedCount ? `Live AI position opened for ${appliedCount} valid user(s).` : "No valid AI users found. Live position not opened.");
+      render();
+    },
+    closeAiLiveBatch(batchId, button) {
+      const positions = aiLivePositions().filter(position => (position.batchId || position.id) === batchId);
+      if (!positions.length) {
+        App.toast("No open AI live positions found.");
+        render();
+        return;
+      }
+      if (!confirm(`Close this AI live trade for ${positions.length} user(s)? Current profit/loss will be settled in real wallet.`)) return;
+      markButton(button, "Closing...");
+      let closed = 0;
+      positions.forEach(position => {
+        try { if (settleAiLivePositionByAdmin(position, "ADMIN_CLOSE")) closed += 1; } catch (error) {}
+      });
+      const batch = (App.state.aiLiveBatches || []).find(row => row.id === batchId);
+      if (batch) {
+        batch.status = "CLOSED";
+        batch.closedAt = new Date().toISOString();
+        batch.closeReason = "ADMIN_CLOSE";
+      }
+      App.saveState();
+      App.toast(closed ? `Closed AI live trade for ${closed} user(s).` : "Unable to close trade.");
       render();
     },
     approveDeposit(userId, requestId, button) {

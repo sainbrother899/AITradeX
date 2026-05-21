@@ -286,10 +286,9 @@
       const pnl = aiPositionPnl(position);
       const target = aiPositionTargetAmount(position);
       const targetType = String(position.targetType || "PROFIT").toUpperCase();
-      const due = position.autoCloseAt && Date.parse(position.autoCloseAt) <= Date.now();
       const hit = target > 0 && (targetType === "LOSS" ? pnl <= -target : pnl >= target);
-      if (hit || due) {
-        if (settleAiLivePosition(position, hit ? "TARGET_HIT" : "DURATION_CLOSE")) closed += 1;
+      if (hit) {
+        if (settleAiLivePosition(position, "TARGET_HIT")) closed += 1;
       }
     });
     if (closed) {
@@ -731,7 +730,7 @@
           <span>AI Trades / Day</span><b>${Number(plan.signals || 0)}</b>
         </div>
         <div class="plan-limit-row">
-          <span>Duration</span><b>${duration ? `${duration} days` : "Lifetime"}</b>
+          <span>Active AI Today</span><b>${aiDailyUsage().used}/${aiDailyUsage().limit}</b>
         </div>
         <ul class="plan-benefits">${planBenefits(plan).map(item => `<li>${App.escapeHtml(item)}</li>`).join("")}</ul>
         ${isCurrent ? `<button class="save-profile-btn muted" disabled>Active Plan</button>` : `<button class="save-profile-btn" ${disabled ? "disabled" : ""} onclick="AITradeXUser.buyPlan('${plan.id}')">${disabled ? "Unavailable" : `Upgrade for ${price ? App.money(price) : "Free"}`}</button>`}
@@ -2105,6 +2104,7 @@
           <b>${App.escapeHtml(position.pair)} <span>${App.escapeHtml(position.side || "BUY")}</span></b>
           <small>${Number(position.leverage || 1)}x · AI Amount ${App.money(position.marginAmount || 0)} · Entry ${App.escapeHtml(position.entryPriceDisplay || String(position.entryPrice || "--"))}</small>
           <small>Live <em data-ai-current="${position.id}">${App.escapeHtml(positionCurrentDisplay(position))}</em> · Target ${targetType} ${Number(position.targetPercent || 0)}%</small>
+          <small>Active AI Trades ${aiOpenPositions().length}/${aiDailyUsage().limit}</small>
         </div>
         <strong data-ai-pnl="${position.id}" class="${pnl >= 0 ? "profit-text" : "loss-text"}">${pnl >= 0 ? "+" : ""}${App.money(pnl)}</strong>
         <button class="ai-managed-btn" onclick="AITradeXUser.showAiManagedNotice()">Managed by AI</button>
