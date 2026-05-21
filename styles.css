@@ -4863,3 +4863,91 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   .user-activity-row { grid-template-columns: 40px 1fr; }
   .user-activity-row small { grid-column: 2; }
 }
+
+/* Phase 4.69 Clean User Home + Real/Demo Switch Restore */
+.clean-home-hero {
+  margin-bottom: 16px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: radial-gradient(circle at 14% 6%, rgba(21, 229, 211, .26), transparent 30%), radial-gradient(circle at 88% 18%, rgba(79, 178, 255, .26), transparent 32%), linear-gradient(135deg, #07142f, #102969 50%, #07101f) !important;
+}
+.clean-home-hero.demo {
+  background: radial-gradient(circle at 14% 6%, rgba(255, 220, 158, .24), transparent 30%), radial-gradient(circle at 88% 18%, rgba(248, 189, 122, .22), transparent 32%), linear-gradient(135deg, #221506, #55370f 50%, #100a05) !important;
+}
+.hero-mode-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 2;
+}
+.hero-mode-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.14);
+  border: 1px solid rgba(255,255,255,.16);
+  color: rgba(255,255,255,.88);
+  font-size: 12px;
+  font-weight: 1000;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  backdrop-filter: blur(10px);
+}
+.clean-home-hero .account-segment {
+  background: rgba(0,0,0,.18);
+  border-color: rgba(255,255,255,.18);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+}
+.clean-home-hero .account-segment button {
+  color: rgba(255,255,255,.72);
+}
+.clean-home-hero .account-segment button.active {
+  background: linear-gradient(135deg, #ffffff, #dffbff);
+  color: #061522;
+  box-shadow: 0 12px 28px rgba(0,0,0,.18);
+}
+.premium-hero-actions button {
+  min-height: 50px;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.premium-hero-actions button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 18px 34px rgba(0,0,0,.18);
+}
+.clean-home-summary {
+  margin-bottom: 16px;
+}
+.clean-home-summary article,
+.clean-plan-card,
+.clean-ai-control-card,
+.clean-quick-actions {
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow: 0 16px 44px rgba(0,0,0,.24);
+}
+.clean-home-summary article {
+  background: linear-gradient(145deg, rgba(15,29,52,.94), rgba(8,16,31,.96));
+}
+.clean-home-summary small {
+  display: block;
+  margin-top: 6px;
+  color: #95a5c2;
+}
+.clean-quick-actions .quick-action-head span {
+  display: block;
+  margin-top: 5px;
+  color: #95a5c2;
+  font-size: 13px;
+}
+.clean-ai-control-card .auto-summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (max-width: 620px) {
+  .hero-mode-row { align-items: stretch; }
+  .clean-home-hero .account-segment { width: 100%; display: grid; grid-template-columns: 1fr 1fr; }
+  .clean-home-hero .account-segment button { width: 100%; }
+  .clean-ai-control-card .auto-summary { grid-template-columns: 1fr; }
+}

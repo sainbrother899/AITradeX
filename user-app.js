@@ -1816,27 +1816,32 @@
 
   function dashboardHeroCard({ balance, pnl, activeManualCount, activeAiCount }) {
     const unread = userUnreadNotifications();
-    const kycStatus = App.kycStatus(user()?.id || "");
     const totalActive = Number(activeManualCount || 0) + Number(activeAiCount || 0);
+    const modeLabel = accountMode === "REAL" ? "Real Account" : "Demo Account";
+    const modeHint = accountMode === "REAL" ? "Real wallet selected" : "Practice balance selected";
     return `
-      <section class="user-command-hero ${accountMode.toLowerCase()}">
+      <section class="user-command-hero clean-home-hero ${accountMode.toLowerCase()}">
         <div class="hero-glow-orb"></div>
+        <div class="hero-mode-row">
+          <span class="hero-mode-chip">${modeLabel}</span>
+          ${accountSwitch(true)}
+        </div>
         <div class="user-command-copy">
           <p>USER DASHBOARD</p>
           <h1>Welcome back, ${App.escapeHtml(dashboardUserName())}</h1>
-          <span>${accountMode === "REAL" ? "Real wallet and AI trading status" : "Practice mode dashboard"}</span>
+          <span>${modeHint} · ${totalActive ? `${totalActive} active position${totalActive > 1 ? "s" : ""}` : "No active positions"}</span>
           <div class="hero-wallet-line">
             <b>${App.money(balance)}</b>
             <em class="${pnl >= 0 ? "profit-text" : "loss-text"}">${pnl >= 0 ? "+" : ""}${App.money(pnl)} today</em>
           </div>
         </div>
-        <div class="user-command-actions">
+        <div class="user-command-actions premium-hero-actions">
           <button onclick="AITradeXUser.go('trade')">Trade Now</button>
-          <button onclick="AITradeXUser.go('wallet')">Add Funds</button>
+          <button onclick="AITradeXUser.go('wallet')">${accountMode === "REAL" ? "Add Funds" : "Wallet"}</button>
           <button onclick="AITradeXUser.go('orders')">${totalActive ? `View ${totalActive} Position${totalActive > 1 ? "s" : ""}` : "View Orders"}</button>
         </div>
-        <div class="user-command-meta">
-          <article><span>KYC</span><b>${String(kycStatus || "NOT_SUBMITTED").replaceAll("_", " ")}</b></article>
+        <div class="user-command-meta clean-home-meta">
+          <article><span>Manual</span><b>${activeManualCount}</b></article>
           <article><span>AI Positions</span><b>${activeAiCount}</b></article>
           <article><span>Unread</span><b>${unread}</b></article>
         </div>
@@ -1903,7 +1908,6 @@
   }
 
   function homePage() {
-    const u = user();
     const balance = currentBalance();
     const real = realBalance();
     const pnl = pnlValue();
@@ -1918,29 +1922,16 @@
     shell(`
       ${dashboardHeroCard({ balance, pnl, activeManualCount, activeAiCount })}
 
-      ${readinessCard()}
-
-      <section class="compact-grid home-summary-grid polished-home-summary">
+      <section class="compact-grid home-summary-grid polished-home-summary clean-home-summary">
         <article><span>AI Status</span><b>${ai.enabled ? "Active" : "OFF"}</b><small>${usage.used}/${usage.limit} AI trades today</small></article>
         <article><span>Active Positions</span><b>${activeTotal}</b><small>${activeManualCount} manual · ${activeAiCount} AI</small></article>
         <article><span>Real Wallet</span><b>${App.money(real)}</b><small>${accountMode === "REAL" ? "Selected" : "Switch to Real for wallet"}</small></article>
         <article><span>Selected Pair</span><b>${selectedPair}</b><small>${pair.signal} bias</small></article>
       </section>
 
-      ${actionCenterCard()}
-
-      <section class="market-ticker polished-market-ticker">
-        ${allTrendingPairs().map(raw => { const p = pairView(raw); return `
-          <article class="ticker-card ${p.mood} ${selectedPair === p.pair ? "selected" : ""} ${isUpcomingPair(p.pair) ? "upcoming-market-card" : ""}" onclick="AITradeXUser.selectPair('${p.pair}')">
-            <div><h3>${p.pair}</h3><small data-live-pair="${p.pair}" data-live-type="source">${p.priceSource || p.inr}</small></div>
-            <strong data-price-card="${isTradeActivePair(p.pair) ? "true" : "false"}" data-live-pair="${p.pair}" data-live-type="price">${p.price}</strong>
-            <span data-live-pair="${p.pair}" data-live-type="change" class="${isUpcomingPair(p.pair) ? "upcoming-text" : changeClass(p.change)}">${p.change}</span>
-          </article>`; }).join("")}
-      </section>
-
       ${aiTradingSummaryCard()}
 
-      <section class="premium-card quick-action-card polished-quick-actions">
+      <section class="premium-card quick-action-card polished-quick-actions clean-quick-actions">
         <div class="quick-action-head">
           <div>
             <p>QUICK ACTIONS</p>
@@ -1956,7 +1947,7 @@
         </div>
       </section>
 
-      <section class="premium-card subscription-mini-card polished-plan-card">
+      <section class="premium-card subscription-mini-card polished-plan-card clean-plan-card">
         <div class="card-row">
           <div>
             <p>CURRENT PLAN</p>
@@ -1968,9 +1959,7 @@
         </div>
       </section>
 
-      ${aiActivityCard()}
-
-      <section class="premium-card auto-card polished-auto-card">
+      <section class="premium-card auto-card polished-auto-card clean-ai-control-card">
         <div class="card-row">
           <div><p>AI TRADE CONTROL</p><h2>Auto Trade Amount</h2><h4>Choose how much real balance AI can use for future automatic trades.</h4></div>
           <button class="ai-power ${ai.enabled ? "on" : ""}" onclick="AITradeXUser.toggleAutoTrade()">${ai.enabled ? "ON" : "OFF"}</button>
@@ -1986,10 +1975,8 @@
         ${!ai.enabled ? `<div class="ai-status-banner off"><b>AI Auto Trading is OFF.</b><span>Turn it ON to receive AI auto trades.</span></div>` : ""}
         ${ai.enabled && isAiLimitComplete() ? `<div class="ai-status-banner limit"><b>Daily AI trade limit completed.</b><span>Upgrade your plan to unlock more AI auto trades.</span><button onclick="AITradeXUser.go('subscription')">Upgrade Plan</button></div>` : ""}
       </section>
-
-      ${recentActivityCard()}
     `);
-    refreshVisiblePrices(allTrendingPairs());
+    refreshVisiblePrices([selectedPair]);
   }
 
   function tradePage() {
