@@ -828,3 +828,11 @@ Phase 4.47 — Forex Chart Feed Price Sync Clean
 - Crypto Binance WebSocket flow remains unchanged.
 - No backup files, no patch/block layer.
 Changed files: core.js, user-app.js, admin-app.js, README.txt
+
+
+Phase 4.48 - Forex Position P/L Refresh Clean
+- Fixed forex manual positions staying at 0 P/L after BUY/SELL when chart-feed did not push a fresh tick.
+- Position P/L now uses the last known forex price if the fresh cache expires.
+- Forex/metal chart-feed refresh attempt is faster, and non-crypto pairs also run a stable periodic refresh fallback.
+- Crypto Binance WebSocket flow remains unchanged.
+- No backup files, no patch layer, no blocked old code.

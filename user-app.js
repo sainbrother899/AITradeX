@@ -140,15 +140,21 @@
     );
   }
 
+  function positionPriceRow(position) {
+    const fresh = App.getCachedPairPrice ? App.getCachedPairPrice(position.pair) : null;
+    const last = App.getLastPairPrice ? App.getLastPairPrice(position.pair) : null;
+    return fresh || last || null;
+  }
+
   function positionCurrentPrice(position) {
-    const cached = App.getCachedPairPrice ? App.getCachedPairPrice(position.pair) : null;
+    const cached = positionPriceRow(position);
     const fallback = Number(position.entryPrice || 0);
     const current = Number(cached?.price || fallback);
     return Number.isFinite(current) && current > 0 ? current : fallback;
   }
 
   function positionCurrentDisplay(position) {
-    const cached = App.getCachedPairPrice ? App.getCachedPairPrice(position.pair) : null;
+    const cached = positionPriceRow(position);
     if (cached?.display) return cached.display;
     const current = positionCurrentPrice(position);
     return current ? String(current) : "--";
@@ -668,8 +674,9 @@
 
     if (priceRefreshTimer) clearInterval(priceRefreshTimer);
     priceRefreshTimer = setInterval(() => {
-      if (App.refreshLivePrices) App.refreshLivePrices(list.filter(pair => !(App.isCryptoPair && App.isCryptoPair(pair)) && !(App.isChartFeedPair && App.isChartFeedPair(pair))), applyLivePriceRow);
-    }, 60000);
+      const nonCryptoPairs = list.filter(pair => !(App.isCryptoPair && App.isCryptoPair(pair)));
+      if (App.refreshLivePrices && nonCryptoPairs.length) App.refreshLivePrices(nonCryptoPairs, applyLivePriceRow);
+    }, 15000);
   }
 
   function selectorSheetHtml() {

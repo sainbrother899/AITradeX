@@ -43,7 +43,7 @@ const MARKET_PAIRS={
 const FX_API_KEY=String(C.EXCHANGERATE_API_KEY||"25b67ee121b52d7058f61034").trim();
 const LIVE_CACHE_KEY="AITradeX_LIVE_PRICE_CACHE_V1";
 const LIVE_TTL_MS=30000;
-const CHART_FEED_TTL_MS=7000;
+const CHART_FEED_TTL_MS=30000;
 const liveCache=(()=>{try{return JSON.parse(localStorage.getItem(LIVE_CACHE_KEY)||"{}")}catch{return {}}})();
 const normPair=pair=>String(pair||"").trim().toUpperCase();
 const baseQuote=pair=>{const [base,quote]=normPair(pair).split("/");return {base,quote};};
@@ -150,6 +150,7 @@ App.isCryptoPair=isCryptoPair;
 App.isForexPair=isForexPair;
 App.isChartFeedPair=isChartFeedPair;
 App.getCachedPairPrice=pair=>cachedLive(pair);
+App.getLastPairPrice=pair=>liveCache[normPair(pair)]||null;
 App.pairLiveView=item=>{const cached=cachedLive(item?.pair);return cached?{...item,live:true,price:cached.display,rawPrice:cached.price,change:cached.change||item.change,mood:cached.mood||item.mood,priceSource:cached.source,priceFetchedAt:cached.fetchedAt}:item};
 App.getLivePairPrice=async(pair,manualPrice)=>{
   const clean=normPair(pair);
@@ -197,7 +198,7 @@ App.startChartFeedTicker=(pairs,onEach)=>{
     if(typeof onEach==="function")onEach({ok:false,pair,error:err.message||"Chart feed unavailable"});
   }});};
   pull();
-  chartFeedTimer=setInterval(pull,7000);
+  chartFeedTimer=setInterval(pull,5000);
   return true;
 };
 App.stopMetalChartTicker=App.stopChartFeedTicker;
