@@ -188,12 +188,86 @@
 
   function financeStats(type) {
     const items = allWalletRequests().filter(x => x.type === type);
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const statusItems = status => items.filter(x => String(x.request.status || "").toUpperCase() === status);
+    const sumAmount = rows => rows.reduce((sum, row) => sum + Number(row.request.amount || 0), 0);
+    const todayItems = items.filter(x => String(x.request.createdAt || "").slice(0, 10) === todayKey);
+    const approvedItems = statusItems("APPROVED");
+    const pendingItems = statusItems("PENDING");
+    const rejectedItems = statusItems("REJECTED");
     return {
       total: items.length,
-      pending: items.filter(x => x.request.status === "PENDING").length,
-      approved: items.filter(x => x.request.status === "APPROVED").length,
-      rejected: items.filter(x => x.request.status === "REJECTED").length
+      pending: pendingItems.length,
+      approved: approvedItems.length,
+      rejected: rejectedItems.length,
+      totalAmount: sumAmount(items),
+      pendingAmount: sumAmount(pendingItems),
+      approvedAmount: sumAmount(approvedItems),
+      rejectedAmount: sumAmount(rejectedItems),
+      today: todayItems.length,
+      todayAmount: sumAmount(todayItems)
     };
+  }
+
+  function financeMethodText(request, type) {
+    const isDeposit = type === "DEPOSIT";
+    const method = request.methodSnapshot || {};
+    if (isDeposit) return `${request.type || "UPI"} · UTR ${request.utr || "-"}`;
+    return method.type === "UPI"
+      ? `UPI · ${method.upiId || "-"} · ${method.holderName || "-"}`
+      : `${method.bankName || "Bank"} · ${method.accountNumber || "-"} · ${method.holderName || "-"}`;
+  }
+
+  function depositUtrDuplicateInfo(request) {
+    const clean = String(request?.utr || "").replace(/\D/g, "");
+    if (!clean) return null;
+    const matches = allWalletRequests().filter(x =>
+      x.type === "DEPOSIT" &&
+      String(x.request.id) !== String(request.id) &&
+      String(x.request.utr || "").replace(/\D/g, "") === clean
+    );
+    const approved = matches.filter(x => String(x.request.status || "").toUpperCase() === "APPROVED");
+    return matches.length ? { total: matches.length, approved: approved.length } : null;
+  }
+
+  function financeProofHtml(request) {
+    const src = request.proofImage || request.screenshot || request.receiptImage || request.paymentProof || request.proofUrl || request.image || "";
+    if (!src) return `<div class="finance-proof-empty">No screenshot uploaded in this build. UTR/manual verification required.</div>`;
+    return `<a class="finance-proof-preview" href="${esc(src)}" target="_blank" rel="noopener"><img src="${esc(src)}" alt="Payment proof"/><span>Open proof</span></a>`;
+  }
+
+  function financeRequestDetailPanel(user, request, type) {
+    const isDeposit = type === "DEPOSIT";
+    const method = request.methodSnapshot || {};
+    const duplicate = isDeposit ? depositUtrDuplicateInfo(request) : null;
+    const safeBalance = App.realBalance(user.id);
+    const afterWithdrawal = isDeposit ? safeBalance : safeBalance - Number(request.amount || 0);
+    return `
+      <section class="finance-detail-panel">
+        <div class="finance-detail-title">
+          <div><b>${isDeposit ? "Deposit Detail" : "Withdrawal Detail"}</b><span>${isDeposit ? "Check UTR/proof before crediting wallet" : "Check payout details before debiting wallet"}</span></div>
+          ${duplicate ? `<span class="finance-warning-pill">Duplicate UTR: ${duplicate.total}${duplicate.approved ? ` · ${duplicate.approved} approved` : ""}</span>` : `<span class="finance-safe-pill">No duplicate UTR found</span>`}
+        </div>
+        <div class="finance-detail-grid">
+          <article><span>User</span><b>${esc(displayNameFor(user))}</b></article>
+          <article><span>Email</span><b>${esc(user.email || "-")}</b></article>
+          <article><span>Mobile</span><b>${esc(user.mobile || "-")}</b></article>
+          <article><span>Request Amount</span><b>${App.money(request.amount || 0)}</b></article>
+          <article><span>Current Real Balance</span><b>${App.money(safeBalance)}</b></article>
+          <article><span>${isDeposit ? "UTR / Method" : "Balance After Approval"}</span><b>${isDeposit ? esc(financeMethodText(request, type)) : App.money(afterWithdrawal)}</b></article>
+          <article><span>Request ID</span><b>${esc(request.id || "-")}</b></article>
+          <article><span>Created</span><b>${request.createdAt ? new Date(request.createdAt).toLocaleString() : "-"}</b></article>
+        </div>
+        ${isDeposit ? `<div class="finance-proof-wrap">${financeProofHtml(request)}</div>` : `
+          <div class="finance-payout-mini">
+            <b>Payout Details</b>
+            <span>${esc(financeMethodText(request, type))}</span>
+            ${method.ifsc ? `<span>IFSC: ${esc(method.ifsc)}</span>` : ""}
+          </div>`}
+        <div class="finance-safety-note">
+          ${isDeposit ? "Approve will credit real wallet once only. Duplicate approved UTR is blocked." : "Approve will debit real wallet at approval time. If balance is insufficient, approval is blocked."}
+        </div>
+      </section>`;
   }
 
   function pendingFinanceCount(type) {
@@ -985,17 +1059,23 @@
       });
 
     shell(`
-      <section class="metrics-grid wallet-admin-metrics">
-        ${metric("⌛", "Pending", stats.pending)}
-        ${metric("✅", "Approved", stats.approved)}
-        ${metric("❌", "Rejected", stats.rejected)}
-        ${metric(isDepositSection ? "⬇️" : "⬆️", "Total", stats.total)}
+      <section class="metrics-grid wallet-admin-metrics finance-command-metrics">
+        ${metric("⌛", "Pending", `${stats.pending} · ${App.money(stats.pendingAmount)}`)}
+        ${metric("✅", "Approved", `${stats.approved} · ${App.money(stats.approvedAmount)}`)}
+        ${metric("📅", "Today", `${stats.today} · ${App.money(stats.todayAmount)}`)}
+        ${metric(isDepositSection ? "⬇️" : "⬆️", "Total Volume", App.money(stats.totalAmount))}
       </section>
       ${filterBarFinance(sectionType)}
-      <section class="panel-card">
+      <section class="panel-card finance-control-panel">
         <div class="section-head">
-          <div><h3>${isDepositSection ? "Deposit Requests" : "Withdrawal Requests"}</h3><span>${isDepositSection ? "Approve user deposits and credit real balance" : "Approve user withdrawals and debit real balance"}</span></div>
+          <div><h3>${isDepositSection ? "Deposit Control" : "Withdrawal Control"}</h3><span>${isDepositSection ? "Review UTR/proof, prevent duplicate approval, then credit wallet" : "Review bank/UPI payout, verify balance, then approve debit"}</span></div>
           <span class="admin-count-pill">${items.length} result</span>
+        </div>
+        <div class="finance-process-strip">
+          <article><b>1</b><span>${isDepositSection ? "Check UTR" : "Check payout"}</span></article>
+          <article><b>2</b><span>${isDepositSection ? "Verify proof" : "Verify balance"}</span></article>
+          <article><b>3</b><span>${isDepositSection ? "Approve credit" : "Approve payout"}</span></article>
+          <article><b>4</b><span>Ledger saved</span></article>
         </div>
         ${financeHistoryPagedList(items, sectionType)}
       </section>
@@ -1026,18 +1106,16 @@
 
   function walletRequestCard(user, request, type) {
     const isDeposit = type === "DEPOSIT";
-    const isPending = request.status === "PENDING";
+    const isPending = String(request.status || "").toUpperCase() === "PENDING";
     const method = request.methodSnapshot || {};
     const methodTitle = isDeposit ? `${request.type || "UPI"} Payment` : `${method.type === "UPI" ? "Legacy UPI" : "Bank"} Withdrawal`;
-    const methodText = isDeposit
-      ? `UTR ${request.utr || "-"}`
-      : method.type === "UPI"
-        ? `${method.upiId || "UPI"} · ${method.holderName || "-"}`
-        : `${method.bankName || "Bank"} · ${method.accountNumber || "-"} · ${method.holderName || "-"}`;
+    const methodText = financeMethodText(request, type);
+    const duplicate = isDeposit ? depositUtrDuplicateInfo(request) : null;
+    const ledgerDone = App.hasLedgerEntry?.({ accountType: "REAL", type: isDeposit ? "DEPOSIT" : "WITHDRAWAL", referenceId: request.id, userId: user.id });
 
     return `
-      <article class="admin-request-card wallet-admin-card ${String(request.status || "").toLowerCase()}">
-        <div class="request-head">
+      <article class="admin-request-card wallet-admin-card finance-review-card ${String(request.status || "").toLowerCase()}">
+        <div class="request-head finance-review-head">
           <div class="request-user">
             ${avatar(displayNameFor(user))}
             <div>
@@ -1045,20 +1123,22 @@
               <span>${esc(user.email)} · ${esc(methodTitle)}</span>
             </div>
           </div>
-          ${statusPill(request.status)}
+          <div class="finance-head-badges">
+            ${statusPill(request.status)}
+            ${ledgerDone ? `<span class="finance-safe-pill">Ledger applied</span>` : `<span class="finance-muted-pill">Ledger pending</span>`}
+          </div>
         </div>
 
-        <div class="request-grid wallet-request-grid">
+        <div class="request-grid wallet-request-grid finance-quick-grid">
           <article><span>User</span><b>${esc(displayNameFor(user))}</b></article>
-          <article><span>Email</span><b>${esc(user.email)}</b></article>
-          <article><span>Mobile</span><b>${esc(user.mobile || "-")}</b></article>
           <article><span>Amount</span><b>${App.money(request.amount || 0)}</b></article>
-          <article><span>Current Real Balance</span><b>${App.money(App.realBalance(user.id))}</b></article>
-          <article><span>${isDeposit ? "Payment Proof" : "Pay To"}</span><b>${esc(methodText)}</b></article>
-          <article><span>Requested On</span><b>${request.createdAt ? new Date(request.createdAt).toLocaleString() : "-"}</b></article>
-          <article><span>Request ID</span><b>${esc(request.id)}</b></article>
+          <article><span>Real Balance</span><b>${App.money(App.realBalance(user.id))}</b></article>
+          <article><span>${isDeposit ? "UTR" : "Pay To"}</span><b>${esc(isDeposit ? (request.utr || "-") : methodText)}</b></article>
         </div>
 
+        ${duplicate ? `<div class="finance-warning-box">⚠️ Same UTR found in ${duplicate.total} other deposit request(s). ${duplicate.approved ? `${duplicate.approved} already approved.` : "No approved duplicate yet."}</div>` : ""}
+
+        ${financeRequestDetailPanel(user, request, type)}
         ${isDeposit ? "" : withdrawalPayoutDetails(request)}
 
         ${dateLine("Approved", request.approvedAt)}
@@ -1067,13 +1147,12 @@
 
         <div class="admin-action-row ${isPending ? "" : "single-delete"}">
           ${isPending ? `
-            <button class="approve-btn" onclick="AITradeXAdmin.${isDeposit ? "approveDeposit" : "approveWithdrawal"}('${user.id}', '${request.id}', this)">${isDeposit ? "Approve Deposit" : "Approve Withdrawal"}</button>
+            <button class="approve-btn" onclick="AITradeXAdmin.${isDeposit ? "approveDeposit" : "approveWithdrawal"}('${user.id}', '${request.id}', this)">${isDeposit ? "Approve & Credit" : "Approve Payout"}</button>
             <button class="reject-btn" onclick="AITradeXAdmin.${isDeposit ? "rejectDeposit" : "rejectWithdrawal"}('${user.id}', '${request.id}', this)">Reject</button>
-          ` : ""}
+          ` : `<span class="finance-complete-note">Action completed. Full detail stays in history.</span>`}
         </div>
       </article>`;
   }
-
   function aiTradeBatches() {
     return (App.state.aiTradeBatches || []).sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0));
   }
@@ -2784,35 +2863,55 @@
       render();
     },
     approveDeposit(userId, requestId, button) {
-      markButton(button, "Approving...");
       const target = allUsers().find(u => u.id === userId);
       if (!target) return;
       const requests = depositRequestsFor(target);
       const request = requests.find(r => r.id === requestId);
       if (!request) return;
-      if (request.status !== "PENDING") {
+      if (String(request.status || "").toUpperCase() !== "PENDING") {
         App.toast("Deposit action already completed.");
         render();
         return;
       }
+      const amount = Number(request.amount || 0);
+      if (!amount || amount <= 0) {
+        App.toast("Invalid deposit amount.");
+        render();
+        return;
+      }
+      const duplicate = depositUtrDuplicateInfo(request);
+      if (duplicate?.approved) {
+        App.toast("Duplicate approved UTR found. Approval blocked for safety.");
+        render();
+        return;
+      }
+      const ledgerExists = App.hasLedgerEntry?.({ accountType: "REAL", type: "DEPOSIT", referenceId: request.id, userId: target.id });
+      if (!ledgerExists && !confirm(`Approve ${App.money(amount)} deposit for ${displayNameFor(target)}? Wallet will be credited once.`)) return;
+      markButton(button, "Approving...");
 
       try {
-        App.addLedger({
-          userId: target.id,
-          accountType: "REAL",
-          type: "DEPOSIT",
-          amount: Number(request.amount || 0),
-          referenceId: request.id,
-          note: `Approved deposit · UTR ${request.utr || "-"}`
-        });
+        let ledgerAdded = true;
+        if (!ledgerExists) {
+          ledgerAdded = App.addLedger({
+            userId: target.id,
+            accountType: "REAL",
+            type: "DEPOSIT",
+            amount,
+            referenceId: request.id,
+            note: `DEPOSIT_APPROVED · UTR ${request.utr || "-"}`
+          });
+        }
         request.status = "APPROVED";
         request.approvedAt = new Date().toISOString();
         request.reviewedAt = request.approvedAt;
         request.rejectReason = "";
         request.balanceApplied = true;
+        request.adminNote = duplicate?.total ? `Checked duplicate UTR warning: ${duplicate.total} similar request(s).` : "Approved by admin.";
         saveDepositRequests(target, requests);
-        App.creditReferralBonus?.({ referredUserId: target.id, eventType: "DEPOSIT", amount: Number(request.amount || 0), referenceId: request.id, sourceLabel: `Deposit UTR ${request.utr || "-"}` });
-        App.toast("Deposit approved and balance updated.");
+        if (ledgerAdded && !ledgerExists) {
+          App.creditReferralBonus?.({ referredUserId: target.id, eventType: "DEPOSIT", amount, referenceId: request.id, sourceLabel: `Deposit UTR ${request.utr || "-"}` });
+        }
+        App.toast(ledgerExists ? "Deposit marked approved. Ledger was already applied." : "Deposit approved and balance credited.");
       } catch (err) {
         App.toast(err.message || "Unable to approve deposit.");
       }
@@ -2824,7 +2923,7 @@
       const requests = depositRequestsFor(target);
       const request = requests.find(r => r.id === requestId);
       if (!request) return;
-      if (request.status !== "PENDING") {
+      if (String(request.status || "").toUpperCase() !== "PENDING") {
         App.toast("Deposit action already completed.");
         render();
         return;
@@ -2837,46 +2936,57 @@
       request.rejectedAt = new Date().toISOString();
       request.reviewedAt = request.rejectedAt;
       request.balanceApplied = false;
+      request.adminNote = request.rejectReason;
       saveDepositRequests(target, requests);
       App.toast("Deposit rejected.");
       render();
     },
     approveWithdrawal(userId, requestId, button) {
-      markButton(button, "Approving...");
       const target = allUsers().find(u => u.id === userId);
       if (!target) return;
       const requests = withdrawalRequestsFor(target);
       const request = requests.find(r => r.id === requestId);
       if (!request) return;
-      if (request.status !== "PENDING") {
+      if (String(request.status || "").toUpperCase() !== "PENDING") {
         App.toast("Withdrawal action already completed.");
         render();
         return;
       }
 
       const amount = Number(request.amount || 0);
-      if (App.realBalance(target.id) < amount) {
+      if (!amount || amount <= 0) {
+        App.toast("Invalid withdrawal amount.");
+        render();
+        return;
+      }
+      const ledgerExists = App.hasLedgerEntry?.({ accountType: "REAL", type: "WITHDRAWAL", referenceId: request.id, userId: target.id });
+      if (!ledgerExists && App.realBalance(target.id) < amount) {
         App.toast("Insufficient real balance for withdrawal.");
         render();
         return;
       }
+      if (!ledgerExists && !confirm(`Approve ${App.money(amount)} withdrawal for ${displayNameFor(target)}? Wallet will be debited once.`)) return;
+      markButton(button, "Approving...");
 
       try {
-        App.addLedger({
-          userId: target.id,
-          accountType: "REAL",
-          type: "WITHDRAWAL",
-          amount: -amount,
-          referenceId: request.id,
-          note: "Approved withdrawal payout"
-        });
+        if (!ledgerExists) {
+          App.addLedger({
+            userId: target.id,
+            accountType: "REAL",
+            type: "WITHDRAWAL",
+            amount: -amount,
+            referenceId: request.id,
+            note: "WITHDRAWAL_APPROVED · Admin payout confirmed"
+          });
+        }
         request.status = "APPROVED";
         request.approvedAt = new Date().toISOString();
         request.reviewedAt = request.approvedAt;
         request.rejectReason = "";
         request.balanceApplied = true;
+        request.adminNote = "Approved payout by admin.";
         saveWithdrawalRequests(target, requests);
-        App.toast("Withdrawal approved and balance debited.");
+        App.toast(ledgerExists ? "Withdrawal marked approved. Ledger was already applied." : "Withdrawal approved and balance debited.");
       } catch (err) {
         App.toast(err.message || "Unable to approve withdrawal.");
       }
@@ -2888,7 +2998,7 @@
       const requests = withdrawalRequestsFor(target);
       const request = requests.find(r => r.id === requestId);
       if (!request) return;
-      if (request.status !== "PENDING") {
+      if (String(request.status || "").toUpperCase() !== "PENDING") {
         App.toast("Withdrawal action already completed.");
         render();
         return;
@@ -2901,6 +3011,7 @@
       request.rejectedAt = new Date().toISOString();
       request.reviewedAt = request.rejectedAt;
       request.balanceApplied = false;
+      request.adminNote = request.rejectReason;
       saveWithdrawalRequests(target, requests);
       App.toast("Withdrawal rejected.");
       render();

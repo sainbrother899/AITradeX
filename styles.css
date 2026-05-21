@@ -4427,3 +4427,37 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   .admin-user-page-meta{align-items:flex-start;flex-direction:column}
   .admin-user-page-meta span{text-align:left}
 }
+
+/* Phase 4.65 - Admin finance control polish */
+.finance-command-metrics .metric-card b{font-size:18px;letter-spacing:-.02em}
+.finance-control-panel{position:relative;overflow:hidden}
+.finance-process-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:14px 0 16px}
+.finance-process-strip article{display:flex;align-items:center;gap:10px;padding:12px;border-radius:18px;background:linear-gradient(135deg,rgba(29,92,255,.08),rgba(21,229,211,.07));border:1px solid rgba(8,30,65,.08)}
+.finance-process-strip b{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#0b1220;color:#fff;font-size:13px;flex:0 0 auto}
+.finance-process-strip span{font-size:12px;font-weight:800;color:#526176}
+.finance-review-card{border:1px solid rgba(8,30,65,.08);box-shadow:0 16px 42px rgba(13,28,61,.08)}
+.finance-review-head{align-items:flex-start}
+.finance-head-badges{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.finance-safe-pill,.finance-muted-pill,.finance-warning-pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:7px 10px;font-size:11px;font-weight:900;letter-spacing:.01em;white-space:nowrap}
+.finance-safe-pill{background:rgba(18,183,106,.12);color:#087443;border:1px solid rgba(18,183,106,.22)}
+.finance-muted-pill{background:rgba(99,115,129,.10);color:#596579;border:1px solid rgba(99,115,129,.16)}
+.finance-warning-pill{background:rgba(245,158,11,.14);color:#9a5b00;border:1px solid rgba(245,158,11,.28)}
+.finance-warning-box{margin:12px 0;padding:12px 14px;border-radius:16px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.24);color:#8a5200;font-weight:800;font-size:12px}
+.finance-detail-panel{margin-top:12px;padding:14px;border-radius:22px;background:linear-gradient(180deg,rgba(247,250,255,.96),rgba(255,255,255,.98));border:1px solid rgba(8,30,65,.08)}
+.finance-detail-title{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px}
+.finance-detail-title b{display:block;color:#111827;font-size:14px}
+.finance-detail-title span{display:block;color:#667085;font-size:12px;margin-top:2px}
+.finance-detail-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.finance-detail-grid article,.finance-quick-grid article{padding:11px;border-radius:16px;background:#fff;border:1px solid rgba(8,30,65,.07);min-width:0}
+.finance-detail-grid span,.finance-quick-grid span{display:block;color:#738096;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.03em}
+.finance-detail-grid b,.finance-quick-grid b{display:block;margin-top:4px;color:#101828;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.finance-proof-wrap{margin-top:12px}
+.finance-proof-preview{display:flex;align-items:center;gap:12px;padding:10px;border-radius:18px;background:#fff;border:1px solid rgba(8,30,65,.08);text-decoration:none;color:#0f172a;font-weight:900}
+.finance-proof-preview img{width:92px;height:64px;object-fit:cover;border-radius:14px;border:1px solid rgba(8,30,65,.08)}
+.finance-proof-empty{padding:12px;border-radius:16px;background:rgba(99,115,129,.08);border:1px dashed rgba(99,115,129,.28);color:#667085;font-weight:800;font-size:12px}
+.finance-payout-mini{display:grid;gap:5px;margin-top:12px;padding:12px;border-radius:16px;background:#fff;border:1px solid rgba(8,30,65,.07);font-size:12px;color:#526176}
+.finance-payout-mini b{color:#111827}
+.finance-safety-note{margin-top:12px;padding:11px 12px;border-radius:15px;background:rgba(29,92,255,.08);border:1px solid rgba(29,92,255,.14);color:#31527d;font-size:12px;font-weight:800}
+.finance-complete-note{font-size:12px;font-weight:900;color:#667085}
+@media(max-width:900px){.finance-process-strip,.finance-detail-grid{grid-template-columns:1fr 1fr}.finance-review-head{gap:10px}.finance-head-badges{justify-content:flex-start}.finance-command-metrics .metric-card b{font-size:15px}}
+@media(max-width:560px){.finance-process-strip,.finance-detail-grid{grid-template-columns:1fr}.finance-detail-title{display:grid}.finance-proof-preview img{width:76px;height:54px}}
