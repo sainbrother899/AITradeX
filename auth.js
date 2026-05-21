@@ -25,7 +25,6 @@ window.AITradeXAuth={registerUser,loginUser,loginControl};
 })();
 
 
-/* AITradeX Phase 3.1 admin auth compatibility */
 (() => {
   const Auth = window.AITradeXAuth;
   const App = window.AITradeX;

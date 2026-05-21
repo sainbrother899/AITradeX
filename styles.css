@@ -1,7 +1,5 @@
 *{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#050814;color:#f5f8ff}button,input,select,textarea{font:inherit}button{cursor:pointer}a{color:inherit;text-decoration:none}:root{--bg:#050814;--panel:#0b1425;--panel2:#101b31;--line:rgba(255,255,255,.105);--soft:rgba(255,255,255,.065);--muted:#95a5c2;--gold:#f8bd7a;--gold2:#ffdc9e;--green:#00e7a8;--red:#ff456b;--cyan:#15e5d3;--blue:#4fb2ff}body:before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(circle at 18% 2%,rgba(21,229,211,.16),transparent 30%),radial-gradient(circle at 82% 12%,rgba(248,189,122,.12),transparent 28%),radial-gradient(circle at 50% 100%,rgba(110,62,255,.18),transparent 42%),linear-gradient(180deg,#07101f,#050814 58%,#040611)}.public-wrap{width:min(1180px,94vw);margin:0 auto}.public-nav{height:76px;display:flex;align-items:center;justify-content:space-between;gap:18px}.brand{display:flex;align-items:center;gap:12px;font-weight:1000}.brand span{width:42px;height:42px;border-radius:16px;display:grid;place-items:center;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#07111f}.brand.center{justify-content:center}.public-actions{display:flex;align-items:center;gap:18px;color:var(--muted);font-weight:850}.btn{border:0;border-radius:16px;padding:13px 18px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#07111f;font-weight:950}.btn.ghost{background:var(--soft);color:#fff;border:1px solid var(--line)}.btn.small{padding:10px 14px}.hero-section{display:grid;grid-template-columns:1.08fr .92fr;gap:24px;align-items:center;padding:48px 0 24px}.eyebrow{margin:0;color:var(--gold);font-size:12px;font-weight:950;letter-spacing:.14em;text-transform:uppercase}.hero-copy h1{font-size:clamp(40px,6vw,76px);line-height:.96;letter-spacing:-.05em;margin:14px 0}.hero-text{color:var(--muted);font-size:18px;line-height:1.62}.hero-buttons,.hero-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.trust-pills{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.trust-pills span{border:1px solid var(--line);background:var(--soft);border-radius:999px;padding:9px 12px;color:#c9d5ea;font-size:13px;font-weight:850}.hero-terminal,.auth-card,.landing-grid article,.control-card,.metric-card,.panel-card{background:linear-gradient(145deg,rgba(255,255,255,.075),rgba(255,255,255,.03));border:1px solid var(--line);border-radius:28px;box-shadow:0 22px 60px rgba(0,0,0,.30)}.hero-terminal{padding:18px}.terminal-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}.terminal-head span,.terminal-grid span{display:block;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.12em}.terminal-head strong{display:block;font-size:30px;margin-top:4px}.terminal-head em{font-style:normal;color:var(--green);background:rgba(0,231,168,.12);border:1px solid rgba(0,231,168,.24);border-radius:999px;padding:8px 10px;font-weight:950}.fake-chart,.responsive-chart{height:290px;border-radius:22px;border:1px solid var(--line);background:linear-gradient(180deg,rgba(0,231,168,.06),rgba(255,69,107,.04));position:relative;overflow:hidden}.fake-chart:before,.responsive-chart:before{content:"";position:absolute;inset:0;background:linear-gradient(135deg,transparent 45%,rgba(0,231,168,.55) 47%,transparent 51%),repeating-linear-gradient(0deg,rgba(255,255,255,.04) 0 1px,transparent 1px 38px),repeating-linear-gradient(90deg,rgba(255,255,255,.04) 0 1px,transparent 1px 55px)}.terminal-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}.terminal-grid div{border:1px solid var(--line);background:rgba(255,255,255,.04);border-radius:16px;padding:11px}.landing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:18px 0}.landing-grid article{padding:20px}.landing-grid i{font-style:normal;width:46px;height:46px;display:grid;place-items:center;border-radius:16px;background:rgba(248,189,122,.12);margin-bottom:12px}.landing-grid p,.auth-copy p{color:var(--muted);line-height:1.55}.auth-section{display:grid;grid-template-columns:.9fr 1.1fr;gap:18px;align-items:center;padding:30px 0}.auth-copy h2{font-size:36px;margin:10px 0}.auth-card{padding:20px}.auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}.auth-tabs button{min-height:46px;border-radius:14px;border:1px solid var(--line);background:var(--soft);color:var(--muted);font-weight:950}.auth-tabs button.active{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#07111f}.form-grid{display:grid;gap:12px}.form-grid label{display:grid;gap:7px;color:var(--muted);font-size:13px}.form-grid input,.form-grid select,.form-grid textarea,.premium-card input,.premium-card select{min-height:52px;border:1px solid var(--line);border-radius:16px;background:rgba(5,12,24,.72);color:#fff;padding:0 14px;outline:0;width:100%}.security-note,.info-box,.error-box{border:1px solid rgba(248,189,122,.2);background:rgba(248,189,122,.08);color:#ffd89c;border-radius:18px;padding:14px;margin:14px 0}.control-login{min-height:100vh;display:grid;place-items:center;padding:24px}.control-card{width:min(460px,94vw);padding:24px;text-align:center}.aitx-app{min-height:100vh;padding-bottom:96px}.app-topbar{height:84px;display:flex;align-items:center;gap:12px;padding:14px 18px;background:rgba(7,16,29,.88);backdrop-filter:blur(18px);border-bottom:1px solid rgba(255,255,255,.075);position:sticky;top:0;z-index:20}.menu-btn{width:52px;height:52px;border:0;border-radius:18px;background:linear-gradient(135deg,var(--cyan),var(--blue));font-size:25px;color:#061820;font-weight:1000;box-shadow:0 14px 32px rgba(21,229,211,.18)}.app-brand{flex:1;display:grid;line-height:1.05}.app-brand b{font-size:24px;letter-spacing:-.05em}.app-brand small{color:var(--muted);font-size:12px;margin-top:4px}.top-actions{display:flex;align-items:center;gap:8px}.account-segment{display:flex;background:rgba(255,255,255,.055);border:1px solid var(--line);border-radius:999px;padding:4px;gap:4px}.account-segment button{min-height:38px;border:0;border-radius:999px;background:transparent;color:var(--muted);padding:0 13px;font-weight:1000}.account-segment button.active{background:linear-gradient(135deg,var(--cyan),#1bd0ee);color:#041318;box-shadow:0 10px 30px rgba(21,229,211,.22)}.account-segment.compact button{min-height:34px;padding:0 10px}.profile-chip{border:1px solid var(--line);background:rgba(255,255,255,.055);border-radius:999px;padding:4px}.avatar{width:44px;height:44px;border-radius:50%;display:inline-grid;place-items:center;background:linear-gradient(135deg,#ffb38f,#8f6dff);color:#07111f;font-weight:1000}.app-content{width:min(760px,100%);margin:0 auto;padding:18px 18px 0}.drawer-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.58);backdrop-filter:blur(4px);z-index:30}.side-drawer{position:fixed;top:88px;left:14px;bottom:14px;width:min(340px,90vw);background:#071122;border:1px solid rgba(255,255,255,.16);border-radius:28px;padding:12px;z-index:31;box-shadow:0 28px 80px rgba(0,0,0,.72);overflow-y:auto;overscroll-behavior:contain}.drawer-head{display:flex;align-items:center;gap:12px;padding:14px;border-radius:20px;background:linear-gradient(135deg,rgba(21,229,211,.14),rgba(255,255,255,.04));margin-bottom:8px}.drawer-head b{display:block}.drawer-head span{color:var(--muted);font-size:13px}.drawer-item{width:100%;min-height:56px;border:0;border-radius:16px;background:rgba(255,255,255,.045);color:#f4f7ff;text-align:left;padding:0 14px;font-weight:950;margin:5px 0}.drawer-item.danger{color:#ff8ca2}.bottom-nav{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);width:min(540px,94vw);height:82px;border-radius:26px;background:rgba(7,16,29,.96);border:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);z-index:25;padding:8px;box-shadow:0 20px 50px rgba(0,0,0,.45);backdrop-filter:blur(18px)}.bottom-nav button{border:0;background:transparent;color:#a7b4cc;border-radius:19px;font-weight:850;display:grid;place-items:center;gap:3px}.bottom-nav i{font-style:normal;font-size:19px}.bottom-nav span{font-size:12px}.bottom-nav button.active{background:linear-gradient(135deg,var(--cyan),#1bd0ee);color:#07111f}.account-overview-card,.premium-card,.wallet-hero-card,.trade-command,.chart-shell{background:linear-gradient(145deg,rgba(15,29,52,.94),rgba(8,16,31,.96));border:1px solid var(--line);border-radius:30px;padding:20px;box-shadow:0 18px 54px rgba(0,0,0,.32);margin-bottom:16px}.account-overview-card.real{background:radial-gradient(circle at 85% 0,rgba(0,231,168,.22),transparent 34%),linear-gradient(145deg,#0f1e34,#08101d)}.account-overview-card.demo{background:radial-gradient(circle at 85% 0,rgba(79,178,255,.24),transparent 34%),linear-gradient(145deg,#0f1e34,#08101d)}.overview-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}.overview-top p,.premium-card p,.wallet-hero-card p,.trade-command p{margin:0;color:var(--muted);font-size:12px;letter-spacing:.14em;text-transform:uppercase}.overview-top h1{margin:8px 0 4px;font-size:42px;color:var(--green)}.overview-top span,.trade-command span{color:#c9d5ea}.overview-mini{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:16px}.overview-mini article,.compact-grid article,.wallet-grid article{border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.045);padding:13px}.overview-mini span,.compact-grid span,.wallet-grid span,.auto-summary span{color:var(--muted);font-size:13px}.overview-mini b,.compact-grid b{display:block;font-size:20px;margin-top:5px}.market-ticker{display:flex;gap:12px;overflow-x:auto;padding:2px 2px 14px;margin-bottom:6px;scroll-snap-type:x mandatory}.market-ticker::-webkit-scrollbar{display:none}.ticker-card{min-width:174px;scroll-snap-align:start;position:relative;overflow:hidden;border:1px solid var(--line);border-radius:22px;background:linear-gradient(145deg,rgba(255,255,255,.065),rgba(255,255,255,.025));padding:15px}.ticker-card.selected{border-color:rgba(21,229,211,.48);box-shadow:inset 0 0 0 1px rgba(21,229,211,.16)}.ticker-card h3{margin:0 0 4px;font-size:17px}.ticker-card small{color:var(--muted)}.ticker-card strong{display:block;margin-top:12px}.ticker-card span{display:block;margin-top:5px;font-weight:1000}.ticker-card.up span{color:var(--green)}.ticker-card.down span{color:#ff5c7c}.compact-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}.compact-grid small{color:var(--muted);display:block;margin-top:3px}.card-row{display:flex;justify-content:space-between;gap:14px;align-items:flex-start}.premium-card h2,.wallet-hero-card h1,.trade-command h1{font-size:30px;margin:8px 0}.premium-card h4{margin:8px 0 16px;color:#dfe8f7;font-weight:650}.confidence-ring{width:70px;height:70px;border-radius:50%;display:grid;place-items:center;border:1px solid rgba(21,229,211,.45);background:rgba(21,229,211,.12);color:var(--green);font-weight:1000;box-shadow:0 0 35px rgba(21,229,211,.13)}.signal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.signal-grid article,.auto-summary article,.toggle-row{border:1px solid var(--line);background:rgba(255,255,255,.04);border-radius:18px;padding:14px}.signal-grid span,.toggle-row span{color:var(--muted);display:block}.signal-grid b,.auto-summary b{display:block;font-size:18px;margin-top:6px}.ai-power{border:1px solid rgba(21,229,211,.38);background:rgba(21,229,211,.11);color:var(--cyan);border-radius:999px;padding:12px 16px;font-weight:1000}.ai-power.on{background:linear-gradient(135deg,var(--cyan),#1bd0ee);color:#07111f}.percent-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 0}.percent-grid button{min-height:54px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.06);color:#fff;font-weight:1000}.percent-grid button.active{background:rgba(21,229,211,.18);border-color:rgba(21,229,211,.48);color:var(--cyan)}.auto-summary{display:grid;grid-template-columns:1fr 1fr;gap:10px}.trade-command{display:flex;justify-content:space-between;align-items:flex-start}.live-pill,.trade-live,.mini-live{background:rgba(0,231,168,.12);border:1px solid rgba(0,231,168,.3);color:var(--green);border-radius:999px;padding:9px 12px;font-weight:1000}.chart-toolbar{display:flex;gap:10px;align-items:center;padding-bottom:12px;overflow-x:auto}.chart-toolbar span,.chart-toolbar button{border:1px solid var(--line);background:rgba(255,255,255,.045);color:#dfe8f7;border-radius:999px;padding:8px 11px;white-space:nowrap}.responsive-chart{height:clamp(560px,74vh,1040px);border-radius:22px}.chart-watermark{position:absolute;inset:0;display:grid;place-items:center;color:rgba(255,255,255,.26);font-weight:1000;letter-spacing:.08em}.premium-card label{display:grid;gap:8px;color:var(--muted);margin:13px 0}.form-row,.buy-sell-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.buy-btn,.sell-btn{border:0;border-radius:18px;min-height:64px;font-weight:1000;font-size:17px}.buy-btn{background:linear-gradient(135deg,#00e7a8,#16b649);color:#07111f}.sell-btn{background:linear-gradient(135deg,#ff456b,#d81f2c);color:#fff}.depth-table{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px}.depth-table span{color:var(--muted)}.depth-table b{background:rgba(255,255,255,.045);border-radius:12px;padding:10px}.green{color:var(--green)!important}.red{color:var(--red)!important}.empty-state{border:1px solid var(--line);background:rgba(255,255,255,.035);border-radius:18px;padding:20px;color:#dce6f7;font-weight:750}.wallet-hero-card.real{background:radial-gradient(circle at 80% 5%,rgba(0,231,168,.22),transparent 34%),linear-gradient(145deg,#0f1e34,#08101d)}.wallet-hero-card.demo{background:radial-gradient(circle at 80% 5%,rgba(79,178,255,.22),transparent 34%),linear-gradient(145deg,#0f1e34,#08101d)}.wallet-hero-card strong{display:block;color:var(--green);font-size:44px;margin:14px 0}.wallet-hero-card>span{color:#c9d5ea}.wallet-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}.wallet-grid b{display:block;font-size:22px;margin:10px 0}.wallet-grid p{margin:0;color:var(--muted)}.wallet-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}.wallet-actions button{border:1px solid var(--line);border-radius:18px;min-height:62px;background:rgba(255,255,255,.065);color:#fff;font-weight:1000}.wallet-actions button:first-child{background:linear-gradient(135deg,var(--gold),var(--gold2));color:#07111f}.step-preview{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}.step-preview div{border:1px solid var(--line);background:rgba(255,255,255,.045);border-radius:16px;padding:13px}.step-preview span{display:block;color:var(--cyan);font-weight:1000}.step-preview b{display:block;margin-top:6px}.step-preview.vertical{grid-template-columns:1fr}.analytics-graph{height:260px;border:1px solid var(--line);border-radius:20px;background:linear-gradient(180deg,rgba(0,231,168,.08),rgba(255,255,255,.02));position:relative;overflow:hidden}.analytics-graph i{position:absolute;inset:0;background:linear-gradient(135deg,transparent 45%,rgba(0,231,168,.55) 46%,transparent 50%)}.history-list article{display:flex;justify-content:space-between;gap:14px;border:1px solid var(--line);background:rgba(255,255,255,.045);border-radius:18px;padding:14px;margin-top:10px}.history-list span{display:block;color:var(--muted);font-size:13px}.ref-code{border:1px dashed rgba(21,229,211,.45);background:rgba(21,229,211,.08);color:var(--cyan);border-radius:18px;padding:16px;font-weight:1000;text-align:center;margin-bottom:14px}.toast{position:fixed;left:50%;bottom:104px;transform:translateX(-50%) translateY(20px);opacity:0;background:#111d31;border:1px solid var(--line);color:#fff;border-radius:999px;padding:12px 16px;box-shadow:0 18px 44px rgba(0,0,0,.4);transition:.25s;z-index:99}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}.app-shell.control-shell{display:grid;grid-template-columns:270px 1fr;min-height:100vh}.sidebar{border-right:1px solid var(--line);background:rgba(8,14,27,.72);backdrop-filter:blur(16px);padding:18px;position:sticky;top:0;height:100vh}.side-brand{margin-bottom:18px}.sidebar nav{display:grid;gap:8px}.sidebar nav button,.logout-btn{min-height:46px;border-radius:15px;border:1px solid transparent;background:transparent;color:var(--muted);text-align:left;padding:0 14px;font-weight:850;display:flex;align-items:center;gap:10px}.sidebar nav button.active,.sidebar nav button:hover{background:var(--soft);color:#fff;border-color:var(--line)}.logout-btn{width:100%;margin-top:14px;color:#ff9ab0}.main-area{padding:22px}.page-title{display:flex;justify-content:space-between;gap:12px;margin-bottom:18px}.page-title h1{margin:0;font-size:31px}.page-title p{margin:5px 0 0;color:var(--muted)}.metrics-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}.metric-card{padding:17px;min-height:132px}.metric-top{display:flex;align-items:center;justify-content:space-between;color:var(--muted);font-size:13px}.metric-top i{font-style:normal;width:38px;height:38px;display:grid;place-items:center;border-radius:14px;background:rgba(248,189,122,.12)}.metric-card strong{display:block;font-size:28px;margin-top:14px}.metric-card small{color:var(--muted)}.panel-card{padding:18px}.section-head{display:flex;justify-content:space-between;gap:10px;margin-bottom:12px}.section-head h3{margin:0}.section-head span{color:var(--muted);font-size:13px}@media(min-width:900px){.aitx-app{padding-bottom:92px}.app-content{max-width:1240px;width:100%;padding:26px}.bottom-nav{display:grid}.market-strip,.wallet-grid,.stat-grid{grid-template-columns:repeat(4,1fr)}.compact-grid{grid-template-columns:repeat(4,1fr)}.responsive-chart{height:clamp(650px,80vh,1100px)}.account-overview-card,.premium-card,.wallet-hero-card,.trade-command,.chart-shell{max-width:none}.app-topbar{padding-inline:28px}.market-ticker{display:grid;grid-template-columns:repeat(5,1fr);overflow:visible}.ticker-card{min-width:0}}@media(max-width:900px){.app-shell.control-shell{grid-template-columns:1fr}.sidebar{height:auto;position:sticky;top:0;z-index:60;border-right:0;border-bottom:1px solid var(--line);padding:12px 14px;background:rgba(8,14,27,.96);backdrop-filter:blur(18px)}.sidebar .side-brand{margin-bottom:10px}.sidebar nav{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 10px;scroll-snap-type:x mandatory}.sidebar nav::-webkit-scrollbar{display:none}.sidebar nav button{flex:0 0 auto;min-height:42px;border-radius:999px;padding:0 14px;scroll-snap-align:start;white-space:nowrap}.logout-btn{min-height:42px;border-radius:999px;margin-top:0}.metrics-grid{grid-template-columns:1fr 1fr}.main-area{padding:14px}}@media(max-width:620px){.public-actions a{display:none}.hero-section,.auth-section,.landing-grid{grid-template-columns:1fr}.hero-copy h1{font-size:40px}.app-topbar{height:82px;padding:12px 14px}.app-brand b{font-size:21px}.app-brand small{font-size:11px}.account-segment button{padding:0 10px}.profile-chip{display:none}.app-content{padding:16px 16px 0}.overview-top{display:grid}.overview-top h1{font-size:36px}.overview-mini,.compact-grid,.wallet-grid{grid-template-columns:1fr 1fr}.percent-grid{grid-template-columns:1fr 1fr}.form-row,.buy-sell-row,.auto-summary{grid-template-columns:1fr}.responsive-chart{height:74vh}.premium-card h2,.wallet-hero-card h1,.trade-command h1{font-size:27px}.wallet-hero-card strong{font-size:38px}.wallet-actions{grid-template-columns:1fr}.step-preview{grid-template-columns:1fr 1fr}.card-row{display:grid}.confidence-ring{width:62px;height:62px}}
 
-
-/* AITradeX Phase 1.5 final user UI refinements */
 .compact-header{
   height:58px!important;
   padding:8px 14px!important;
@@ -296,8 +294,6 @@
   }
 }
 
-
-/* AITradeX Phase 1.6 avatar/profile editor */
 .profile-chip.visible-profile{
   display:flex!important;
   align-items:center!important;
@@ -414,8 +410,6 @@
   }
 }
 
-
-/* AITradeX Phase 1.7 crypto + forex market support */
 .market-switch-card{
   background:linear-gradient(145deg,rgba(15,29,52,.88),rgba(8,16,31,.94));
   border:1px solid var(--line);
@@ -485,8 +479,6 @@
   }
 }
 
-
-/* AITradeX Phase 1.8 professional trade section */
 .pro-trade-command{
   margin-bottom:10px!important;
 }
@@ -633,8 +625,6 @@
   }
 }
 
-
-/* AITradeX Phase 1.9 all market rates + green/red change */
 .market-ticker{
   display:flex!important;
   overflow-x:auto!important;
@@ -723,8 +713,6 @@
   }
 }
 
-
-/* AITradeX Phase 2.0 app-style selectors */
 .app-selector-bar{
   grid-template-columns:1fr 1fr!important;
   align-items:stretch;
@@ -885,8 +873,6 @@
   }
 }
 
-
-/* AITradeX Phase 2.1 TradingView chart */
 .tradingview-widget-frame{
   position:relative;
   height:clamp(520px,68vh,980px)!important;
@@ -935,8 +921,6 @@
   }
 }
 
-
-/* AITradeX Phase 2.2 chart controls + bigger chart */
 .chart-shell{
   padding:8px!important;
   border-radius:18px!important;
@@ -1038,8 +1022,6 @@
   }
 }
 
-
-/* AITradeX Phase 2.3 TradingView loader/flicker fix */
 .tradingview-widget-frame{
   background:#050814!important;
   border:1px solid rgba(255,255,255,.08)!important;
@@ -1104,8 +1086,6 @@
   display:none!important;
 }
 
-
-/* AITradeX Phase 2.4 black chart loading overlay */
 .tradingview-chart-container{
   background:#050814!important;
   position:relative!important;
@@ -1143,8 +1123,6 @@
   background:#050814!important;
 }
 
-
-/* AITradeX Phase 2.5 trade header cleanup */
 .clean-pair-card{
   display:flex!important;
   align-items:center!important;
@@ -1215,8 +1193,6 @@
   }
 }
 
-
-/* AITradeX Phase 2.6 dynamic trade feed */
 .trade-feed-list{
   display:grid;
   gap:9px;
@@ -1266,8 +1242,6 @@
   }
 }
 
-
-/* AITradeX Phase 2.7 pair-based market/trade feeds */
 .pair-market-feed b{
   min-height:38px;
   display:flex;
@@ -1288,8 +1262,6 @@
   word-break:break-word;
 }
 
-
-/* AITradeX Phase 2.8 user KYC + payment methods */
 .status-pill{
   display:inline-flex;
   align-items:center;
@@ -1515,8 +1487,6 @@
   }
 }
 
-
-/* AITradeX Phase 2.9 KYC + Payment premium compact polish */
 .kyc-status-card,
 .payment-head-card{
   padding:14px!important;
@@ -1702,8 +1672,6 @@
   }
 }
 
-
-/* AITradeX Phase 3.0 Admin KYC + Payment Approval */
 .admin-profile-chip{
   display:flex;
   align-items:center;
@@ -1881,8 +1849,6 @@
   }
 }
 
-
-/* AITradeX Phase 3.3 Admin filters/actions/delete */
 .admin-filter-bar{
   display:grid;
   grid-template-columns:1.2fr auto;
@@ -1986,8 +1952,6 @@
   }
 }
 
-
-/* AITradeX Phase 3.4 User KYC status result cards */
 .kyc-result-card{
   text-align:center;
   padding:20px!important;
@@ -2114,8 +2078,6 @@
   }
 }
 
-
-/* AITradeX Phase 3.5 User Wallet Flow */
 .wallet-flow-tabs{
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -2353,8 +2315,6 @@
   }
 }
 
-
-/* AITradeX Phase 3.6 Wallet mode polish */
 .demo-wallet-center{
   min-height:calc(100vh - 150px);
   display:grid;
@@ -2480,8 +2440,6 @@
   }
 }
 
-
-/* AITradeX Phase 3.7 Wallet premium deposit polish */
 .wallet-stepper{
   display:none!important;
 }
@@ -2663,7 +2621,6 @@
   }
 }
 
-/* Phase 4.0 Payment Settings polish */
 .payment-settings-grid{
   align-items:start;
 }
@@ -2695,8 +2652,6 @@
   }
 }
 
-
-/* AITradeX Phase 4.1 Admin mobile responsive clean */
 @media(max-width:900px){
   body:has(#adminApp){
     overflow-x:hidden;
@@ -2881,7 +2836,6 @@
   }
 }
 
-/* AITradeX Phase 4.3 Admin Users mobile control polish */
 .status-pill.active{
   color:var(--green);
   border-color:rgba(0,231,168,.30);
@@ -2996,8 +2950,6 @@
   }
 }
 
-
-/* AITradeX Phase 4.4 AI Trade Engine clean additions */
 .ai-control-preview .profile-note{
   line-height:1.65;
 }
@@ -3037,7 +2989,6 @@
   }
 }
 
-/* AITradeX Phase 4.6 AI Trading Desk simplified clean */
 .ai-desk-panel{
   overflow:hidden;
 }
@@ -3171,7 +3122,6 @@
   }
 }
 
-/* AITradeX Phase 4.7 Leverage + P/L calculator clean */
 .ai-inline-fields{
   display:grid;
   grid-template-columns:1fr 150px;
@@ -3196,7 +3146,6 @@
   }
 }
 
-/* Phase 4.8 - Live entry price cards */
 .live-entry-card .entry-price-box{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px;border:1px solid rgba(255,255,255,.12);border-radius:18px;background:rgba(255,255,255,.04)}
 .live-entry-card .entry-price-box div{display:flex;flex-direction:column;gap:4px}
 .live-entry-card .entry-price-box span,.live-entry-card .entry-price-box small{color:var(--muted);font-size:12px}
@@ -3211,7 +3160,6 @@
   text-shadow:0 0 14px rgba(60,255,180,.35);
 }
 
-/* AITradeX Phase 4.19 - final manual live bar and close selector styling */
 .top-live-position-bar{
   position:fixed;
   left:50%;
@@ -3469,7 +3417,6 @@
   .manual-close-list button{width:100%}
 }
 
-/* AITradeX Phase 4.18 - Trade page mobile fit clean */
 .trade-command,
 .clean-pair-card,
 .order-ticket,
@@ -3608,7 +3555,6 @@
 .orders-position-card.pending button{border-color:rgba(255,69,107,.25);background:rgba(255,69,107,.11);color:#ff9aac}
 @media(max-width:620px){.orders-position-card{grid-template-columns:1fr;align-items:start}.orders-position-card strong{text-align:left}.orders-position-card button{width:100%}}
 
-/* Phase 4.22 bottom nav SVG icon polish */
 .bottom-nav i{
   display:grid!important;
   place-items:center!important;
@@ -3636,7 +3582,6 @@
   .wallet-svg{width:20px;height:20px;}
 }
 
-/* Phase 4.23 - Limit order field polish */
 .limit-order-note {
   margin: -2px 0 10px;
   padding: 10px 12px;
@@ -3715,7 +3660,6 @@
   }
 }
 
-/* AITradeX Phase 4.25 Admin withdrawal payout details */
 .withdrawal-detail-panel{
   margin-top:12px;
   border:1px solid rgba(37,225,225,.22);
@@ -3785,7 +3729,6 @@
   }
 }
 
-/* Phase 4.28 Subscription Plans */
 .subscription-mini-card { border: 1px solid rgba(255,255,255,.10); }
 .subscription-hero-card {
   display:flex;
@@ -3854,7 +3797,6 @@
   .admin-plan-card { border-radius:18px; }
 }
 
-/* Phase 4.32 Auto Referral Bonus System */
 .referral-hero-card {
   display:flex;
   justify-content:space-between;
@@ -3919,7 +3861,6 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   .referral-bonus-stack { text-align:left; }
 }
 
-/* Phase 4.33 Support Ticket System */
 .support-hero-card{
   display:flex;
   align-items:center;
@@ -3986,7 +3927,6 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   .support-hero-card{align-items:flex-start;flex-direction:column;border-radius:20px;padding:14px}.support-grid{grid-template-columns:1fr}.whatsapp-help-btn{width:100%;text-align:center}.ticket-card-head,.support-admin-head{align-items:flex-start;gap:8px}.admin-inline-form{grid-template-columns:1fr}.support-action-row button{flex:1;min-width:130px}
 }
 
-/* Phase 4.34 - Required Aadhaar KYC clean additions */
 .readonly-input,
 .kyc-form-card input[readonly] {
   opacity: .78;
@@ -4061,8 +4001,6 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   }
 }
 
-
-/* AITradeX Phase 4.38 inbuilt SVG logo branding */
 .aitx-logo-wrap{display:inline-flex;align-items:center;justify-content:center;line-height:0;flex:0 0 auto}
 .aitx-logo-svg{display:block;width:100%;height:auto;overflow:visible}
 .logo-brand{flex:1;display:flex!important;align-items:center;min-width:0;line-height:0!important}
@@ -4078,7 +4016,6 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   .aitx-login-logo .aitx-logo-login{width:172px}
 }
 
-/* AITradeX Phase 4.39 clean standalone SVG logo mark */
 .aitx-logo-icon-wrap{width:42px;height:42px}
 .aitx-logo-icon-wrap .aitx-logo-svg{width:42px;height:42px}
 .logo-brand .aitx-logo-header .aitx-logo-svg,
@@ -4093,14 +4030,10 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   .logo-brand .aitx-logo-header .aitx-logo-svg{max-height:54px}
 }
 
-
-/* Phase 4.42 Landing Page Branding Conversion Polish */
 .landing-premium{padding-bottom:34px}.landing-nav{border-bottom:1px solid rgba(255,255,255,.06)}.landing-hero-v2{padding-top:58px}.landing-hero-v2 .hero-copy h1{max-width:760px}.landing-terminal-v2{position:relative;overflow:hidden}.landing-terminal-v2:after{content:"";position:absolute;right:-55px;top:-60px;width:190px;height:190px;border-radius:50%;background:rgba(21,229,211,.13);filter:blur(10px);pointer-events:none}.landing-chart-v2:before{background:linear-gradient(135deg,transparent 40%,rgba(21,229,211,.68) 42%,transparent 47%,transparent 54%,rgba(248,189,122,.42) 56%,transparent 61%),repeating-linear-gradient(0deg,rgba(255,255,255,.045) 0 1px,transparent 1px 38px),repeating-linear-gradient(90deg,rgba(255,255,255,.045) 0 1px,transparent 1px 55px)}.landing-feature-grid article{min-height:205px}.landing-feature-grid h3{margin:10px 0 8px}.landing-section-card{margin:20px 0;padding:22px;border:1px solid var(--line);border-radius:30px;background:linear-gradient(145deg,rgba(255,255,255,.07),rgba(255,255,255,.025));box-shadow:0 22px 60px rgba(0,0,0,.28)}.landing-section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:16px}.landing-section-head h2{margin:0;font-size:clamp(24px,3vw,36px);letter-spacing:-.04em}.landing-steps-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.landing-steps-grid article,.landing-plan-card{border:1px solid var(--line);border-radius:22px;background:rgba(255,255,255,.045);padding:16px}.landing-steps-grid b{display:inline-grid;place-items:center;width:42px;height:42px;border-radius:15px;background:rgba(21,229,211,.12);color:var(--cyan);margin-bottom:10px}.landing-steps-grid h3,.landing-plan-card h3{margin:0 0 8px}.landing-steps-grid p{margin:0;color:var(--muted);line-height:1.5}.landing-plan-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:12px 0 16px}.landing-plan-card{display:grid;gap:10px}.landing-plan-card p{margin:0;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.12em;font-weight:900}.landing-plan-card h3{font-size:24px;color:#fff}.landing-plan-card span{color:var(--cyan);font-weight:950}.landing-auth-v2{padding-top:42px}.auth-logo-box{width:220px;margin-bottom:12px}.landing-security-band{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:24px 0;padding:18px 20px;border:1px solid rgba(21,229,211,.18);border-radius:24px;background:linear-gradient(135deg,rgba(21,229,211,.10),rgba(255,255,255,.04))}.landing-security-band b{display:block;font-size:18px}.landing-security-band span{display:block;color:var(--muted);margin-top:4px}.landing-footer{display:grid;gap:10px;justify-items:center;text-align:center;color:var(--muted);padding:28px 0 8px}.landing-footer .aitx-logo-full-wrap{width:190px}.landing-footer p{max-width:720px;margin:0;line-height:1.55}.landing-footer span{font-size:12px;color:#6f809b}@media(max-width:900px){.landing-steps-grid,.landing-plan-grid{grid-template-columns:1fr 1fr}.landing-section-head{display:block}.landing-section-head h2{margin-top:8px}.landing-security-band{align-items:flex-start;flex-direction:column}.landing-security-band .btn{width:100%}}@media(max-width:620px){.landing-hero-v2{padding-top:34px}.landing-feature-grid article{min-height:auto}.landing-section-card{border-radius:22px;padding:16px}.landing-steps-grid,.landing-plan-grid{grid-template-columns:1fr}.auth-logo-box{width:190px}.landing-footer .aitx-logo-full-wrap{width:170px}.landing-security-band{border-radius:20px}}
 
-/* Phase 4.43 landing real TradingView chart */
 .landing-tv-card .terminal-head strong{font-size:28px;letter-spacing:-.03em}.landing-tv-frame{height:300px;border:1px solid var(--line);border-radius:22px;background:linear-gradient(180deg,rgba(5,8,20,.92),rgba(10,18,34,.94));overflow:hidden;position:relative}.landing-tradingview-chart-container{width:100%;height:100%;min-height:300px}.landing-tradingview-chart-container iframe{opacity:0;transition:opacity .35s ease}.landing-tradingview-chart-container iframe.aitx-tv-ready{opacity:1}.landing-tv-card .chart-loading-state{position:absolute;inset:0;z-index:2;background:linear-gradient(180deg,rgba(5,8,20,.94),rgba(12,21,38,.94));border:0;border-radius:0}.landing-tv-card .hide-loader{opacity:0;pointer-events:none}@media(max-width:620px){.landing-tv-frame{height:260px}.landing-tradingview-chart-container{min-height:260px}.landing-tv-card .terminal-head{gap:10px}.landing-tv-card .terminal-head strong{font-size:23px}.landing-tv-card .terminal-head em{font-size:11px;padding:7px 8px}}
 
-/* Phase 4.45 — Home AI Trading Activity Card */
 .ai-activity-card{
   position:relative;
   overflow:hidden;
@@ -4177,7 +4110,6 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   .activity-pill{justify-self:start}
 }
 
-/* Phase 4.50 — Crypto Active / Upcoming Markets */
 .ticker-card.upcoming-market-card,
 .pair-rate-list button.upcoming-pair,
 .pair-sheet-grid button.upcoming-pair {
@@ -4258,7 +4190,6 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
 .order-success-banner span{display:block;color:#cfe8dd;margin-top:4px;font-size:13px;font-weight:750;line-height:1.45}
 @media(max-width:620px){.order-success-banner{border-radius:18px;padding:13px 14px}.order-success-banner b{font-size:14px}.order-success-banner span{font-size:12px}}
 
-/* Phase 4.53 — Live AI Auto-Close Positions */
 .ai-live-open-panel{margin-top:18px;}
 .ai-live-batch-card .admin-user-main{align-items:center;}
 .ai-managed-position{border-color:rgba(80,220,255,.22);background:linear-gradient(135deg,rgba(14,32,58,.94),rgba(9,18,34,.98));}
@@ -4267,7 +4198,6 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
 .orders-summary-grid{grid-template-columns:repeat(5,minmax(0,1fr));}
 @media(max-width:760px){.orders-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.ai-live-open-panel .admin-grid-two{grid-template-columns:1fr;}}
 
-/* AITradeX Phase 4.54 user premium lightweight polish */
 .premium-drawer{padding:14px!important;}
 .drawer-group{border:1px solid rgba(255,255,255,.09);background:rgba(8,18,35,.88);border-radius:20px;padding:9px;margin-top:10px;}
 .drawer-group>span{display:block;color:var(--muted);font-size:10px;font-weight:1000;letter-spacing:.16em;text-transform:uppercase;margin:3px 6px 7px;}
@@ -4306,7 +4236,6 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
 
 .ai-trading-summary-card{position:relative;overflow:hidden}.ai-trading-summary-card:before{content:"";position:absolute;right:-70px;top:-80px;width:210px;height:210px;border-radius:50%;background:radial-gradient(circle,rgba(21,229,211,.22),transparent 68%);pointer-events:none}.ai-summary-grid article{min-height:96px}.ai-summary-grid b{font-size:19px}.ai-validation-panel{margin:14px 0}.ai-validation-card .admin-user-main{align-items:center}.ai-validation-card{background:linear-gradient(135deg,rgba(21,229,211,.075),rgba(255,255,255,.035))}.ai-validation-card .admin-user-stats b{white-space:nowrap}
 
-/* AITradeX Phase 4.61 admin AI control split + history pagination */
 .ai-control-split-bars{
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -4374,12 +4303,10 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   .admin-pagination.ai-history-pagination{justify-content:center;flex-wrap:wrap}
 }
 
-/* Phase 4.62: clearer admin AI split pages */
 .ai-control-mode-switch .ai-control-mode-bar{cursor:pointer;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
 .ai-control-mode-switch .ai-control-mode-bar:hover{transform:translateY(-2px)}
 .ai-control-mode-switch .ai-control-mode-bar.active{border-color:rgba(20,184,166,.65);box-shadow:0 18px 42px rgba(20,184,166,.14)}
 
-/* Phase 4.63 - Admin User & Wallet Control Polish */
 .user-wallet-metrics{margin-bottom:18px}
 .admin-user-manager-panel .section-head{align-items:flex-start}
 .admin-user-premium-grid{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
@@ -4404,7 +4331,6 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
 .admin-pagination{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:14px}.admin-pagination span{font-weight:800;color:#475569;font-size:.85rem}.admin-pagination button:disabled{opacity:.45;cursor:not-allowed}
 @media(max-width:760px){.admin-history-row{grid-template-columns:1fr}.admin-tool-row{grid-template-columns:1fr}.admin-user-tools-grid{grid-template-columns:1fr}}
 
-/* Phase 4.64: Admin paginated user and finance history polish */
 .admin-user-page-meta{
   display:flex;
   justify-content:space-between;
@@ -4428,7 +4354,6 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   .admin-user-page-meta span{text-align:left}
 }
 
-/* Phase 4.65 - Admin finance control polish */
 .finance-command-metrics .metric-card b{font-size:18px;letter-spacing:-.02em}
 .finance-control-panel{position:relative;overflow:hidden}
 .finance-process-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:14px 0 16px}
@@ -4462,14 +4387,12 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
 @media(max-width:900px){.finance-process-strip,.finance-detail-grid{grid-template-columns:1fr 1fr}.finance-review-head{gap:10px}.finance-head-badges{justify-content:flex-start}.finance-command-metrics .metric-card b{font-size:15px}}
 @media(max-width:560px){.finance-process-strip,.finance-detail-grid{grid-template-columns:1fr}.finance-detail-title{display:grid}.finance-proof-preview img{width:76px;height:54px}}
 
-/* Phase 4.66 - Admin dashboard analytics */
 .admin-dashboard-hero{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px;padding:22px;border-radius:28px;background:linear-gradient(135deg,rgba(9,18,36,.96),rgba(29,92,255,.84));color:#fff;box-shadow:0 22px 54px rgba(13,28,61,.18);overflow:hidden;position:relative}
 .admin-dashboard-hero:after{content:"";position:absolute;right:-70px;top:-80px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.12)}
 .admin-dashboard-hero>div,.admin-dashboard-hero button{position:relative;z-index:1}.admin-dashboard-hero span{display:block;font-size:12px;font-weight:900;letter-spacing:.09em;text-transform:uppercase;opacity:.82}.admin-dashboard-hero h2{margin:6px 0 6px;font-size:28px;letter-spacing:-.04em}.admin-dashboard-hero p{margin:0;max-width:650px;color:rgba(255,255,255,.78);font-size:14px;font-weight:700}.admin-dashboard-hero .mini-action{background:#fff;color:#0f172a;border-color:rgba(255,255,255,.5)}
 .dashboard-analytics-grid{grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin-bottom:18px}.dashboard-analytics-grid .metric-card{min-height:118px}.dashboard-control-grid{align-items:start;margin-bottom:18px}.dashboard-pending-panel,.dashboard-activity-panel{min-height:410px}.dashboard-action-row{display:grid;grid-template-columns:42px 1fr auto auto;gap:12px;align-items:center;padding:13px;border-radius:18px;background:rgba(255,255,255,.82);border:1px solid rgba(8,30,65,.08)}.dashboard-action-row i{display:grid;place-items:center;width:42px;height:42px;border-radius:16px;background:linear-gradient(135deg,rgba(29,92,255,.1),rgba(21,229,211,.08));font-style:normal}.dashboard-action-row b,.dashboard-activity-row b{display:block;color:#0f172a;font-size:13px}.dashboard-action-row span,.dashboard-activity-row span{display:block;color:#64748b;font-size:12px;margin-top:3px;font-weight:700}.dashboard-action-row strong{font-size:18px;color:#0f172a}.dashboard-activity-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:13px;border-radius:18px;background:rgba(248,250,252,.86);border:1px solid rgba(8,30,65,.08)}
 @media(max-width:760px){.admin-dashboard-hero{align-items:flex-start;flex-direction:column}.admin-dashboard-hero h2{font-size:23px}.dashboard-action-row{grid-template-columns:38px 1fr auto}.dashboard-action-row .mini-action{grid-column:2/-1;justify-self:start}.dashboard-pending-panel,.dashboard-activity-panel{min-height:0}}
 
-/* Phase 4.67 Notification System */
 .header-actions,
 .admin-header-actions {
   display: inline-flex;
@@ -4592,7 +4515,6 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   }
 }
 
-/* Phase 4.68 User Dashboard Final Polish */
 .user-command-hero {
   position: relative;
   overflow: hidden;
@@ -4864,7 +4786,6 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   .user-activity-row small { grid-column: 2; }
 }
 
-/* Phase 4.69 Clean User Home + Real/Demo Switch Restore */
 .clean-home-hero {
   margin-bottom: 16px;
   border: 1px solid rgba(255,255,255,.12);
@@ -4952,7 +4873,6 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   .clean-ai-control-card .auto-summary { grid-template-columns: 1fr; }
 }
 
-/* Phase 4.70 Home Text Contrast Fix */
 .clean-plan-card,
 .clean-ai-control-card {
   background: linear-gradient(145deg, rgba(12, 25, 48, .96), rgba(7, 14, 28, .98)) !important;
@@ -4990,7 +4910,6 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   box-shadow: 0 14px 32px rgba(21, 229, 211, .18);
 }
 
-/* AITradeX Phase 4.71 — Trade page premium polish + global active bar upgrade */
 .top-live-position-bar.premium-active-bar{
   position:sticky;
   left:0;
@@ -5070,7 +4989,6 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   .risk-preset-row{grid-template-columns:1fr 1fr;}
 }
 
-/* AITradeX Phase 4.72 - Compact trade ticket + fast buy/sell layout */
 .compact-trade-ticket{
   padding:14px!important;
   border-radius:24px!important;
@@ -5236,7 +5154,6 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   .risk-preset-row.compact{grid-template-columns:1fr 1fr;}
 }
 
-/* AITradeX Phase 4.74 - Trade action labels cleanup + premium chart balance */
 .tradingview-shell{
   padding:10px!important;
   border-radius:26px!important;
@@ -5321,7 +5238,6 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   .fast-buy-sell-row.priority-actions .buy-btn{min-height:56px!important;font-size:14px!important;}
 }
 
-/* Phase 4.75 — Orders Page Real App Polish */
 .orders-app-hero{
   display:flex;
   align-items:center;
@@ -5386,7 +5302,6 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   .orders-row-meta span,.orders-row-prices span{font-size:11px;padding:5px 7px}
 }
 
-/* AITradeX Phase 4.77 Wallet Action Panels Premium Polish */
 .wallet-premium-hero{
   position:relative;
   overflow:hidden;
@@ -5675,7 +5590,6 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   }
 }
 
-/* AITradeX Phase 4.78 History Page Real App Polish */
 .history-real-hero{
   display:flex;
   justify-content:space-between;
@@ -5971,7 +5885,6 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   .history-real-pagination{grid-template-columns:1fr;justify-items:stretch;text-align:center}
 }
 
-/* Phase 4.79 — Premium Menu Drawer + Inner Pages Polish */
 .refined-drawer {
   display: flex;
   flex-direction: column;
@@ -6203,7 +6116,6 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   .drawer-mini-grid b { font-size: 11px; }
 }
 
-/* AITradeX Phase 4.81 — global P/L color consistency + active-position selector fix */
 .profit-text,
 .green,
 [class*="profit-text"]{
@@ -6282,7 +6194,6 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   }
 }
 
-/* Phase 4.82 Header Brand Cleanup */
 .header-brand-text{
   flex:1;
   min-width:0;
@@ -6341,7 +6252,6 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   .header-brand-text b:after{width:40px;margin-top:3px}
 }
 
-/* Phase 4.83 Global Theme Consistency Pass */
 :root{
   --bg:#050816;
   --panel:#0b1425;
@@ -6559,7 +6469,6 @@ textarea::placeholder{
   border-color:rgba(255,255,255,.12)!important;
 }
 
-/* Phase 4.84 — Admin Control Panel Premium Polish */
 .admin-pro-shell.control-shell { background: radial-gradient(circle at top left, rgba(34,211,238,.08), transparent 34%), #050816; }
 .admin-pro-sidebar.sidebar { background: rgba(6, 12, 28, .96); border-right: 1px solid rgba(148,163,184,.16); backdrop-filter: blur(18px); display:flex; flex-direction:column; gap:12px; }
 .admin-side-profile-card { display:flex; align-items:center; gap:10px; padding:12px; border:1px solid rgba(34,211,238,.18); border-radius:18px; background:linear-gradient(135deg, rgba(15,23,42,.92), rgba(8,47,73,.52)); box-shadow:0 18px 40px rgba(0,0,0,.22); }
@@ -6640,8 +6549,6 @@ textarea::placeholder{
   .sidebar nav .admin-nav-button { min-height:52px; }
 }
 
-/* Phase 4.85 — Admin Mobile Responsive Clean Fix
-   Clean in-file update: keeps desktop admin unchanged, fixes mobile sidebar, cards, forms, and long content overflow. */
 @media (max-width: 980px) {
   body:has(#adminApp) {
     overflow-x: hidden !important;
@@ -7221,7 +7128,6 @@ textarea::placeholder{
   }
 }
 
-/* Phase 4.86 — Admin contrast/readability cleanup */
 .control-shell,
 .admin-pro-shell.control-shell{
   --admin-bg-1:#06101f;
