@@ -564,23 +564,148 @@
       </main>`;
   }
 
+  function todayKey() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  function isTodayDate(value) {
+    return String(value || "").slice(0, 10) === todayKey();
+  }
+
+  function adminDashboardStats() {
+    const users = allUsers();
+    const activeUsers = users.filter(u => userStatus(u) === "ACTIVE");
+    const blockedUsers = users.filter(u => userStatus(u) === "BLOCKED");
+    const suspendedUsers = users.filter(u => userStatus(u) === "SUSPENDED");
+    const deposits = financeStats("DEPOSIT");
+    const withdrawals = financeStats("WITHDRAWAL");
+    const liveRows = aiLivePositions();
+    const livePnl = liveRows.reduce((sum, row) => sum + aiLivePositionPnl(row), 0);
+    const lockedAmount = liveRows.reduce((sum, row) => sum + Number(row.marginAmount || 0), 0);
+    const todayTrades = (App.state.trades || []).filter(t => isTodayDate(t.createdAt || t.openedAt || t.closedAt));
+    const todayAiPnl = todayTrades
+      .filter(t => String(t.tradeType || "").startsWith("AI") || String(t.source || "").includes("AI"))
+      .reduce((sum, t) => sum + Number(t.pnl || t.profitLoss || 0), 0);
+    const totalAiPnl = (App.state.trades || [])
+      .filter(t => String(t.tradeType || "").startsWith("AI") || String(t.source || "").includes("AI"))
+      .reduce((sum, t) => sum + Number(t.pnl || t.profitLoss || 0), 0);
+    return {
+      users,
+      activeUsers: activeUsers.length,
+      blockedUsers: blockedUsers.length,
+      suspendedUsers: suspendedUsers.length,
+      aiOnUsers: users.filter(u => u.aiTradeOn && userStatus(u) === "ACTIVE").length,
+      totalWallet: users.reduce((sum, u) => sum + App.realBalance(u.id), 0),
+      deposits,
+      withdrawals,
+      livePositions: liveRows.length,
+      livePnl: Number(livePnl.toFixed(2)),
+      lockedAmount: Number(lockedAmount.toFixed(2)),
+      todayAiTrades: todayTrades.filter(t => String(t.tradeType || "").startsWith("AI") || String(t.source || "").includes("AI")).length,
+      todayAiPnl: Number(todayAiPnl.toFixed(2)),
+      totalAiPnl: Number(totalAiPnl.toFixed(2)),
+      openSupportTickets: (App.state.supportTickets || []).filter(t => String(t.status || "OPEN").toUpperCase() !== "CLOSED").length
+    };
+  }
+
+  function pendingActionRow(icon, title, subtitle, count, targetPage) {
+    return `
+      <article class="dashboard-action-row">
+        <i>${icon}</i>
+        <div><b>${esc(title)}</b><span>${esc(subtitle)}</span></div>
+        <strong>${count}</strong>
+        <button class="mini-action" onclick="AITradeXAdmin.go('${targetPage}')">Open</button>
+      </article>`;
+  }
+
+  function recentActivityRows(limit = 8) {
+    const userName = userId => displayNameFor(allUsers().find(u => u.id === userId) || {});
+    const financeRows = allWalletRequests().map(x => ({
+      at: x.request.updatedAt || x.request.approvedAt || x.request.rejectedAt || x.request.createdAt,
+      title: `${x.type === "DEPOSIT" ? "Deposit" : "Withdrawal"} ${String(x.request.status || "PENDING").toLowerCase()}`,
+      detail: `${displayNameFor(x.user)} · ${App.money(x.request.amount || 0)}`,
+      tag: x.type,
+      page: x.type === "DEPOSIT" ? "deposits" : "withdrawals"
+    }));
+    const tradeRows = (App.state.trades || [])
+      .filter(t => String(t.tradeType || "").startsWith("AI") || String(t.source || "").includes("AI"))
+      .map(t => ({
+        at: t.closedAt || t.openedAt || t.createdAt,
+        title: `${String(t.status || "AI Trade").toUpperCase()} · ${t.pair || "AI"}`,
+        detail: `${userName(t.userId)} · P/L ${App.money(t.pnl || t.profitLoss || 0)}`,
+        tag: t.tradeType === "AI_LIVE" ? "LIVE" : "INSTANT",
+        page: t.tradeType === "AI_LIVE" ? "liveAi" : "instantAi"
+      }));
+    const ledgerRows = (App.state.walletLedger || []).map(row => ({
+      at: row.createdAt,
+      title: String(row.type || "Wallet Entry").replaceAll("_", " "),
+      detail: `${userName(row.userId)} · ${App.money(row.amount || 0)}`,
+      tag: "WALLET",
+      page: "users"
+    }));
+    return [...financeRows, ...tradeRows, ...ledgerRows]
+      .filter(row => row.at)
+      .sort((a, b) => Date.parse(b.at || 0) - Date.parse(a.at || 0))
+      .slice(0, limit);
+  }
+
+  function recentActivityHtml() {
+    const rows = recentActivityRows();
+    return rows.length ? rows.map(row => `
+      <article class="dashboard-activity-row">
+        <div><b>${esc(row.title)}</b><span>${esc(row.detail)} · ${new Date(row.at).toLocaleString("en-IN")}</span></div>
+        <button class="mini-action" onclick="AITradeXAdmin.go('${row.page}')">${esc(row.tag)}</button>
+      </article>`).join("") : `<div class="empty-state">No recent activity yet.</div>`;
+  }
+
   function dashboardPage() {
     const users = allUsers();
     const kycRequests = users.map(u => ({ user: u, kyc: kycFor(u) })).filter(x => x.kyc.status === "PENDING");
     const paymentPending = users.flatMap(u => paymentMethodsFor(u).map(m => ({ user: u, method: m }))).filter(x => x.method.status === "PENDING");
-    const pendingDeposits = pendingFinanceCount("DEPOSIT");
-    const pendingWithdrawals = pendingFinanceCount("WITHDRAWAL");
-    const openSupportTickets = (App.state.supportTickets || []).filter(t => String(t.status || "OPEN").toUpperCase() !== "CLOSED").length;
+    const stats = adminDashboardStats();
 
     shell(`
-      <section class="metrics-grid">
-        ${metric("👥", "Total Users", users.length)}
-        ${metric("🛡️", "Pending KYC", kycRequests.length)}
-        ${metric("💳", "Pending Methods", paymentPending.length)}
-        ${metric("⬇️", "Pending Deposits", pendingDeposits)}
-        ${metric("⬆️", "Pending Withdrawals", pendingWithdrawals)}
-        ${metric("🤖", "AI ON Users", allUsers().filter(u => u.aiTradeOn && userStatus(u) === "ACTIVE").length)}
-        ${metric("🎧", "Open Support", openSupportTickets)}
+      <section class="admin-dashboard-hero">
+        <div>
+          <span>Admin Control Room</span>
+          <h2>Live platform analytics</h2>
+          <p>Total users, wallet exposure, pending finance actions and AI trade risk are now visible on one screen.</p>
+        </div>
+        <button class="mini-action" onclick="AITradeXAdmin.go('dashboard')">Refresh</button>
+      </section>
+
+      <section class="metrics-grid dashboard-analytics-grid">
+        ${metric("👥", "Total Users", stats.users.length)}
+        ${metric("✅", "Active Users", stats.activeUsers)}
+        ${metric("🚫", "Blocked / Suspended", `${stats.blockedUsers}/${stats.suspendedUsers}`)}
+        ${metric("💰", "Total Real Wallet", App.money(stats.totalWallet))}
+        ${metric("⬇️", "Today Deposits", App.money(stats.deposits.todayAmount))}
+        ${metric("⬆️", "Today Withdrawals", App.money(stats.withdrawals.todayAmount))}
+        ${metric("⌛", "Pending Deposits", `${stats.deposits.pending} · ${App.money(stats.deposits.pendingAmount)}`)}
+        ${metric("⌛", "Pending Withdrawals", `${stats.withdrawals.pending} · ${App.money(stats.withdrawals.pendingAmount)}`)}
+        ${metric("📈", "Running AI Positions", stats.livePositions)}
+        ${metric("🔒", "Locked AI Amount", App.money(stats.lockedAmount))}
+        ${metric("🤖", "Today AI P/L", `${stats.todayAiPnl >= 0 ? "+" : ""}${App.money(stats.todayAiPnl)}`)}
+        ${metric("📊", "Total AI P/L", `${stats.totalAiPnl >= 0 ? "+" : ""}${App.money(stats.totalAiPnl)}`)}
+      </section>
+
+      <section class="admin-grid-two dashboard-control-grid">
+        <div class="panel-card dashboard-pending-panel">
+          <div class="section-head"><div><h3>Pending Action Panel</h3><span>Important items that need admin attention</span></div></div>
+          <div class="admin-list">
+            ${pendingActionRow("🛡️", "Pending KYC", "Users waiting for verification", kycRequests.length, "kyc")}
+            ${pendingActionRow("💳", "Bank Account Requests", "Payment methods waiting for approval", paymentPending.length, "payments")}
+            ${pendingActionRow("⬇️", "Pending Deposits", "Deposit requests to approve/reject", stats.deposits.pending, "deposits")}
+            ${pendingActionRow("⬆️", "Pending Withdrawals", "Withdrawal requests to approve/reject", stats.withdrawals.pending, "withdrawals")}
+            ${pendingActionRow("📈", "Running Live AI", "Open AI positions to monitor/close", stats.livePositions, "liveAi")}
+            ${pendingActionRow("🎧", "Open Support Tickets", "User support messages", stats.openSupportTickets, "support")}
+          </div>
+        </div>
+
+        <div class="panel-card dashboard-activity-panel">
+          <div class="section-head"><div><h3>Recent Activity Feed</h3><span>Latest wallet, finance and AI trade events</span></div></div>
+          <div class="admin-list">${recentActivityHtml()}</div>
+        </div>
       </section>
 
       <section class="admin-grid-two">
