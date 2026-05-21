@@ -1511,33 +1511,72 @@
       ${drawerOpen ? menuDrawer() : ""}`;
   }
 
+  function drawerStatusBadge(label, tone = "neutral") {
+    return `<em class="drawer-status ${tone}">${App.escapeHtml(label)}</em>`;
+  }
+
+  function drawerItem({ pageKey, icon, title, subtitle, badge, tone = "neutral" }) {
+    const active = page === pageKey ? "active" : "";
+    const badgeHtml = badge ? drawerStatusBadge(badge.label, badge.tone || tone) : "";
+    return `
+      <button onclick="AITradeXUser.go('${pageKey}')" class="drawer-item rich ${active}">
+        <i>${icon}</i>
+        <span><b>${App.escapeHtml(title)}</b><small>${App.escapeHtml(subtitle)}</small></span>
+        ${badgeHtml}
+      </button>`;
+  }
+
   function menuDrawer() {
     const u = user();
+    const plan = currentPlan();
+    const kyc = currentKyc();
+    const bankApproved = approvedPaymentMethods().length;
+    const openTickets = supportTicketsForUser().filter(ticket => String(ticket.status || "OPEN").toUpperCase() !== "CLOSED").length;
+    const unread = userUnreadNotifications();
+    const wallet = App.realBalance(u?.id || "");
+    const kycBadge = kyc.status === "APPROVED" ? { label: "Approved", tone: "good" } : kyc.status === "PENDING" ? { label: "Pending", tone: "warn" } : kyc.status === "REJECTED" ? { label: "Rejected", tone: "bad" } : { label: "Start", tone: "warn" };
+    const bankBadge = bankApproved ? { label: `${bankApproved} Ready`, tone: "good" } : { label: "Add", tone: "warn" };
+    const planBadge = { label: plan?.name || "Free", tone: activeSubscription() ? "good" : "neutral" };
+
     return `
       <div class="drawer-backdrop" onclick="AITradeXUser.toggleDrawer(false)"></div>
-      <aside class="side-drawer premium-drawer">
-        <div class="drawer-head">
-          ${avatar(displayName())}
-          <div>
-            <b>${App.escapeHtml(displayName() || "AITradeX User")}</b>
-            <span>${accountMode} account active</span>
+      <aside class="side-drawer premium-drawer refined-drawer">
+        <div class="drawer-profile-card">
+          <div class="drawer-profile-top">
+            ${avatar(displayName())}
+            <div>
+              <b>${App.escapeHtml(displayName() || "AITradeX User")}</b>
+              <span>${App.escapeHtml(u?.email || u?.mobile || "User account")}</span>
+            </div>
+          </div>
+          <div class="drawer-mini-grid">
+            <article><span>Mode</span><b>${App.escapeHtml(accountMode)}</b></article>
+            <article><span>Plan</span><b>${App.escapeHtml(plan?.name || "Free")}</b></article>
+            <article><span>Wallet</span><b>${App.money(wallet)}</b></article>
           </div>
         </div>
-        <div class="drawer-group">
+
+        <div class="drawer-group rich-group">
           <span>Account</span>
-          <button onclick="AITradeXUser.go('profile')" class="drawer-item">👤 Profile</button>
-          <button onclick="AITradeXUser.go('kyc')" class="drawer-item">🛡️ KYC Verification</button>
-          <button onclick="AITradeXUser.go('payments')" class="drawer-item">🏦 Bank Accounts</button>
+          ${drawerItem({ pageKey: "profile", icon: "👤", title: "Profile", subtitle: "Name, avatar and account details" })}
+          ${drawerItem({ pageKey: "kyc", icon: "🛡️", title: "KYC Verification", subtitle: "Required for verified withdrawals", badge: kycBadge })}
+          ${drawerItem({ pageKey: "payments", icon: "🏦", title: "Bank Accounts", subtitle: "Approved payout methods", badge: bankBadge })}
+          ${drawerItem({ pageKey: "notifications", icon: "🔔", title: "Notifications", subtitle: "Wallet, AI and support updates", badge: unread ? { label: `${unread} New`, tone: "warn" } : { label: "Clear", tone: "good" } })}
         </div>
-        <div class="drawer-group">
+
+        <div class="drawer-group rich-group">
           <span>Growth</span>
-          <button onclick="AITradeXUser.go('subscription')" class="drawer-item">⭐ Subscription</button>
-          <button onclick="AITradeXUser.go('referral')" class="drawer-item">🎁 Referral</button>
+          ${drawerItem({ pageKey: "subscription", icon: "⭐", title: "Subscription", subtitle: "AI trade limit and plan control", badge: planBadge })}
+          ${drawerItem({ pageKey: "referral", icon: "🎁", title: "Referral", subtitle: "Invite friends and earn credits" })}
         </div>
-        <div class="drawer-group">
+
+        <div class="drawer-group rich-group">
           <span>Help</span>
-          <button onclick="AITradeXUser.go('support')" class="drawer-item">🎧 Support</button>
-          <button onclick="AITradeXUser.logout()" class="drawer-item danger">🚪 Logout</button>
+          ${drawerItem({ pageKey: "support", icon: "🎧", title: "Support", subtitle: "Raise tickets and check replies", badge: openTickets ? { label: `${openTickets} Open`, tone: "warn" } : { label: "Ready", tone: "good" } })}
+        </div>
+
+        <div class="drawer-bottom-zone">
+          <button onclick="AITradeXUser.logout()" class="drawer-item danger rich"><i>🚪</i><span><b>Logout</b><small>Sign out from this device</small></span></button>
         </div>
       </aside>`;
   }
@@ -2954,61 +2993,70 @@
     `);
   }
 
+  function bankMethodCard(m) {
+    return `
+      <article class="bank-slim-card ${String(m.status || "").toLowerCase()}">
+        <div class="bank-icon">${m.status === "APPROVED" ? "✓" : m.status === "REJECTED" ? "!" : "⌛"}</div>
+        <div>
+          <b>${App.escapeHtml(m.bankName || "Bank Account")} · ****${String(m.accountNumber || "").slice(-4)}</b>
+          <span>${App.escapeHtml(m.holderName || "-")} · IFSC ${App.escapeHtml(m.ifsc || "-")}</span>
+          <small>${App.escapeHtml(m.accountType || "Savings")} ${m.approvedAt ? `· Approved ${new Date(m.approvedAt).toLocaleDateString("en-IN")}` : ""}${m.rejectedAt ? `· Rejected ${new Date(m.rejectedAt).toLocaleDateString("en-IN")}` : ""}</small>
+          ${m.rejectReason ? `<small class="loss-text">Reason: ${App.escapeHtml(m.rejectReason)}</small>` : ""}
+        </div>
+        ${statusPill(m.status)}
+      </article>`;
+  }
+
   function paymentPage() {
     const kyc = currentKyc();
     const methods = paymentMethods().filter(m => m.type === "BANK");
+    const approvedCount = methods.filter(m => m.status === "APPROVED").length;
+    const pendingCount = methods.filter(m => m.status === "PENDING").length;
     const counts = paymentCounts();
     const kycReady = kyc.status === "APPROVED";
     const holder = verifiedKycName();
     const canAddBank = counts.BANK < 2;
 
     shell(`
-      <section class="premium-card payment-head-card">
-        <div class="card-row">
-          <div>
-            <p>BANK ACCOUNTS</p>
-            <h2>Withdrawal Bank Accounts</h2>
-            <span class="ticket-mode">Withdrawals are processed only to approved bank accounts. Deposit UPI/QR remains separate.</span>
+      <section class="inner-hero-card bank-hero-card">
+        <div>
+          <p>BANK ACCOUNTS</p>
+          <h1>Verified payout methods</h1>
+          <span>Only approved bank accounts can be used for withdrawal requests.</span>
+        </div>
+        ${statusPill(kyc.status)}
+      </section>
+
+      <section class="inner-status-strip">
+        <article><span>KYC</span><b>${String(kyc.status || "NOT_SUBMITTED").replaceAll("_", " ")}</b></article>
+        <article><span>Approved Banks</span><b>${approvedCount}</b></article>
+        <article><span>Pending Review</span><b>${pendingCount}</b></article>
+        <article><span>Limit</span><b>${counts.BANK}/2</b></article>
+      </section>
+
+      ${!kycReady ? `
+        <section class="premium-card inner-action-card locked">
+          <div><p>KYC REQUIRED</p><h2>Complete KYC before adding bank</h2><span>Your verified name is required for safe bank approval.</span></div>
+          <button class="save-profile-btn" onclick="AITradeXUser.go('kyc')">Go to KYC</button>
+        </section>` : `
+        <section class="premium-card inner-action-card bank-form-premium">
+          <div class="card-row"><div><p>ADD BANK ACCOUNT</p><h2>Submit bank for approval</h2><span class="ticket-mode">Verified name: ${App.escapeHtml(holder)}</span></div><span class="history-mode">${canAddBank ? "Available" : "Limit Reached"}</span></div>
+          <div class="form-grid kyc-grid compact-inner-form">
+            <label>Holder Name<input value="${App.escapeHtml(holder)}" disabled/></label>
+            <label>Bank Name<input id="bankNameInput" ${!canAddBank ? "disabled" : ""} placeholder="Bank name"/></label>
+            <label>Account Number<input id="bankAccInput" ${!canAddBank ? "disabled" : ""} placeholder="Account number"/></label>
+            <label>Confirm Account Number<input id="bankAccConfirmInput" ${!canAddBank ? "disabled" : ""} placeholder="Confirm account number"/></label>
+            <label>IFSC Code<input id="bankIfscInput" ${!canAddBank ? "disabled" : ""} placeholder="IFSC code"/></label>
+            <label>Account Type<select id="bankTypeInput" ${!canAddBank ? "disabled" : ""}><option>Savings</option><option>Current</option></select></label>
           </div>
-          ${statusPill(kyc.status)}
-        </div>
-        ${!kycReady ? `<div class="kyc-required-box">Complete and approve KYC first to add bank accounts.</div>` : `<div class="verified-name-box"><span>Verified Name</span><b>${App.escapeHtml(holder)}</b></div>`}
-      </section>
+          <button class="save-profile-btn" onclick="AITradeXUser.addBankMethod()" ${!canAddBank ? "disabled" : ""}>Submit Bank for Verification</button>
+          ${!canAddBank ? `<div class="profile-note">Maximum 2 pending/approved bank accounts allowed.</div>` : ""}
+        </section>`}
 
-      <section class="premium-card payment-form-card">
-        <p>ADD BANK ACCOUNT</p>
-        <h2>Bank Verification</h2>
-        <div class="form-grid kyc-grid">
-          <label>Holder Name<input value="${App.escapeHtml(holder)}" disabled/></label>
-          <label>Bank Name<input id="bankNameInput" ${!kycReady || !canAddBank ? "disabled" : ""} placeholder="Bank name"/></label>
-          <label>Account Number<input id="bankAccInput" ${!kycReady || !canAddBank ? "disabled" : ""} placeholder="Account number"/></label>
-          <label>Confirm Account Number<input id="bankAccConfirmInput" ${!kycReady || !canAddBank ? "disabled" : ""} placeholder="Confirm account number"/></label>
-          <label>IFSC Code<input id="bankIfscInput" ${!kycReady || !canAddBank ? "disabled" : ""} placeholder="IFSC code"/></label>
-          <label>Account Type<select id="bankTypeInput" ${!kycReady || !canAddBank ? "disabled" : ""}><option>Savings</option><option>Current</option></select></label>
-        </div>
-        <button class="save-profile-btn" onclick="AITradeXUser.addBankMethod()" ${!kycReady || !canAddBank ? "disabled" : ""}>Submit Bank for Verification</button>
-        ${!canAddBank ? `<div class="profile-note">Maximum 2 pending/approved bank accounts allowed. Rejected accounts do not count in this limit.</div>` : ""}
-      </section>
-
-      <section class="premium-card">
-        <p>SAVED BANK ACCOUNTS</p>
-        <h2>Your Bank Accounts</h2>
-        <div class="payment-method-list">
-          ${methods.length ? methods.map(m => `
-            <article class="method-card ${String(m.status || "").toLowerCase()}">
-              <div class="method-icon">${m.status === "APPROVED" ? "✓" : m.status === "REJECTED" ? "!" : "⌛"}</div>
-              <div>
-                <b>Bank Account</b>
-                <span>${App.escapeHtml(m.bankName)} · ****${String(m.accountNumber || "").slice(-4)}</span>
-                <small>Holder: ${App.escapeHtml(m.holderName)}</small>
-                <small>IFSC: ${App.escapeHtml(m.ifsc || "-")} · ${App.escapeHtml(m.accountType || "Savings")}</small>
-                ${m.approvedAt ? `<small>Approved: ${new Date(m.approvedAt).toLocaleString()}</small>` : ""}
-                ${m.rejectedAt ? `<small>Rejected: ${new Date(m.rejectedAt).toLocaleString()}</small>` : ""}
-                ${m.rejectReason ? `<small class="loss-text">Reason: ${App.escapeHtml(m.rejectReason)}</small>` : ""}
-              </div>
-              ${statusPill(m.status)}
-            </article>
-          `).join("") : `<div class="empty-state">No bank accounts added yet.</div>`}
+      <section class="premium-card bank-list-card">
+        <div class="card-row"><div><p>SAVED BANK ACCOUNTS</p><h2>Your bank list</h2></div><span class="history-mode">${methods.length}</span></div>
+        <div class="bank-slim-list">
+          ${methods.length ? methods.map(bankMethodCard).join("") : `<div class="empty-state">No bank accounts added yet.</div>`}
         </div>
       </section>
     `);
@@ -3125,13 +3173,32 @@
   function profilePage() {
     const u = user();
     const savedName = displayName();
-    const avatarData = localStorage.getItem(`AITradeX_AVATAR_${u.id}`) || "";
+    const plan = currentPlan();
+    const kyc = currentKyc();
+    const bankApproved = approvedPaymentMethods().length;
 
     shell(`
-      <section class="premium-card profile-editor-card">
-        <p>PROFILE</p>
-        <h2>Edit Profile</h2>
+      <section class="inner-hero-card profile-hero-card">
+        <div class="profile-hero-left">
+          ${avatar(savedName)}
+          <div>
+            <p>PROFILE</p>
+            <h1>${App.escapeHtml(savedName || "AITradeX User")}</h1>
+            <span>${App.escapeHtml(u.email)} · ${App.escapeHtml(u.mobile || "Mobile not added")}</span>
+          </div>
+        </div>
+        <span class="history-mode">${App.escapeHtml(accountMode)} Account</span>
+      </section>
 
+      <section class="inner-status-strip profile-status-strip">
+        <article><span>KYC</span><b>${String(kyc.status || "NOT_SUBMITTED").replaceAll("_", " ")}</b></article>
+        <article><span>Bank</span><b>${bankApproved} Approved</b></article>
+        <article><span>Plan</span><b>${App.escapeHtml(plan?.name || "Free")}</b></article>
+        <article><span>Wallet</span><b>${App.money(App.realBalance(u.id))}</b></article>
+      </section>
+
+      <section class="premium-card profile-editor-card compact-profile-editor">
+        <div class="card-row"><div><p>EDIT PROFILE</p><h2>Personal display</h2></div><span class="history-mode">Browser Saved</span></div>
         <div class="profile-preview">
           ${avatar(savedName)}
           <div>
@@ -3139,22 +3206,16 @@
             <span>${App.escapeHtml(u.email)}</span>
           </div>
         </div>
-
-        <div class="profile-form">
+        <div class="profile-form compact-inner-form">
           <label>Display Name<input id="profileNameInput" value="${App.escapeHtml(savedName)}" placeholder="Your display name"/></label>
           <label>Avatar Image<input id="profileAvatarInput" type="file" accept="image/*"/></label>
           <button class="save-profile-btn" onclick="AITradeXUser.saveProfile()">Save Profile</button>
         </div>
-
-        <div class="profile-note">
-          Avatar अभी browser में save होगा. बाद में इसे Supabase Storage से connect करेंगे.
-        </div>
       </section>
 
-      <section class="premium-card">
-        <p>ACCOUNT DETAILS</p>
-        <h2>Basic Information</h2>
-        <div class="profile-info-grid">
+      <section class="premium-card profile-account-card">
+        <div class="card-row"><div><p>ACCOUNT DETAILS</p><h2>Basic Information</h2></div><button class="mini-action" onclick="AITradeXUser.copyText('${App.escapeHtml(u.referralCode || "")}', this)">Copy Code</button></div>
+        <div class="profile-info-grid compact-info-grid">
           <article><span>Email</span><b>${App.escapeHtml(u.email)}</b></article>
           <article><span>Mobile</span><b>${App.escapeHtml(u.mobile || "-")}</b></article>
           <article><span>Account Mode</span><b>${accountMode}</b></article>
@@ -3218,18 +3279,26 @@
   function supportPage() {
     const tickets = supportTicketsForUser();
     const openCount = tickets.filter(ticket => String(ticket.status || "OPEN").toUpperCase() !== "CLOSED").length;
+    const closedCount = tickets.filter(ticket => String(ticket.status || "OPEN").toUpperCase() === "CLOSED").length;
     shell(`
-      <section class="support-hero-card">
+      <section class="inner-hero-card support-hero-card refined-support-hero">
         <div>
           <p>SUPPORT CENTER</p>
-          <h2>Need help? Create a support ticket.</h2>
-          <span>Use tickets for official support records. For urgent help, contact WhatsApp support.</span>
+          <h1>Help desk & ticket records</h1>
+          <span>Create official tickets for wallet, withdrawal, trade and account issues.</span>
         </div>
         <a class="whatsapp-help-btn" href="${supportWhatsAppLink()}" target="_blank" rel="noopener">WhatsApp Help</a>
       </section>
 
-      <section class="support-grid">
-        <form class="premium-card support-form-card form-grid" onsubmit="AITradeXUser.createSupportTicket(event)">
+      <section class="inner-status-strip support-status-strip">
+        <article><span>Total Tickets</span><b>${tickets.length}</b></article>
+        <article><span>Open</span><b>${openCount}</b></article>
+        <article><span>Closed</span><b>${closedCount}</b></article>
+        <article><span>Channel</span><b>Ticket + WA</b></article>
+      </section>
+
+      <section class="support-grid refined-support-grid">
+        <form class="premium-card support-form-card form-grid compact-ticket-form" onsubmit="AITradeXUser.createSupportTicket(event)">
           <div class="card-row"><div><p>NEW TICKET</p><h2>Create Support Ticket</h2></div><span class="history-mode">${openCount} Open</span></div>
           <label>Category
             <select id="supportCategory" required>
@@ -3246,14 +3315,14 @@
             <input id="supportSubject" required maxlength="80" placeholder="Example: Withdrawal request not updated"/>
           </label>
           <label>Message
-            <textarea id="supportMessage" required rows="5" maxlength="700" placeholder="Write your issue clearly with amount, request ID or transaction detail if available."></textarea>
+            <textarea id="supportMessage" required rows="4" maxlength="700" placeholder="Write issue with amount, request ID or transaction detail if available."></textarea>
           </label>
           <button class="save-profile-btn">Submit Ticket</button>
         </form>
 
-        <section class="premium-card support-list-card">
+        <section class="premium-card support-list-card refined-ticket-list-card">
           <div class="card-row"><div><p>YOUR TICKETS</p><h2>Ticket History</h2></div><span class="history-mode">${tickets.length}</span></div>
-          <div class="support-ticket-list">
+          <div class="support-ticket-list compact-ticket-list">
             ${tickets.length ? tickets.map(supportTicketCard).join("") : `<div class="empty-state">No support tickets yet.</div>`}
           </div>
         </section>
@@ -3264,16 +3333,31 @@
   function notificationPage() {
     const rows = userNotifications();
     const unread = rows.filter(n => !n.read).length;
+    const typeCount = type => rows.filter(n => String(n.type || "INFO").toUpperCase() === type).length;
     shell(`
-      <section class="premium-card notification-center-card">
-        <div class="section-head">
-          <div><h3>Notifications</h3><span>Deposit, withdrawal, AI trade, plan and wallet updates</span></div>
-          <div class="notification-actions">
-            <span class="admin-count-pill">${unread} unread</span>
-            <button class="ghost-action" onclick="AITradeXUser.markNotificationsRead()">Mark all read</button>
-          </div>
+      <section class="inner-hero-card notification-hero-card">
+        <div>
+          <p>NOTIFICATIONS</p>
+          <h1>Updates center</h1>
+          <span>Wallet, AI trade, support, plan and account updates in one clean list.</span>
         </div>
-        <div class="notification-list">
+        <button class="ghost-action" onclick="AITradeXUser.markNotificationsRead()">Mark all read</button>
+      </section>
+
+      <section class="notification-filter-strip">
+        <span>All ${rows.length}</span>
+        <span>Unread ${unread}</span>
+        <span>Wallet ${typeCount("WALLET") + typeCount("DEPOSIT") + typeCount("WITHDRAWAL")}</span>
+        <span>AI ${typeCount("AI")}</span>
+        <span>Support ${typeCount("SUPPORT")}</span>
+      </section>
+
+      <section class="premium-card notification-center-card refined-notification-card">
+        <div class="section-head">
+          <div><h3>Latest Notifications</h3><span>${unread} unread · newest first</span></div>
+          <span class="admin-count-pill">${rows.length} total</span>
+        </div>
+        <div class="notification-list compact-notification-list">
           ${rows.length ? rows.map(n => `
             <article class="notification-row ${n.read ? "read" : "unread"}">
               <div class="notification-icon">${notificationIcon(n.type)}</div>
