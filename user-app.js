@@ -2580,6 +2580,20 @@
         </div>
       </section>
     `);
+    refreshVisiblePrices([...positions.map(position => position.pair), ...aiPositions.map(position => position.pair), ...pending.map(order => order.pair)]);
+  }
+
+  function formatHistoryDate(value) {
+    if (!value) return "-";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "-";
+    return d.toLocaleString([], { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+  }
+
+  function historyStatus(t) {
+    const reason = String(t.closeReason || "").toUpperCase();
+    if (reason === "AUTO_RISK_CLOSE") return "Auto Closed";
+    return App.escapeHtml(t.status || "Closed").replace(/_/g, " ");
   }
 
   function tradeHistoryCard(t, type) {
