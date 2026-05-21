@@ -136,6 +136,50 @@
     );
   }
 
+  function aiLiveMarginLockExists(position) {
+    return !!(position && App.hasLedgerEntry && App.hasLedgerEntry({
+      userId: position.userId,
+      accountType: "REAL",
+      type: "AI_LIVE_MARGIN_LOCK",
+      referenceId: position.id
+    }));
+  }
+
+  function reconcileUserAiLiveMarginLocks() {
+    const u = user();
+    if (!u) return 0;
+    let fixed = 0;
+    aiOpenPositions().forEach(position => {
+      if (aiLiveMarginLockExists(position)) {
+        position.marginLocked = true;
+        return;
+      }
+      const margin = Number(Number(position.marginAmount || 0).toFixed(2));
+      if (!Number.isFinite(margin) || margin <= 0) return;
+      try {
+        const before = App.realBalance(u.id);
+        const added = App.addLedger({
+          userId: u.id,
+          accountType: "REAL",
+          type: "AI_LIVE_MARGIN_LOCK",
+          amount: -margin,
+          referenceId: position.id,
+          note: `${position.pair} AI live ${position.side || "BUY"} amount locked`
+        });
+        if (added === false && !aiLiveMarginLockExists(position)) throw new Error("AI amount lock was not applied");
+        position.marginLocked = true;
+        position.balanceBefore = Number(before.toFixed(2));
+        position.balanceAfterOpen = Number(App.realBalance(u.id).toFixed(2));
+        position.marginLockedAt = position.marginLockedAt || new Date().toISOString();
+        fixed += 1;
+      } catch (error) {
+        position.marginLockError = error.message || "AI amount lock failed";
+      }
+    });
+    if (fixed) App.saveState();
+    return fixed;
+  }
+
   function pendingManualOrders() {
     const u = user();
     if (!u) return [];
@@ -2817,6 +2861,8 @@
   }
 
   function render() {
+    if (App.reloadState) App.reloadState();
+    reconcileUserAiLiveMarginLocks();
     ensurePairForMarket();
     const u = user();
     if (!u || u.role !== "user") return landing();
@@ -3764,6 +3810,13 @@
       landing();
     }
   };
+
+  window.addEventListener("storage", event => {
+    if (event.key === (App.storageKey || "AITradeX_STATE_V1")) {
+      if (App.reloadState) App.reloadState();
+      render();
+    }
+  });
 
   render();
 })();

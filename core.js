@@ -110,7 +110,9 @@ async function fetchChartFeedPrice(pair){
 }
 
 
-const App={config:C,db,state:load(),session:loadSession(),now,uid,money,escapeHtml:esc};
+const App={config:C,db,state:load(),session:loadSession(),now,uid,money,escapeHtml:esc,storageKey:SK,sessionKey:SS};
+App.reloadState=()=>{App.state=load();App.session=loadSession();return App.state;};
+App.hasLedgerEntry=({accountType="REAL",type,referenceId,userId})=>{const list=accountType==="DEMO"?App.state.demoLedger:App.state.walletLedger;return (list||[]).some(x=>(!type||x.type===type)&&(!referenceId||x.referenceId===referenceId)&&(!userId||x.userId===userId));};
 App.logoHtml=(variant="full",className="")=>{
   const mode=String(variant||"full").toLowerCase();
   const cls=esc(className||"");

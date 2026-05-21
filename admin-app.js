@@ -1021,6 +1021,59 @@
       .sort((a, b) => Date.parse(b.openedAt || b.createdAt || 0) - Date.parse(a.openedAt || a.createdAt || 0));
   }
 
+
+  function aiLiveMarginLockExists(position) {
+    return !!(position && App.hasLedgerEntry && App.hasLedgerEntry({
+      userId: position.userId,
+      accountType: "REAL",
+      type: "AI_LIVE_MARGIN_LOCK",
+      referenceId: position.id
+    }));
+  }
+
+  function lockAiLiveMargin(position, balanceBeforeOverride = null) {
+    if (!position || !position.userId) return false;
+    const margin = Number(Number(position.marginAmount || 0).toFixed(2));
+    if (!Number.isFinite(margin) || margin <= 0) return false;
+    if (aiLiveMarginLockExists(position)) {
+      position.marginLocked = true;
+      return true;
+    }
+    const before = balanceBeforeOverride === null ? App.realBalance(position.userId) : Number(balanceBeforeOverride || 0);
+    const added = App.addLedger({
+      userId: position.userId,
+      accountType: "REAL",
+      type: "AI_LIVE_MARGIN_LOCK",
+      amount: -margin,
+      referenceId: position.id,
+      note: `${position.pair} AI live ${position.side || "BUY"} amount locked`
+    });
+    if (added === false && !aiLiveMarginLockExists(position)) throw new Error("AI amount lock was not applied");
+    position.marginLocked = true;
+    position.balanceBefore = Number(before.toFixed(2));
+    position.balanceAfterOpen = Number(App.realBalance(position.userId).toFixed(2));
+    position.marginLockedAt = position.marginLockedAt || new Date().toISOString();
+    return true;
+  }
+
+  function reconcileAiLiveMarginLocks() {
+    let fixed = 0;
+    aiLivePositions().forEach(position => {
+      if (aiLiveMarginLockExists(position)) {
+        position.marginLocked = true;
+        return;
+      }
+      try {
+        lockAiLiveMargin(position);
+        fixed += 1;
+      } catch (error) {
+        position.marginLockError = error.message || "AI amount lock failed";
+      }
+    });
+    if (fixed) App.saveState();
+    return fixed;
+  }
+
   function aiLiveBatches() {
     const rows = aiLivePositions();
     const map = new Map();
@@ -1676,6 +1729,9 @@
   }
 
   function render() {
+    if (App.reloadState) App.reloadState();
+    reconcileAiLiveMarginLocks();
+    page = localStorage.getItem("AITradeX_ADMIN_PAGE") || "dashboard";
     const current = adminUser();
     if (!current || current.role !== "admin") return loginPage();
 
@@ -2190,21 +2246,6 @@
         }
         const exposure = margin * leverage;
         const positionId = App.uid("ai_live");
-        try {
-          App.addLedger({
-            userId: target.id,
-            accountType: "REAL",
-            type: "AI_LIVE_MARGIN_LOCK",
-            amount: -Number(margin.toFixed(2)),
-            referenceId: positionId,
-            note: `${pair} AI live ${side} amount locked`
-          });
-        } catch (error) {
-          report.skipped.push({ userId: target.id, reason: error.message || "Insufficient wallet balance" });
-          report.reasons.noPool += 1;
-          return;
-        }
-        const balanceAfterLock = App.realBalance(target.id);
         const position = {
           id: positionId,
           batchId,
@@ -2232,9 +2273,15 @@
           openedAt,
           createdAt: openedAt,
           createdDate: App.todayKey(),
-          balanceBefore: Number(balanceBefore.toFixed(2)),
-          balanceAfterOpen: Number(balanceAfterLock.toFixed(2))
+          balanceBefore: Number(balanceBefore.toFixed(2))
         };
+        try {
+          lockAiLiveMargin(position, balanceBefore);
+        } catch (error) {
+          report.skipped.push({ userId: target.id, reason: error.message || "Insufficient wallet balance" });
+          report.reasons.noPool += 1;
+          return;
+        }
         App.state.trades.unshift(position);
         appliedCount += 1;
         totalMargin += margin;
