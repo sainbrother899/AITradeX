@@ -32,3 +32,9 @@ Stable display setting:
 - Default USDT-INR conversion rate is ₹95 per USDT.
 - Admin can change this anytime from Payment Settings > USDT to INR Rate.
 - Internal trade P/L still uses raw crypto movement percentage, so wallet P/L remains INR-based.
+
+
+Phase 4.91 update:
+- Added premium read-only USDT-INR rate chip on user Trade page.
+- Added premium read-only USDT-INR rate chip on user Wallet hero.
+- Rate is controlled from Admin Payment Settings and defaults to ₹95 per USDT.

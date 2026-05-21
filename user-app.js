@@ -56,6 +56,16 @@
     return marketPairs[selectedMarket] || marketPairs.CRYPTO;
   }
 
+  function usdtRateValue() {
+    const rate = Number(App.usdtInrRate ? App.usdtInrRate() : (App.state?.settings?.usdtInrRate || 95));
+    return Number.isFinite(rate) && rate > 0 ? rate : 95;
+  }
+
+  function usdtRateChip(extraClass = "") {
+    const rate = usdtRateValue();
+    return `<span class="usdt-rate-chip ${App.escapeHtml(extraClass)}"><i>₮</i><b>1 USDT = ${App.money(rate)}</b></span>`;
+  }
+
   function allTrendingPairs() {
     return [...marketPairs.CRYPTO, ...marketPairs.FOREX];
   }
@@ -2076,6 +2086,7 @@
         </div>
         <div class="trade-hero-side">
           <span class="trade-mode-badge ${accountMode.toLowerCase()}">${accountMode} Account</span>
+          ${usdtRateChip("trade-rate-chip")}
           <button class="change-pair-btn" onclick="AITradeXUser.openSheet('pair')">Change Pair</button>
         </div>
         <div class="trade-hero-metrics">
@@ -2478,6 +2489,7 @@
             <p>REAL WALLET</p>
             <h1>${App.money(availableRealBalance())}</h1>
             <span>Available balance · ${statusPill(kyc.status)}</span>
+            ${usdtRateChip("wallet-rate-chip")}
           </div>
           <div class="wallet-hero-stats">
             <article><span>Pending Deposit</span><b>${App.money(pendingDepositAmount())}</b></article>
