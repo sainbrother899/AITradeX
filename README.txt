@@ -881,3 +881,10 @@ Phase 4.53 — Live AI Auto-Close Positions Clean
 - Live AI positions auto-close on selected profit/loss target or max duration and then move to AI Auto Trade History with entry and close price.
 - AI positions cannot be closed by users.
 - No patch/block layer or backup files.
+
+Phase 4.54 - User UI Premium Lightweight Polish
+- User drawer grouped into Account, Growth and Help sections.
+- Home dashboard summary made lighter with real active manual/AI position counts.
+- Added compact Quick Actions card for Trade, Orders, Wallet and Support.
+- Refined user-side card shadows, spacing and mobile drawer/action layout.
+- No trading, wallet, admin, KYC, referral, support or price-feed logic was changed.

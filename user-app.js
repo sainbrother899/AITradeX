@@ -1327,7 +1327,7 @@
     const u = user();
     return `
       <div class="drawer-backdrop" onclick="AITradeXUser.toggleDrawer(false)"></div>
-      <aside class="side-drawer">
+      <aside class="side-drawer premium-drawer">
         <div class="drawer-head">
           ${avatar(displayName())}
           <div>
@@ -1335,13 +1335,22 @@
             <span>${accountMode} account active</span>
           </div>
         </div>
-        <button onclick="AITradeXUser.go('profile')" class="drawer-item">👤 Profile</button>
-        <button onclick="AITradeXUser.go('kyc')" class="drawer-item">🛡️ KYC Verification</button>
-        <button onclick="AITradeXUser.go('payments')" class="drawer-item">🏦 Bank Accounts</button>
-        <button onclick="AITradeXUser.go('subscription')" class="drawer-item">⭐ Subscription</button>
-        <button onclick="AITradeXUser.go('referral')" class="drawer-item">🎁 Referral</button>
-        <button onclick="AITradeXUser.go('support')" class="drawer-item">🎧 Support</button>
-        <button onclick="AITradeXUser.logout()" class="drawer-item danger">🚪 Logout</button>
+        <div class="drawer-group">
+          <span>Account</span>
+          <button onclick="AITradeXUser.go('profile')" class="drawer-item">👤 Profile</button>
+          <button onclick="AITradeXUser.go('kyc')" class="drawer-item">🛡️ KYC Verification</button>
+          <button onclick="AITradeXUser.go('payments')" class="drawer-item">🏦 Bank Accounts</button>
+        </div>
+        <div class="drawer-group">
+          <span>Growth</span>
+          <button onclick="AITradeXUser.go('subscription')" class="drawer-item">⭐ Subscription</button>
+          <button onclick="AITradeXUser.go('referral')" class="drawer-item">🎁 Referral</button>
+        </div>
+        <div class="drawer-group">
+          <span>Help</span>
+          <button onclick="AITradeXUser.go('support')" class="drawer-item">🎧 Support</button>
+          <button onclick="AITradeXUser.logout()" class="drawer-item danger">🚪 Logout</button>
+        </div>
       </aside>`;
   }
 
@@ -1567,6 +1576,9 @@
     const usage = aiDailyUsage();
     const tradeAmount = accountMode === "REAL" ? balance * ai.percent / 100 : 0;
     const pair = selectedPairData();
+    const activeManualCount = manualOpenPositions().length;
+    const activeAiCount = aiOpenPositions().length;
+    const activeTotal = activeManualCount + activeAiCount;
 
     shell(`
       <section class="account-overview-card ${accountMode.toLowerCase()}">
@@ -1594,11 +1606,26 @@
           </article>`; }).join("")}
       </section>
 
-      <section class="compact-grid">
+      <section class="compact-grid home-summary-grid">
         <article><span>AI Status</span><b>${ai.enabled ? "Active" : "OFF"}</b><small>${usage.used}/${usage.limit} AI trades today</small></article>
-        <article><span>Open Trades</span><b>0</b><small>${accountMode} positions</small></article>
+        <article><span>Active Positions</span><b>${activeTotal}</b><small>${activeManualCount} manual · ${activeAiCount} AI</small></article>
         <article><span>KYC</span><b>${App.kycStatus(u.id).replace("_", " ")}</b><small>Verification</small></article>
         <article><span>Selected Pair</span><b>${selectedPair}</b><small>${pair.signal} bias</small></article>
+      </section>
+
+      <section class="premium-card quick-action-card">
+        <div class="quick-action-head">
+          <div>
+            <p>QUICK ACTIONS</p>
+            <h2>Continue where you need</h2>
+          </div>
+        </div>
+        <div class="quick-action-grid">
+          <button onclick="AITradeXUser.go('trade')"><b>Trade</b><span>Crypto market</span></button>
+          <button onclick="AITradeXUser.go('orders')"><b>Orders</b><span>Positions</span></button>
+          <button onclick="AITradeXUser.go('wallet')"><b>Wallet</b><span>Deposit / Withdraw</span></button>
+          <button onclick="AITradeXUser.go('support')"><b>Support</b><span>Tickets</span></button>
+        </div>
       </section>
 
       <section class="premium-card subscription-mini-card">
