@@ -2073,7 +2073,27 @@
 
         ${tradeOrderNotice ? `<div class="order-success-banner compact"><b>${App.escapeHtml(tradeOrderNotice.title)}</b><span>${App.escapeHtml(tradeOrderNotice.detail)}</span></div>` : ""}
 
-        <div class="compact-ticket-grid">
+        ${tradeIsActive ? `
+          <div class="fast-buy-sell-row priority-actions">
+            <button class="sell-btn" onclick="AITradeXUser.placeManualTrade('SELL')"><small>LEFT</small>SELL / SHORT</button>
+            <button class="buy-btn" onclick="AITradeXUser.placeManualTrade('BUY')"><small>RIGHT</small>BUY / LONG</button>
+          </div>
+        ` : `
+          <div class="coming-soon-trade-bar compact priority-actions">
+            <b>Market Coming Soon</b>
+            <span>Forex, Gold and Silver trading will be available after premium market data integration.</span>
+          </div>
+        `}
+
+        <div class="compact-trade-summary top-action-summary">
+          <span><b>Margin</b>${App.money(tradeAmountPreview)}</span>
+          <span><b>Position</b>${App.money(positionSize)}</span>
+          <span><b>Mode</b>${accountMode}</span>
+        </div>
+
+        ${marginWarning ? `<div class="order-warning-bar compact">Margin is higher than available ${accountMode} balance. Reduce amount before placing trade.</div>` : ""}
+
+        <div class="compact-ticket-grid after-action-fields">
           <label>Amount
             <input type="number" value="${App.escapeHtml(String(tradeAmountPreview || ""))}" min="1" oninput="AITradeXUser.setTradeAmount(this.value)" placeholder="Margin INR"/>
           </label>
@@ -2086,7 +2106,7 @@
           </div>
         </div>
 
-        <div class="compact-ticket-grid compact-second-row">
+        <div class="compact-ticket-grid compact-second-row after-action-fields">
           <label>Order Type
             <select onchange="AITradeXUser.setTradeOrderType(this.value)">
               <option value="MARKET" ${tradeOrderType === "MARKET" ? "selected" : ""}>Market</option>
@@ -2104,26 +2124,6 @@
             </div>
           `}
         </div>
-
-        ${marginWarning ? `<div class="order-warning-bar compact">Margin is higher than available ${accountMode} balance. Reduce amount before placing trade.</div>` : ""}
-
-        <div class="compact-trade-summary">
-          <span><b>Margin</b>${App.money(tradeAmountPreview)}</span>
-          <span><b>Position</b>${App.money(positionSize)}</span>
-          <span><b>Mode</b>${accountMode}</span>
-        </div>
-
-        ${tradeIsActive ? `
-          <div class="fast-buy-sell-row">
-            <button class="sell-btn" onclick="AITradeXUser.placeManualTrade('SELL')"><small>LEFT</small>SELL / SHORT</button>
-            <button class="buy-btn" onclick="AITradeXUser.placeManualTrade('BUY')"><small>RIGHT</small>BUY / LONG</button>
-          </div>
-        ` : `
-          <div class="coming-soon-trade-bar compact">
-            <b>Market Coming Soon</b>
-            <span>Forex, Gold and Silver trading will be available after premium market data integration.</span>
-          </div>
-        `}
 
         <details class="compact-risk-details">
           <summary>Advanced TP/SL Options</summary>

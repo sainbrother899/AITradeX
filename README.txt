@@ -896,3 +896,11 @@ Phase 4.59 - AI Dashboard Summary + Admin Validation Polish
 - Live AI position preview now also shows plan limit and wallet validation status.
 - Kept existing UI baseline and previous AI wallet margin lock / settlement logic intact.
 - No patch layers or hidden old code added.
+
+Phase 4.73 - Trade Action Top + Integrated Bigger Chart:
+- Trade page chart shell made more integrated with the page instead of looking like a separate embedded block.
+- Chart height increased on desktop and mobile for a stronger premium trading screen feel.
+- Buy/Sell buttons moved to the top of the compact order ticket, directly after the ticket header.
+- Remaining order controls like amount, leverage, order type, limit price and TP/SL now stay below the fast action buttons.
+- Left SELL and right BUY layout retained for faster trading experience.
+- No duplicate active-position bar added; existing global active bar remains unchanged.
