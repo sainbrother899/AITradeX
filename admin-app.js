@@ -515,31 +515,50 @@
 
   function shell(content) {
     const admin = adminUser();
+    const stats = adminDashboardStats();
     root.innerHTML = `
-      <div class="app-shell control-shell">
-        <aside class="sidebar">
+      <div class="app-shell control-shell admin-pro-shell">
+        <aside class="sidebar admin-pro-sidebar">
           <div class="side-brand brand aitx-admin-logo">${App.logoHtml("full", "aitx-logo-admin")}</div>
-          <nav>
-            ${navButton("dashboard", "📊", "Dashboard")}
-            ${navButton("notifications", "🔔", `Notifications${adminUnreadBadgeText()}`)}
-            ${navButton("users", "👥", "Users")}
-            ${navButton("kyc", "🛡️", "KYC Requests")}
-            ${navButton("payments", "🏦", "Bank Accounts")}
-            ${navButton("deposits", "⬇️", "Deposits")}
-            ${navButton("withdrawals", "⬆️", "Withdrawals")}
-            ${navButton("instantAi", "⚡", "Instant AI Trade")}
-            ${navButton("liveAi", "📈", "Live Position Trade")}
-            ${navButton("plans", "⭐", "Plans")}
-            ${navButton("referrals", "🎁", "Referrals")}
-            ${navButton("support", "🎧", "Support Tickets")}
-            ${navButton("settings", "⚙️", "Payment Settings")}
+          <div class="admin-side-profile-card">
+            ${avatar(admin?.name || "A")}
+            <div><b>${esc(admin?.name || "Admin")}</b><span>Control Center</span></div>
+          </div>
+          <div class="admin-side-mini-stats">
+            <span><b>${stats.users.length}</b> users</span>
+            <span><b>${stats.livePositions}</b> live AI</span>
+          </div>
+          <nav class="admin-nav-groups">
+            ${navGroup("Overview", [
+              navButton("dashboard", "📊", "Dashboard", "Control room"),
+              navButton("notifications", "🔔", `Notifications${adminUnreadBadgeText()}`, "Alerts")
+            ])}
+            ${navGroup("Users & Verification", [
+              navButton("users", "👥", "Users", "Wallet, plan, status"),
+              navButton("kyc", "🛡️", "KYC Requests", "Identity review"),
+              navButton("payments", "🏦", "Bank Accounts", "Payout methods")
+            ])}
+            ${navGroup("Finance", [
+              navButton("deposits", "⬇️", "Deposits", "UTR/proof"),
+              navButton("withdrawals", "⬆️", "Withdrawals", "Payout control")
+            ])}
+            ${navGroup("AI Trading", [
+              navButton("instantAi", "⚡", "Instant AI Trade", "Direct result"),
+              navButton("liveAi", "📈", "Live Position Trade", "Running positions")
+            ])}
+            ${navGroup("System", [
+              navButton("plans", "⭐", "Plans", "AI limits"),
+              navButton("referrals", "🎁", "Referrals", "Rewards"),
+              navButton("support", "🎧", "Support Tickets", "Inbox"),
+              navButton("settings", "⚙️", "Payment Settings", "UPI/bank")
+            ])}
           </nav>
-          <button class="logout-btn" onclick="AITradeXAdmin.logout()">🚪 Logout</button>
+          <button class="logout-btn admin-pro-logout" onclick="AITradeXAdmin.logout()">🚪 Logout</button>
         </aside>
-        <main class="main-area">
-          <div class="page-title">
+        <main class="main-area admin-pro-main">
+          <div class="page-title admin-pro-title">
             <div>
-              <p>AI Control Center</p>
+              <p>AITradeX Admin</p>
               <h1>${pageTitle()}</h1>
             </div>
             <div class="admin-header-actions"><button class="notification-bell admin-bell" onclick="AITradeXAdmin.go('notifications')" aria-label="Notifications">🔔${adminNotificationBadgeHtml()}</button><div class="admin-profile-chip">${avatar(admin?.name || "A")}<b>${esc(admin?.name || "Admin")}</b></div></div>
@@ -549,8 +568,12 @@
       </div>`;
   }
 
-  function navButton(key, icon, label) {
-    return `<button class="${page === key ? "active" : ""}" onclick="AITradeXAdmin.go('${key}')">${icon} ${label}</button>`;
+  function navGroup(title, items) {
+    return `<div class="admin-nav-group"><span>${esc(title)}</span>${items.join("")}</div>`;
+  }
+
+  function navButton(key, icon, label, subtitle = "") {
+    return `<button class="admin-nav-button ${page === key ? "active" : ""}" onclick="AITradeXAdmin.go('${key}')"><i>${icon}</i><b>${label}</b>${subtitle ? `<small>${esc(subtitle)}</small>` : ""}</button>`;
   }
 
   function pageTitle() {
@@ -726,7 +749,7 @@
         <button class="mini-action" onclick="AITradeXAdmin.go('dashboard')">Refresh</button>
       </section>
 
-      <section class="metrics-grid dashboard-analytics-grid">
+      <section class="metrics-grid dashboard-analytics-grid admin-dashboard-primary-metrics">
         ${metric("👥", "Total Users", stats.users.length)}
         ${metric("✅", "Active Users", stats.activeUsers)}
         ${metric("🚫", "Blocked / Suspended", `${stats.blockedUsers}/${stats.suspendedUsers}`)}
@@ -1030,14 +1053,24 @@
         return kycSortValue(b.kyc) - kycSortValue(a.kyc);
       });
 
+    const allKyc = allUsers().map(u => kycFor(u)).filter(k => k.status !== "NOT_SUBMITTED");
     shell(`
+      <section class="admin-module-hero kyc-admin-hero">
+        <div><span>Verification Desk</span><h2>KYC Review Center</h2><p>Compact request review with duplicate Aadhaar warnings and reject reason presets.</p></div>
+        <div class="admin-hero-stats"><b>${allKyc.filter(k => k.status === "PENDING").length}</b><span>Pending</span></div>
+      </section>
+      <section class="metrics-grid compact-metrics">
+        ${metric("⌛", "Pending", allKyc.filter(k => k.status === "PENDING").length)}
+        ${metric("✅", "Approved", allKyc.filter(k => k.status === "APPROVED").length)}
+        ${metric("❌", "Rejected", allKyc.filter(k => k.status === "REJECTED").length)}
+      </section>
       ${filterBarKyc()}
-      <section class="panel-card">
+      <section class="panel-card admin-review-panel">
         <div class="section-head">
           <div><h3>KYC Requests</h3><span>Approve or reject user identity verification</span></div>
           <span class="admin-count-pill">${items.length} result</span>
         </div>
-        <div class="admin-request-list">
+        <div class="admin-request-list admin-compact-request-list">
           ${items.length ? items.map(({ user, kyc }) => kycRequestCard(user, kyc)).join("") : `<div class="empty-state">No KYC requests found.</div>`}
         </div>
       </section>
@@ -1139,14 +1172,24 @@
         return bankMethodSortValue(b.method) - bankMethodSortValue(a.method);
       });
 
+    const allMethods = allUsers().flatMap(user => paymentMethodsFor(user).filter(method => method.type === "BANK"));
     shell(`
+      <section class="admin-module-hero bank-admin-hero">
+        <div><span>Payout Verification</span><h2>Bank Account Review</h2><p>Check KYC name match, masked account details and payout readiness in one compact queue.</p></div>
+        <div class="admin-hero-stats"><b>${allMethods.filter(m => m.status === "PENDING").length}</b><span>Pending</span></div>
+      </section>
+      <section class="metrics-grid compact-metrics">
+        ${metric("⌛", "Pending", allMethods.filter(m => m.status === "PENDING").length)}
+        ${metric("✅", "Approved", allMethods.filter(m => m.status === "APPROVED").length)}
+        ${metric("❌", "Rejected", allMethods.filter(m => m.status === "REJECTED").length)}
+      </section>
       ${filterBarPayments()}
-      <section class="panel-card">
+      <section class="panel-card admin-review-panel">
         <div class="section-head">
           <div><h3>Bank Account Requests</h3><span>Approve bank accounts after matching KYC name</span></div>
           <span class="admin-count-pill">${items.length} result</span>
         </div>
-        <div class="admin-request-list">
+        <div class="admin-request-list admin-compact-request-list">
           ${items.length ? items.map(({ user, kyc, method }) => paymentRequestCard(user, kyc, method)).join("") : `<div class="empty-state">No bank accounts found.</div>`}
         </div>
       </section>
@@ -1325,8 +1368,8 @@
 
         <div class="admin-action-row ${isPending ? "" : "single-delete"}">
           ${isPending ? `
-            <button class="approve-btn" onclick="AITradeXAdmin.${isDeposit ? "approveDeposit" : "approveWithdrawal"}('${user.id}', '${request.id}', this)">${isDeposit ? "Approve & Credit" : "Approve Payout"}</button>
-            <button class="reject-btn" onclick="AITradeXAdmin.${isDeposit ? "rejectDeposit" : "rejectWithdrawal"}('${user.id}', '${request.id}', this)">Reject</button>
+            <button class="approve-btn" onclick="AITradeXAdmin.confirmFinanceAction('${isDeposit ? "approveDeposit" : "approveWithdrawal"}', '${user.id}', '${request.id}', '${esc(displayNameFor(user))}', '${App.money(request.amount || 0)}', this)">${isDeposit ? "Approve & Credit" : "Approve Payout"}</button>
+            <button class="reject-btn" onclick="AITradeXAdmin.confirmFinanceAction('${isDeposit ? "rejectDeposit" : "rejectWithdrawal"}', '${user.id}', '${request.id}', '${esc(displayNameFor(user))}', '${App.money(request.amount || 0)}', this)">Reject</button>
           ` : `<span class="finance-complete-note">Action completed. Full detail stays in history.</span>`}
         </div>
       </article>`;
@@ -1882,11 +1925,13 @@
 
       ${aiTradeModeBars("live")}
 
+      ${aiLiveRunningHtml()}
+
       ${aiValidationOverviewHtml(previewReport)}
 
       <section class="panel-card ai-desk-panel ai-live-open-panel">
         <div class="section-head ai-desk-head">
-          <div><h3>Live Position Trade Control</h3><span>Separate live-running AI position only. This is not Instant AI Trade.</span></div>
+          <div><h3>Open New Live Position</h3><span>Running positions stay above. New position opens only after wallet lock validation.</span></div>
           <span class="admin-count-pill">Live section</span>
         </div>
         <div class="admin-grid-two ai-desk-grid">
@@ -1958,8 +2003,6 @@
           </section>
         </div>
       </section>
-
-      ${aiLiveRunningHtml()}
 
       ${aiLiveHistoryHtml()}
     `);
@@ -2390,6 +2433,14 @@
         localStorage.setItem("AITradeX_ADMIN_WITHDRAWAL_HISTORY_PAGE", String(withdrawalHistoryPage));
       }
       render();
+    },
+    confirmFinanceAction(action, userId, requestId, userName, amountText, button) {
+      const actionTitle = String(action || "").includes("approve") ? "Approve" : "Reject";
+      const isWithdrawal = String(action || "").toLowerCase().includes("withdrawal");
+      const impact = isWithdrawal ? "This may debit the user's real wallet on approval." : "This may credit the user's real wallet on approval.";
+      const ok = confirm(`${actionTitle} request for ${userName || "user"}?\nAmount: ${amountText || "-"}\n${impact}`);
+      if (!ok) return;
+      if (typeof this[action] === "function") this[action](userId, requestId, button);
     },
     login(event) {
       event.preventDefault();
