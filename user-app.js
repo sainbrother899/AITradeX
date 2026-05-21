@@ -17,6 +17,7 @@
   let tradeLeveragePreview = Number(localStorage.getItem("AITradeX_TRADE_LEVERAGE_PREVIEW") || 10);
   let tradeOrderType = localStorage.getItem("AITradeX_TRADE_ORDER_TYPE") || "MARKET";
   let tradeLimitPrice = localStorage.getItem("AITradeX_TRADE_LIMIT_PRICE") || "";
+  let tradeOrderNotice = null;
   let selectorSheet = null;
   let chartInterval = localStorage.getItem("AITradeX_CHART_INTERVAL") || "15";
   let chartStyle = localStorage.getItem("AITradeX_CHART_STYLE") || "1";
@@ -443,6 +444,23 @@
     if (marginEl) marginEl.textContent = App.money(margin);
     if (positionEl) positionEl.textContent = App.money(positionSize);
     if (summaryEl) summaryEl.textContent = `${selectedMarket} · ${selectedPair} · ${accountMode} · Margin ${App.money(margin)} · Position ${App.money(positionSize)}`;
+  }
+
+  function clearTradeOrderNotice() {
+    tradeOrderNotice = null;
+  }
+
+  function resetTradeTicketAfterOrder(message, detail = "") {
+    tradeAmountPreview = "";
+    tradeLeveragePreview = 1;
+    tradeLimitPrice = "";
+    localStorage.removeItem("AITradeX_TRADE_AMOUNT_PREVIEW");
+    localStorage.setItem("AITradeX_TRADE_LEVERAGE_PREVIEW", "1");
+    localStorage.removeItem("AITradeX_TRADE_LIMIT_PRICE");
+    tradeOrderNotice = {
+      title: message || "Order placed successfully",
+      detail: detail || "Your order has been moved to Orders. Fill fresh details to place another trade."
+    };
   }
 
   function realBalance() {
@@ -1573,6 +1591,8 @@
           <span class="ticket-chip">${tradeIsActive ? selectedMarket : "UPCOMING"}</span>
         </div>
 
+        ${tradeOrderNotice ? `<div class="order-success-banner"><b>${App.escapeHtml(tradeOrderNotice.title)}</b><span>${App.escapeHtml(tradeOrderNotice.detail)}</span></div>` : ""}
+
         <div class="trade-account-mini ${accountMode.toLowerCase()}">
           <div><span>Account</span><b>${accountMode}</b></div>
           <div><span>Available</span><b>${App.money(balance)}</b></div>
@@ -1604,7 +1624,7 @@
         ` : ""}
 
         <label>Margin Amount
-          <input type="number" value="${tradeAmountPreview}" min="1" oninput="AITradeXUser.setTradeAmount(this.value)" placeholder="Enter INR amount"/>
+          <input type="number" value="${App.escapeHtml(String(tradeAmountPreview || ""))}" min="1" oninput="AITradeXUser.setTradeAmount(this.value)" placeholder="Enter INR amount"/>
         </label>
 
         <div class="trade-preview-grid">
@@ -3102,25 +3122,32 @@
       render();
     },
     setTradeOrderType(value) {
+      clearTradeOrderNotice();
       tradeOrderType = String(value || "MARKET").toUpperCase() === "LIMIT" ? "LIMIT" : "MARKET";
       localStorage.setItem("AITradeX_TRADE_ORDER_TYPE", tradeOrderType);
       render();
     },
     setTradeLimitPrice(value) {
+      clearTradeOrderNotice();
       tradeLimitPrice = String(value || "").replace(/[^0-9.]/g, "");
       localStorage.setItem("AITradeX_TRADE_LIMIT_PRICE", tradeLimitPrice);
     },
     setTradeAmount(value) {
-      tradeAmountPreview = Math.max(0, Number(value || 0));
-      localStorage.setItem("AITradeX_TRADE_AMOUNT_PREVIEW", String(tradeAmountPreview));
+      clearTradeOrderNotice();
+      const cleanedAmount = String(value || "").replace(/[^0-9.]/g, "");
+      tradeAmountPreview = cleanedAmount === "" ? "" : Math.max(0, Number(cleanedAmount || 0));
+      if (tradeAmountPreview === "") localStorage.removeItem("AITradeX_TRADE_AMOUNT_PREVIEW");
+      else localStorage.setItem("AITradeX_TRADE_AMOUNT_PREVIEW", String(tradeAmountPreview));
       updateTradeAmountPreviewDom();
     },
     setTradeLeverage(value) {
+      clearTradeOrderNotice();
       tradeLeveragePreview = Math.max(1, Number(String(value).replace("x", "") || 1));
       localStorage.setItem("AITradeX_TRADE_LEVERAGE_PREVIEW", String(tradeLeveragePreview));
       render();
     },
     setMarket(market) {
+      clearTradeOrderNotice();
       selectedMarket = market === "FOREX" ? "FOREX" : "CRYPTO";
       localStorage.setItem("AITradeX_SELECTED_MARKET", selectedMarket);
       const list = pairsForMarket();
@@ -3130,6 +3157,7 @@
       render();
     },
     selectPair(pair) {
+      clearTradeOrderNotice();
       selectedPair = pair;
       const found = [...marketPairs.CRYPTO, ...marketPairs.FOREX].find(p => p.pair === pair);
       if (found) {
@@ -3211,12 +3239,11 @@
         };
         App.state.trades.unshift(order);
         App.saveState();
-        App.toast(`${normalizedSide} limit order placed at ${order.limitPriceDisplay}.`);
+        resetTradeTicketAfterOrder("Limit order placed", `${selectedPair} ${normalizedSide} limit placed at ${order.limitPriceDisplay}.`);
         render();
         return;
       }
 
-      App.toast("Locking card entry price...");
       let lockedPrice = visiblePairCardPrice(selectedPair);
       if (!lockedPrice) {
         try {
@@ -3269,7 +3296,7 @@
       };
       App.state.trades.unshift(trade);
       App.saveState();
-      App.toast(`${trade.side} manual trade opened at ${trade.entryPriceDisplay}.`);
+      resetTradeTicketAfterOrder("Market order opened", `${trade.side} ${selectedPair} opened at ${trade.entryPriceDisplay}.`);
       render();
     },
     closeManualLivePositions() {

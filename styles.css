@@ -4238,3 +4238,7 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
     border-radius: 17px;
   }
 }
+.order-success-banner{margin:16px 0 12px;border:1px solid rgba(0,231,168,.32);background:linear-gradient(135deg,rgba(0,231,168,.16),rgba(21,229,211,.07));border-radius:20px;padding:14px 16px;box-shadow:0 18px 45px rgba(0,231,168,.08)}
+.order-success-banner b{display:block;color:var(--green);font-size:15px;font-weight:1000;letter-spacing:.01em}
+.order-success-banner span{display:block;color:#cfe8dd;margin-top:4px;font-size:13px;font-weight:750;line-height:1.45}
+@media(max-width:620px){.order-success-banner{border-radius:18px;padding:13px 14px}.order-success-banner b{font-size:14px}.order-success-banner span{font-size:12px}}

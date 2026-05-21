@@ -854,3 +854,11 @@ Phase 4.50 — Crypto Active Upcoming Markets Clean
 - Admin AI Trading Desk now lists crypto pairs only to avoid unstable non-crypto execution.
 - Non-crypto trading execution is blocked cleanly; no random/static prices are used.
 - No backup files or patch/block layers included.
+
+Phase 4.51 - Trade Form Reset After Order Clean
+- Market order success now clears the trade ticket values after the position is opened.
+- Limit order success now clears margin, limit price and leverage after the pending order is created.
+- Leverage resets to 1x, margin input becomes blank, and the calculator returns to zero.
+- Pair/chart selection stays unchanged so the user can place another order on the same pair if needed.
+- Added premium in-card order success feedback instead of random success alerts.
+- Trading logic, wallet margin lock, Orders page and upcoming-market flow remain unchanged.
