@@ -322,6 +322,18 @@
     `;
   }
 
+  function aiLeverageOptions(selected = 10) {
+    const selectedLev = String(Math.max(1, Math.min(2000, Number(selected || 10))));
+    const values = [1, 2, 5, 10, 25, 50, 100, 200, 500, 1000, 2000];
+    return values.map(value => `<option value="${value}" ${String(value) === selectedLev ? "selected" : ""}>${value}x</option>`).join("");
+  }
+
+  function normalizeAdminLeverage(value) {
+    const lev = Number(value || 1);
+    if (!Number.isFinite(lev)) return 1;
+    return Math.max(1, Math.min(2000, lev));
+  }
+
   function aiPairPriceView(pair = "BTC/USDT") {
     const item = pairDataByPair(pair);
     const view = App.pairLiveView ? App.pairLiveView(item) : item;
@@ -988,7 +1000,7 @@
     return `
       <section class="panel-card ai-validation-panel">
         <div class="section-head">
-          <div><h3>AI User Validation</h3><span>Wallet balance, active plan, remaining AI limit and allocation check before opening trades.</span></div>
+          <div><h3>Eligible AI Users</h3><span>Shows users who can receive the next AI trade: active, AI ON, wallet available, and limit remaining.</span></div>
           <span class="admin-count-pill">${users.length} shown · ${skipped.length} skipped</span>
         </div>
         <div class="admin-list">
@@ -1016,7 +1028,7 @@
 
   function aiPreviewStats(resultPercent = 2, leverage = 1, minBalance = 0, resultType = "PROFIT") {
     const percent = Math.max(0, Number(resultPercent || 0));
-    const lev = Math.max(1, Number(leverage || 1));
+    const lev = normalizeAdminLeverage(leverage || 1);
     const report = aiEligibilityReport(Math.max(0, Number(minBalance || 0)));
     let totalMargin = 0;
     let totalExposure = 0;
@@ -1159,7 +1171,7 @@
 
   function aiLivePreviewStats(leverage = 1, minBalance = 0) {
     const report = aiEligibilityReport(Math.max(0, Number(minBalance || 0)));
-    const lev = Math.max(1, Number(leverage || 1));
+    const lev = normalizeAdminLeverage(leverage || 1);
     let totalMargin = 0;
     let totalExposure = 0;
     report.eligible.forEach(user => {
@@ -1219,18 +1231,31 @@
         ${metric("🎁", "Free AI / Day", Number(settings.freeAiTradesPerDay || 5))}
       </section>
 
+      <section class="panel-card ai-simple-guide">
+        <div class="section-head">
+          <div><h3>Simple AI Control Flow</h3><span>Use this order: user check → open live position → target/admin close → wallet settlement.</span></div>
+          <span class="admin-count-pill">Leverage up to 2000x</span>
+        </div>
+        <div class="review-grid compact-review ai-preview-grid">
+          <article><span>1. User Check</span><b>AI ON + Limit</b></article>
+          <article><span>2. Wallet</span><b>Cut on Open</b></article>
+          <article><span>3. Live Trade</span><b>Target/Admin</b></article>
+          <article><span>4. Settlement</span><b>P/L Update</b></article>
+        </div>
+      </section>
+
       ${aiValidationOverviewHtml(previewReport)}
 
       <section class="panel-card ai-desk-panel">
         <div class="section-head ai-desk-head">
-          <div><h3>AI Trading Desk</h3><span>Execute one AI auto trade for all valid AI users.</span></div>
+          <div><h3>Advanced Instant AI Trade</h3><span>Optional one-click profit/loss entry. Use Live AI Position below for running positions.</span></div>
           <span class="admin-count-pill">Auto eligibility</span>
         </div>
 
         <div class="admin-grid-two ai-desk-grid">
           <form class="payment-form-card ai-desk-form" onsubmit="AITradeXAdmin.executeAiTrade(event)">
-            <p>EXPERT AUTO TRADE</p>
-            <h2>New AI Auto Trade</h2>
+            <p>OPTIONAL INSTANT RESULT</p>
+            <h2>Instant AI Trade</h2>
 
             <div class="ai-step-card">
               <div class="ai-step-label"><b>1</b><span>Select pair</span></div>
@@ -1265,7 +1290,7 @@
             </div>
 
             <div class="ai-step-card">
-              <div class="ai-step-label"><b>4</b><span>Result & leverage</span></div>
+              <div class="ai-step-label"><b>4</b><span>Result & leverage up to 2000x</span></div>
               <div class="ai-toggle-grid two">
                 <label class="ai-radio-card profit"><input type="radio" name="aiTradeResultType" value="PROFIT" checked onchange="AITradeXAdmin.updateAiPreview()"/><span>Profit</span><small>Add P/L to real wallet</small></label>
                 <label class="ai-radio-card loss"><input type="radio" name="aiTradeResultType" value="LOSS" onchange="AITradeXAdmin.updateAiPreview()"/><span>Loss</span><small>Deduct P/L from real wallet</small></label>
@@ -1276,10 +1301,7 @@
                 </label>
                 <label>Leverage
                   <select id="aiTradeLeverage" onchange="AITradeXAdmin.updateAiPreview()">
-                    <option value="1">1x</option>
-                    <option value="2">2x</option>
-                    <option value="5">5x</option>
-                    <option value="10">10x</option>
+                    ${aiLeverageOptions(10)}
                   </select>
                 </label>
               </div>
@@ -1296,7 +1318,7 @@
               </label>
             </div>
 
-            <button class="save-profile-btn ai-execute-btn">Execute AI Trade</button>
+            <button class="save-profile-btn ai-execute-btn">Execute Instant AI Trade</button>
           </form>
 
           <section class="payment-form-card ai-control-preview ai-desk-summary">
@@ -1322,7 +1344,7 @@
 
       <section class="panel-card ai-desk-panel ai-live-open-panel">
         <div class="section-head ai-desk-head">
-          <div><h3>Open Live AI Position</h3><span>Open market-connected AI positions for all valid AI users. Instant AI Trade above remains unchanged.</span></div>
+          <div><h3>Main AI Control: Open Live Position</h3><span>Simple running AI trade. Amount cuts from wallet on open, then target/admin close settles P/L.</span></div>
           <span class="admin-count-pill">Live market P/L</span>
         </div>
         <div class="admin-grid-two ai-desk-grid">
@@ -1342,7 +1364,7 @@
               </div>
             </div>
             <div class="ai-step-card">
-              <div class="ai-step-label"><b>2</b><span>Target & leverage</span></div>
+              <div class="ai-step-label"><b>2</b><span>Target & leverage up to 2000x</span></div>
               <div class="ai-toggle-grid two">
                 <label class="ai-radio-card profit"><input type="radio" name="aiLiveTargetType" value="PROFIT" checked onchange="AITradeXAdmin.updateAiLivePreview()"/><span>Profit Target</span><small>Auto-close on profit</small></label>
                 <label class="ai-radio-card loss"><input type="radio" name="aiLiveTargetType" value="LOSS" onchange="AITradeXAdmin.updateAiLivePreview()"/><span>Loss Target</span><small>Auto-close on loss</small></label>
@@ -1353,10 +1375,7 @@
                 </label>
                 <label>Leverage
                   <select id="aiLiveLeverage" onchange="AITradeXAdmin.updateAiLivePreview()">
-                    <option value="1">1x</option>
-                    <option value="2">2x</option>
-                    <option value="5">5x</option>
-                    <option value="10">10x</option>
+                    ${aiLeverageOptions(10)}
                   </select>
                 </label>
               </div>
@@ -1392,7 +1411,7 @@
               <article><span>Wallet check</span><b id="aiLivePreviewWalletCheck">${previewReport.reasons.lowBalance || previewReport.reasons.noPool ? "Needs review" : "Passed"}</b></article>
             </div>
             <div class="premium-bank-card ai-last-card">
-              <div class="copy-row"><b>Live position rule</b><span>Entry price locks on open. Close price locks only when target hits or admin closes manually.</span><button type="button">Ready</button></div>
+              <div class="copy-row"><b>Simple rule</b><span>Open = wallet amount cut. Close = locked amount plus/minus live P/L settled.</span><button type="button">Ready</button></div>
             </div>
           </section>
         </div>
@@ -2089,7 +2108,7 @@
     updateAiPreview() {
       const resultType = document.querySelector('input[name="aiTradeResultType"]:checked')?.value || "PROFIT";
       const resultPercent = Math.max(0, Number(inputValue("aiTradeResultPercent") || 0));
-      const leverage = Math.max(1, Number(inputValue("aiTradeLeverage") || 1));
+      const leverage = normalizeAdminLeverage(inputValue("aiTradeLeverage") || 1);
       const minBalance = Math.max(0, Number(inputValue("aiTradeMinBalance") || 0));
       const stats = aiPreviewStats(resultPercent, leverage, minBalance, resultType);
       const setText = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
@@ -2120,7 +2139,7 @@
         return;
       }
       const side = document.querySelector('input[name="aiTradeSide"]:checked')?.value || "BUY";
-      const leverage = Math.max(1, Number(inputValue("aiTradeLeverage") || 1));
+      const leverage = normalizeAdminLeverage(inputValue("aiTradeLeverage") || 1);
       const resultType = document.querySelector('input[name="aiTradeResultType"]:checked')?.value || "PROFIT";
       const resultPercent = Math.max(0, Number(inputValue("aiTradeResultPercent") || 0));
       const minBalance = Math.max(0, Number(inputValue("aiTradeMinBalance") || 0));
@@ -2232,7 +2251,7 @@
     },
 
     updateAiLivePreview() {
-      const leverage = Math.max(1, Number(inputValue("aiLiveLeverage") || 1));
+      const leverage = normalizeAdminLeverage(inputValue("aiLiveLeverage") || 1);
       const minBalance = Math.max(0, Number(inputValue("aiLiveMinBalance") || 0));
       const targetType = document.querySelector('input[name="aiLiveTargetType"]:checked')?.value || "PROFIT";
       const targetPercent = Math.max(0, Number(inputValue("aiLiveTargetPercent") || 0));
@@ -2257,7 +2276,7 @@
         return;
       }
       const side = document.querySelector('input[name="aiLiveSide"]:checked')?.value || "BUY";
-      const leverage = Math.max(1, Number(inputValue("aiLiveLeverage") || 1));
+      const leverage = normalizeAdminLeverage(inputValue("aiLiveLeverage") || 1);
       const targetType = document.querySelector('input[name="aiLiveTargetType"]:checked')?.value || "PROFIT";
       const targetPercent = Math.max(0.01, Number(inputValue("aiLiveTargetPercent") || 0));
       const minBalance = Math.max(0, Number(inputValue("aiLiveMinBalance") || 0));
