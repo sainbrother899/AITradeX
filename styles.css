@@ -5069,3 +5069,169 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   .top-live-position-bar.premium-active-bar button{min-height:34px;padding:0 12px;}
   .risk-preset-row{grid-template-columns:1fr 1fr;}
 }
+
+/* AITradeX Phase 4.72 - Compact trade ticket + fast buy/sell layout */
+.compact-trade-ticket{
+  padding:14px!important;
+  border-radius:24px!important;
+  margin-top:-2px;
+}
+.compact-trade-ticket:before{
+  width:150px!important;
+  height:150px!important;
+  left:-54px!important;
+  top:-54px!important;
+  opacity:.8;
+}
+.compact-ticket-head{
+  position:relative;
+  z-index:1;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:10px;
+}
+.compact-ticket-head h2{
+  margin:4px 0 2px;
+  font-size:22px;
+  letter-spacing:-.03em;
+}
+.compact-ticket-head span:not(.ticket-chip){
+  color:#b8c7df;
+  font-size:12px;
+  font-weight:850;
+}
+.compact-ticket-grid{
+  position:relative;
+  z-index:1;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+.compact-ticket-grid label,
+.compact-risk-inputs label{
+  margin:0!important;
+  font-size:12px;
+}
+.compact-ticket-grid input,
+.compact-ticket-grid select,
+.compact-risk-inputs input{
+  min-height:46px!important;
+  border-radius:14px!important;
+}
+.app-select-btn.compact{
+  min-height:46px!important;
+  border-radius:14px!important;
+}
+.compact-second-row{
+  margin-top:9px;
+}
+.compact-account-chip{
+  min-height:46px;
+  border:1px solid rgba(255,255,255,.09);
+  background:rgba(255,255,255,.045);
+  border-radius:14px;
+  padding:8px 12px;
+  display:grid;
+  align-content:center;
+}
+.compact-account-chip.real{border-color:rgba(0,231,168,.18);background:rgba(0,231,168,.055);}
+.compact-account-chip.demo{border-color:rgba(79,178,255,.18);background:rgba(79,178,255,.055);}
+.compact-account-chip span{color:var(--muted);font-size:11px;font-weight:950;text-transform:uppercase;letter-spacing:.08em;}
+.compact-account-chip b{color:#fff;font-size:14px;margin-top:2px;}
+.compact-trade-summary{
+  position:relative;
+  z-index:1;
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+  margin:10px 0;
+}
+.compact-trade-summary span{
+  border:1px solid rgba(255,255,255,.075);
+  background:rgba(255,255,255,.04);
+  border-radius:14px;
+  padding:9px 10px;
+  color:#fff;
+  font-weight:950;
+  font-size:13px;
+  min-width:0;
+  overflow-wrap:anywhere;
+}
+.compact-trade-summary b{
+  display:block;
+  color:var(--muted);
+  font-size:10px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  margin-bottom:3px;
+}
+.fast-buy-sell-row{
+  position:relative;
+  z-index:1;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:8px;
+}
+.fast-buy-sell-row .buy-btn,
+.fast-buy-sell-row .sell-btn{
+  min-height:58px;
+  border-radius:18px;
+  display:grid;
+  place-items:center;
+  gap:2px;
+  line-height:1.05;
+  box-shadow:0 14px 32px rgba(0,0,0,.22);
+}
+.fast-buy-sell-row small{
+  display:block;
+  font-size:10px;
+  letter-spacing:.12em;
+  opacity:.75;
+}
+.compact-risk-details{
+  position:relative;
+  z-index:1;
+  margin-top:10px;
+  border:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.03);
+  border-radius:16px;
+  overflow:hidden;
+}
+.compact-risk-details summary{
+  list-style:none;
+  cursor:pointer;
+  padding:11px 12px;
+  color:#dce8fa;
+  font-size:13px;
+  font-weight:1000;
+}
+.compact-risk-details summary::-webkit-details-marker{display:none;}
+.compact-risk-details[open]{padding-bottom:10px;}
+.risk-preset-row.compact{
+  padding:0 10px;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+}
+.compact-risk-inputs{
+  padding:0 10px;
+}
+.order-success-banner.compact,
+.order-warning-bar.compact,
+.limit-order-note.compact,
+.coming-soon-trade-bar.compact{
+  position:relative;
+  z-index:1;
+  margin:9px 0!important;
+}
+@media(max-width:620px){
+  .compact-trade-ticket{padding:12px!important;border-radius:22px!important;}
+  .compact-ticket-head h2{font-size:20px;}
+  .compact-ticket-grid{gap:8px;}
+  .compact-trade-summary{grid-template-columns:1fr 1fr 1fr;gap:7px;}
+  .compact-trade-summary span{padding:8px 7px;font-size:12px;}
+  .fast-buy-sell-row{grid-template-columns:1fr 1fr!important;gap:8px;}
+  .fast-buy-sell-row .buy-btn,.fast-buy-sell-row .sell-btn{min-height:56px;font-size:14px;border-radius:16px;}
+  .risk-preset-row.compact{grid-template-columns:1fr 1fr;}
+}

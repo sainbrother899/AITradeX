@@ -2061,96 +2061,81 @@
         </div>
       </section>
 
-      <section class="premium-card order-ticket pro-order-ticket">
-        <div class="card-row">
+      <section class="premium-card order-ticket pro-order-ticket compact-trade-ticket">
+        <div class="compact-ticket-head">
           <div>
             <p>ORDER TICKET</p>
-            <h2>Buy / Sell Order</h2>
-            <span class="ticket-mode">${accountMode} account selected from Home</span>
+            <h2>${selectedPair}</h2>
+            <span>${accountMode} Account · ${tradeOrderType === "LIMIT" ? "Limit" : "Market"} Order</span>
           </div>
           <span class="ticket-chip">${tradeIsActive ? selectedMarket : "UPCOMING"}</span>
         </div>
 
-        ${tradeOrderNotice ? `<div class="order-success-banner"><b>${App.escapeHtml(tradeOrderNotice.title)}</b><span>${App.escapeHtml(tradeOrderNotice.detail)}</span></div>` : ""}
+        ${tradeOrderNotice ? `<div class="order-success-banner compact"><b>${App.escapeHtml(tradeOrderNotice.title)}</b><span>${App.escapeHtml(tradeOrderNotice.detail)}</span></div>` : ""}
 
-        <div class="trade-account-mini ${accountMode.toLowerCase()}">
-          <div><span>Account</span><b>${accountMode}</b></div>
-          <div><span>Available</span><b>${App.money(balance)}</b></div>
+        <div class="compact-ticket-grid">
+          <label>Amount
+            <input type="number" value="${App.escapeHtml(String(tradeAmountPreview || ""))}" min="1" oninput="AITradeXUser.setTradeAmount(this.value)" placeholder="Margin INR"/>
+          </label>
+          <div class="app-field">
+            <span>Leverage</span>
+            <button class="app-select-btn full compact" onclick="AITradeXUser.openSheet('leverage')">
+              <b>${tradeLeveragePreview}x</b>
+              <em>Change</em>
+            </button>
+          </div>
         </div>
 
-        <div class="order-step-card">
-          <div class="order-step-head"><i>1</i><div><b>Order setup</b><span>Choose order type, leverage and margin.</span></div></div>
-          <div class="form-row">
-            <label>Order Type
-              <select onchange="AITradeXUser.setTradeOrderType(this.value)">
-                <option value="MARKET" ${tradeOrderType === "MARKET" ? "selected" : ""}>Market</option>
-                <option value="LIMIT" ${tradeOrderType === "LIMIT" ? "selected" : ""}>Limit</option>
-              </select>
+        <div class="compact-ticket-grid compact-second-row">
+          <label>Order Type
+            <select onchange="AITradeXUser.setTradeOrderType(this.value)">
+              <option value="MARKET" ${tradeOrderType === "MARKET" ? "selected" : ""}>Market</option>
+              <option value="LIMIT" ${tradeOrderType === "LIMIT" ? "selected" : ""}>Limit</option>
+            </select>
+          </label>
+          ${tradeOrderType === "LIMIT" ? `
+            <label>Limit Price
+              <input type="number" value="${App.escapeHtml(tradeLimitPrice)}" min="0" step="any" oninput="AITradeXUser.setTradeLimitPrice(this.value)" placeholder="Trigger price"/>
             </label>
-            <div class="app-field">
-              <span>Leverage</span>
-              <button class="app-select-btn full" onclick="AITradeXUser.openSheet('leverage')">
-                <b>${tradeLeveragePreview}x</b>
-                <em>Change</em>
-              </button>
+          ` : `
+            <div class="compact-account-chip ${accountMode.toLowerCase()}">
+              <span>Available</span>
+              <b>${App.money(balance)}</b>
             </div>
-          </div>
+          `}
         </div>
 
-        ${tradeOrderType === "LIMIT" ? `
-          <label>Limit Price
-            <input type="number" value="${App.escapeHtml(tradeLimitPrice)}" min="0" step="any" oninput="AITradeXUser.setTradeLimitPrice(this.value)" placeholder="Enter trigger price"/>
-          </label>
-          <div class="limit-order-note">
-            <b>Limit order:</b> BUY triggers when live price reaches your price or below. SELL triggers when live price reaches your price or above.
-          </div>
-        ` : ""}
+        ${marginWarning ? `<div class="order-warning-bar compact">Margin is higher than available ${accountMode} balance. Reduce amount before placing trade.</div>` : ""}
 
-        <div class="order-step-card">
-          <div class="order-step-head"><i>2</i><div><b>Margin amount</b><span>Amount will be locked from selected ${accountMode} wallet.</span></div></div>
-          <label>Margin Amount
-            <input type="number" value="${App.escapeHtml(String(tradeAmountPreview || ""))}" min="1" oninput="AITradeXUser.setTradeAmount(this.value)" placeholder="Enter INR amount"/>
-          </label>
-          ${marginWarning ? `<div class="order-warning-bar">Margin is higher than available ${accountMode} balance. Reduce amount before placing trade.</div>` : ""}
-        </div>
-
-        <div class="trade-preview-grid premium-trade-preview">
-          <article><span>Available</span><b>${App.money(balance)}</b></article>
-          <article><span>Margin</span><b data-trade-preview-margin>${App.money(tradeAmountPreview)}</b></article>
-          <article><span>Leverage</span><b>${tradeLeveragePreview}x</b></article>
-          <article><span>Position Size</span><b data-trade-preview-position>${App.money(positionSize)}</b></article>
-        </div>
-
-        <div class="risk-box">
-          <div class="order-step-head"><i>3</i><div><b>Risk controls</b><span>TP/SL are optional for manual tracking.</span></div></div>
-          <div class="risk-preset-row">
-            <span>No TP/SL</span><span>Safe</span><span>Balanced</span><span>High Risk</span>
-          </div>
-          <div class="form-row">
-            <label>Take Profit Optional<input placeholder="TP price"/></label>
-            <label>Stop Loss Optional<input placeholder="SL price"/></label>
-          </div>
+        <div class="compact-trade-summary">
+          <span><b>Margin</b>${App.money(tradeAmountPreview)}</span>
+          <span><b>Position</b>${App.money(positionSize)}</span>
+          <span><b>Mode</b>${accountMode}</span>
         </div>
 
         ${tradeIsActive ? `
-          <div class="order-action-shell">
-            <div><b>Ready to place order?</b><span>${accountMode} · Margin ${App.money(marginValue)} · Position ${App.money(positionSize)}</span></div>
-            <div class="buy-sell-row">
-              <button class="buy-btn" onclick="AITradeXUser.placeManualTrade('BUY')">BUY / LONG</button>
-              <button class="sell-btn" onclick="AITradeXUser.placeManualTrade('SELL')">SELL / SHORT</button>
-            </div>
+          <div class="fast-buy-sell-row">
+            <button class="sell-btn" onclick="AITradeXUser.placeManualTrade('SELL')"><small>LEFT</small>SELL / SHORT</button>
+            <button class="buy-btn" onclick="AITradeXUser.placeManualTrade('BUY')"><small>RIGHT</small>BUY / LONG</button>
           </div>
         ` : `
-          <div class="coming-soon-trade-bar">
+          <div class="coming-soon-trade-bar compact">
             <b>Market Coming Soon</b>
             <span>Forex, Gold and Silver trading will be available after premium market data integration.</span>
           </div>
         `}
 
-        <div class="confirm-summary">
-          <b>Order Summary</b>
-          <span data-trade-preview-summary>${tradeIsActive ? `${tradeOrderType === "LIMIT" ? "Limit" : "Market"} · ${selectedMarket} · ${selectedPair} · ${accountMode} · Margin ${App.money(tradeAmountPreview)} · Position ${App.money(positionSize)}` : `${selectedPair} · Coming Soon · Trading disabled for this market`}</span>
-        </div>
+        <details class="compact-risk-details">
+          <summary>Advanced TP/SL Options</summary>
+          <div class="risk-preset-row compact">
+            <span>No TP/SL</span><span>Safe</span><span>Balanced</span><span>High Risk</span>
+          </div>
+          <div class="form-row compact-risk-inputs">
+            <label>Take Profit Optional<input placeholder="TP price"/></label>
+            <label>Stop Loss Optional<input placeholder="SL price"/></label>
+          </div>
+          ${tradeOrderType === "LIMIT" ? `<div class="limit-order-note compact"><b>Limit order:</b> BUY triggers at or below your price. SELL triggers at or above your price.</div>` : ""}
+        </details>
       </section>
 
       <section class="premium-card market-feed-card">
