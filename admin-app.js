@@ -14,6 +14,7 @@
   let usersStatusFilter = localStorage.getItem("AITradeX_ADMIN_USERS_STATUS") || "ALL";
   let supportSearch = localStorage.getItem("AITradeX_ADMIN_SUPPORT_SEARCH") || "";
   let supportStatusFilter = localStorage.getItem("AITradeX_ADMIN_SUPPORT_STATUS") || "ALL";
+  let walletHistoryPage = Math.max(1, Number(localStorage.getItem("AITradeX_ADMIN_WALLET_HISTORY_PAGE") || 1));
 
   function adminUser() {
     return App.currentUser();
@@ -557,21 +558,41 @@
       .filter(u => usersStatusFilter === "ALL" || userStatus(u) === usersStatusFilter)
       .filter(u => {
         if (!query) return true;
-        return [displayNameFor(u), u.email, u.mobile, userStatus(u), u.referralCode].some(v => includesText(v, query));
+        return [displayNameFor(u), u.email, u.mobile, userStatus(u), u.referralCode, App.currentPlan(u.id)?.name].some(v => includesText(v, query));
       });
 
     shell(`
       ${userFilterBar()}
-      <section class="panel-card">
+      <section class="metrics-grid user-wallet-metrics">
+        ${metric("👥", "Filtered Users", users.length)}
+        ${metric("💰", "Total Real Balance", App.money(users.reduce((sum, u) => sum + App.realBalance(u.id), 0)))}
+        ${metric("🤖", "AI Enabled", users.filter(u => u.aiTradeOn).length)}
+        ${metric("⛔", "Blocked", allUsers().filter(u => userStatus(u) === "BLOCKED").length)}
+      </section>
+      <section class="panel-card admin-user-manager-panel">
         <div class="section-head">
-          <div><h3>Users</h3><span>Manage user status, balances and verification summary</span></div>
+          <div><h3>User & Wallet Control</h3><span>Search users, add/deduct wallet balance, change plan, block/unblock and review details from one place.</span></div>
           <span class="admin-count-pill">${users.length} result</span>
         </div>
         <div class="admin-user-card-list">
           ${users.map(u => userControlCard(u)).join("") || `<div class="empty-state">No users found.</div>`}
         </div>
       </section>
+      ${walletHistoryPanel(users)}
     `);
+  }
+
+  function planSelectHtml(user) {
+    const current = App.currentPlan(user.id) || {};
+    const plans = App.getPlans ? App.getPlans() : (App.state.plans || []);
+    return plans.map(plan => `<option value="${esc(plan.id)}" ${plan.id === current.id ? "selected" : ""}>${esc(plan.name)} · ${Number(plan.signals || 0)} AI/day</option>`).join("");
+  }
+
+  function userWalletRows(user, limit = 5) {
+    return (App.state.walletLedger || [])
+      .filter(row => row.userId === user.id)
+      .sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0))
+      .slice(0, limit);
   }
 
   function userControlCard(user) {
@@ -581,6 +602,11 @@
     const withdrawals = withdrawalRequestsFor(user);
     const pendingDeposits = deposits.filter(r => r.status === "PENDING").length;
     const pendingWithdrawals = withdrawals.filter(r => r.status === "PENDING").length;
+    const plan = App.currentPlan(user.id) || {};
+    const aiLimit = App.aiDailyLimit ? App.aiDailyLimit(user.id) : Number(plan.signals || 0);
+    const aiUsed = App.aiTradesToday ? App.aiTradesToday(user.id) : 0;
+    const activeAi = (App.state.trades || []).filter(t => t.userId === user.id && t.tradeType === "AI_LIVE" && String(t.status || "OPEN").toUpperCase() !== "CLOSED").length;
+    const walletRows = userWalletRows(user, 4);
     return `
       <article class="admin-user-control-card status-${status.toLowerCase()}">
         <div class="user-control-head">
@@ -597,13 +623,43 @@
           </div>
         </div>
 
-        <div class="user-control-grid">
-          <article><span>KYC</span><b>${statusPill(kyc.status)}</b></article>
+        <div class="user-control-grid admin-user-premium-grid">
           <article><span>Real Balance</span><b>${App.money(App.realBalance(user.id))}</b></article>
           <article><span>Demo Balance</span><b>${App.money(App.demoBalance(user.id))}</b></article>
+          <article><span>Plan</span><b>${esc(plan.name || "Free")}</b></article>
+          <article><span>AI Limit</span><b>${aiUsed}/${aiLimit}</b></article>
+          <article><span>Active AI</span><b>${activeAi}</b></article>
+          <article><span>KYC</span><b>${statusPill(kyc.status)}</b></article>
           <article><span>Pending Deposit</span><b>${pendingDeposits}</b></article>
           <article><span>Pending Withdrawal</span><b>${pendingWithdrawals}</b></article>
-          <article><span>Joined</span><b>${esc(user.createdAt || "-")}</b></article>
+        </div>
+
+        <div class="admin-user-tools-grid">
+          <form class="admin-inline-tool wallet-adjust-tool" onsubmit="AITradeXAdmin.adjustUserWallet(event, '${user.id}')">
+            <b>Wallet Add / Deduct</b>
+            <div class="admin-tool-row">
+              <input id="walletAmount_${user.id}" type="number" min="1" step="0.01" placeholder="Amount" required />
+              <select id="walletAction_${user.id}">
+                <option value="ADD">Add</option>
+                <option value="DEDUCT">Deduct</option>
+              </select>
+            </div>
+            <input id="walletNote_${user.id}" placeholder="Admin note / reason" />
+            <button class="approve-btn" type="submit">Update Wallet</button>
+          </form>
+
+          <form class="admin-inline-tool plan-change-tool" onsubmit="AITradeXAdmin.changeUserPlan(event, '${user.id}')">
+            <b>Plan Change</b>
+            <select id="planSelect_${user.id}">${planSelectHtml(user)}</select>
+            <small>Admin plan change does not cut wallet balance.</small>
+            <button class="ghost-action" type="submit">Save Plan</button>
+          </form>
+
+          <form class="admin-inline-tool password-reset-tool" onsubmit="AITradeXAdmin.resetUserPassword(event, '${user.id}')">
+            <b>Password Reset</b>
+            <input id="newPassword_${user.id}" type="text" minlength="4" placeholder="New password" required />
+            <button class="ghost-action" type="submit">Reset Password</button>
+          </form>
         </div>
 
         <div class="admin-action-row user-status-actions">
@@ -611,7 +667,49 @@
           <button class="suspend-btn" ${status === "SUSPENDED" ? "disabled" : ""} onclick="AITradeXAdmin.setUserStatus('${user.id}', 'SUSPENDED', this)">Suspend</button>
           <button class="reject-btn" ${status === "BLOCKED" ? "disabled" : ""} onclick="AITradeXAdmin.setUserStatus('${user.id}', 'BLOCKED', this)">Block</button>
         </div>
+
+        <details class="admin-user-details-box">
+          <summary>View user details & recent wallet history</summary>
+          <div class="user-control-grid admin-user-detail-grid">
+            <article><span>User ID</span><b>${esc(user.id)}</b></article>
+            <article><span>Referral Code</span><b>${esc(user.referralCode || "-")}</b></article>
+            <article><span>Joined</span><b>${esc(user.createdAt || "-")}</b></article>
+            <article><span>AI Allocation</span><b>${Number(user.aiTradePercent || 25)}%</b></article>
+            <article><span>AI Trade</span><b>${user.aiTradeOn ? "ON" : "OFF"}</b></article>
+            <article><span>Status Updated</span><b>${esc(user.statusUpdatedAt || "-")}</b></article>
+          </div>
+          <div class="admin-mini-table wallet-mini-table">
+            ${walletRows.length ? walletRows.map(row => `<div><span>${esc(row.type || "LEDGER")}</span><b class="${Number(row.amount || 0) >= 0 ? "profit-text" : "loss-text"}">${Number(row.amount || 0) >= 0 ? "+" : ""}${App.money(row.amount || 0)}</b><small>${esc(row.note || "-")} · ${row.createdAt ? new Date(row.createdAt).toLocaleString() : "-"}</small></div>`).join("") : `<div class="empty-state">No wallet history yet.</div>`}
+          </div>
+        </details>
       </article>`;
+  }
+
+  function walletHistoryPanel(users) {
+    const ids = new Set(users.map(u => u.id));
+    const rows = (App.state.walletLedger || [])
+      .filter(row => ids.has(row.userId))
+      .sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0));
+    const pageSize = 8;
+    const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+    walletHistoryPage = Math.min(Math.max(1, walletHistoryPage), totalPages);
+    const visible = rows.slice((walletHistoryPage - 1) * pageSize, walletHistoryPage * pageSize);
+    return `
+      <section class="panel-card admin-wallet-history-panel">
+        <div class="section-head"><div><h3>Wallet History</h3><span>Paginated ledger for the filtered users above.</span></div><span class="admin-count-pill">${rows.length} rows</span></div>
+        <div class="admin-history-table">
+          ${visible.length ? visible.map(row => {
+            const target = allUsers().find(u => u.id === row.userId) || {};
+            return `<article class="admin-history-row">
+              <div><b>${esc(displayNameFor(target))}</b><span>${esc(target.email || row.userId)}</span></div>
+              <div><b>${esc(row.type || "LEDGER")}</b><span>${esc(row.note || "-")}</span></div>
+              <div><b class="${Number(row.amount || 0) >= 0 ? "profit-text" : "loss-text"}">${Number(row.amount || 0) >= 0 ? "+" : ""}${App.money(row.amount || 0)}</b><span>Balance: ${App.money(row.balanceAfter || 0)}</span></div>
+              <div><b>${row.createdAt ? new Date(row.createdAt).toLocaleString() : "-"}</b><span>${esc(row.referenceId || "-")}</span></div>
+            </article>`;
+          }).join("") : `<div class="empty-state">No wallet ledger found for selected users.</div>`}
+        </div>
+        ${totalPages > 1 ? `<div class="admin-pagination"><button class="ghost-action" ${walletHistoryPage <= 1 ? "disabled" : ""} onclick="AITradeXAdmin.changeWalletHistoryPage(-1)">Prev</button><span>Page ${walletHistoryPage} of ${totalPages}</span><button class="ghost-action" ${walletHistoryPage >= totalPages ? "disabled" : ""} onclick="AITradeXAdmin.changeWalletHistoryPage(1)">Next</button></div>` : ""}
+      </section>`;
   }
 
   function filterBarKyc() {
@@ -2048,6 +2146,97 @@
       target.statusUpdatedAt = App.now();
       App.saveState();
       App.toast(`User status changed to ${nextStatus}.`);
+      render();
+    },
+    adjustUserWallet(event, userId) {
+      event.preventDefault();
+      const target = allUsers().find(u => u.id === userId);
+      if (!target) return;
+      const amount = Math.max(0, Number(document.getElementById(`walletAmount_${userId}`)?.value || 0));
+      const action = String(document.getElementById(`walletAction_${userId}`)?.value || "ADD").toUpperCase();
+      const note = String(document.getElementById(`walletNote_${userId}`)?.value || "").trim();
+      if (!amount) {
+        App.toast("Enter wallet amount.");
+        return;
+      }
+      const signed = action === "DEDUCT" ? -amount : amount;
+      const label = action === "DEDUCT" ? "deduct" : "add";
+      if (!confirm(`Confirm ${label} ${App.money(amount)} for ${displayNameFor(target)}?`)) return;
+      try {
+        App.addLedger({
+          userId,
+          accountType: "REAL",
+          type: action === "DEDUCT" ? "ADMIN_WALLET_DEBIT" : "ADMIN_WALLET_CREDIT",
+          amount: signed,
+          referenceId: App.uid("admin_wallet"),
+          note: note || `Admin wallet ${action.toLowerCase()}`
+        });
+        App.toast(`Wallet ${action === "DEDUCT" ? "deducted" : "credited"} successfully.`);
+        render();
+      } catch (error) {
+        App.toast(error.message || "Wallet update failed.");
+      }
+    },
+    changeUserPlan(event, userId) {
+      event.preventDefault();
+      const target = allUsers().find(u => u.id === userId);
+      if (!target) return;
+      const planId = String(document.getElementById(`planSelect_${userId}`)?.value || "free");
+      const plan = App.planById(planId) || App.planById("free");
+      if (!plan) return;
+      if (!confirm(`Change ${displayNameFor(target)} plan to ${plan.name}?`)) return;
+      App.state.subscriptions = App.state.subscriptions || [];
+      App.state.subscriptions.forEach(sub => {
+        if (sub.userId === userId && sub.status === "ACTIVE") {
+          sub.status = "ADMIN_REPLACED";
+          sub.replacedAt = App.now();
+        }
+      });
+      if (plan.id !== "free") {
+        const days = Math.max(1, Number(plan.durationDays || 30));
+        const created = new Date();
+        const expires = new Date(created.getTime() + days * 86400000);
+        App.state.subscriptions.push({
+          id: App.uid("sub"),
+          userId,
+          planId: plan.id,
+          planName: plan.name,
+          price: Number(plan.price || 0),
+          aiTradeLimit: Number(plan.signals || 0),
+          signals: Number(plan.signals || 0),
+          durationDays: days,
+          status: "ACTIVE",
+          source: "ADMIN_PLAN_CHANGE",
+          createdAt: created.toISOString(),
+          expiresAt: expires.toISOString()
+        });
+      }
+      target.planChangedAt = App.now();
+      target.planChangedBy = "admin";
+      App.saveState();
+      App.toast(`${displayNameFor(target)} plan updated to ${plan.name}.`);
+      render();
+    },
+    resetUserPassword(event, userId) {
+      event.preventDefault();
+      const target = allUsers().find(u => u.id === userId);
+      if (!target) return;
+      const next = String(document.getElementById(`newPassword_${userId}`)?.value || "").trim();
+      if (next.length < 4) {
+        App.toast("Password must be at least 4 characters.");
+        return;
+      }
+      if (!confirm(`Reset password for ${displayNameFor(target)}?`)) return;
+      target.password = next;
+      target.passwordUpdatedAt = App.now();
+      target.passwordUpdatedBy = "admin";
+      App.saveState();
+      App.toast("Password reset successfully.");
+      render();
+    },
+    changeWalletHistoryPage(delta) {
+      walletHistoryPage = Math.max(1, walletHistoryPage + Number(delta || 0));
+      localStorage.setItem("AITradeX_ADMIN_WALLET_HISTORY_PAGE", String(walletHistoryPage));
       render();
     },
     copyText(value) {
