@@ -300,20 +300,26 @@
     return Object.keys(pairs).flatMap(market => (pairs[market] || []).map(item => ({ ...item, market })));
   }
 
+  function activeAiTradePairs() {
+    const pairs = marketPairs();
+    return (pairs.CRYPTO || []).map(item => ({ ...item, market: "CRYPTO" }));
+  }
+
   function pairDataByPair(pair) {
     const cleanPair = String(pair || "").trim().toUpperCase();
-    return allTradePairs().find(item => String(item.pair || "").toUpperCase() === cleanPair) || allTradePairs()[0] || { market: "CRYPTO", pair: "BTC/USDT" };
+    const activePairs = activeAiTradePairs();
+    return activePairs.find(item => String(item.pair || "").toUpperCase() === cleanPair) || activePairs[0] || { market: "CRYPTO", pair: "BTC/USDT" };
   }
 
   function aiTradePairOptions(selected = "BTC/USDT") {
-    const pairs = marketPairs();
-    return Object.keys(pairs).map(market => `
-      <optgroup label="${esc(market)}">
-        ${(pairs[market] || []).map(item => `
-          <option value="${esc(item.pair)}" ${String(item.pair).toUpperCase() === String(selected).toUpperCase() ? "selected" : ""}>${esc(item.pair)} · ${esc(item.inr || item.symbol || market)}</option>
+    const activePairs = activeAiTradePairs();
+    return `
+      <optgroup label="CRYPTO · LIVE">
+        ${activePairs.map(item => `
+          <option value="${esc(item.pair)}" ${String(item.pair).toUpperCase() === String(selected).toUpperCase() ? "selected" : ""}>${esc(item.pair)} · ${esc(item.inr || item.symbol || "CRYPTO")}</option>
         `).join("")}
       </optgroup>
-    `).join("");
+    `;
   }
 
   function aiPairPriceView(pair = "BTC/USDT") {
@@ -1800,6 +1806,10 @@
       const selectedPairData = pairDataByPair(inputValue("aiTradePair") || "BTC/USDT");
       const market = selectedPairData.market || "CRYPTO";
       const pair = String(selectedPairData.pair || "BTC/USDT").toUpperCase();
+      if (market !== "CRYPTO") {
+        App.toast("AI Trading Desk currently supports crypto pairs only.");
+        return;
+      }
       const side = document.querySelector('input[name="aiTradeSide"]:checked')?.value || "BUY";
       const leverage = Math.max(1, Number(inputValue("aiTradeLeverage") || 1));
       const resultType = document.querySelector('input[name="aiTradeResultType"]:checked')?.value || "PROFIT";

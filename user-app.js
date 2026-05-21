@@ -36,6 +36,13 @@
   let aiOffConfirmOpen = false;
 
   const marketPairs = App.marketPairs || { CRYPTO: [], FOREX: [] };
+  const activeMarket = "CRYPTO";
+  function isTradeActivePair(pair) {
+    return App.isCryptoPair ? App.isCryptoPair(pair) : (marketPairs.CRYPTO || []).some(item => item.pair === pair);
+  }
+  function isUpcomingPair(pair) {
+    return !!pair && !isTradeActivePair(pair);
+  }
   function pairsForMarket() {
     return marketPairs[selectedMarket] || marketPairs.CRYPTO;
   }
@@ -44,26 +51,26 @@
     return [...marketPairs.CRYPTO, ...marketPairs.FOREX];
   }
 
+  function upcomingPairView(item) {
+    return {
+      ...item,
+      price: "Coming Soon",
+      rawPrice: 0,
+      change: "Upcoming",
+      mood: "upcoming",
+      signal: "SOON",
+      priceSource: item?.pair === "XAU/USD" || item?.pair === "XAG/USD" ? "Metals Market" : "Forex Market"
+    };
+  }
+
   function marketFeedForPair() {
     const pair = selectedPairData();
-    const isForex = selectedMarket === "FOREX";
-    const isMetal = pair.pair === "XAU/USD" || pair.pair === "XAG/USD";
-
-    if (isMetal) {
+    if (isUpcomingPair(pair.pair)) {
       return [
-        { left: "Bid", mid: pair.price, right: "0.02%", mood: "up" },
-        { left: "Ask", mid: pair.price, right: "0.03%", mood: "up" },
-        { left: "Volatility", mid: "High", right: pair.change, mood: pair.mood },
-        { left: "Session", mid: "Global", right: "Active", mood: "up" }
-      ];
-    }
-
-    if (isForex) {
-      return [
-        { left: "Bid", mid: pair.price, right: "0.01%", mood: "up" },
-        { left: "Ask", mid: pair.price, right: "0.02%", mood: "up" },
-        { left: "Spread", mid: "Tight", right: pair.change, mood: pair.mood },
-        { left: "Session", mid: "FX", right: "Open", mood: "up" }
+        { left: "Market Status", mid: "Coming Soon", right: "Upcoming", mood: "upcoming" },
+        { left: "Trading Access", mid: "Disabled", right: "Soon", mood: "upcoming" },
+        { left: "Data Feed", mid: "Premium API", right: "Planned", mood: "upcoming" },
+        { left: "Current Active", mid: "Crypto", right: "Live", mood: "up" }
       ];
     }
 
@@ -77,24 +84,11 @@
 
   function tradeFeedForMarket() {
     const pair = selectedPairData();
-    const isForex = selectedMarket === "FOREX";
-    const isMetal = pair.pair === "XAU/USD" || pair.pair === "XAG/USD";
-
-    if (isMetal) {
+    if (isUpcomingPair(pair.pair)) {
       return [
-        { pair: pair.pair, action: `${pair.pair.includes("XAU") ? "Gold" : "Silver"} momentum ${pair.signal}`, size: "₹25,000", lev: "20x", change: pair.change, mood: pair.mood, time: "Now" },
-        { pair: pair.pair, action: "Volatility alert active", size: "₹18,500", lev: "10x", change: pair.mood === "up" ? "+0.24%" : "-0.24%", mood: pair.mood, time: "1m" },
-        { pair: pair.pair, action: "AI entry zone forming", size: "₹12,000", lev: "50x", change: pair.mood === "up" ? "+0.18%" : "-0.18%", mood: pair.mood, time: "3m" },
-        { pair: pair.pair, action: "Global session watch", size: "₹9,000", lev: "25x", change: pair.mood === "up" ? "+0.11%" : "-0.11%", mood: pair.mood, time: "5m" }
-      ];
-    }
-
-    if (isForex) {
-      return [
-        { pair: pair.pair, action: `${pair.signal} setup forming`, size: "₹18,000", lev: "50x", change: pair.change, mood: pair.mood, time: "Now" },
-        { pair: pair.pair, action: "Spread watch active", size: "₹12,000", lev: "25x", change: pair.mood === "up" ? "+0.09%" : "-0.09%", mood: pair.mood, time: "1m" },
-        { pair: pair.pair, action: "Trend confirmation pending", size: "₹15,500", lev: "100x", change: pair.mood === "up" ? "+0.12%" : "-0.12%", mood: pair.mood, time: "3m" },
-        { pair: pair.pair, action: "Currency strength alert", size: "₹8,500", lev: "20x", change: pair.mood === "up" ? "+0.06%" : "-0.06%", mood: pair.mood, time: "5m" }
+        { pair: pair.pair, action: "Market launch preparation", size: "Coming Soon", lev: "Soon", change: "Upcoming", mood: "upcoming", time: "Soon" },
+        { pair: pair.pair, action: "Premium data feed integration", size: "Planned", lev: "Soon", change: "Upcoming", mood: "upcoming", time: "Soon" },
+        { pair: pair.pair, action: "Trading access disabled for now", size: "Crypto Active", lev: "Live", change: "Active", mood: "up", time: "Now" }
       ];
     }
 
@@ -665,6 +659,8 @@
   }
 
   function pairView(item) {
+    if (!item) return item;
+    if (isUpcomingPair(item.pair)) return upcomingPairView(item);
     return App.pairLiveView ? App.pairLiveView(item) : item;
   }
 
@@ -673,7 +669,7 @@
   }
 
   function applyLivePriceRow(row) {
-    if (!row || !row.ok) return;
+    if (!row || !row.ok || isUpcomingPair(row.pair)) return;
     document.querySelectorAll(`[data-live-pair="${CSS.escape(row.pair)}"]`).forEach(el => {
       const type = el.getAttribute("data-live-type") || "price";
       if (type === "price") {
@@ -710,18 +706,17 @@
     const baseList = (items || []).map(p => typeof p === "string" ? p : p.pair).filter(Boolean);
     const openList = manualOpenPositions().map(position => position.pair).filter(Boolean);
     const pendingList = pendingManualOrders().map(order => order.pair).filter(Boolean);
-    const list = [...new Set([...baseList, ...openList, ...pendingList])];
+    const list = [...new Set([...baseList, ...openList, ...pendingList])].filter(isTradeActivePair);
     if (!list.length) return;
 
     if (App.refreshLivePrices) App.refreshLivePrices(list, applyLivePriceRow);
     if (App.startCryptoLiveTicker) App.startCryptoLiveTicker(list, applyLivePriceRow);
-    if (App.startForexChartTicker) App.startForexChartTicker(list, applyLivePriceRow);
 
     if (priceRefreshTimer) clearInterval(priceRefreshTimer);
     priceRefreshTimer = setInterval(() => {
-      const nonCryptoPairs = list.filter(pair => !(App.isCryptoPair && App.isCryptoPair(pair)));
-      if (App.refreshLivePrices && nonCryptoPairs.length) App.refreshLivePrices(nonCryptoPairs, applyLivePriceRow);
-    }, 15000);
+      const activePairs = list.filter(isTradeActivePair);
+      if (App.refreshLivePrices && activePairs.length) App.refreshLivePrices(activePairs, applyLivePriceRow);
+    }, 30000);
   }
 
   function selectorSheetHtml() {
@@ -738,10 +733,10 @@
           </div>
           <div class="sheet-grid pair-sheet-grid">
             ${pairsForMarket().map(raw => { const p = pairView(raw); return `
-              <button class="${selectedPair === p.pair ? "active" : ""}" onclick="AITradeXUser.selectPair('${p.pair}')">
+              <button class="${selectedPair === p.pair ? "active" : ""} ${isUpcomingPair(p.pair) ? "upcoming-pair" : ""}" onclick="AITradeXUser.selectPair('${p.pair}')">
                 <b>${p.pair}</b>
-                <span data-price-card="true" data-live-pair="${p.pair}" data-live-type="price">${p.price}</span>
-                <em data-live-pair="${p.pair}" data-live-type="change" class="${changeClass(p.change)}">${p.change}</em>
+                <span data-price-card="${isTradeActivePair(p.pair) ? "true" : "false"}" data-live-pair="${p.pair}" data-live-type="price">${p.price}</span>
+                <em data-live-pair="${p.pair}" data-live-type="change" class="${isUpcomingPair(p.pair) ? "upcoming-text" : changeClass(p.change)}">${p.change}</em>
               </button>
             `; }).join("")}
           </div>
@@ -1469,10 +1464,10 @@
 
       <section class="market-ticker">
         ${allTrendingPairs().map(raw => { const p = pairView(raw); return `
-          <article class="ticker-card ${p.mood} ${selectedPair === p.pair ? "selected" : ""}" onclick="AITradeXUser.selectPair('${p.pair}')">
+          <article class="ticker-card ${p.mood} ${selectedPair === p.pair ? "selected" : ""} ${isUpcomingPair(p.pair) ? "upcoming-market-card" : ""}" onclick="AITradeXUser.selectPair('${p.pair}')">
             <div><h3>${p.pair}</h3><small data-live-pair="${p.pair}" data-live-type="source">${p.priceSource || p.inr}</small></div>
-            <strong data-price-card="true" data-live-pair="${p.pair}" data-live-type="price">${p.price}</strong>
-            <span data-live-pair="${p.pair}" data-live-type="change" class="${changeClass(p.change)}">${p.change}</span>
+            <strong data-price-card="${isTradeActivePair(p.pair) ? "true" : "false"}" data-live-pair="${p.pair}" data-live-type="price">${p.price}</strong>
+            <span data-live-pair="${p.pair}" data-live-type="change" class="${isUpcomingPair(p.pair) ? "upcoming-text" : changeClass(p.change)}">${p.change}</span>
           </article>`; }).join("")}
       </section>
 
@@ -1521,13 +1516,14 @@
     const pair = selectedPairData();
     const balance = currentBalance();
     const positionSize = tradeAmountPreview * tradeLeveragePreview;
+    const tradeIsActive = isTradeActivePair(pair.pair);
 
     shell(`
       <section class="trade-command clean-pair-card">
         <div>
           <p>${selectedMarket} MARKET</p>
           <h1>${selectedPair}</h1>
-          <span data-price-card="true" data-live-pair="${pair.pair}" data-live-type="line">${pair.price} · ${pair.inr} · <em class="${changeClass(pair.change)}">${pair.change}</em></span>
+          <span data-price-card="${tradeIsActive ? "true" : "false"}" data-live-pair="${pair.pair}" data-live-type="line">${pair.price} · ${pair.inr} · <em class="${tradeIsActive ? changeClass(pair.change) : "upcoming-text"}">${pair.change}</em></span>
         </div>
         <button class="change-pair-btn" onclick="AITradeXUser.openSheet('pair')">Change Pair</button>
       </section>
@@ -1535,16 +1531,16 @@
       <section class="trade-select-bar app-selector-bar market-only-bar">
         <div class="market-switch">
           <button class="${selectedMarket === "CRYPTO" ? "active" : ""}" onclick="AITradeXUser.setMarket('CRYPTO')">Crypto</button>
-          <button class="${selectedMarket === "FOREX" ? "active" : ""}" onclick="AITradeXUser.setMarket('FOREX')">Forex</button>
+          <button class="${selectedMarket === "FOREX" ? "active" : ""}" onclick="AITradeXUser.setMarket('FOREX')">Forex & Metals <small>Soon</small></button>
         </div>
       </section>
 
       <section class="pair-rate-list">
         ${pairsForMarket().map(raw => { const p = pairView(raw); return `
-          <button class="${selectedPair === p.pair ? "active" : ""}" onclick="AITradeXUser.selectPair('${p.pair}')">
+          <button class="${selectedPair === p.pair ? "active" : ""} ${isUpcomingPair(p.pair) ? "upcoming-pair" : ""}" onclick="AITradeXUser.selectPair('${p.pair}')">
             <b>${p.pair}</b>
-            <span data-price-card="true" data-live-pair="${p.pair}" data-live-type="price">${p.price}</span>
-            <em data-live-pair="${p.pair}" data-live-type="change" class="${changeClass(p.change)}">${p.change}</em>
+            <span data-price-card="${isTradeActivePair(p.pair) ? "true" : "false"}" data-live-pair="${p.pair}" data-live-type="price">${p.price}</span>
+            <em data-live-pair="${p.pair}" data-live-type="change" class="${isUpcomingPair(p.pair) ? "upcoming-text" : changeClass(p.change)}">${p.change}</em>
           </button>
         `; }).join("")}
       </section>
@@ -1574,7 +1570,7 @@
             <h2>Buy / Sell Order</h2>
             <span class="ticket-mode">${accountMode} account selected from Home</span>
           </div>
-          <span class="ticket-chip">${selectedMarket}</span>
+          <span class="ticket-chip">${tradeIsActive ? selectedMarket : "UPCOMING"}</span>
         </div>
 
         <div class="trade-account-mini ${accountMode.toLowerCase()}">
@@ -1623,21 +1619,28 @@
           <label>Stop Loss Optional<input placeholder="SL price"/></label>
         </div>
 
-        <div class="buy-sell-row">
-          <button class="buy-btn" onclick="AITradeXUser.placeManualTrade('BUY')">BUY / LONG</button>
-          <button class="sell-btn" onclick="AITradeXUser.placeManualTrade('SELL')">SELL / SHORT</button>
-        </div>
+        ${tradeIsActive ? `
+          <div class="buy-sell-row">
+            <button class="buy-btn" onclick="AITradeXUser.placeManualTrade('BUY')">BUY / LONG</button>
+            <button class="sell-btn" onclick="AITradeXUser.placeManualTrade('SELL')">SELL / SHORT</button>
+          </div>
+        ` : `
+          <div class="coming-soon-trade-bar">
+            <b>Market Coming Soon</b>
+            <span>Forex, Gold and Silver trading will be available after premium market data integration.</span>
+          </div>
+        `}
 
         <div class="confirm-summary">
           <b>Order Summary</b>
-          <span data-trade-preview-summary>${tradeOrderType === "LIMIT" ? "Limit" : "Market"} · ${selectedMarket} · ${selectedPair} · ${accountMode} · Margin ${App.money(tradeAmountPreview)} · Position ${App.money(positionSize)}</span>
+          <span data-trade-preview-summary>${tradeIsActive ? `${tradeOrderType === "LIMIT" ? "Limit" : "Market"} · ${selectedMarket} · ${selectedPair} · ${accountMode} · Margin ${App.money(tradeAmountPreview)} · Position ${App.money(positionSize)}` : `${selectedPair} · Coming Soon · Trading disabled for this market`}</span>
         </div>
       </section>
 
       <section class="premium-card market-feed-card">
         <div class="card-row">
-          <div><p>MARKET FEED</p><h2>${selectedMarket === "CRYPTO" ? "Crypto Depth" : "Forex Bid / Ask"}</h2></div>
-          <span class="mini-live">LIVE</span>
+          <div><p>MARKET FEED</p><h2>${tradeIsActive ? "Crypto Depth" : "Upcoming Market"}</h2></div>
+          <span class="mini-live ${tradeIsActive ? "" : "soon"}">${tradeIsActive ? "LIVE" : "SOON"}</span>
         </div>
         <div class="depth-table pair-market-feed">
           <span>Metric</span><span>Value</span><span>Signal</span>
@@ -1652,7 +1655,7 @@
       <section class="premium-card trade-feed-card">
         <div class="card-row">
           <div><p>TRADE FEED</p><h2>${selectedPair} Activity</h2></div>
-          <span class="history-mode">${selectedMarket}</span>
+          <span class="history-mode">${tradeIsActive ? selectedMarket : "UPCOMING"}</span>
         </div>
         <div class="trade-feed-list">
           ${tradeFeedForMarket().map(item => `
@@ -3140,6 +3143,10 @@
     async placeManualTrade(side) {
       const u = user();
       if (!u) return;
+      if (!isTradeActivePair(selectedPair)) {
+        App.toast("This market is coming soon. Crypto trading is active now.");
+        return;
+      }
       const margin = Number(tradeAmountPreview || 0);
       const leverage = Math.max(1, Number(tradeLeveragePreview || 1));
       const normalizedSide = String(side || "BUY").toUpperCase() === "SELL" ? "SELL" : "BUY";

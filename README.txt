@@ -844,3 +844,13 @@ Phase 4.49 — Manual Trade Card Price Lock Clean
 - Price card elements now store raw price/source metadata for safer calculations.
 - Forex chart-feed fallback remains available, but manual trade settlement no longer depends only on chart-feed response.
 - No backup files, patch layers, or hidden old code were added.
+
+
+Phase 4.50 — Crypto Active Upcoming Markets Clean
+- Crypto pairs remain fully active with Binance live pricing, market/limit orders, manual P/L and admin AI trading.
+- Forex, Gold and Silver cards remain visible as premium upcoming market cards.
+- Upcoming market cards show Coming Soon instead of live price/change.
+- Selecting Forex/Metals keeps the chart preview, but Buy/Sell actions are replaced with a premium Market Coming Soon bar.
+- Admin AI Trading Desk now lists crypto pairs only to avoid unstable non-crypto execution.
+- Non-crypto trading execution is blocked cleanly; no random/static prices are used.
+- No backup files or patch/block layers included.
