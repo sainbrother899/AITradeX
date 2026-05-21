@@ -6281,3 +6281,62 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
     grid-template-columns:1fr!important;
   }
 }
+
+/* Phase 4.82 Header Brand Cleanup */
+.header-brand-text{
+  flex:1;
+  min-width:0;
+  display:flex!important;
+  flex-direction:column;
+  justify-content:center;
+  gap:2px;
+  line-height:1.05!important;
+  padding-left:2px;
+}
+.header-brand-text b{
+  display:block;
+  width:max-content;
+  max-width:100%;
+  font-size:23px!important;
+  font-weight:1000;
+  letter-spacing:-.045em;
+  color:#f7fbff;
+  text-shadow:0 10px 28px rgba(21,229,211,.16);
+  white-space:nowrap;
+}
+.header-brand-text b:after{
+  content:"";
+  display:block;
+  width:46px;
+  height:3px;
+  border-radius:999px;
+  margin-top:4px;
+  background:linear-gradient(90deg,var(--cyan),var(--gold));
+  opacity:.95;
+}
+.header-brand-text small{
+  display:block;
+  max-width:100%;
+  color:#8ea0bd!important;
+  font-size:11px!important;
+  font-weight:850;
+  letter-spacing:.03em;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.compact-header .header-brand-text{
+  margin-right:6px;
+}
+.compact-header .header-actions{
+  flex:0 0 auto;
+}
+@media(max-width:620px){
+  .compact-header{gap:9px!important}
+  .header-brand-text b{font-size:21px!important}
+  .header-brand-text small{font-size:10px!important;max-width:142px}
+}
+@media(max-width:390px){
+  .header-brand-text small{display:none!important}
+  .header-brand-text b:after{width:40px;margin-top:3px}
+}

@@ -1500,8 +1500,9 @@
     return `
       <header class="app-topbar compact-header">
         <button class="menu-btn" onclick="AITradeXUser.toggleDrawer()">☰</button>
-        <div class="app-brand logo-brand">
-          ${App.logoHtml("full", "aitx-logo-header")}
+        <div class="app-brand header-brand-text" aria-label="AITradeX">
+          <b>AITradeX</b>
+          <small>Smart trading workspace</small>
         </div>
         <div class="header-actions">
           <button class="notification-bell" onclick="AITradeXUser.openNotifications()" aria-label="Notifications">🔔${notificationBadgeHtml()}</button>
