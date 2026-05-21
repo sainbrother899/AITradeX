@@ -124,6 +124,18 @@
     );
   }
 
+
+
+  function aiOpenPositions() {
+    const u = user();
+    if (!u) return [];
+    return (App.state.trades || []).filter(t =>
+      t.userId === u.id &&
+      t.tradeType === "AI_LIVE" &&
+      String(t.status || "").toUpperCase() === "OPEN"
+    );
+  }
+
   function pendingManualOrders() {
     const u = user();
     if (!u) return [];
@@ -209,6 +221,82 @@
     const raw = manualPositionRawPnl(position);
     if (raw < 0) return Math.max(raw, -manualPositionMaxLoss(position));
     return raw;
+  }
+
+
+
+  function aiPositionRawPnl(position) {
+    const entry = Number(position.entryPrice || 0);
+    const current = positionCurrentPrice(position);
+    const exposure = Number(position.positionSize || 0);
+    if (!entry || !current || !exposure) return 0;
+    const direction = String(position.side || "BUY").toUpperCase() === "SELL" ? -1 : 1;
+    return exposure * ((current - entry) / entry) * direction;
+  }
+
+  function aiPositionPnl(position) {
+    const raw = aiPositionRawPnl(position);
+    if (raw < 0) return Math.max(raw, -Math.max(0, App.realBalance(position.userId)));
+    return raw;
+  }
+
+  function aiPositionTargetAmount(position) {
+    return Math.max(0, Number(position.positionSize || 0) * Number(position.targetPercent || 0) / 100);
+  }
+
+  function settleAiLivePosition(position, reason = "TARGET_HIT") {
+    if (!position || String(position.status || "").toUpperCase() !== "OPEN") return false;
+    const current = positionCurrentPrice(position);
+    let pnl = aiPositionPnl(position);
+    const balanceBefore = App.realBalance(position.userId);
+    if (pnl < 0 && Math.abs(pnl) > balanceBefore) pnl = -balanceBefore;
+    const now = new Date().toISOString();
+    position.tradeType = "AI_AUTO";
+    position.status = "CLOSED";
+    position.exitPrice = current;
+    position.exitPriceDisplay = positionCurrentDisplay(position);
+    position.exitPriceSource = (App.getCachedPairPrice && App.getCachedPairPrice(position.pair)?.source) || position.priceSource || "Live market";
+    position.closedAt = now;
+    position.closeReason = reason;
+    position.resultType = pnl >= 0 ? "PROFIT" : "LOSS";
+    position.resultPercent = Number(position.targetPercent || 0);
+    position.pnl = Number(pnl.toFixed(2));
+    position.balanceAfter = Number((balanceBefore + position.pnl).toFixed(2));
+    position.source = "AI_LIVE_AUTO_CLOSE";
+    if (position.pnl !== 0) {
+      App.addLedger({
+        userId: position.userId,
+        accountType: "REAL",
+        type: position.pnl >= 0 ? "AI_LIVE_PROFIT" : "AI_LIVE_LOSS",
+        amount: position.pnl,
+        referenceId: position.id,
+        note: `${position.pair} AI live ${position.side} closed · ${reason}`
+      });
+    } else {
+      App.saveState();
+    }
+    return true;
+  }
+
+  function autoCloseAiLivePositions() {
+    const positions = aiOpenPositions();
+    if (!positions.length) return 0;
+    let closed = 0;
+    positions.forEach(position => {
+      const pnl = aiPositionPnl(position);
+      const target = aiPositionTargetAmount(position);
+      const targetType = String(position.targetType || "PROFIT").toUpperCase();
+      const due = position.autoCloseAt && Date.parse(position.autoCloseAt) <= Date.now();
+      const hit = target > 0 && (targetType === "LOSS" ? pnl <= -target : pnl >= target);
+      if (hit || due) {
+        if (settleAiLivePosition(position, hit ? "TARGET_HIT" : "DURATION_CLOSE")) closed += 1;
+      }
+    });
+    if (closed) {
+      App.toast(`${closed} AI live ${closed === 1 ? "position" : "positions"} closed automatically.`);
+      setTimeout(() => render(), 0);
+    }
+    return closed;
   }
 
   function manualReservedMargin(account = accountMode) {
@@ -430,8 +518,24 @@
     });
   }
 
+  function updateAiLiveViews() {
+    aiOpenPositions().forEach(position => {
+      const currentEl = document.querySelector(`[data-ai-current="${position.id}"]`);
+      const pnlEl = document.querySelector(`[data-ai-pnl="${position.id}"]`);
+      const pnlValue = aiPositionPnl(position);
+      if (currentEl) currentEl.textContent = positionCurrentDisplay(position);
+      if (pnlEl) {
+        pnlEl.textContent = `${pnlValue >= 0 ? "+" : ""}${App.money(pnlValue)}`;
+        pnlEl.classList.toggle("profit-text", pnlValue >= 0);
+        pnlEl.classList.toggle("loss-text", pnlValue < 0);
+      }
+    });
+  }
+
   function updateManualLiveBar() {
     updateManualLiveViews();
+    updateAiLiveViews();
+    autoCloseAiLivePositions();
   }
 
   function updateTradeAmountPreviewDom() {
@@ -723,8 +827,9 @@
   function refreshVisiblePrices(items) {
     const baseList = (items || []).map(p => typeof p === "string" ? p : p.pair).filter(Boolean);
     const openList = manualOpenPositions().map(position => position.pair).filter(Boolean);
+    const aiList = aiOpenPositions().map(position => position.pair).filter(Boolean);
     const pendingList = pendingManualOrders().map(order => order.pair).filter(Boolean);
-    const list = [...new Set([...baseList, ...openList, ...pendingList])].filter(isTradeActivePair);
+    const list = [...new Set([...baseList, ...openList, ...aiList, ...pendingList])].filter(isTradeActivePair);
     if (!list.length) return;
 
     if (App.refreshLivePrices) App.refreshLivePrices(list, applyLivePriceRow);
@@ -1961,6 +2066,24 @@
       </article>`;
   }
 
+
+
+  function aiPositionCard(position) {
+    const pnl = aiPositionPnl(position);
+    const target = aiPositionTargetAmount(position);
+    const targetType = String(position.targetType || "PROFIT").toUpperCase();
+    return `
+      <article class="orders-position-card ai-managed-position">
+        <div>
+          <b>${App.escapeHtml(position.pair)} <span>${App.escapeHtml(position.side || "BUY")}</span></b>
+          <small>${Number(position.leverage || 1)}x · AI Amount ${App.money(position.marginAmount || 0)} · Entry ${App.escapeHtml(position.entryPriceDisplay || String(position.entryPrice || "--"))}</small>
+          <small>Live <em data-ai-current="${position.id}">${App.escapeHtml(positionCurrentDisplay(position))}</em> · Target ${targetType} ${Number(position.targetPercent || 0)}%</small>
+        </div>
+        <strong data-ai-pnl="${position.id}" class="${pnl >= 0 ? "profit-text" : "loss-text"}">${pnl >= 0 ? "+" : ""}${App.money(pnl)}</strong>
+        <button class="ai-managed-btn" onclick="AITradeXUser.showAiManagedNotice()">Managed by AI</button>
+      </article>`;
+  }
+
   function pendingOrderCard(order) {
     const side = String(order.side || "BUY").toUpperCase() === "SELL" ? "SELL" : "BUY";
     const rule = side === "BUY" ? "Triggers at or below" : "Triggers at or above";
@@ -1979,7 +2102,9 @@
   function ordersPage() {
     const positions = manualOpenPositions();
     const pending = pendingManualOrders();
+    const aiPositions = aiOpenPositions();
     const livePnl = positions.reduce((sum, position) => sum + manualPositionPnl(position), 0);
+    const aiLivePnl = aiPositions.reduce((sum, position) => sum + aiPositionPnl(position), 0);
     const lockedMargin = positions.reduce((sum, position) => sum + Math.max(0, Number(position.marginAmount || 0)), 0);
     shell(`
       <section class="compact-grid orders-summary-grid">
@@ -1987,6 +2112,7 @@
         <article><span>Live P/L</span><b class="${livePnl >= 0 ? "profit-text" : "loss-text"}">${livePnl >= 0 ? "+" : ""}${App.money(livePnl)}</b><small>Real-time movement</small></article>
         <article><span>Locked Margin</span><b>${App.money(lockedMargin)}</b><small>Reserved in trades</small></article>
         <article><span>Open Orders</span><b>${pending.length}</b><small>Pending limit orders</small></article>
+        <article><span>AI Positions</span><b>${aiPositions.length}</b><small class="${aiLivePnl >= 0 ? "profit-text" : "loss-text"}">${aiLivePnl >= 0 ? "+" : ""}${App.money(aiLivePnl)}</small></article>
       </section>
 
       <section class="premium-card orders-card">
@@ -1997,6 +2123,16 @@
         ${positions.length ? `<div class="orders-position-list">${positions.map(orderPositionCard).join("")}</div>` : `<div class="empty-state">No open manual positions. New trades opened from Trade page will appear here.</div>`}
       </section>
 
+
+
+      <section class="premium-card orders-card">
+        <div class="card-row">
+          <div><p>AI ORDERS</p><h2>AI Positions</h2></div>
+          <span class="history-mode">Managed by AI</span>
+        </div>
+        ${aiPositions.length ? `<div class="orders-position-list">${aiPositions.map(aiPositionCard).join("")}</div>` : `<div class="empty-state">No AI live positions are running. AI-managed positions will appear here when opened from AI Control Center.</div>`}
+      </section>
+
       <section class="premium-card orders-card">
         <div class="card-row">
           <div><p>ORDERS</p><h2>Open Orders</h2></div>
@@ -2005,7 +2141,7 @@
         ${pending.length ? `<div class="orders-position-list">${pending.map(pendingOrderCard).join("")}</div>` : `<div class="empty-state">No pending limit orders yet. Limit orders placed from Trade page will appear here.</div>`}
       </section>
     `);
-    refreshVisiblePrices([...positions.map(position => position.pair), ...pending.map(order => order.pair)]);
+    refreshVisiblePrices([...positions.map(position => position.pair), ...aiPositions.map(position => position.pair), ...pending.map(order => order.pair)]);
   }
 
   function formatHistoryDate(value) {
@@ -3298,6 +3434,9 @@
       App.saveState();
       resetTradeTicketAfterOrder("Market order opened", `${trade.side} ${selectedPair} opened at ${trade.entryPriceDisplay}.`);
       render();
+    },
+    showAiManagedNotice() {
+      App.toast("AI auto trades are managed by AI and cannot be closed manually.");
     },
     closeManualLivePositions() {
       const positions = manualOpenPositions();

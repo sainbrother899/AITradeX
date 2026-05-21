@@ -871,3 +871,13 @@ Phase 4.52 — Landing Crypto Clarity + AI Control Center Wording Clean
 - Public-facing "Admin control center" wording replaced with "AI Control Center".
 - Admin login and admin page title wording updated to AI Control Center.
 - No trading, wallet, KYC, referral, support or price-feed logic changed.
+
+
+Phase 4.53 — Live AI Auto-Close Positions Clean
+- Added a separate Live AI Position mode while keeping existing Instant AI Trade unchanged.
+- Admin can open crypto-only AI live positions for all valid AI users.
+- Live AI positions use Binance/live market price for entry, current price and P/L.
+- User Orders page now shows AI Positions with entry price, current price, AI amount, leverage, live P/L and Managed by AI status.
+- Live AI positions auto-close on selected profit/loss target or max duration and then move to AI Auto Trade History with entry and close price.
+- AI positions cannot be closed by users.
+- No patch/block layer or backup files.

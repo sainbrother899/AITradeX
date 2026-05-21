@@ -4242,3 +4242,12 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
 .order-success-banner b{display:block;color:var(--green);font-size:15px;font-weight:1000;letter-spacing:.01em}
 .order-success-banner span{display:block;color:#cfe8dd;margin-top:4px;font-size:13px;font-weight:750;line-height:1.45}
 @media(max-width:620px){.order-success-banner{border-radius:18px;padding:13px 14px}.order-success-banner b{font-size:14px}.order-success-banner span{font-size:12px}}
+
+/* Phase 4.53 — Live AI Auto-Close Positions */
+.ai-live-open-panel{margin-top:18px;}
+.ai-live-batch-card .admin-user-main{align-items:center;}
+.ai-managed-position{border-color:rgba(80,220,255,.22);background:linear-gradient(135deg,rgba(14,32,58,.94),rgba(9,18,34,.98));}
+.ai-managed-position .ai-managed-btn{background:rgba(18,220,190,.12);border:1px solid rgba(18,220,190,.28);color:#9fffee;cursor:pointer;}
+.ai-managed-position .ai-managed-btn:hover{background:rgba(18,220,190,.18);}
+.orders-summary-grid{grid-template-columns:repeat(5,minmax(0,1fr));}
+@media(max-width:760px){.orders-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));}.ai-live-open-panel .admin-grid-two{grid-template-columns:1fr;}}

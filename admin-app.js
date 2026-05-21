@@ -1013,6 +1013,96 @@
     };
   }
 
+
+
+  function aiLivePositions() {
+    return (App.state.trades || [])
+      .filter(t => t.tradeType === "AI_LIVE" && String(t.status || "").toUpperCase() === "OPEN")
+      .sort((a, b) => Date.parse(b.openedAt || b.createdAt || 0) - Date.parse(a.openedAt || a.createdAt || 0));
+  }
+
+  function aiLiveBatches() {
+    const rows = aiLivePositions();
+    const map = new Map();
+    rows.forEach(pos => {
+      const id = pos.batchId || pos.id;
+      if (!map.has(id)) {
+        map.set(id, {
+          id,
+          pair: pos.pair,
+          side: pos.side,
+          market: pos.market,
+          entryPrice: pos.entryPrice,
+          entryPriceDisplay: pos.entryPriceDisplay,
+          leverage: pos.leverage,
+          targetType: pos.targetType,
+          targetPercent: pos.targetPercent,
+          maxDurationMinutes: pos.maxDurationMinutes,
+          openedAt: pos.openedAt || pos.createdAt,
+          users: 0,
+          totalMargin: 0,
+          totalExposure: 0,
+          totalLivePnl: 0
+        });
+      }
+      const batch = map.get(id);
+      batch.users += 1;
+      batch.totalMargin += Number(pos.marginAmount || 0);
+      batch.totalExposure += Number(pos.positionSize || 0);
+      batch.totalLivePnl += aiLivePositionPnl(pos);
+    });
+    return [...map.values()].sort((a, b) => Date.parse(b.openedAt || 0) - Date.parse(a.openedAt || 0));
+  }
+
+  function aiLivePositionPnl(position) {
+    const entry = Number(position.entryPrice || 0);
+    const cached = App.getCachedPairPrice ? App.getCachedPairPrice(position.pair) : null;
+    const current = Number(cached?.price || position.entryPrice || 0);
+    const exposure = Number(position.positionSize || 0);
+    if (!entry || !current || !exposure) return 0;
+    const direction = String(position.side || "BUY").toUpperCase() === "SELL" ? -1 : 1;
+    let pnl = exposure * ((current - entry) / entry) * direction;
+    const balance = App.realBalance(position.userId);
+    if (pnl < 0) pnl = Math.max(pnl, -Math.max(0, balance));
+    return Number(pnl.toFixed(2));
+  }
+
+  function aiLivePreviewStats(leverage = 1, minBalance = 0) {
+    const report = aiEligibilityReport(Math.max(0, Number(minBalance || 0)));
+    const lev = Math.max(1, Number(leverage || 1));
+    let totalMargin = 0;
+    let totalExposure = 0;
+    report.eligible.forEach(user => {
+      const balance = App.realBalance(user.id);
+      const margin = Math.min(balance, App.aiAllowedAmount(user));
+      if (!margin || margin <= 0) return;
+      totalMargin += margin;
+      totalExposure += margin * lev;
+    });
+    return { report, totalMargin: Number(totalMargin.toFixed(2)), totalExposure: Number(totalExposure.toFixed(2)) };
+  }
+
+  function aiLiveRunningHtml() {
+    const batches = aiLiveBatches();
+    return `
+      <section class="panel-card">
+        <div class="section-head"><div><h3>Running AI Live Positions</h3><span>Market-connected AI positions awaiting target or duration close</span></div></div>
+        <div class="admin-list">
+          ${batches.length ? batches.map(batch => `
+            <article class="admin-user-card ai-live-batch-card">
+              <div class="admin-user-main">
+                <div><b>${esc(batch.pair)} · ${esc(batch.side)}</b><span>Entry ${esc(batch.entryPriceDisplay || batch.entryPrice || "-")} · ${Number(batch.leverage || 1)}x · Target ${esc(batch.targetType || "PROFIT")} ${Number(batch.targetPercent || 0)}% · ${Number(batch.maxDurationMinutes || 0)} min</span></div>
+                <div class="admin-user-stats"><span>Users</span><b>${batch.users}</b></div>
+                <div class="admin-user-stats"><span>AI Amount</span><b>${App.money(batch.totalMargin)}</b></div>
+                <div class="admin-user-stats"><span>Exposure</span><b>${App.money(batch.totalExposure)}</b></div>
+                <div class="admin-user-stats"><span>Live P/L</span><b class="${batch.totalLivePnl >= 0 ? "profit-text" : "loss-text"}">${batch.totalLivePnl >= 0 ? "+" : ""}${App.money(batch.totalLivePnl)}</b></div>
+              </div>
+            </article>
+          `).join("") : `<div class="empty-state">No AI live positions running.</div>`}
+        </div>
+      </section>`;
+  }
+
   function aiRecentTrades() {
     return (App.state.trades || [])
       .filter(t => t.tradeType === "AI_AUTO")
@@ -1135,6 +1225,90 @@
           </section>
         </div>
       </section>
+
+
+      <section class="panel-card ai-desk-panel ai-live-open-panel">
+        <div class="section-head ai-desk-head">
+          <div><h3>Open Live AI Position</h3><span>Open market-connected AI positions for all valid AI users. Instant AI Trade above remains unchanged.</span></div>
+          <span class="admin-count-pill">Live market P/L</span>
+        </div>
+        <div class="admin-grid-two ai-desk-grid">
+          <form class="payment-form-card ai-desk-form" onsubmit="AITradeXAdmin.openLiveAiPosition(event)">
+            <p>LIVE AI POSITION</p>
+            <h2>New Live Position</h2>
+            <div class="ai-step-card">
+              <div class="ai-step-label"><b>1</b><span>Pair & side</span></div>
+              <label>Crypto Pair
+                <select id="aiLivePair" required onchange="AITradeXAdmin.updateAiLivePreview()">
+                  ${aiTradePairOptions("BTC/USDT")}
+                </select>
+              </label>
+              <div class="ai-toggle-grid two">
+                <label class="ai-radio-card buy"><input type="radio" name="aiLiveSide" value="BUY" checked onchange="AITradeXAdmin.updateAiLivePreview()"/><span>BUY</span><small>Long position</small></label>
+                <label class="ai-radio-card sell"><input type="radio" name="aiLiveSide" value="SELL" onchange="AITradeXAdmin.updateAiLivePreview()"/><span>SELL</span><small>Short position</small></label>
+              </div>
+            </div>
+            <div class="ai-step-card">
+              <div class="ai-step-label"><b>2</b><span>Target & leverage</span></div>
+              <div class="ai-toggle-grid two">
+                <label class="ai-radio-card profit"><input type="radio" name="aiLiveTargetType" value="PROFIT" checked onchange="AITradeXAdmin.updateAiLivePreview()"/><span>Profit Target</span><small>Auto-close on profit</small></label>
+                <label class="ai-radio-card loss"><input type="radio" name="aiLiveTargetType" value="LOSS" onchange="AITradeXAdmin.updateAiLivePreview()"/><span>Loss Target</span><small>Auto-close on loss</small></label>
+              </div>
+              <div class="ai-inline-fields">
+                <label>Target %
+                  <input id="aiLiveTargetPercent" type="number" min="0.01" step="0.01" value="2" required oninput="AITradeXAdmin.updateAiLivePreview()"/>
+                </label>
+                <label>Leverage
+                  <select id="aiLiveLeverage" onchange="AITradeXAdmin.updateAiLivePreview()">
+                    <option value="1">1x</option>
+                    <option value="2">2x</option>
+                    <option value="5">5x</option>
+                    <option value="10">10x</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+            <div class="ai-step-card">
+              <div class="ai-step-label"><b>3</b><span>Close rule</span></div>
+              <div class="ai-inline-fields">
+                <label>Max Duration
+                  <select id="aiLiveMaxDuration" onchange="AITradeXAdmin.updateAiLivePreview()">
+                    <option value="5">5 min</option>
+                    <option value="15" selected>15 min</option>
+                    <option value="30">30 min</option>
+                    <option value="60">1 hour</option>
+                  </select>
+                </label>
+                <label>Minimum Real Balance
+                  <input id="aiLiveMinBalance" type="number" min="0" value="0" oninput="AITradeXAdmin.updateAiLivePreview()"/>
+                </label>
+              </div>
+              <label>Position Note
+                <input id="aiLiveNote" value="AI live position opened" placeholder="Internal note"/>
+              </label>
+            </div>
+            <button class="save-profile-btn ai-execute-btn">Open Live AI Position</button>
+          </form>
+
+          <section class="payment-form-card ai-control-preview ai-desk-summary">
+            <p>LIVE POSITION PREVIEW</p>
+            <h2>Before Open</h2>
+            <div class="review-grid compact-review ai-preview-grid">
+              <article><span>Valid users</span><b id="aiLivePreviewValid">${eligibleNow}</b></article>
+              <article><span>Skipped users</span><b id="aiLivePreviewSkipped">${previewReport.skipped.length}</b></article>
+              <article><span>Total AI amount</span><b id="aiLivePreviewMargin">${App.money(aiLivePreviewStats(1,0).totalMargin)}</b></article>
+              <article><span>Exposure</span><b id="aiLivePreviewExposure">${App.money(aiLivePreviewStats(1,0).totalExposure)}</b></article>
+              <article><span>Target</span><b id="aiLivePreviewTarget">Profit 2%</b></article>
+              <article><span>Auto close</span><b id="aiLivePreviewDuration">15 min</b></article>
+            </div>
+            <div class="premium-bank-card ai-last-card">
+              <div class="copy-row"><b>Live position rule</b><span>Entry price locks on open. Close price locks on target or duration close.</span><button type="button">Ready</button></div>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      ${aiLiveRunningHtml()}
 
       <section class="panel-card">
         <div class="section-head"><div><h3>AI Trade Execution Summary</h3><span>Completed AI auto trade batches</span></div></div>
@@ -1919,6 +2093,128 @@
       });
       App.saveState();
       App.toast(appliedCount ? `AI trade applied to ${appliedCount} valid user(s). ${report.skipped.length} skipped.` : "No valid AI users found. Trade was not applied.");
+      render();
+    },
+
+    updateAiLivePreview() {
+      const leverage = Math.max(1, Number(inputValue("aiLiveLeverage") || 1));
+      const minBalance = Math.max(0, Number(inputValue("aiLiveMinBalance") || 0));
+      const targetType = document.querySelector('input[name="aiLiveTargetType"]:checked')?.value || "PROFIT";
+      const targetPercent = Math.max(0, Number(inputValue("aiLiveTargetPercent") || 0));
+      const duration = Math.max(1, Number(inputValue("aiLiveMaxDuration") || 15));
+      const stats = aiLivePreviewStats(leverage, minBalance);
+      const setText = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
+      setText("aiLivePreviewValid", stats.report.eligible.length);
+      setText("aiLivePreviewSkipped", stats.report.skipped.length);
+      setText("aiLivePreviewMargin", App.money(stats.totalMargin));
+      setText("aiLivePreviewExposure", App.money(stats.totalExposure));
+      setText("aiLivePreviewTarget", `${targetType === "LOSS" ? "Loss" : "Profit"} ${targetPercent}%`);
+      setText("aiLivePreviewDuration", `${duration} min`);
+    },
+    async openLiveAiPosition(event) {
+      event.preventDefault();
+      const selectedPairData = pairDataByPair(inputValue("aiLivePair") || "BTC/USDT");
+      const market = selectedPairData.market || "CRYPTO";
+      const pair = String(selectedPairData.pair || "BTC/USDT").toUpperCase();
+      if (market !== "CRYPTO") {
+        App.toast("Live AI Position currently supports crypto pairs only.");
+        return;
+      }
+      const side = document.querySelector('input[name="aiLiveSide"]:checked')?.value || "BUY";
+      const leverage = Math.max(1, Number(inputValue("aiLiveLeverage") || 1));
+      const targetType = document.querySelector('input[name="aiLiveTargetType"]:checked')?.value || "PROFIT";
+      const targetPercent = Math.max(0.01, Number(inputValue("aiLiveTargetPercent") || 0));
+      const maxDurationMinutes = Math.max(1, Number(inputValue("aiLiveMaxDuration") || 15));
+      const minBalance = Math.max(0, Number(inputValue("aiLiveMinBalance") || 0));
+      const note = inputValue("aiLiveNote") || "AI live position opened";
+      let priceRow;
+      try {
+        priceRow = await App.getLivePairPrice(pair);
+      } catch (error) {
+        priceRow = App.getCachedPairPrice ? App.getCachedPairPrice(pair) : null;
+      }
+      const entryPrice = Number(priceRow?.price || 0);
+      if (!Number.isFinite(entryPrice) || entryPrice <= 0) {
+        App.toast("Live entry price unavailable. AI live position not opened.");
+        return;
+      }
+      const batchId = App.uid("ai_live_batch");
+      const report = aiEligibilityReport(minBalance);
+      let appliedCount = 0;
+      let totalMargin = 0;
+      let totalExposure = 0;
+      const openedAt = new Date().toISOString();
+      const autoCloseAt = new Date(Date.now() + maxDurationMinutes * 60000).toISOString();
+      report.eligible.forEach(target => {
+        const balanceBefore = App.realBalance(target.id);
+        const margin = Math.min(balanceBefore, App.aiAllowedAmount(target));
+        if (!margin || margin <= 0) {
+          report.skipped.push({ userId: target.id, reason: "No AI trade pool available" });
+          report.reasons.noPool += 1;
+          return;
+        }
+        const exposure = margin * leverage;
+        const position = {
+          id: App.uid("ai_live"),
+          batchId,
+          userId: target.id,
+          tradeType: "AI_LIVE",
+          accountType: "REAL",
+          market,
+          pair,
+          side,
+          entryPrice,
+          entryPriceDisplay: priceRow?.display || String(entryPrice),
+          priceSource: priceRow?.source || "Live Market",
+          priceSourceType: priceRow?.sourceType || "LIVE_MARKET",
+          priceLockedAt: priceRow?.fetchedAt || openedAt,
+          leverage,
+          marginAmount: Number(margin.toFixed(2)),
+          positionSize: Number(exposure.toFixed(2)),
+          targetType,
+          targetPercent,
+          maxDurationMinutes,
+          autoCloseAt,
+          status: "OPEN",
+          source: "ADMIN_AI_LIVE_POSITION",
+          note,
+          aiPercent: Number(target.aiTradePercent || 75),
+          openedAt,
+          createdAt: openedAt,
+          createdDate: App.todayKey(),
+          balanceBefore: Number(balanceBefore.toFixed(2))
+        };
+        App.state.trades.unshift(position);
+        appliedCount += 1;
+        totalMargin += margin;
+        totalExposure += exposure;
+      });
+      if (!App.state.aiLiveBatches) App.state.aiLiveBatches = [];
+      App.state.aiLiveBatches.unshift({
+        id: batchId,
+        market,
+        pair,
+        side,
+        entryPrice,
+        entryPriceDisplay: priceRow?.display || String(entryPrice),
+        priceSource: priceRow?.source || "Live Market",
+        leverage,
+        targetType,
+        targetPercent,
+        maxDurationMinutes,
+        autoCloseAt,
+        minBalance,
+        note,
+        appliedCount,
+        skippedCount: report.skipped.length,
+        skipReasons: report.reasons,
+        totalMargin: Number(totalMargin.toFixed(2)),
+        totalExposure: Number(totalExposure.toFixed(2)),
+        status: "OPEN",
+        createdAt: openedAt
+      });
+      App.saveState();
+      App.toast(appliedCount ? `Live AI position opened for ${appliedCount} valid user(s).` : "No valid AI users found. Live position not opened.");
       render();
     },
     approveDeposit(userId, requestId, button) {

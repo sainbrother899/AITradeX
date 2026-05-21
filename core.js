@@ -334,7 +334,7 @@ App.currentPlan=id=>{
 };
 
 App.todayKey=()=>new Date().toISOString().slice(0,10);
-App.aiTradesToday=userId=>App.state.trades.filter(t=>t.userId===userId&&t.tradeType==="AI_AUTO"&&String(t.createdDate||"")===App.todayKey()).length;
+App.aiTradesToday=userId=>App.state.trades.filter(t=>t.userId===userId&&["AI_AUTO","AI_LIVE"].includes(String(t.tradeType||""))&&String(t.createdDate||"")===App.todayKey()).length;
 App.aiDailyLimit=userId=>{const sub=App.activeSubscription(userId);if(sub){const plan=App.planById(sub.planId)||{};return Number(sub.aiTradeLimit||sub.signals||plan.signals||50)||50}const trial=App.freeTrialInfo(userId);return trial.active?Number(App.state.settings.freeAiTradesPerDay||5):Number(App.state.settings.postTrialFreeAiTradesPerDay||1)};
 App.aiSettings=user=>({enabled:!!user?.aiTradeOn,percent:Number(user?.aiTradePercent||25)});
 App.aiAllowedAmount=user=>{const settings=App.aiSettings(user);if(!settings.enabled)return 0;return Math.max(0,App.realBalance(user.id))*settings.percent/100};
