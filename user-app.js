@@ -34,6 +34,7 @@
   let manualCloseSelectorOpen = false;
   let manualHistoryPageIndex = Number(localStorage.getItem("AITradeX_MANUAL_HISTORY_PAGE") || 0);
   let aiHistoryPageIndex = Number(localStorage.getItem("AITradeX_AI_HISTORY_PAGE") || 0);
+  let orderViewTab = localStorage.getItem("AITradeX_ORDER_VIEW_TAB") || "ALL";
   let aiOffConfirmOpen = false;
 
   const marketPairs = App.marketPairs || { CRYPTO: [], FOREX: [] };
@@ -2428,52 +2429,94 @@
     `);
   }
 
-  function orderPositionCard(position) {
-    const pnl = manualPositionPnl(position);
+  function orderSideClass(side) {
+    return String(side || "BUY").toUpperCase() === "SELL" ? "sell" : "buy";
+  }
+
+  function ordersRowShell({ kind, className = "", pair, side, pnlHtml, metaHtml, priceHtml, amountHtml, badgeHtml, actionHtml }) {
+    const sideClass = orderSideClass(side);
     return `
-      <article class="orders-position-card">
-        <div>
-          <b>${App.escapeHtml(position.pair)} <span>${App.escapeHtml(position.side || "BUY")}</span></b>
-          <small>${Number(position.leverage || 1)}x · Margin ${App.money(position.marginAmount || 0)} · Entry ${App.escapeHtml(position.entryPriceDisplay || String(position.entryPrice || "--"))}</small>
-          <small>Live <em data-manual-current="${position.id}">${App.escapeHtml(positionCurrentDisplay(position))}</em></small>
+      <article class="orders-app-row ${className}">
+        <div class="orders-row-main">
+          <div class="orders-row-title">
+            <b>${App.escapeHtml(pair || "-")}</b>
+            <span class="side-pill ${sideClass}">${App.escapeHtml(String(side || "BUY").toUpperCase())}</span>
+            ${badgeHtml || ""}
+          </div>
+          <div class="orders-row-meta">${metaHtml}</div>
+          <div class="orders-row-prices">${priceHtml}</div>
         </div>
-        <strong data-manual-pnl="${position.id}" class="${pnl >= 0 ? "profit-text" : "loss-text"}">${pnl >= 0 ? "+" : ""}${App.money(pnl)}</strong>
-        <button onclick="AITradeXUser.closeManualPositionById('${position.id}')">Close</button>
+        <div class="orders-row-result">
+          ${pnlHtml}
+          ${amountHtml || ""}
+        </div>
+        <div class="orders-row-action">${actionHtml || ""}</div>
       </article>`;
   }
 
-
+  function orderPositionCard(position) {
+    const pnl = manualPositionPnl(position);
+    return ordersRowShell({
+      kind: "MANUAL",
+      className: "manual-row",
+      pair: position.pair,
+      side: position.side || "BUY",
+      badgeHtml: `<span class="type-badge manual">Manual</span>`,
+      metaHtml: `
+        <span>${Number(position.leverage || 1)}x</span>
+        <span>Margin ${App.money(position.marginAmount || 0)}</span>
+        <span>Position ${App.money(position.positionSize || 0)}</span>`,
+      priceHtml: `
+        <span>Entry <b>${App.escapeHtml(position.entryPriceDisplay || String(position.entryPrice || "--"))}</b></span>
+        <span>Live <b data-manual-current="${position.id}">${App.escapeHtml(positionCurrentDisplay(position))}</b></span>`,
+      pnlHtml: `<strong data-manual-pnl="${position.id}" class="${pnl >= 0 ? "profit-text" : "loss-text"}">${pnl >= 0 ? "+" : ""}${App.money(pnl)}</strong>`,
+      amountHtml: `<small>Live P/L</small>`,
+      actionHtml: `<button class="orders-pill-action close" onclick="AITradeXUser.closeManualPositionById('${position.id}')">Close</button>`
+    });
+  }
 
   function aiPositionCard(position) {
     const pnl = aiPositionPnl(position);
-    const target = aiPositionTargetAmount(position);
     const targetType = String(position.targetType || "PROFIT").toUpperCase();
-    return `
-      <article class="orders-position-card ai-managed-position">
-        <div>
-          <b>${App.escapeHtml(position.pair)} <span>${App.escapeHtml(position.side || "BUY")}</span></b>
-          <small>${Number(position.leverage || 1)}x · AI Amount ${App.money(position.marginAmount || 0)} · Entry ${App.escapeHtml(position.entryPriceDisplay || String(position.entryPrice || "--"))}</small>
-          <small>Live <em data-ai-current="${position.id}">${App.escapeHtml(positionCurrentDisplay(position))}</em> · Target ${targetType} ${Number(position.targetPercent || 0)}%</small>
-          <small>Active AI Trades ${aiOpenPositions().length}/${aiDailyUsage().limit}</small>
-        </div>
-        <strong data-ai-pnl="${position.id}" class="${pnl >= 0 ? "profit-text" : "loss-text"}">${pnl >= 0 ? "+" : ""}${App.money(pnl)}</strong>
-        <button class="ai-managed-btn" onclick="AITradeXUser.showAiManagedNotice()">Managed by AI</button>
-      </article>`;
+    return ordersRowShell({
+      kind: "AI",
+      className: "ai-row",
+      pair: position.pair,
+      side: position.side || "BUY",
+      badgeHtml: `<span class="type-badge ai">AI Managed</span>`,
+      metaHtml: `
+        <span>${Number(position.leverage || 1)}x</span>
+        <span>AI Amount ${App.money(position.marginAmount || 0)}</span>
+        <span>Target ${targetType} ${Number(position.targetPercent || 0)}%</span>`,
+      priceHtml: `
+        <span>Entry <b>${App.escapeHtml(position.entryPriceDisplay || String(position.entryPrice || "--"))}</b></span>
+        <span>Live <b data-ai-current="${position.id}">${App.escapeHtml(positionCurrentDisplay(position))}</b></span>`,
+      pnlHtml: `<strong data-ai-pnl="${position.id}" class="${pnl >= 0 ? "profit-text" : "loss-text"}">${pnl >= 0 ? "+" : ""}${App.money(pnl)}</strong>`,
+      amountHtml: `<small>${aiOpenPositions().length}/${aiDailyUsage().limit} active AI</small>`,
+      actionHtml: `<button class="orders-pill-action ai" onclick="AITradeXUser.showAiManagedNotice()">AI</button>`
+    });
   }
 
   function pendingOrderCard(order) {
     const side = String(order.side || "BUY").toUpperCase() === "SELL" ? "SELL" : "BUY";
-    const rule = side === "BUY" ? "Triggers at or below" : "Triggers at or above";
-    return `
-      <article class="orders-position-card pending">
-        <div>
-          <b>${App.escapeHtml(order.pair || "-")} <span>${App.escapeHtml(side)}</span></b>
-          <small>Limit · ${rule} ${App.escapeHtml(order.limitPriceDisplay || order.limitPrice || "-")} · ${Number(order.leverage || 1)}x</small>
-          <small>Live <em data-live-pair="${App.escapeHtml(order.pair || "")}" data-live-type="price">${App.escapeHtml(positionCurrentDisplay({ pair: order.pair, entryPrice: order.limitPrice }))}</em> · Margin ${App.money(order.marginAmount || 0)}</small>
-        </div>
-        <strong>Pending</strong>
-        <button onclick="AITradeXUser.cancelPendingOrder('${order.id}')">Cancel</button>
-      </article>`;
+    const rule = side === "BUY" ? "At / below" : "At / above";
+    return ordersRowShell({
+      kind: "PENDING",
+      className: "pending-row",
+      pair: order.pair || "-",
+      side,
+      badgeHtml: `<span class="type-badge pending">Limit Pending</span>`,
+      metaHtml: `
+        <span>${Number(order.leverage || 1)}x</span>
+        <span>Margin ${App.money(order.marginAmount || 0)}</span>
+        <span>${rule} ${App.escapeHtml(order.limitPriceDisplay || order.limitPrice || "-")}</span>`,
+      priceHtml: `
+        <span>Limit <b>${App.escapeHtml(order.limitPriceDisplay || order.limitPrice || "-")}</b></span>
+        <span>Live <b data-live-pair="${App.escapeHtml(order.pair || "")}" data-live-type="price">${App.escapeHtml(positionCurrentDisplay({ pair: order.pair, entryPrice: order.limitPrice }))}</b></span>`,
+      pnlHtml: `<strong class="pending-text">Pending</strong>`,
+      amountHtml: `<small>Waiting trigger</small>`,
+      actionHtml: `<button class="orders-pill-action cancel" onclick="AITradeXUser.cancelPendingOrder('${order.id}')">Cancel</button>`
+    });
   }
 
   function ordersPage() {
@@ -2483,55 +2526,60 @@
     const livePnl = positions.reduce((sum, position) => sum + manualPositionPnl(position), 0);
     const aiLivePnl = aiPositions.reduce((sum, position) => sum + aiPositionPnl(position), 0);
     const lockedMargin = positions.reduce((sum, position) => sum + Math.max(0, Number(position.marginAmount || 0)), 0);
+    const aiLockedMargin = aiPositions.reduce((sum, position) => sum + Math.max(0, Number(position.marginAmount || 0)), 0);
+    const rows = [
+      ...positions.map(position => ({ type: "MANUAL", time: position.openedAt || position.createdAt || "", html: orderPositionCard(position) })),
+      ...aiPositions.map(position => ({ type: "AI", time: position.openedAt || position.createdAt || "", html: aiPositionCard(position) })),
+      ...pending.map(order => ({ type: "PENDING", time: order.createdAt || order.openedAt || "", html: pendingOrderCard(order) }))
+    ].sort((a, b) => Date.parse(b.time || 0) - Date.parse(a.time || 0));
+    const activeTab = ["ALL", "MANUAL", "AI", "PENDING"].includes(orderViewTab) ? orderViewTab : "ALL";
+    const filteredRows = activeTab === "ALL" ? rows : rows.filter(row => row.type === activeTab);
+    const tabItems = [
+      ["ALL", "All", rows.length],
+      ["MANUAL", "Manual", positions.length],
+      ["AI", "AI", aiPositions.length],
+      ["PENDING", "Pending", pending.length]
+    ];
+    const totalLivePnl = livePnl + aiLivePnl;
+
     shell(`
-      <section class="compact-grid orders-summary-grid">
-        <article><span>Open Positions</span><b>${positions.length}</b><small>${accountMode} manual trades</small></article>
-        <article><span>Live P/L</span><b class="${livePnl >= 0 ? "profit-text" : "loss-text"}">${livePnl >= 0 ? "+" : ""}${App.money(livePnl)}</b><small>Real-time movement</small></article>
-        <article><span>Locked Margin</span><b>${App.money(lockedMargin)}</b><small>Reserved in trades</small></article>
-        <article><span>Open Orders</span><b>${pending.length}</b><small>Pending limit orders</small></article>
-        <article><span>AI Positions</span><b>${aiPositions.length}</b><small class="${aiLivePnl >= 0 ? "profit-text" : "loss-text"}">${aiLivePnl >= 0 ? "+" : ""}${App.money(aiLivePnl)}</small></article>
+      <section class="orders-app-hero">
+        <div>
+          <p>ORDERS & POSITIONS</p>
+          <h2>Open trades, AI positions and pending orders</h2>
+          <span>Compact real-app view for quick tracking and action.</span>
+        </div>
+        <button class="orders-hero-action" onclick="AITradeXUser.go('trade')">New Trade</button>
       </section>
 
-      <section class="premium-card orders-card">
-        <div class="card-row">
-          <div><p>ORDERS</p><h2>Open Positions</h2></div>
-          <span class="history-mode">${accountMode}</span>
-        </div>
-        ${positions.length ? `<div class="orders-position-list">${positions.map(orderPositionCard).join("")}</div>` : `<div class="empty-state">No open manual positions. New trades opened from Trade page will appear here.</div>`}
+      <section class="orders-stat-strip">
+        <article><span>Open</span><b>${positions.length + aiPositions.length}</b></article>
+        <article><span>Live P/L</span><b class="${totalLivePnl >= 0 ? "profit-text" : "loss-text"}">${totalLivePnl >= 0 ? "+" : ""}${App.money(totalLivePnl)}</b></article>
+        <article><span>Locked</span><b>${App.money(lockedMargin + aiLockedMargin)}</b></article>
+        <article><span>Pending</span><b>${pending.length}</b></article>
+        <article><span>Mode</span><b>${accountMode}</b></article>
       </section>
 
-
-
-      <section class="premium-card orders-card">
-        <div class="card-row">
-          <div><p>AI ORDERS</p><h2>AI Positions</h2></div>
-          <span class="history-mode">Managed by AI</span>
+      <section class="orders-app-card">
+        <div class="orders-app-head">
+          <div>
+            <p>POSITION BOOK</p>
+            <h2>${activeTab === "ALL" ? "All Active Orders" : `${activeTab.charAt(0)}${activeTab.slice(1).toLowerCase()} Orders`}</h2>
+          </div>
+          <span>${filteredRows.length} item${filteredRows.length === 1 ? "" : "s"}</span>
         </div>
-        ${aiPositions.length ? `<div class="orders-position-list">${aiPositions.map(aiPositionCard).join("")}</div>` : `<div class="empty-state">No AI live positions are running. AI-managed positions will appear here when opened from AI Control Center.</div>`}
-      </section>
-
-      <section class="premium-card orders-card">
-        <div class="card-row">
-          <div><p>ORDERS</p><h2>Open Orders</h2></div>
-          <span class="history-mode">Limit</span>
+        <div class="orders-tabs">
+          ${tabItems.map(([value, label, count]) => `
+            <button class="${activeTab === value ? "active" : ""}" onclick="AITradeXUser.setOrderViewTab('${value}')">
+              ${label}<b>${count}</b>
+            </button>
+          `).join("")}
         </div>
-        ${pending.length ? `<div class="orders-position-list">${pending.map(pendingOrderCard).join("")}</div>` : `<div class="empty-state">No pending limit orders yet. Limit orders placed from Trade page will appear here.</div>`}
+        <div class="orders-app-list">
+          ${filteredRows.length ? filteredRows.map(row => row.html).join("") : `<div class="empty-state">No ${activeTab === "ALL" ? "active orders" : activeTab.toLowerCase()} records right now.</div>`}
+        </div>
       </section>
     `);
-    refreshVisiblePrices([...positions.map(position => position.pair), ...aiPositions.map(position => position.pair), ...pending.map(order => order.pair)]);
-  }
-
-  function formatHistoryDate(value) {
-    if (!value) return "-";
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return "-";
-    return d.toLocaleString([], { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
-  }
-
-  function historyStatus(t) {
-    const reason = String(t.closeReason || "").toUpperCase();
-    if (reason === "AUTO_RISK_CLOSE") return "Auto Closed";
-    return App.escapeHtml(t.status || "Closed").replace(/_/g, " ");
   }
 
   function tradeHistoryCard(t, type) {
@@ -3225,6 +3273,11 @@
       page = next;
       drawerOpen = false;
       localStorage.setItem("AITradeX_ACTIVE_PAGE", page);
+      render();
+    },
+    setOrderViewTab(tab) {
+      orderViewTab = ["ALL", "MANUAL", "AI", "PENDING"].includes(tab) ? tab : "ALL";
+      localStorage.setItem("AITradeX_ORDER_VIEW_TAB", orderViewTab);
       render();
     },
     openNotifications() {

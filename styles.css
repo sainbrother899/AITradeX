@@ -5320,3 +5320,68 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   .fast-buy-sell-row.priority-actions .sell-btn,
   .fast-buy-sell-row.priority-actions .buy-btn{min-height:56px!important;font-size:14px!important;}
 }
+
+/* Phase 4.75 — Orders Page Real App Polish */
+.orders-app-hero{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  border:1px solid rgba(148,163,184,.18);
+  background:radial-gradient(circle at 20% 0%,rgba(21,229,211,.16),transparent 30%),linear-gradient(145deg,rgba(15,23,42,.92),rgba(2,6,23,.88));
+  border-radius:26px;
+  padding:18px;
+  box-shadow:0 22px 60px rgba(0,0,0,.28);
+  margin-bottom:14px;
+}
+.orders-app-hero p,.orders-app-head p{margin:0 0 5px;color:var(--cyan);font-size:12px;font-weight:1000;letter-spacing:.1em}
+.orders-app-hero h2,.orders-app-head h2{margin:0;color:#fff;font-size:24px;letter-spacing:-.02em}
+.orders-app-hero span{display:block;color:#aebbd3;margin-top:5px;font-weight:750}
+.orders-hero-action{border:0;border-radius:16px;min-height:48px;padding:0 18px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#07111f;font-weight:1000;white-space:nowrap}
+.orders-stat-strip{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.orders-stat-strip article{border:1px solid rgba(148,163,184,.16);background:linear-gradient(145deg,rgba(255,255,255,.065),rgba(255,255,255,.025));border-radius:18px;padding:12px 13px;min-width:0}
+.orders-stat-strip span{display:block;color:#93a4bd;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.04em}
+.orders-stat-strip b{display:block;color:#f8fafc;font-size:18px;margin-top:5px;overflow-wrap:anywhere}
+.orders-app-card{border:1px solid rgba(148,163,184,.18);background:linear-gradient(145deg,rgba(15,23,42,.9),rgba(2,6,23,.8));border-radius:26px;padding:16px;box-shadow:0 18px 55px rgba(0,0,0,.22)}
+.orders-app-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+.orders-app-head>span{border:1px solid rgba(21,229,211,.25);background:rgba(21,229,211,.1);color:var(--cyan);border-radius:999px;padding:8px 12px;font-weight:1000;white-space:nowrap}
+.orders-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px;border:1px solid rgba(148,163,184,.14);background:rgba(255,255,255,.035);border-radius:18px;padding:6px}
+.orders-tabs button{border:0;background:transparent;color:#9caac0;border-radius:14px;min-height:42px;font-weight:1000;display:flex;align-items:center;justify-content:center;gap:7px}
+.orders-tabs button b{display:inline-grid;place-items:center;min-width:22px;height:22px;border-radius:999px;background:rgba(148,163,184,.14);color:#dbe6f8;font-size:12px}
+.orders-tabs button.active{background:linear-gradient(135deg,rgba(21,229,211,.22),rgba(79,178,255,.16));color:#fff;box-shadow:inset 0 0 0 1px rgba(21,229,211,.26)}
+.orders-tabs button.active b{background:rgba(255,255,255,.16);color:#fff}
+.orders-app-list{display:grid;gap:10px}
+.orders-app-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:12px;border:1px solid rgba(148,163,184,.14);background:linear-gradient(145deg,rgba(255,255,255,.062),rgba(255,255,255,.024));border-radius:20px;padding:13px 14px;overflow:hidden}
+.orders-app-row.ai-row{background:linear-gradient(145deg,rgba(21,229,211,.09),rgba(255,255,255,.025))}
+.orders-app-row.pending-row{background:linear-gradient(145deg,rgba(248,189,122,.075),rgba(255,255,255,.022))}
+.orders-row-main{min-width:0}
+.orders-row-title{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:7px}
+.orders-row-title b{color:#fff;font-size:15px;letter-spacing:-.01em}
+.side-pill,.type-badge{border-radius:999px;padding:4px 8px;font-size:11px;font-weight:1000;line-height:1}
+.side-pill.buy{background:rgba(0,231,168,.13);color:#47f0bd;border:1px solid rgba(0,231,168,.22)}
+.side-pill.sell{background:rgba(255,69,107,.13);color:#ff96a9;border:1px solid rgba(255,69,107,.22)}
+.type-badge.manual{background:rgba(79,178,255,.12);color:#9fd2ff;border:1px solid rgba(79,178,255,.22)}
+.type-badge.ai{background:rgba(21,229,211,.12);color:var(--cyan);border:1px solid rgba(21,229,211,.24)}
+.type-badge.pending{background:rgba(248,189,122,.12);color:#ffd195;border:1px solid rgba(248,189,122,.24)}
+.orders-row-meta,.orders-row-prices{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:#aebbd3;font-size:12px;font-weight:850}
+.orders-row-meta span,.orders-row-prices span{border:1px solid rgba(148,163,184,.13);background:rgba(255,255,255,.035);border-radius:999px;padding:5px 8px;white-space:nowrap}
+.orders-row-prices{margin-top:5px}
+.orders-row-prices b{color:#eaf2ff;font-weight:1000}
+.orders-row-result{text-align:right;min-width:96px}
+.orders-row-result strong{display:block;font-size:16px;font-weight:1000;white-space:nowrap}
+.orders-row-result small{display:block;color:#94a3b8;font-size:11px;font-weight:850;margin-top:3px;white-space:nowrap}
+.pending-text{color:#ffd195!important}
+.orders-pill-action{border:1px solid rgba(21,229,211,.24);background:rgba(21,229,211,.1);color:var(--cyan);border-radius:999px;min-height:38px;padding:0 13px;font-weight:1000;white-space:nowrap}
+.orders-pill-action.close{background:rgba(255,255,255,.055);color:#dff7ff}
+.orders-pill-action.cancel{border-color:rgba(255,69,107,.24);background:rgba(255,69,107,.1);color:#ff9aac}
+.orders-pill-action.ai{border-color:rgba(21,229,211,.22);background:rgba(21,229,211,.1);color:var(--cyan)}
+@media(max-width:760px){
+  .orders-app-hero{align-items:flex-start;display:grid;padding:16px}.orders-hero-action{width:100%}
+  .orders-stat-strip{grid-template-columns:repeat(2,minmax(0,1fr))}.orders-stat-strip article:last-child{grid-column:1/-1}
+  .orders-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .orders-app-row{grid-template-columns:1fr;gap:9px;padding:12px}
+  .orders-row-result{text-align:left;display:flex;align-items:end;justify-content:space-between;gap:8px;min-width:0}
+  .orders-row-action .orders-pill-action{width:100%}
+  .orders-row-meta,.orders-row-prices{gap:6px}
+  .orders-row-meta span,.orders-row-prices span{font-size:11px;padding:5px 7px}
+}
