@@ -425,7 +425,8 @@
             ${navButton("payments", "🏦", "Bank Accounts")}
             ${navButton("deposits", "⬇️", "Deposits")}
             ${navButton("withdrawals", "⬆️", "Withdrawals")}
-            ${navButton("trades", "🤖", "AI Trade Control")}
+            ${navButton("instantAi", "⚡", "Instant AI Trade")}
+            ${navButton("liveAi", "📈", "Live Position Trade")}
             ${navButton("plans", "⭐", "Plans")}
             ${navButton("referrals", "🎁", "Referrals")}
             ${navButton("support", "🎧", "Support Tickets")}
@@ -459,6 +460,8 @@
       deposits: "Deposits",
       withdrawals: "Withdrawals",
       trades: "AI Trade Control",
+      instantAi: "Instant AI Trade",
+      liveAi: "Live Position Trade",
       plans: "Subscription Plans",
       referrals: "Referrals",
       support: "Support Tickets",
@@ -1317,14 +1320,29 @@
       </section>`;
   }
 
-  function tradesPage() {
+  function aiTradeModeBars(activeMode) {
+    return `
+      <section class="ai-control-split-bars ai-control-mode-switch">
+        <article class="ai-control-mode-bar instant ${activeMode === "instant" ? "active" : ""}" onclick="AITradeXAdmin.go('instantAi')">
+          <p>SECTION A</p>
+          <h3>Instant AI Trade</h3>
+          <span>Direct result entry. Wallet P/L updates immediately.</span>
+        </article>
+        <article class="ai-control-mode-bar live ${activeMode === "live" ? "active" : ""}" onclick="AITradeXAdmin.go('liveAi')">
+          <p>SECTION B</p>
+          <h3>Live Position Trade</h3>
+          <span>Running position. Wallet amount cuts on open and settles on close.</span>
+        </article>
+      </section>`;
+  }
+
+  function instantAiPage() {
     const settings = App.state.settings || {};
     const initialStats = aiPreviewStats(2, 1, 0, "PROFIT");
     const previewReport = initialStats.report;
     const aiOnCount = allUsers().filter(u => u.aiTradeOn && userStatus(u) === "ACTIVE").length;
     const eligibleNow = previewReport.eligible.length;
     const batches = aiTradeBatches();
-    const recentTrades = aiRecentTrades();
     const lastBatch = batches[0];
 
     shell(`
@@ -1335,18 +1353,7 @@
         ${metric("🎁", "Free AI / Day", Number(settings.freeAiTradesPerDay || 5))}
       </section>
 
-      <section class="ai-control-split-bars">
-        <article class="ai-control-mode-bar instant">
-          <p>SECTION A</p>
-          <h3>Instant AI Trade</h3>
-          <span>Direct result entry: admin selects profit/loss and wallet updates immediately.</span>
-        </article>
-        <article class="ai-control-mode-bar live">
-          <p>SECTION B</p>
-          <h3>Live Position Trade</h3>
-          <span>Running position: wallet amount cuts on open and settles on target/admin close.</span>
-        </article>
-      </section>
+      ${aiTradeModeBars("instant")}
 
       ${aiValidationOverviewHtml(previewReport)}
 
@@ -1445,6 +1452,30 @@
         </div>
       </section>
 
+      ${aiInstantHistoryHtml()}
+
+      ${aiRecentEntriesHtml()}
+    `);
+  }
+
+  function liveAiPage() {
+    const settings = App.state.settings || {};
+    const initialStats = aiPreviewStats(2, 1, 0, "PROFIT");
+    const previewReport = initialStats.report;
+    const aiOnCount = allUsers().filter(u => u.aiTradeOn && userStatus(u) === "ACTIVE").length;
+    const eligibleNow = previewReport.eligible.length;
+
+    shell(`
+      <section class="metrics-grid">
+        ${metric("🤖", "AI ON Users", aiOnCount)}
+        ${metric("✅", "Valid Now", eligibleNow)}
+        ${metric("⏭️", "Skipped Now", previewReport.skipped.length)}
+        ${metric("🎁", "Free AI / Day", Number(settings.freeAiTradesPerDay || 5))}
+      </section>
+
+      ${aiTradeModeBars("live")}
+
+      ${aiValidationOverviewHtml(previewReport)}
 
       <section class="panel-card ai-desk-panel ai-live-open-panel">
         <div class="section-head ai-desk-head">
@@ -1523,12 +1554,12 @@
 
       ${aiLiveRunningHtml()}
 
-      ${aiInstantHistoryHtml()}
-
-      ${aiRecentEntriesHtml()}
-
       ${aiLiveHistoryHtml()}
     `);
+  }
+
+  function tradesPage() {
+    return instantAiPage();
   }
 
   function planBenefitsText(plan) {
@@ -1875,7 +1906,9 @@
     if (page === "wallet") { page = "deposits"; localStorage.setItem("AITradeX_ADMIN_PAGE", page); }
     if (page === "deposits") return financeRequestPage("DEPOSIT");
     if (page === "withdrawals") return financeRequestPage("WITHDRAWAL");
-    if (page === "trades") return tradesPage();
+    if (page === "trades") { page = "instantAi"; localStorage.setItem("AITradeX_ADMIN_PAGE", page); }
+    if (page === "instantAi") return instantAiPage();
+    if (page === "liveAi") return liveAiPage();
     if (page === "plans") return plansPage();
     if (page === "referrals") return referralsPage();
     if (page === "support") return supportPage();
