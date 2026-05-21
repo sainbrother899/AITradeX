@@ -6340,3 +6340,221 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   .header-brand-text small{display:none!important}
   .header-brand-text b:after{width:40px;margin-top:3px}
 }
+
+/* Phase 4.83 Global Theme Consistency Pass */
+:root{
+  --bg:#050816;
+  --panel:#0b1425;
+  --panel2:#101b31;
+  --text:#f8fafc;
+  --text-soft:#dbeafe;
+  --muted:#a8b3c7;
+  --cyan:#22d3ee;
+  --blue:#38bdf8;
+  --green:#22c55e;
+  --red:#ef4444;
+  --gold:#f8bd7a;
+  --gold2:#ffdc9e;
+  --profit-bg:rgba(34,197,94,.12);
+  --profit-line:rgba(34,197,94,.30);
+  --loss-bg:rgba(239,68,68,.12);
+  --loss-line:rgba(239,68,68,.30);
+}
+body,
+.aitx-app,
+.app-content,
+.main-area{
+  color:var(--text);
+}
+.profit-text,
+.green,
+.pnl-profit,
+.text-profit,
+.status-profit,
+.history-stat-card.profit strong,
+.history-pnl-cell.profit-text,
+.orders-position-row .profit-text,
+.orders-position-card .profit-text,
+.dashboard-kpi .profit-text,
+.metric-card .profit-text,
+.admin-user-stats .profit-text,
+.wallet-ledger-card .profit-text,
+.wallet-history-list .profit-text,
+.trade-history-summary .profit-text,
+.top-live-position-bar .profit-text{
+  color:var(--green)!important;
+  font-weight:1000!important;
+  text-shadow:0 0 18px rgba(34,197,94,.16);
+}
+.loss-text,
+.red,
+.pnl-loss,
+.text-loss,
+.status-loss,
+.history-stat-card.loss strong,
+.history-pnl-cell.loss-text,
+.orders-position-row .loss-text,
+.orders-position-card .loss-text,
+.dashboard-kpi .loss-text,
+.metric-card .loss-text,
+.admin-user-stats .loss-text,
+.wallet-ledger-card .loss-text,
+.wallet-history-list .loss-text,
+.trade-history-summary .loss-text,
+.top-live-position-bar .loss-text{
+  color:var(--red)!important;
+  font-weight:1000!important;
+  text-shadow:0 0 18px rgba(239,68,68,.16);
+}
+.history-trade-card.profit,
+.history-real-row.profit,
+.orders-position-card.profit,
+.ai-activity-card.profit{
+  border-color:var(--profit-line)!important;
+  background:linear-gradient(145deg,rgba(34,197,94,.075),rgba(255,255,255,.032))!important;
+}
+.history-trade-card.loss,
+.history-real-row.loss,
+.orders-position-card.loss,
+.ai-activity-card.loss{
+  border-color:var(--loss-line)!important;
+  background:linear-gradient(145deg,rgba(239,68,68,.075),rgba(255,255,255,.032))!important;
+}
+.activity-pill.profit,
+.status-pill.profit,
+.badge.profit,
+.ticket-status.profit{
+  color:var(--green)!important;
+  background:var(--profit-bg)!important;
+  border-color:var(--profit-line)!important;
+}
+.activity-pill.loss,
+.status-pill.loss,
+.badge.loss,
+.ticket-status.loss,
+.wallet-mini-badge.danger{
+  color:var(--red)!important;
+  background:var(--loss-bg)!important;
+  border-color:var(--loss-line)!important;
+}
+.buy-btn,
+button.buy-btn{
+  background:linear-gradient(135deg,#22c55e,#16a34a)!important;
+  color:#03130a!important;
+  box-shadow:0 14px 34px rgba(34,197,94,.18);
+}
+.sell-btn,
+button.sell-btn{
+  background:linear-gradient(135deg,#ef4444,#dc2626)!important;
+  color:#fff!important;
+  box-shadow:0 14px 34px rgba(239,68,68,.18);
+}
+.btn,
+.menu-btn,
+.account-segment button.active,
+.bottom-nav button.active,
+.ai-power.on,
+.trade-tab.active,
+.history-filter-chip.active,
+.wallet-panel-btn.active,
+.referral-actions .btn,
+.copy-success{
+  color:#041318!important;
+  text-shadow:none!important;
+}
+.premium-card p,
+.wallet-hero-card p,
+.trade-command p,
+.support-hero-card p,
+.support-form-card p,
+.support-list-card p,
+.support-admin-head p,
+.drawer-item small,
+.notification-row small,
+.history-list span,
+.orders-position-card small,
+.wallet-request-row small,
+.wallet-ledger-row small,
+.admin-user-stats span,
+.metric-card small,
+.metric-top,
+.section-head span,
+.card-row span,
+.signal-grid span,
+.toggle-row span,
+.depth-table span,
+.step-preview small,
+.step-preview p{
+  color:var(--muted)!important;
+}
+.history-mode,
+.ai-power:not(.on),
+.ref-code,
+.referral-link-box span,
+.orders-position-card b span,
+.wallet-copy-value,
+.copy-value,
+.text-cyan,
+.live-pill,
+.trade-live,
+.mini-live{
+  color:#bff8ff!important;
+}
+.premium-card,
+.wallet-hero-card,
+.trade-command,
+.chart-shell,
+.account-overview-card,
+.panel-card,
+.metric-card,
+.support-hero-card,
+.support-form-card,
+.support-list-card,
+.profile-hero-card,
+.bank-hero-card,
+.kyc-hero-card,
+.subscription-hero-card,
+.referral-hero-card,
+.notification-hero-card{
+  border-color:rgba(255,255,255,.115)!important;
+  box-shadow:0 18px 54px rgba(0,0,0,.34);
+}
+.top-live-position-bar.premium-active-bar.profit{
+  border-color:var(--profit-line)!important;
+  background:linear-gradient(135deg,rgba(34,197,94,.16),rgba(8,14,27,.98))!important;
+}
+.top-live-position-bar.premium-active-bar.loss{
+  border-color:var(--loss-line)!important;
+  background:linear-gradient(135deg,rgba(239,68,68,.16),rgba(8,14,27,.98))!important;
+}
+.top-live-position-bar.premium-active-bar.profit button{
+  color:var(--green)!important;
+  border-color:var(--profit-line)!important;
+  background:var(--profit-bg)!important;
+}
+.top-live-position-bar.premium-active-bar.loss button{
+  color:#fecaca!important;
+  border-color:var(--loss-line)!important;
+  background:var(--loss-bg)!important;
+}
+input,
+select,
+textarea,
+.form-grid input,
+.form-grid select,
+.form-grid textarea,
+.premium-card input,
+.premium-card select,
+.premium-card textarea{
+  color:#f8fafc!important;
+  background:rgba(5,12,24,.82)!important;
+  border-color:rgba(255,255,255,.13)!important;
+}
+input::placeholder,
+textarea::placeholder{
+  color:#7f8ca3!important;
+}
+.empty-state{
+  color:#dbeafe!important;
+  border-color:rgba(255,255,255,.12)!important;
+}
