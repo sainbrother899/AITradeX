@@ -484,9 +484,16 @@
     const pnl = totalManualLivePnl();
     const label = pnl >= 0 ? "Profit" : "Loss";
     const countText = positions.length === 1 ? "1 Active Position" : `${positions.length} Active Positions`;
+    const locked = positions.reduce((sum, position) => sum + Number(position.marginAmount || 0), 0);
     return `
-      <section class="top-live-position-bar manual-live-position-bar ${pnl >= 0 ? "profit" : "loss"}" id="manualLivePositionBar">
-        <span id="manualLivePositionText">Manual · ${countText} ${pnl >= 0 ? "+" : ""}${App.money(pnl)} (${label})</span>
+      <section class="top-live-position-bar manual-live-position-bar premium-active-bar ${pnl >= 0 ? "profit" : "loss"}" id="manualLivePositionBar">
+        <div class="active-bar-main">
+          <i>📈</i>
+          <div>
+            <b id="manualLivePositionText">Manual · ${countText}</b>
+            <span id="manualLivePositionMeta">Locked ${App.money(locked)} · Live ${pnl >= 0 ? "+" : ""}${App.money(pnl)} ${label}</span>
+          </div>
+        </div>
         <button onclick="AITradeXUser.closeManualLivePositions()">Close</button>
       </section>`;
   }
@@ -497,10 +504,17 @@
     const pnl = positions.reduce((sum, position) => sum + aiPositionPnl(position), 0);
     const label = pnl >= 0 ? "Profit" : "Loss";
     const countText = positions.length === 1 ? "1 AI Active Position" : `${positions.length} AI Active Positions`;
+    const locked = positions.reduce((sum, position) => sum + Number(position.marginAmount || position.amount || 0), 0);
     const stacked = manualOpenPositions().length ? "stacked" : "";
     return `
-      <section class="top-live-position-bar ai-live-position-bar ${stacked} ${pnl >= 0 ? "profit" : "loss"}" id="aiLivePositionBar">
-        <span id="aiLivePositionText">AI · ${countText} ${pnl >= 0 ? "+" : ""}${App.money(pnl)} (${label})</span>
+      <section class="top-live-position-bar ai-live-position-bar premium-active-bar ${stacked} ${pnl >= 0 ? "profit" : "loss"}" id="aiLivePositionBar">
+        <div class="active-bar-main">
+          <i>🤖</i>
+          <div>
+            <b id="aiLivePositionText">AI · ${countText}</b>
+            <span id="aiLivePositionMeta">Locked ${App.money(locked)} · Live ${pnl >= 0 ? "+" : ""}${App.money(pnl)} ${label}</span>
+          </div>
+        </div>
         <button onclick="AITradeXUser.go('orders')">View</button>
       </section>`;
   }
@@ -568,7 +582,10 @@
         bar.classList.toggle("profit", pnl >= 0);
         bar.classList.toggle("loss", pnl < 0);
         const text = document.getElementById("manualLivePositionText");
-        if (text) text.textContent = `${countText} ${pnl >= 0 ? "+" : ""}${App.money(pnl)} (${label})`;
+        const meta = document.getElementById("manualLivePositionMeta");
+        const locked = positions.reduce((sum, position) => sum + Number(position.marginAmount || 0), 0);
+        if (text) text.textContent = `Manual · ${countText}`;
+        if (meta) meta.textContent = `Locked ${App.money(locked)} · Live ${pnl >= 0 ? "+" : ""}${App.money(pnl)} ${label}`;
       }
     }
 
@@ -600,7 +617,10 @@
         bar.classList.toggle("loss", pnl < 0);
         bar.classList.toggle("stacked", manualOpenPositions().length > 0);
         const text = document.getElementById("aiLivePositionText");
-        if (text) text.textContent = `AI · ${countText} ${pnl >= 0 ? "+" : ""}${App.money(pnl)} (${label})`;
+        const meta = document.getElementById("aiLivePositionMeta");
+        const locked = positions.reduce((sum, position) => sum + Number(position.marginAmount || position.amount || 0), 0);
+        if (text) text.textContent = `AI · ${countText}`;
+        if (meta) meta.textContent = `Locked ${App.money(locked)} · Live ${pnl >= 0 ? "+" : ""}${App.money(pnl)} ${label}`;
       }
     }
 
@@ -1982,17 +2002,28 @@
   function tradePage() {
     const pair = selectedPairData();
     const balance = currentBalance();
-    const positionSize = tradeAmountPreview * tradeLeveragePreview;
+    const marginValue = Number(tradeAmountPreview || 0);
+    const leverageValue = Math.max(1, Number(tradeLeveragePreview || 1));
+    const positionSize = marginValue * leverageValue;
     const tradeIsActive = isTradeActivePair(pair.pair);
+    const marginWarning = tradeIsActive && marginValue > balance;
 
     shell(`
-      <section class="trade-command clean-pair-card">
-        <div>
+      <section class="trade-command clean-pair-card trade-hero-premium">
+        <div class="trade-hero-main">
           <p>${selectedMarket} MARKET</p>
           <h1>${selectedPair}</h1>
           <span data-price-card="${tradeIsActive ? "true" : "false"}" data-live-pair="${pair.pair}" data-live-type="line">${pair.price} · ${pair.inr} · <em class="${tradeIsActive ? changeClass(pair.change) : "upcoming-text"}">${pair.change}</em></span>
         </div>
-        <button class="change-pair-btn" onclick="AITradeXUser.openSheet('pair')">Change Pair</button>
+        <div class="trade-hero-side">
+          <span class="trade-mode-badge ${accountMode.toLowerCase()}">${accountMode} Account</span>
+          <button class="change-pair-btn" onclick="AITradeXUser.openSheet('pair')">Change Pair</button>
+        </div>
+        <div class="trade-hero-metrics">
+          <article><span>Available</span><b>${App.money(balance)}</b></article>
+          <article><span>Signal</span><b class="${tradeIsActive ? changeClass(pair.change) : "upcoming-text"}">${tradeIsActive ? pair.signal || "LIVE" : "SOON"}</b></article>
+          <article><span>Leverage</span><b>${leverageValue}x</b></article>
+        </div>
       </section>
 
       <section class="trade-select-bar app-selector-bar market-only-bar">
@@ -2047,19 +2078,22 @@
           <div><span>Available</span><b>${App.money(balance)}</b></div>
         </div>
 
-        <div class="form-row">
-          <label>Order Type
-            <select onchange="AITradeXUser.setTradeOrderType(this.value)">
-              <option value="MARKET" ${tradeOrderType === "MARKET" ? "selected" : ""}>Market</option>
-              <option value="LIMIT" ${tradeOrderType === "LIMIT" ? "selected" : ""}>Limit</option>
-            </select>
-          </label>
-          <div class="app-field">
-            <span>Leverage</span>
-            <button class="app-select-btn full" onclick="AITradeXUser.openSheet('leverage')">
-              <b>${tradeLeveragePreview}x</b>
-              <em>Change</em>
-            </button>
+        <div class="order-step-card">
+          <div class="order-step-head"><i>1</i><div><b>Order setup</b><span>Choose order type, leverage and margin.</span></div></div>
+          <div class="form-row">
+            <label>Order Type
+              <select onchange="AITradeXUser.setTradeOrderType(this.value)">
+                <option value="MARKET" ${tradeOrderType === "MARKET" ? "selected" : ""}>Market</option>
+                <option value="LIMIT" ${tradeOrderType === "LIMIT" ? "selected" : ""}>Limit</option>
+              </select>
+            </label>
+            <div class="app-field">
+              <span>Leverage</span>
+              <button class="app-select-btn full" onclick="AITradeXUser.openSheet('leverage')">
+                <b>${tradeLeveragePreview}x</b>
+                <em>Change</em>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -2072,26 +2106,39 @@
           </div>
         ` : ""}
 
-        <label>Margin Amount
-          <input type="number" value="${App.escapeHtml(String(tradeAmountPreview || ""))}" min="1" oninput="AITradeXUser.setTradeAmount(this.value)" placeholder="Enter INR amount"/>
-        </label>
+        <div class="order-step-card">
+          <div class="order-step-head"><i>2</i><div><b>Margin amount</b><span>Amount will be locked from selected ${accountMode} wallet.</span></div></div>
+          <label>Margin Amount
+            <input type="number" value="${App.escapeHtml(String(tradeAmountPreview || ""))}" min="1" oninput="AITradeXUser.setTradeAmount(this.value)" placeholder="Enter INR amount"/>
+          </label>
+          ${marginWarning ? `<div class="order-warning-bar">Margin is higher than available ${accountMode} balance. Reduce amount before placing trade.</div>` : ""}
+        </div>
 
-        <div class="trade-preview-grid">
+        <div class="trade-preview-grid premium-trade-preview">
           <article><span>Available</span><b>${App.money(balance)}</b></article>
           <article><span>Margin</span><b data-trade-preview-margin>${App.money(tradeAmountPreview)}</b></article>
           <article><span>Leverage</span><b>${tradeLeveragePreview}x</b></article>
           <article><span>Position Size</span><b data-trade-preview-position>${App.money(positionSize)}</b></article>
         </div>
 
-        <div class="form-row">
-          <label>Take Profit Optional<input placeholder="TP price"/></label>
-          <label>Stop Loss Optional<input placeholder="SL price"/></label>
+        <div class="risk-box">
+          <div class="order-step-head"><i>3</i><div><b>Risk controls</b><span>TP/SL are optional for manual tracking.</span></div></div>
+          <div class="risk-preset-row">
+            <span>No TP/SL</span><span>Safe</span><span>Balanced</span><span>High Risk</span>
+          </div>
+          <div class="form-row">
+            <label>Take Profit Optional<input placeholder="TP price"/></label>
+            <label>Stop Loss Optional<input placeholder="SL price"/></label>
+          </div>
         </div>
 
         ${tradeIsActive ? `
-          <div class="buy-sell-row">
-            <button class="buy-btn" onclick="AITradeXUser.placeManualTrade('BUY')">BUY / LONG</button>
-            <button class="sell-btn" onclick="AITradeXUser.placeManualTrade('SELL')">SELL / SHORT</button>
+          <div class="order-action-shell">
+            <div><b>Ready to place order?</b><span>${accountMode} · Margin ${App.money(marginValue)} · Position ${App.money(positionSize)}</span></div>
+            <div class="buy-sell-row">
+              <button class="buy-btn" onclick="AITradeXUser.placeManualTrade('BUY')">BUY / LONG</button>
+              <button class="sell-btn" onclick="AITradeXUser.placeManualTrade('SELL')">SELL / SHORT</button>
+            </div>
           </div>
         ` : `
           <div class="coming-soon-trade-bar">
