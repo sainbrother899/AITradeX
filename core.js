@@ -6,7 +6,7 @@ const now=()=>new Date().toLocaleString("en-IN");
 const uid=(p="id")=>`${p}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 const money=n=>"₹"+Number(n||0).toLocaleString("en-IN");
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
-function initial(){return{users:[{id:"control_root",name:"AITradeX Control",email:"control@aitradex.com",password:"admin123",role:"admin",status:"ACTIVE",createdAt:now()}],profiles:[],kycRequests:[],paymentMethods:[],depositRequests:[],withdrawalRequests:[],supportTickets:[],notifications:[],walletLedger:[],demoLedger:[],trades:[],aiTradeBatches:[],plans:[{id:"free",name:"Free Trial",price:0,signals:5,aiAccess:"Trial AI",durationDays:7,status:"ACTIVE",benefits:["5 AI auto trades per day for 7 days","1 AI auto trade per day after trial","Manual trading access","Live price cards"]},{id:"starter",name:"Standard",price:999,signals:15,aiAccess:"Standard AI",durationDays:30,status:"ACTIVE",benefits:["15 AI auto trades per day","Higher AI trading access","Priority dashboard visibility"]},{id:"pro",name:"Premium",price:2999,signals:50,aiAccess:"Premium AI",durationDays:30,status:"ACTIVE",benefits:["50 AI auto trades per day","Premium AI access","Faster plan priority"]},{id:"premium",name:"VIP",price:9999,signals:999999,aiAccess:"VIP Advanced AI",durationDays:30,status:"ACTIVE",benefits:["Unlimited AI auto trades per day","VIP advanced AI priority","Highest daily AI trades"]}],subscriptions:[],referrals:[],settings:{minDeposit:Number(C.MIN_DEPOSIT||500),minWithdrawal:Number(C.MIN_WITHDRAWAL||1000),referralFirstDepositPercent:Number(C.REFERRAL_FIRST_DEPOSIT_PERCENT||10),referralDepositPercent:Number(C.REFERRAL_DEPOSIT_PERCENT||10),referralSubscriptionPercent:Number(C.REFERRAL_SUBSCRIPTION_PERCENT||10),referralDepositEnabled:true,referralSubscriptionEnabled:true,demoBalance:Number(C.DEMO_BALANCE||100000),platformName:"AITradeX",depositUpiId:"aitradex@upi",depositQrImage:"",depositBankName:"AITradeX Bank",depositAccountName:"AITradeX Private Wallet",depositAccountNumber:"123456789012",depositIfsc:"AITX0001234",freeAiTradesPerDay:5,postTrialFreeAiTradesPerDay:1,freeTrialDays:7,supportWhatsAppNumber:"919999999999"}}}
+function initial(){return{users:[{id:"control_root",name:"AITradeX Control",email:"control@aitradex.com",password:"admin123",role:"admin",status:"ACTIVE",createdAt:now()}],profiles:[],kycRequests:[],paymentMethods:[],depositRequests:[],withdrawalRequests:[],supportTickets:[],notifications:[],walletLedger:[],demoLedger:[],trades:[],aiTradeBatches:[],plans:[{id:"free",name:"Free Trial",price:0,signals:5,aiAccess:"Trial AI",durationDays:7,status:"ACTIVE",benefits:["5 AI auto trades per day for 7 days","1 AI auto trade per day after trial","Manual trading access","Live price cards"]},{id:"starter",name:"Standard",price:999,signals:15,aiAccess:"Standard AI",durationDays:30,status:"ACTIVE",benefits:["15 AI auto trades per day","Higher AI trading access","Priority dashboard visibility"]},{id:"pro",name:"Premium",price:2999,signals:50,aiAccess:"Premium AI",durationDays:30,status:"ACTIVE",benefits:["50 AI auto trades per day","Premium AI access","Faster plan priority"]},{id:"premium",name:"VIP",price:9999,signals:999999,aiAccess:"VIP Advanced AI",durationDays:30,status:"ACTIVE",benefits:["Unlimited AI auto trades per day","VIP advanced AI priority","Highest daily AI trades"]}],subscriptions:[],referrals:[],settings:{minDeposit:Number(C.MIN_DEPOSIT||500),minWithdrawal:Number(C.MIN_WITHDRAWAL||1000),referralFirstDepositPercent:Number(C.REFERRAL_FIRST_DEPOSIT_PERCENT||10),referralDepositPercent:Number(C.REFERRAL_DEPOSIT_PERCENT||10),referralSubscriptionPercent:Number(C.REFERRAL_SUBSCRIPTION_PERCENT||10),referralDepositEnabled:true,referralSubscriptionEnabled:true,demoBalance:Number(C.DEMO_BALANCE||100000),platformName:"AITradeX",depositUpiId:"aitradex@upi",depositQrImage:"",depositBankName:"AITradeX Bank",depositAccountName:"AITradeX Private Wallet",depositAccountNumber:"123456789012",depositIfsc:"AITX0001234",freeAiTradesPerDay:5,postTrialFreeAiTradesPerDay:1,freeTrialDays:7,supportWhatsAppNumber:"919999999999",usdtInrRate:Number(C.USDT_INR_RATE||95)}}}
 const load=()=>{try{return JSON.parse(localStorage.getItem(SK)||"null")||initial()}catch{return initial()}};
 const loadSession=()=>{try{return JSON.parse(localStorage.getItem(SS)||"null")}catch{return null}};
 
@@ -54,12 +54,18 @@ const isForexPair=pair=>Object.values(MARKET_PAIRS).flat().some(x=>normPair(x.pa
 const isChartFeedPair=pair=>isForexPair(pair)&&!isCryptoPair(pair);
 const fmtPrice=(n,asset="")=>{const v=Number(n);if(!Number.isFinite(v))return "--";const max=v>=1000?2:v>=1?4:8;const text=v.toLocaleString("en-US",{maximumFractionDigits:max});return asset==="CRYPTO"||asset==="METAL"?`$${text}`:text;};
 const fmtChange=n=>{const v=Number(n||0);const sign=v>0?"+":"";return `${sign}${v.toFixed(2)}%`;};
+const cleanNumberText=value=>String(value??"").replace(/[^0-9.\-]/g,"");
+const cryptoUsdValue=value=>{const n=Number(value);if(Number.isFinite(n)&&n>0)return n;const parsed=Number(cleanNumberText(value));return Number.isFinite(parsed)&&parsed>0?parsed:0;};
+const usdtInrRate=()=>{const rate=Number(App.state?.settings?.usdtInrRate??95);return Number.isFinite(rate)&&rate>0?rate:95;};
+const fmtInrPrice=n=>{const v=Number(n);if(!Number.isFinite(v)||v<=0)return "--";const max=v>=1000?2:v>=1?4:6;return `₹${v.toLocaleString("en-IN",{maximumFractionDigits:max})}`;};
+const cryptoInrDisplay=value=>fmtInrPrice(cryptoUsdValue(value)*usdtInrRate());
+const cryptoPairLabel=pair=>{const {base}=baseQuote(pair);return base?`${base}/INR`:normPair(pair);};
 function saveLiveCache(){try{localStorage.setItem(LIVE_CACHE_KEY,JSON.stringify(liveCache))}catch{}}
 function cachedLive(pair){const clean=normPair(pair);const row=liveCache[clean];if(!row)return null;const ttl=row.sourceType==="CHART_FEED"||isChartFeedPair(clean)?CHART_FEED_TTL_MS:LIVE_TTL_MS;return Date.now()-Number(row.fetchedMs||0)<ttl?row:null;}
 async function fetchJson(url,options){const res=await fetch(url,{cache:"no-store",...(options||{})});if(!res.ok)throw new Error(`HTTP ${res.status}`);return res.json();}
 async function fetchCryptoPrice(pair){const symbol=normPair(pair).replace("/","");const url=`https://api.binance.com/api/v3/ticker/24hr?symbol=${encodeURIComponent(symbol)}`;let data;try{data=await fetchJson(url)}catch(e){data=await fetchJson(`https://data-api.binance.vision/api/v3/ticker/24hr?symbol=${encodeURIComponent(symbol)}`)}
   const price=Number(data.lastPrice);if(!Number.isFinite(price))throw new Error("Crypto price unavailable");
-  return {ok:true,pair:normPair(pair),price,display:fmtPrice(price,"CRYPTO"),change:fmtChange(data.priceChangePercent),mood:Number(data.priceChangePercent||0)>=0?"up":"down",source:"Binance",sourceType:"LIVE_API",fetchedAt:new Date().toISOString(),fetchedMs:Date.now()};
+  return {ok:true,pair:normPair(pair),price,display:cryptoInrDisplay(price),inrRate:usdtInrRate(),displayPair:cryptoPairLabel(pair),rawUsdtDisplay:fmtPrice(price,"CRYPTO"),change:fmtChange(data.priceChangePercent),mood:Number(data.priceChangePercent||0)>=0?"up":"down",source:"Binance",sourceType:"LIVE_API",fetchedAt:new Date().toISOString(),fetchedMs:Date.now()};
 }
 async function fetchForexPrice(pair){const {base,quote}=baseQuote(pair);if(!base||!quote)throw new Error("Invalid forex pair");if(isMetalPair(pair))throw new Error("Manual rate required");
   const url=`https://v6.exchangerate-api.com/v6/${encodeURIComponent(FX_API_KEY)}/pair/${encodeURIComponent(base)}/${encodeURIComponent(quote)}`;
@@ -159,7 +165,8 @@ App.logoHtml=(variant="full",className="")=>{
   if(mode==="icon")return `<span class="aitx-logo-wrap aitx-logo-icon-wrap ${cls}" aria-label="AITradeX logo"><svg class="aitx-logo-svg" viewBox="0 0 64 64" role="img" aria-hidden="true">${defs}${icon}</svg></span>`;
   return `<span class="aitx-logo-wrap aitx-logo-full-wrap ${cls}" aria-label="AITradeX logo"><svg class="aitx-logo-svg" viewBox="0 0 286 64" role="img" aria-hidden="true">${defs}${icon}<text x="72" y="43" font-family="Inter,Arial Black,system-ui,-apple-system,Segoe UI,Arial,sans-serif" font-size="35" font-weight="1000" letter-spacing="-2.15" paint-order="stroke fill" stroke="rgba(5,8,20,.42)" stroke-width="1.05" stroke-linejoin="round"><tspan fill="url(#${blue})">AI</tspan><tspan fill="#ffffff">Trade</tspan><tspan fill="url(#${green})">X</tspan></text></svg></span>`;
 };
-App.state.settings={freeAiTradesPerDay:5,postTrialFreeAiTradesPerDay:1,freeTrialDays:7,...(App.state.settings||{})};
+App.state.settings={freeAiTradesPerDay:5,postTrialFreeAiTradesPerDay:1,freeTrialDays:7,usdtInrRate:Number(C.USDT_INR_RATE||95),...(App.state.settings||{})};
+App.state.settings.usdtInrRate=Math.max(1,Number(App.state.settings.usdtInrRate||95));
 if(!Array.isArray(App.state.plans))App.state.plans=initial().plans;
 const freePlan=App.state.plans.find(p=>p.id==="free");
 if(freePlan){
@@ -176,7 +183,21 @@ App.isForexPair=isForexPair;
 App.isChartFeedPair=isChartFeedPair;
 App.getCachedPairPrice=pair=>cachedLive(pair);
 App.getLastPairPrice=pair=>liveCache[normPair(pair)]||null;
-App.pairLiveView=item=>{const cached=cachedLive(item?.pair);return cached?{...item,live:true,price:cached.display,rawPrice:cached.price,change:cached.change||item.change,mood:cached.mood||item.mood,priceSource:cached.source,priceFetchedAt:cached.fetchedAt}:item};
+App.usdtInrRate=usdtInrRate;
+App.cryptoInrDisplay=cryptoInrDisplay;
+App.cryptoRawToInr=value=>cryptoUsdValue(value)*usdtInrRate();
+App.cryptoInrToRaw=value=>{const rate=usdtInrRate();const n=Number(value||0);return rate>0?n/rate:n;};
+App.displayPairLabel=pair=>isCryptoPair(pair)?cryptoPairLabel(pair):normPair(pair);
+App.priceDisplayFor=(pair,value)=>isCryptoPair(pair)?cryptoInrDisplay(value):fmtPrice(value,isMetalPair(pair)?"METAL":isForexPair(pair)?"FOREX":"");
+App.pairLiveView=item=>{
+  const cached=cachedLive(item?.pair);
+  if(cached)return {...item,live:true,displayPair:App.displayPairLabel(item.pair),price:cached.display,rawPrice:cached.price,rawUsdtDisplay:cached.rawUsdtDisplay||fmtPrice(cached.price,"CRYPTO"),inrRate:cached.inrRate||usdtInrRate(),inr:isCryptoPair(item?.pair)?`Rate ₹${usdtInrRate()}/USDT`:(item.inr||""),change:cached.change||item.change,mood:cached.mood||item.mood,priceSource:cached.source,priceFetchedAt:cached.fetchedAt};
+  if(isCryptoPair(item?.pair)){
+    const raw=cryptoUsdValue(item?.price);
+    return {...item,displayPair:App.displayPairLabel(item.pair),rawPrice:raw,rawUsdtDisplay:fmtPrice(raw,"CRYPTO"),price:cryptoInrDisplay(raw),inr:`Rate ₹${usdtInrRate()}/USDT`,inrRate:usdtInrRate()};
+  }
+  return item;
+};
 App.getLivePairPrice=async(pair,manualPrice)=>{
   const clean=normPair(pair);
   const manual=Number(manualPrice||0);
@@ -251,7 +272,10 @@ function cryptoTickerRow(data){
     ok:true,
     pair:normPair(item.pair),
     price,
-    display:fmtPrice(price,"CRYPTO"),
+    display:cryptoInrDisplay(price),
+    inrRate:usdtInrRate(),
+    displayPair:cryptoPairLabel(item.pair),
+    rawUsdtDisplay:fmtPrice(price,"CRYPTO"),
     change:eventType==="trade"?(cached.change||"Live"):fmtChange(changePct),
     mood:eventType==="trade"?(cached.mood||"up"):(changePct>=0?"up":"down"),
     source:eventType==="trade"?"Binance Trade Stream":"Binance Ticker Stream",

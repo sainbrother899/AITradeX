@@ -373,10 +373,21 @@
   function formatPairPrice(pair, value) {
     const n = Number(value || 0);
     if (!Number.isFinite(n) || n <= 0) return "--";
+    if (App.priceDisplayFor) return App.priceDisplayFor(pair, n);
     const item = [...marketPairs.CRYPTO, ...marketPairs.FOREX].find(p => p.pair === pair);
     const prefix = item?.prefix || (String(pair || "").includes("INR") ? "₹" : "$");
     const decimals = String(pair || "").includes("JPY") || String(pair || "").includes("INR") ? 3 : 2;
     return `${prefix}${n.toLocaleString(undefined, { maximumFractionDigits: decimals })}`;
+  }
+
+  function displayPair(pair) {
+    return App.displayPairLabel ? App.displayPairLabel(pair) : String(pair || "");
+  }
+
+  function limitInputToRaw(pair, value) {
+    const n = Number(value || 0);
+    if (!Number.isFinite(n) || n <= 0) return 0;
+    return App.isCryptoPair && App.isCryptoPair(pair) && App.cryptoInrToRaw ? App.cryptoInrToRaw(n) : n;
   }
 
   function totalManualLivePnl() {
@@ -981,7 +992,7 @@
         el.classList.toggle("loss-text", row.mood === "down");
       }
       if (type === "line") {
-        el.innerHTML = `${row.display} · <em class="${row.mood === "down" ? "loss-text" : "profit-text"}">${row.change || "Live"}</em> · ${row.source}`;
+        el.innerHTML = `${row.display} · <em class="${row.mood === "down" ? "loss-text" : "profit-text"}">${row.change || "Live"}</em>`;
         el.dataset.rawPrice = String(row.price || "");
         el.dataset.displayPrice = row.display || "";
         el.dataset.priceSource = row.source || "Live API";
@@ -2060,8 +2071,8 @@
       <section class="trade-command clean-pair-card trade-hero-premium">
         <div class="trade-hero-main">
           <p>${selectedMarket} MARKET</p>
-          <h1>${selectedPair}</h1>
-          <span data-price-card="${tradeIsActive ? "true" : "false"}" data-live-pair="${pair.pair}" data-live-type="line">${pair.price} · ${pair.inr} · <em class="${tradeIsActive ? changeClass(pair.change) : "upcoming-text"}">${pair.change}</em></span>
+          <h1>${displayPair(selectedPair)}</h1>
+          <span data-price-card="${tradeIsActive ? "true" : "false"}" data-live-pair="${pair.pair}" data-live-type="line">${pair.price} · <em class="${tradeIsActive ? changeClass(pair.change) : "upcoming-text"}">${pair.change}</em></span>
         </div>
         <div class="trade-hero-side">
           <span class="trade-mode-badge ${accountMode.toLowerCase()}">${accountMode} Account</span>
@@ -2084,7 +2095,7 @@
       <section class="pair-rate-list">
         ${pairsForMarket().map(raw => { const p = pairView(raw); return `
           <button class="${selectedPair === p.pair ? "active" : ""} ${isUpcomingPair(p.pair) ? "upcoming-pair" : ""}" onclick="AITradeXUser.selectPair('${p.pair}')">
-            <b>${p.pair}</b>
+            <b>${displayPair(p.pair)}</b>
             <span data-price-card="${isTradeActivePair(p.pair) ? "true" : "false"}" data-live-pair="${p.pair}" data-live-type="price">${p.price}</span>
             <em data-live-pair="${p.pair}" data-live-type="change" class="${isUpcomingPair(p.pair) ? "upcoming-text" : changeClass(p.change)}">${p.change}</em>
           </button>
@@ -2113,7 +2124,7 @@
         <div class="compact-ticket-head">
           <div>
             <p>ORDER TICKET</p>
-            <h2>${selectedPair}</h2>
+            <h2>${displayPair(selectedPair)}</h2>
             <span>${accountMode} Account · ${tradeOrderType === "LIMIT" ? "Limit" : "Market"} Order</span>
           </div>
           <span class="ticket-chip">${tradeIsActive ? selectedMarket : "UPCOMING"}</span>
@@ -2162,8 +2173,8 @@
             </select>
           </label>
           ${tradeOrderType === "LIMIT" ? `
-            <label>Limit Price
-              <input type="number" value="${App.escapeHtml(tradeLimitPrice)}" min="0" step="any" oninput="AITradeXUser.setTradeLimitPrice(this.value)" placeholder="Trigger price"/>
+            <label>Limit Price (INR)
+              <input type="number" value="${App.escapeHtml(tradeLimitPrice)}" min="0" step="any" oninput="AITradeXUser.setTradeLimitPrice(this.value)" placeholder="Trigger price in ₹"/>
             </label>
           ` : `
             <div class="compact-account-chip ${accountMode.toLowerCase()}">
@@ -4027,7 +4038,8 @@
       const marketNow = visiblePairCardPrice(selectedPair) || (App.getCachedPairPrice ? App.getCachedPairPrice(selectedPair) : null);
 
       if (orderType === "LIMIT") {
-        const limitPrice = Number(tradeLimitPrice || 0);
+        const limitPriceDisplayInput = Number(tradeLimitPrice || 0);
+        const limitPrice = limitInputToRaw(selectedPair, limitPriceDisplayInput);
         if (!Number.isFinite(limitPrice) || limitPrice <= 0) {
           App.toast("Enter valid limit price.");
           return;

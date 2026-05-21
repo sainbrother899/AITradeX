@@ -394,7 +394,7 @@
     return `
       <optgroup label="CRYPTO · LIVE">
         ${activePairs.map(item => `
-          <option value="${esc(item.pair)}" ${String(item.pair).toUpperCase() === String(selected).toUpperCase() ? "selected" : ""}>${esc(item.pair)} · ${esc(item.inr || item.symbol || "CRYPTO")}</option>
+          <option value="${esc(item.pair)}" ${String(item.pair).toUpperCase() === String(selected).toUpperCase() ? "selected" : ""}>${esc(App.displayPairLabel ? App.displayPairLabel(item.pair) : item.pair)} · ${esc(item.inr || item.symbol || "CRYPTO")}</option>
         `).join("")}
       </optgroup>
     `;
@@ -2303,6 +2303,12 @@
             <label>Minimum Withdrawal
               <input id="settingMinWithdrawal" type="number" min="1" value="${Number(settings.minWithdrawal || 1000)}" required/>
             </label>
+
+            <p>CRYPTO INR DISPLAY</p>
+            <label>USDT to INR Rate
+              <input id="settingUsdtInrRate" type="number" min="1" step="0.01" value="${Number(settings.usdtInrRate || 95)}" required/>
+              <small>This controls INR-only crypto price display. Default is ₹95 per USDT.</small>
+            </label>
             <button class="save-profile-btn">Save Payment Settings</button>
           </form>
 
@@ -2328,6 +2334,7 @@
             <div class="review-grid compact-review">
               <article><span>Minimum Deposit</span><b>${App.money(settings.minDeposit)}</b></article>
               <article><span>Minimum Withdrawal</span><b>${App.money(settings.minWithdrawal)}</b></article>
+              <article><span>USDT-INR Rate</span><b>₹${Number(settings.usdtInrRate || 95).toLocaleString("en-IN")}</b></article>
             </div>
           </section>
         </div>
@@ -2788,7 +2795,8 @@
           depositAccountNumber: inputValue("settingAccountNumber") || "123456789012",
           depositIfsc: inputValue("settingIfsc").toUpperCase() || "AITX0001234",
           minDeposit: Math.max(1, Number(inputValue("settingMinDeposit") || 500)),
-          minWithdrawal: Math.max(1, Number(inputValue("settingMinWithdrawal") || 1000))
+          minWithdrawal: Math.max(1, Number(inputValue("settingMinWithdrawal") || 1000)),
+          usdtInrRate: Math.max(1, Number(inputValue("settingUsdtInrRate") || 95))
         };
         App.saveState();
         App.toast("Payment settings saved.");
@@ -2815,7 +2823,7 @@
       try {
         const row = await App.getLivePairPrice(pair, manual);
         setAiPriceView(row);
-        if (showToast) App.toast(`${pair} entry price locked from ${row.source}.`);
+        if (showToast) App.toast(`${App.displayPairLabel ? App.displayPairLabel(pair) : pair} entry price locked from ${row.source}.`);
         return row;
       } catch (error) {
         setAiPriceView({ price: "--", source: "Unavailable", display: "--" });

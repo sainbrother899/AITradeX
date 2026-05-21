@@ -25,3 +25,10 @@ Clean-base notes
 
 Important
 This build is a frontend/static prototype baseline. Before real public use, move authentication, wallet ledger, deposits, withdrawals, trade settlement, and admin permissions to a secure backend such as Supabase/Firebase or a custom server.
+
+
+Stable display setting:
+- Crypto prices are shown to users in INR-only mode.
+- Default USDT-INR conversion rate is ₹95 per USDT.
+- Admin can change this anytime from Payment Settings > USDT to INR Rate.
+- Internal trade P/L still uses raw crypto movement percentage, so wallet P/L remains INR-based.
