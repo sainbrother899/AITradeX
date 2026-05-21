@@ -431,9 +431,23 @@
     const label = pnl >= 0 ? "Profit" : "Loss";
     const countText = positions.length === 1 ? "1 Active Position" : `${positions.length} Active Positions`;
     return `
-      <section class="top-live-position-bar ${pnl >= 0 ? "profit" : "loss"}" id="manualLivePositionBar">
-        <span id="manualLivePositionText">${countText} ${pnl >= 0 ? "+" : ""}${App.money(pnl)} (${label})</span>
+      <section class="top-live-position-bar manual-live-position-bar ${pnl >= 0 ? "profit" : "loss"}" id="manualLivePositionBar">
+        <span id="manualLivePositionText">Manual · ${countText} ${pnl >= 0 ? "+" : ""}${App.money(pnl)} (${label})</span>
         <button onclick="AITradeXUser.closeManualLivePositions()">Close</button>
+      </section>`;
+  }
+
+  function aiLiveBarHtml() {
+    const positions = aiOpenPositions();
+    if (!positions.length) return "";
+    const pnl = positions.reduce((sum, position) => sum + aiPositionPnl(position), 0);
+    const label = pnl >= 0 ? "Profit" : "Loss";
+    const countText = positions.length === 1 ? "1 AI Active Position" : `${positions.length} AI Active Positions`;
+    const stacked = manualOpenPositions().length ? "stacked" : "";
+    return `
+      <section class="top-live-position-bar ai-live-position-bar ${stacked} ${pnl >= 0 ? "profit" : "loss"}" id="aiLivePositionBar">
+        <span id="aiLivePositionText">AI · ${countText} ${pnl >= 0 ? "+" : ""}${App.money(pnl)} (${label})</span>
+        <button onclick="AITradeXUser.go('orders')">View</button>
       </section>`;
   }
 
@@ -518,7 +532,25 @@
   }
 
   function updateAiLiveViews() {
-    aiOpenPositions().forEach(position => {
+    const positions = aiOpenPositions();
+    const pnl = positions.reduce((sum, position) => sum + aiPositionPnl(position), 0);
+    const label = pnl >= 0 ? "Profit" : "Loss";
+    const countText = positions.length === 1 ? "1 AI Active Position" : `${positions.length} AI Active Positions`;
+
+    const bar = document.getElementById("aiLivePositionBar");
+    if (bar) {
+      if (!positions.length) {
+        bar.remove();
+      } else {
+        bar.classList.toggle("profit", pnl >= 0);
+        bar.classList.toggle("loss", pnl < 0);
+        bar.classList.toggle("stacked", manualOpenPositions().length > 0);
+        const text = document.getElementById("aiLivePositionText");
+        if (text) text.textContent = `AI · ${countText} ${pnl >= 0 ? "+" : ""}${App.money(pnl)} (${label})`;
+      }
+    }
+
+    positions.forEach(position => {
       const currentEl = document.querySelector(`[data-ai-current="${position.id}"]`);
       const pnlEl = document.querySelector(`[data-ai-pnl="${position.id}"]`);
       const pnlValue = aiPositionPnl(position);
@@ -1388,6 +1420,7 @@
         <main class="app-content">${content}</main>
         ${selectorSheetHtml()}
         ${manualLiveBarHtml()}
+        ${aiLiveBarHtml()}
         ${manualCloseSelectorHtml()}
         ${aiOffConfirmHtml()}
         ${bottomNav()}

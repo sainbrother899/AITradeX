@@ -3258,6 +3258,20 @@
 .top-live-position-bar.profit button{background:rgba(0,231,168,.14);color:var(--green);border-color:rgba(0,231,168,.25)}
 .top-live-position-bar.loss button{background:rgba(255,69,107,.14);color:#ff9aac;border-color:rgba(255,69,107,.25)}
 
+.top-live-position-bar.ai-live-position-bar{
+  border-color:rgba(92,213,255,.24);
+  background:linear-gradient(145deg,rgba(7,21,39,.98),rgba(8,13,28,.98));
+  box-shadow:0 -12px 34px rgba(20,180,255,.16);
+}
+.top-live-position-bar.ai-live-position-bar.stacked{
+  bottom:calc(108px + env(safe-area-inset-bottom));
+}
+.top-live-position-bar.ai-live-position-bar button{
+  background:rgba(92,213,255,.14);
+  color:var(--cyan);
+  border-color:rgba(92,213,255,.28);
+}
+
 .upgrade-inline-note{
   display:inline-flex;
   margin-top:8px;
@@ -3440,6 +3454,7 @@
     font-size:12px;
   }
   .top-live-position-bar button{min-width:54px;padding-inline:10px}
+  .top-live-position-bar.ai-live-position-bar.stacked{bottom:calc(106px + env(safe-area-inset-bottom))}
   .manual-open-list article{display:grid;grid-template-columns:1fr;align-items:start;gap:8px}
   .manual-open-list strong{max-width:100%;text-align:left;font-size:16px}
   .manual-close-modal{
