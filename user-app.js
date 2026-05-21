@@ -1452,6 +1452,21 @@
       </div>`;
   }
 
+  function userNotifications() {
+    const u = user();
+    return App.notificationsFor ? App.notificationsFor({ audience: "USER", userId: u?.id || "" }) : [];
+  }
+
+  function userUnreadNotifications() {
+    const u = user();
+    return App.unreadNotificationCount ? App.unreadNotificationCount({ audience: "USER", userId: u?.id || "" }) : 0;
+  }
+
+  function notificationBadgeHtml() {
+    const unread = userUnreadNotifications();
+    return unread ? `<span class="notification-badge">${unread > 99 ? "99+" : unread}</span>` : "";
+  }
+
   function appHeader() {
     const u = user();
     return `
@@ -1460,7 +1475,10 @@
         <div class="app-brand logo-brand">
           ${App.logoHtml("full", "aitx-logo-header")}
         </div>
-        ${profileNameChip()}
+        <div class="header-actions">
+          <button class="notification-bell" onclick="AITradeXUser.openNotifications()" aria-label="Notifications">🔔${notificationBadgeHtml()}</button>
+          ${profileNameChip()}
+        </div>
       </header>
       ${drawerOpen ? menuDrawer() : ""}`;
   }
@@ -2919,6 +2937,38 @@
     `);
   }
 
+  function notificationPage() {
+    const rows = userNotifications();
+    const unread = rows.filter(n => !n.read).length;
+    shell(`
+      <section class="premium-card notification-center-card">
+        <div class="section-head">
+          <div><h3>Notifications</h3><span>Deposit, withdrawal, AI trade, plan and wallet updates</span></div>
+          <div class="notification-actions">
+            <span class="admin-count-pill">${unread} unread</span>
+            <button class="ghost-action" onclick="AITradeXUser.markNotificationsRead()">Mark all read</button>
+          </div>
+        </div>
+        <div class="notification-list">
+          ${rows.length ? rows.map(n => `
+            <article class="notification-row ${n.read ? "read" : "unread"}">
+              <div class="notification-icon">${notificationIcon(n.type)}</div>
+              <div>
+                <b>${App.escapeHtml(n.title || "Notification")}</b>
+                <p>${App.escapeHtml(n.message || "")}</p>
+                <small>${n.createdAt ? new Date(n.createdAt).toLocaleString() : ""}</small>
+              </div>
+              ${n.linkPage ? `<button class="mini-action" onclick="AITradeXUser.openNotificationLink('${n.id}', '${n.linkPage}')">Open</button>` : `<button class="ghost-action" onclick="AITradeXUser.markSingleNotification('${n.id}')">Read</button>`}
+            </article>`).join("") : `<div class="empty-state">No notifications yet.</div>`}
+        </div>
+      </section>`);
+  }
+
+  function notificationIcon(type) {
+    const map = { DEPOSIT: "⬇️", WITHDRAWAL: "⬆️", AI: "🤖", WALLET: "💳", PLAN: "⭐", KYC: "🛡️", SUPPORT: "🎧", USER: "👤" };
+    return map[String(type || "INFO").toUpperCase()] || "🔔";
+  }
+
   function render() {
     if (App.reloadState) App.reloadState();
     reconcileUserAiLiveMarginLocks();
@@ -2941,6 +2991,7 @@
     if (page === "referral") return referralPage();
     if (page === "profile") return profilePage();
     if (page === "support") return supportPage();
+    if (page === "notifications") return notificationPage();
     return homePage();
   }
 
@@ -2965,6 +3016,7 @@
         });
         page = "home";
         localStorage.setItem("AITradeX_ACTIVE_PAGE", page);
+        App.addNotification?.({ audience: "ADMIN", title: "New user signup", message: `${regName.value} created a new account.`, type: "USER", linkPage: "users", referenceId: `signup_${regEmail.value}` });
         App.toast("Account created successfully.");
         render();
       } catch (err) {
@@ -3136,8 +3188,9 @@
       }
 
       const requests = depositRequests();
+      const requestId = App.uid("dep");
       requests.unshift({
-        id: App.uid("dep"),
+        id: requestId,
         amount,
         type: depositDraft.type || "UPI",
         utr,
@@ -3146,6 +3199,7 @@
         rejectReason: ""
       });
       saveDepositRequests(requests);
+      App.addNotification?.({ audience: "ADMIN", title: "New deposit request", message: `${displayName()} requested ${App.money(amount)} deposit. UTR ${utr}.`, type: "DEPOSIT", linkPage: "deposits", referenceId: requestId });
 
       depositDraft = { amount: "", type: "UPI", utr: "" };
       depositStep = 1;
@@ -3218,8 +3272,9 @@
       }
 
       const requests = withdrawalRequests();
+      const requestId = App.uid("wd");
       requests.unshift({
-        id: App.uid("wd"),
+        id: requestId,
         amount,
         methodId: method.id,
         methodSnapshot: method,
@@ -3228,6 +3283,7 @@
         rejectReason: ""
       });
       saveWithdrawalRequests(requests);
+      App.addNotification?.({ audience: "ADMIN", title: "New withdrawal request", message: `${displayName()} requested ${App.money(amount)} withdrawal.`, type: "WITHDRAWAL", linkPage: "withdrawals", referenceId: requestId });
 
       withdrawalDraft = { amount: "", methodId: "" };
       withdrawalStep = 1;
@@ -3828,6 +3884,7 @@
         createdAt: App.now(),
         updatedAt: App.now()
       });
+      App.addNotification?.({ audience: "ADMIN", title: "New support ticket", message: `${displayName()} opened: ${subject}`, type: "SUPPORT", linkPage: "support", referenceId: id });
       App.saveState();
       App.toast("Support ticket submitted.");
       render();

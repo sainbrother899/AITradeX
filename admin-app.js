@@ -490,6 +490,29 @@
       </section>`;
   }
 
+  function adminNotifications() {
+    return App.notificationsFor ? App.notificationsFor({ audience: "ADMIN" }) : [];
+  }
+
+  function adminUnreadCount() {
+    return App.unreadNotificationCount ? App.unreadNotificationCount({ audience: "ADMIN" }) : 0;
+  }
+
+  function adminUnreadBadgeText() {
+    const count = adminUnreadCount();
+    return count ? ` (${count > 99 ? "99+" : count})` : "";
+  }
+
+  function adminNotificationBadgeHtml() {
+    const count = adminUnreadCount();
+    return count ? `<span class="notification-badge">${count > 99 ? "99+" : count}</span>` : "";
+  }
+
+  function notificationIcon(type) {
+    const map = { DEPOSIT: "⬇️", WITHDRAWAL: "⬆️", AI: "🤖", WALLET: "💳", PLAN: "⭐", KYC: "🛡️", SUPPORT: "🎧", USER: "👤" };
+    return map[String(type || "INFO").toUpperCase()] || "🔔";
+  }
+
   function shell(content) {
     const admin = adminUser();
     root.innerHTML = `
@@ -498,6 +521,7 @@
           <div class="side-brand brand aitx-admin-logo">${App.logoHtml("full", "aitx-logo-admin")}</div>
           <nav>
             ${navButton("dashboard", "📊", "Dashboard")}
+            ${navButton("notifications", "🔔", `Notifications${adminUnreadBadgeText()}`)}
             ${navButton("users", "👥", "Users")}
             ${navButton("kyc", "🛡️", "KYC Requests")}
             ${navButton("payments", "🏦", "Bank Accounts")}
@@ -518,7 +542,7 @@
               <p>AI Control Center</p>
               <h1>${pageTitle()}</h1>
             </div>
-            <div class="admin-profile-chip">${avatar(admin?.name || "A")}<b>${esc(admin?.name || "Admin")}</b></div>
+            <div class="admin-header-actions"><button class="notification-bell admin-bell" onclick="AITradeXAdmin.go('notifications')" aria-label="Notifications">🔔${adminNotificationBadgeHtml()}</button><div class="admin-profile-chip">${avatar(admin?.name || "A")}<b>${esc(admin?.name || "Admin")}</b></div></div>
           </div>
           ${content}
         </main>
@@ -532,6 +556,7 @@
   function pageTitle() {
     const titles = {
       dashboard: "Dashboard",
+      notifications: "Notifications",
       users: "User Management",
       kyc: "KYC Requests",
       payments: "Bank Account Requests",
@@ -570,6 +595,33 @@
 
   function isTodayDate(value) {
     return String(value || "").slice(0, 10) === todayKey();
+  }
+
+  function notificationsPage() {
+    const rows = adminNotifications();
+    const unread = rows.filter(n => !n.read).length;
+    shell(`
+      <section class="premium-card notification-center-card admin-notification-center">
+        <div class="section-head">
+          <div><h3>Notification Center</h3><span>New users, deposits, withdrawals, AI trades, wallet and support alerts</span></div>
+          <div class="notification-actions">
+            <span class="admin-count-pill">${unread} unread</span>
+            <button class="ghost-action" onclick="AITradeXAdmin.markNotificationsRead()">Mark all read</button>
+          </div>
+        </div>
+        <div class="notification-list admin-notification-list">
+          ${rows.length ? rows.map(n => `
+            <article class="notification-row ${n.read ? "read" : "unread"}">
+              <div class="notification-icon">${notificationIcon(n.type)}</div>
+              <div>
+                <b>${esc(n.title || "Notification")}</b>
+                <p>${esc(n.message || "")}</p>
+                <small>${n.createdAt ? new Date(n.createdAt).toLocaleString() : ""}</small>
+              </div>
+              ${n.linkPage ? `<button class="mini-action" onclick="AITradeXAdmin.openNotificationLink('${n.id}', '${n.linkPage}')">Open</button>` : `<button class="ghost-action" onclick="AITradeXAdmin.markSingleNotification('${n.id}')">Read</button>`}
+            </article>`).join("") : `<div class="empty-state">No notifications yet.</div>`}
+        </div>
+      </section>`);
   }
 
   function adminDashboardStats() {
@@ -2254,6 +2306,7 @@
     if (!current || current.role !== "admin") return loginPage();
 
     if (page === "dashboard") return dashboardPage();
+    if (page === "notifications") return notificationsPage();
     if (page === "users") return usersPage();
     if (page === "kyc") return kycPage();
     if (page === "payments") return paymentsPage();
@@ -2309,6 +2362,8 @@
     } else {
       App.saveState();
     }
+    App.addNotification?.({ audience: "USER", userId: position.userId, title: "AI live position closed", message: `${position.pair} ${position.side} closed. P/L ${position.pnl >= 0 ? "+" : ""}${App.money(position.pnl)}. Settlement ${App.money(position.settlementAmount)}.`, type: "AI", linkPage: "orders", referenceId: `ai_close_${position.id}` });
+    App.addNotification?.({ audience: "ADMIN", title: "AI live trade closed", message: `${position.pair} ${position.side} closed for user ${position.userId}. P/L ${position.pnl >= 0 ? "+" : ""}${App.money(position.pnl)}.`, type: "AI", linkPage: "liveAi", referenceId: `admin_ai_close_${position.id}` });
     return true;
   }
 
@@ -2359,6 +2414,25 @@
     },
     go(next) {
       page = next;
+      localStorage.setItem("AITradeX_ADMIN_PAGE", page);
+      render();
+    },
+    markNotificationsRead() {
+      App.markNotificationsRead?.({ audience: "ADMIN" });
+      App.toast("Notifications marked as read.");
+      render();
+    },
+    markSingleNotification(id) {
+      const row = (App.state.notifications || []).find(n => n.id === id);
+      if (row) row.read = true;
+      App.saveState();
+      render();
+    },
+    openNotificationLink(id, linkPage) {
+      const row = (App.state.notifications || []).find(n => n.id === id);
+      if (row) row.read = true;
+      App.saveState();
+      page = linkPage || "notifications";
       localStorage.setItem("AITradeX_ADMIN_PAGE", page);
       render();
     },
@@ -2451,14 +2525,16 @@
       const label = action === "DEDUCT" ? "deduct" : "add";
       if (!confirm(`Confirm ${label} ${App.money(amount)} for ${displayNameFor(target)}?`)) return;
       try {
+        const referenceId = App.uid("admin_wallet");
         App.addLedger({
           userId,
           accountType: "REAL",
           type: action === "DEDUCT" ? "ADMIN_WALLET_DEBIT" : "ADMIN_WALLET_CREDIT",
           amount: signed,
-          referenceId: App.uid("admin_wallet"),
+          referenceId,
           note: note || `Admin wallet ${action.toLowerCase()}`
         });
+        App.addNotification?.({ audience: "USER", userId, title: action === "DEDUCT" ? "Wallet debited by admin" : "Wallet credited by admin", message: `${App.money(amount)} ${action === "DEDUCT" ? "deducted from" : "added to"} your real wallet.${note ? ` Note: ${note}` : ""}`, type: "WALLET", linkPage: "wallet", referenceId });
         App.toast(`Wallet ${action === "DEDUCT" ? "deducted" : "credited"} successfully.`);
         render();
       } catch (error) {
@@ -2501,6 +2577,7 @@
       }
       target.planChangedAt = App.now();
       target.planChangedBy = "admin";
+      App.addNotification?.({ audience: "USER", userId, title: "Subscription plan updated", message: `Your plan was changed to ${plan.name} by admin.`, type: "PLAN", linkPage: "subscription", referenceId: `plan_${userId}_${Date.now()}` });
       App.saveState();
       App.toast(`${displayNameFor(target)} plan updated to ${plan.name}.`);
       render();
@@ -2804,6 +2881,7 @@
             note: `${pair} ${side} AI auto trade · ${resultType} ${resultPercent}% · ${leverage}x`
           });
         }
+        App.addNotification?.({ audience: "USER", userId: target.id, title: "Instant AI trade completed", message: `${pair} ${side} ${resultType}. P/L ${trade.pnl >= 0 ? "+" : ""}${App.money(trade.pnl)}.`, type: "AI", linkPage: "orders", referenceId: `instant_${trade.id}` });
         appliedCount += 1;
         totalMargin += margin;
         totalExposure += exposure;
@@ -2834,6 +2912,7 @@
         totalPnl: Number(totalPnl.toFixed(2)),
         createdAt: new Date().toISOString()
       });
+      App.addNotification?.({ audience: "ADMIN", title: "Instant AI trade applied", message: `${pair} ${side} applied to ${appliedCount} user(s). Total P/L ${totalPnl >= 0 ? "+" : ""}${App.money(totalPnl)}.`, type: "AI", linkPage: "instantAi", referenceId: batchId });
       App.saveState();
       App.toast(appliedCount ? `AI trade applied to ${appliedCount} valid user(s). ${report.skipped.length} skipped.` : "No valid AI users found. Trade was not applied.");
       render();
@@ -2934,6 +3013,7 @@
           return;
         }
         App.state.trades.unshift(position);
+        App.addNotification?.({ audience: "USER", userId: target.id, title: "AI live position opened", message: `${pair} ${side} opened with ${App.money(position.marginAmount)} AI amount at ${leverage}x.`, type: "AI", linkPage: "orders", referenceId: `live_open_${position.id}` });
         appliedCount += 1;
         totalMargin += margin;
         totalExposure += exposure;
@@ -2960,6 +3040,7 @@
         status: "OPEN",
         createdAt: openedAt
       });
+      App.addNotification?.({ audience: "ADMIN", title: "Live AI position opened", message: `${pair} ${side} opened for ${appliedCount} user(s). Locked ${App.money(totalMargin)}.`, type: "AI", linkPage: "liveAi", referenceId: batchId });
       App.saveState();
       App.toast(appliedCount ? `Live AI position opened for ${appliedCount} valid user(s).` : "No valid AI users found. Live position not opened.");
       render();
@@ -3033,6 +3114,7 @@
         request.balanceApplied = true;
         request.adminNote = duplicate?.total ? `Checked duplicate UTR warning: ${duplicate.total} similar request(s).` : "Approved by admin.";
         saveDepositRequests(target, requests);
+        App.addNotification?.({ audience: "USER", userId: target.id, title: "Deposit approved", message: `${App.money(amount)} deposit approved and credited to your wallet.`, type: "DEPOSIT", linkPage: "wallet", referenceId: `dep_ok_${request.id}` });
         if (ledgerAdded && !ledgerExists) {
           App.creditReferralBonus?.({ referredUserId: target.id, eventType: "DEPOSIT", amount, referenceId: request.id, sourceLabel: `Deposit UTR ${request.utr || "-"}` });
         }
@@ -3063,6 +3145,7 @@
       request.balanceApplied = false;
       request.adminNote = request.rejectReason;
       saveDepositRequests(target, requests);
+      App.addNotification?.({ audience: "USER", userId: target.id, title: "Deposit rejected", message: request.rejectReason, type: "DEPOSIT", linkPage: "wallet", referenceId: `dep_no_${request.id}` });
       App.toast("Deposit rejected.");
       render();
     },
@@ -3111,6 +3194,7 @@
         request.balanceApplied = true;
         request.adminNote = "Approved payout by admin.";
         saveWithdrawalRequests(target, requests);
+        App.addNotification?.({ audience: "USER", userId: target.id, title: "Withdrawal approved", message: `${App.money(amount)} withdrawal payout approved.`, type: "WITHDRAWAL", linkPage: "wallet", referenceId: `wd_ok_${request.id}` });
         App.toast(ledgerExists ? "Withdrawal marked approved. Ledger was already applied." : "Withdrawal approved and balance debited.");
       } catch (err) {
         App.toast(err.message || "Unable to approve withdrawal.");
@@ -3138,6 +3222,7 @@
       request.balanceApplied = false;
       request.adminNote = request.rejectReason;
       saveWithdrawalRequests(target, requests);
+      App.addNotification?.({ audience: "USER", userId: target.id, title: "Withdrawal rejected", message: request.rejectReason, type: "WITHDRAWAL", linkPage: "wallet", referenceId: `wd_no_${request.id}` });
       App.toast("Withdrawal rejected.");
       render();
     },

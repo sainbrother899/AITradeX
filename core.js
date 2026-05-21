@@ -6,7 +6,7 @@ const now=()=>new Date().toLocaleString("en-IN");
 const uid=(p="id")=>`${p}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 const money=n=>"₹"+Number(n||0).toLocaleString("en-IN");
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
-function initial(){return{users:[{id:"control_root",name:"AITradeX Control",email:"control@aitradex.com",password:"admin123",role:"admin",status:"ACTIVE",createdAt:now()}],profiles:[],kycRequests:[],paymentMethods:[],depositRequests:[],withdrawalRequests:[],supportTickets:[],walletLedger:[],demoLedger:[],trades:[],aiTradeBatches:[],plans:[{id:"free",name:"Free Trial",price:0,signals:5,aiAccess:"Trial AI",durationDays:7,status:"ACTIVE",benefits:["5 AI auto trades per day for 7 days","1 AI auto trade per day after trial","Manual trading access","Live price cards"]},{id:"starter",name:"Standard",price:999,signals:15,aiAccess:"Standard AI",durationDays:30,status:"ACTIVE",benefits:["15 AI auto trades per day","Higher AI trading access","Priority dashboard visibility"]},{id:"pro",name:"Premium",price:2999,signals:50,aiAccess:"Premium AI",durationDays:30,status:"ACTIVE",benefits:["50 AI auto trades per day","Premium AI access","Faster plan priority"]},{id:"premium",name:"VIP",price:9999,signals:999999,aiAccess:"VIP Advanced AI",durationDays:30,status:"ACTIVE",benefits:["Unlimited AI auto trades per day","VIP advanced AI priority","Highest daily AI trades"]}],subscriptions:[],referrals:[],settings:{minDeposit:Number(C.MIN_DEPOSIT||500),minWithdrawal:Number(C.MIN_WITHDRAWAL||1000),referralFirstDepositPercent:Number(C.REFERRAL_FIRST_DEPOSIT_PERCENT||10),referralDepositPercent:Number(C.REFERRAL_DEPOSIT_PERCENT||10),referralSubscriptionPercent:Number(C.REFERRAL_SUBSCRIPTION_PERCENT||10),referralDepositEnabled:true,referralSubscriptionEnabled:true,demoBalance:Number(C.DEMO_BALANCE||100000),platformName:"AITradeX",depositUpiId:"aitradex@upi",depositQrImage:"",depositBankName:"AITradeX Bank",depositAccountName:"AITradeX Private Wallet",depositAccountNumber:"123456789012",depositIfsc:"AITX0001234",freeAiTradesPerDay:5,postTrialFreeAiTradesPerDay:1,freeTrialDays:7,supportWhatsAppNumber:"919999999999"}}}
+function initial(){return{users:[{id:"control_root",name:"AITradeX Control",email:"control@aitradex.com",password:"admin123",role:"admin",status:"ACTIVE",createdAt:now()}],profiles:[],kycRequests:[],paymentMethods:[],depositRequests:[],withdrawalRequests:[],supportTickets:[],notifications:[],walletLedger:[],demoLedger:[],trades:[],aiTradeBatches:[],plans:[{id:"free",name:"Free Trial",price:0,signals:5,aiAccess:"Trial AI",durationDays:7,status:"ACTIVE",benefits:["5 AI auto trades per day for 7 days","1 AI auto trade per day after trial","Manual trading access","Live price cards"]},{id:"starter",name:"Standard",price:999,signals:15,aiAccess:"Standard AI",durationDays:30,status:"ACTIVE",benefits:["15 AI auto trades per day","Higher AI trading access","Priority dashboard visibility"]},{id:"pro",name:"Premium",price:2999,signals:50,aiAccess:"Premium AI",durationDays:30,status:"ACTIVE",benefits:["50 AI auto trades per day","Premium AI access","Faster plan priority"]},{id:"premium",name:"VIP",price:9999,signals:999999,aiAccess:"VIP Advanced AI",durationDays:30,status:"ACTIVE",benefits:["Unlimited AI auto trades per day","VIP advanced AI priority","Highest daily AI trades"]}],subscriptions:[],referrals:[],settings:{minDeposit:Number(C.MIN_DEPOSIT||500),minWithdrawal:Number(C.MIN_WITHDRAWAL||1000),referralFirstDepositPercent:Number(C.REFERRAL_FIRST_DEPOSIT_PERCENT||10),referralDepositPercent:Number(C.REFERRAL_DEPOSIT_PERCENT||10),referralSubscriptionPercent:Number(C.REFERRAL_SUBSCRIPTION_PERCENT||10),referralDepositEnabled:true,referralSubscriptionEnabled:true,demoBalance:Number(C.DEMO_BALANCE||100000),platformName:"AITradeX",depositUpiId:"aitradex@upi",depositQrImage:"",depositBankName:"AITradeX Bank",depositAccountName:"AITradeX Private Wallet",depositAccountNumber:"123456789012",depositIfsc:"AITX0001234",freeAiTradesPerDay:5,postTrialFreeAiTradesPerDay:1,freeTrialDays:7,supportWhatsAppNumber:"919999999999"}}}
 const load=()=>{try{return JSON.parse(localStorage.getItem(SK)||"null")||initial()}catch{return initial()}};
 const loadSession=()=>{try{return JSON.parse(localStorage.getItem(SS)||"null")}catch{return null}};
 
@@ -113,6 +113,29 @@ async function fetchChartFeedPrice(pair){
 const App={config:C,db,state:load(),session:loadSession(),now,uid,money,escapeHtml:esc,storageKey:SK,sessionKey:SS};
 App.reloadState=()=>{App.state=load();App.session=loadSession();return App.state;};
 App.hasLedgerEntry=({accountType="REAL",type,referenceId,userId})=>{const list=accountType==="DEMO"?App.state.demoLedger:App.state.walletLedger;return (list||[]).some(x=>(!type||x.type===type)&&(!referenceId||x.referenceId===referenceId)&&(!userId||x.userId===userId));};
+App.ensureNotifications=()=>{if(!Array.isArray(App.state.notifications))App.state.notifications=[];return App.state.notifications;};
+App.addNotification=({audience="USER",userId="",title="Notification",message="",type="INFO",linkPage="",referenceId=""}={})=>{
+  App.ensureNotifications();
+  const cleanAudience=String(audience||"USER").toUpperCase();
+  const id=referenceId?`notif_${cleanAudience}_${userId||"all"}_${type}_${referenceId}`:uid("notif");
+  if(referenceId&&App.state.notifications.some(n=>n.id===id))return false;
+  App.state.notifications.unshift({id,audience:cleanAudience,userId:userId||"",title:String(title||"Notification"),message:String(message||""),type:String(type||"INFO").toUpperCase(),linkPage:String(linkPage||""),referenceId:referenceId||"",read:false,createdAt:now()});
+  App.saveState();
+  return true;
+};
+App.notificationsFor=({audience="USER",userId=""}={})=>{
+  App.ensureNotifications();
+  const cleanAudience=String(audience||"USER").toUpperCase();
+  return App.state.notifications.filter(n=>String(n.audience||"USER").toUpperCase()===cleanAudience&&(cleanAudience!=="USER"||!n.userId||n.userId===userId)).sort((a,b)=>Date.parse(b.createdAt||0)-Date.parse(a.createdAt||0));
+};
+App.unreadNotificationCount=({audience="USER",userId=""}={})=>App.notificationsFor({audience,userId}).filter(n=>!n.read).length;
+App.markNotificationsRead=({audience="USER",userId=""}={})=>{
+  const rows=App.notificationsFor({audience,userId});
+  rows.forEach(n=>n.read=true);
+  App.saveState();
+  return rows.length;
+};
+App.deleteNotification=(id)=>{App.ensureNotifications();const before=App.state.notifications.length;App.state.notifications=App.state.notifications.filter(n=>n.id!==id);if(App.state.notifications.length!==before){App.saveState();return true;}return false;};
 App.logoHtml=(variant="full",className="")=>{
   const mode=String(variant||"full").toLowerCase();
   const cls=esc(className||"");
