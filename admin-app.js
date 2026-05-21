@@ -424,7 +424,7 @@
         <main class="main-area">
           <div class="page-title">
             <div>
-              <p>Control Center</p>
+              <p>AI Control Center</p>
               <h1>${pageTitle()}</h1>
             </div>
             <div class="admin-profile-chip">${avatar(admin?.name || "A")}<b>${esc(admin?.name || "Admin")}</b></div>
@@ -460,7 +460,7 @@
       <main class="control-login">
         <section class="control-card">
           <div class="brand center aitx-login-logo">${App.logoHtml("full", "aitx-logo-login")}</div>
-          <p class="eyebrow">Control Center</p>
+          <p class="eyebrow">AI Control Center</p>
           <h1>Admin Login</h1>
           <form onsubmit="AITradeXAdmin.login(event)" class="form-grid">
             <label>Email<input id="adminEmail" type="email" required placeholder="control@aitradex.com"/></label>

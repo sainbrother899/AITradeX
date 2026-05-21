@@ -1372,13 +1372,13 @@
         <section class="hero-section landing-hero-v2">
           <div class="hero-copy">
             <p class="eyebrow">AI Powered Trading Dashboard</p>
-            <h1>Trade smarter with AI auto trading, live prices and INR wallet.</h1>
-            <p class="hero-text">AITradeX brings manual market/limit orders, AI auto trades, subscriptions, referrals, Aadhaar KYC, verified bank withdrawals and support tickets into one premium dashboard.</p>
+            <h1>Trade crypto smarter with AI auto trading, live prices and INR wallet.</h1>
+            <p class="hero-text">AITradeX brings live crypto trading, market/limit orders, AI auto trades, subscriptions, referrals, Aadhaar KYC, verified bank withdrawals and support tickets into one premium dashboard. Forex, Gold and Silver markets are coming soon.</p>
             <div class="hero-buttons">
               <button onclick="AITradeXUser.scrollAuth()" class="btn">Create Account</button>
               <button onclick="AITradeXUser.setAuthMode('login')" class="btn ghost">User Login</button>
             </div>
-            <div class="trust-pills"><span>Live Market Prices</span><span>Bank-only Withdrawals</span><span>AI Default ON</span></div>
+            <div class="trust-pills"><span>Crypto Live Now</span><span>Forex / Metals Coming Soon</span><span>Bank-only Withdrawals</span></div>
           </div>
 
           <div class="hero-terminal landing-terminal-v2 landing-tv-card">
@@ -1408,7 +1408,7 @@
             <article><b>01</b><h3>Create Account</h3><p>Register with email, mobile and optional referral code.</p></article>
             <article><b>02</b><h3>Complete KYC</h3><p>Submit Aadhaar, selfie and personal details for review.</p></article>
             <article><b>03</b><h3>Add Funds</h3><p>Use INR wallet deposits and verified bank withdrawals.</p></article>
-            <article><b>04</b><h3>Trade</h3><p>Use manual orders or AI auto trading with daily plan limits.</p></article>
+            <article><b>04</b><h3>Trade Crypto</h3><p>Use crypto manual orders or AI auto trading with daily plan limits. Forex and metals are coming soon.</p></article>
           </div>
         </section>
 
@@ -1433,13 +1433,13 @@
         </section>
 
         <section id="security" class="landing-security-band">
-          <div><b>Security-first trading flow</b><span>Aadhaar KYC · Verified bank accounts · Deposit proof review · Ticket records · Admin control center</span></div>
+          <div><b>Security-first trading flow</b><span>Aadhaar KYC · Verified bank accounts · Deposit proof review · Ticket records · AI Control Center</span></div>
           <button onclick="AITradeXUser.scrollAuth()" class="btn ghost small">Join Now</button>
         </section>
 
         <footer class="landing-footer">
           <div>${App.logoHtml("full", "aitx-logo-full")}</div>
-          <p>AITradeX is a digital trading dashboard experience with wallet, KYC, subscription, referral and support modules.</p>
+          <p>AITradeX is a crypto-first trading dashboard experience with wallet, KYC, subscription, referral and support modules. Forex, Gold and Silver are planned as upcoming markets.</p>
           <span>© ${new Date().getFullYear()} AITradeX. All rights reserved.</span>
         </footer>
       </main>`;

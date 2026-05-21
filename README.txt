@@ -862,3 +862,12 @@ Phase 4.51 - Trade Form Reset After Order Clean
 - Pair/chart selection stays unchanged so the user can place another order on the same pair if needed.
 - Added premium in-card order success feedback instead of random success alerts.
 - Trading logic, wallet margin lock, Orders page and upcoming-market flow remain unchanged.
+
+
+Phase 4.52 — Landing Crypto Clarity + AI Control Center Wording Clean
+- Landing hero copy now clearly says crypto trading is live now and Forex/Gold/Silver are coming soon.
+- Landing trust pills now highlight Crypto Live Now and upcoming Forex/Metals.
+- Landing footer copy updated to crypto-first wording.
+- Public-facing "Admin control center" wording replaced with "AI Control Center".
+- Admin login and admin page title wording updated to AI Control Center.
+- No trading, wallet, KYC, referral, support or price-feed logic changed.
