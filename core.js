@@ -43,16 +43,19 @@ const MARKET_PAIRS={
 const FX_API_KEY=String(C.EXCHANGERATE_API_KEY||"25b67ee121b52d7058f61034").trim();
 const LIVE_CACHE_KEY="AITradeX_LIVE_PRICE_CACHE_V1";
 const LIVE_TTL_MS=30000;
-const METAL_LIVE_TTL_MS=6000;
+const CHART_FEED_TTL_MS=7000;
 const liveCache=(()=>{try{return JSON.parse(localStorage.getItem(LIVE_CACHE_KEY)||"{}")}catch{return {}}})();
 const normPair=pair=>String(pair||"").trim().toUpperCase();
 const baseQuote=pair=>{const [base,quote]=normPair(pair).split("/");return {base,quote};};
+const pairMeta=pair=>Object.values(MARKET_PAIRS).flat().find(x=>normPair(x.pair)===normPair(pair))||null;
 const isMetalPair=pair=>["XAU/USD","XAG/USD"].includes(normPair(pair));
 const isCryptoPair=pair=>Object.values(MARKET_PAIRS).flat().some(x=>normPair(x.pair)===normPair(pair)&&x.market==="CRYPTO");
+const isForexPair=pair=>Object.values(MARKET_PAIRS).flat().some(x=>normPair(x.pair)===normPair(pair)&&x.market==="FOREX");
+const isChartFeedPair=pair=>isForexPair(pair)&&!isCryptoPair(pair);
 const fmtPrice=(n,asset="")=>{const v=Number(n);if(!Number.isFinite(v))return "--";const max=v>=1000?2:v>=1?4:8;const text=v.toLocaleString("en-US",{maximumFractionDigits:max});return asset==="CRYPTO"||asset==="METAL"?`$${text}`:text;};
 const fmtChange=n=>{const v=Number(n||0);const sign=v>0?"+":"";return `${sign}${v.toFixed(2)}%`;};
 function saveLiveCache(){try{localStorage.setItem(LIVE_CACHE_KEY,JSON.stringify(liveCache))}catch{}}
-function cachedLive(pair){const clean=normPair(pair);const row=liveCache[clean];if(!row)return null;const ttl=isMetalPair(clean)?METAL_LIVE_TTL_MS:LIVE_TTL_MS;return Date.now()-Number(row.fetchedMs||0)<ttl?row:null;}
+function cachedLive(pair){const clean=normPair(pair);const row=liveCache[clean];if(!row)return null;const ttl=row.sourceType==="CHART_FEED"||isChartFeedPair(clean)?CHART_FEED_TTL_MS:LIVE_TTL_MS;return Date.now()-Number(row.fetchedMs||0)<ttl?row:null;}
 async function fetchJson(url,options){const res=await fetch(url,{cache:"no-store",...(options||{})});if(!res.ok)throw new Error(`HTTP ${res.status}`);return res.json();}
 async function fetchCryptoPrice(pair){const symbol=normPair(pair).replace("/","");const url=`https://api.binance.com/api/v3/ticker/24hr?symbol=${encodeURIComponent(symbol)}`;let data;try{data=await fetchJson(url)}catch(e){data=await fetchJson(`https://data-api.binance.vision/api/v3/ticker/24hr?symbol=${encodeURIComponent(symbol)}`)}
   const price=Number(data.lastPrice);if(!Number.isFinite(price))throw new Error("Crypto price unavailable");
@@ -64,7 +67,20 @@ async function fetchForexPrice(pair){const {base,quote}=baseQuote(pair);if(!base
   return {ok:true,pair:normPair(pair),price,display:fmtPrice(price,"FOREX"),change:"Live",mood:"up",source:"ExchangeRate-API",sourceType:"LIVE_API",fetchedAt:new Date().toISOString(),fetchedMs:Date.now()};
 }
 
-const METAL_TV_SYMBOLS={"XAU/USD":"OANDA:XAUUSD","XAG/USD":"OANDA:XAGUSD"};
+const TRADINGVIEW_FEED_SYMBOLS={
+  "EUR/USD":"FX:EURUSD",
+  "GBP/USD":"FX:GBPUSD",
+  "USD/JPY":"FX:USDJPY",
+  "USD/CHF":"FX:USDCHF",
+  "USD/CAD":"FX:USDCAD",
+  "AUD/USD":"FX:AUDUSD",
+  "NZD/USD":"FX:NZDUSD",
+  "USD/INR":"FX_IDC:USDINR",
+  "EUR/INR":"FX_IDC:EURINR",
+  "GBP/INR":"FX_IDC:GBPINR",
+  "XAU/USD":"OANDA:XAUUSD",
+  "XAG/USD":"OANDA:XAGUSD"
+};
 async function fetchTradingViewSymbolPrice(tvSymbol){
   const encoded=encodeURIComponent(tvSymbol);
   try{
@@ -82,14 +98,17 @@ async function fetchTradingViewSymbolPrice(tvSymbol){
   if(!Number.isFinite(close))throw new Error("Chart price unavailable");
   return {price:close,change};
 }
-async function fetchMetalChartPrice(pair){
+async function fetchChartFeedPrice(pair){
   const clean=normPair(pair);
-  const tvSymbol=METAL_TV_SYMBOLS[clean];
-  if(!tvSymbol)throw new Error("Metal chart symbol unavailable");
+  const meta=pairMeta(clean);
+  const tvSymbol=TRADINGVIEW_FEED_SYMBOLS[clean]||meta?.symbol;
+  if(!tvSymbol)throw new Error("Chart feed symbol unavailable");
   const data=await fetchTradingViewSymbolPrice(tvSymbol);
   const change=Number(data.change||0);
-  return {ok:true,pair:clean,price:data.price,display:fmtPrice(data.price,"METAL"),change:Number.isFinite(change)?fmtChange(change):"Chart",mood:change<0?"down":"up",source:"TradingView Chart Feed",sourceType:"CHART_FEED",chartSymbol:tvSymbol,fetchedAt:new Date().toISOString(),fetchedMs:Date.now()};
+  const asset=isMetalPair(clean)?"METAL":"FOREX";
+  return {ok:true,pair:clean,price:data.price,display:fmtPrice(data.price,asset),change:Number.isFinite(change)?fmtChange(change):"Chart",mood:change<0?"down":"up",source:"TradingView Chart Feed",sourceType:"CHART_FEED",chartSymbol:tvSymbol,fetchedAt:new Date().toISOString(),fetchedMs:Date.now()};
 }
+
 
 const App={config:C,db,state:load(),session:loadSession(),now,uid,money,escapeHtml:esc};
 App.logoHtml=(variant="full",className="")=>{
@@ -128,20 +147,31 @@ App.marketPairs=MARKET_PAIRS;
 App.livePrices=liveCache;
 App.isMetalPair=isMetalPair;
 App.isCryptoPair=isCryptoPair;
+App.isForexPair=isForexPair;
+App.isChartFeedPair=isChartFeedPair;
 App.getCachedPairPrice=pair=>cachedLive(pair);
 App.pairLiveView=item=>{const cached=cachedLive(item?.pair);return cached?{...item,live:true,price:cached.display,rawPrice:cached.price,change:cached.change||item.change,mood:cached.mood||item.mood,priceSource:cached.source,priceFetchedAt:cached.fetchedAt}:item};
 App.getLivePairPrice=async(pair,manualPrice)=>{
   const clean=normPair(pair);
   const manual=Number(manualPrice||0);
-  if(isMetalPair(clean)){
-    const cached=cachedLive(clean);if(cached&&!manual)return cached;
-    try{const row=await fetchMetalChartPrice(clean);liveCache[clean]=row;saveLiveCache();return row;}catch(error){
-      if(manual&&manual>0){const row={ok:true,pair:clean,price:manual,display:fmtPrice(manual,"METAL"),change:"Manual",mood:"up",source:"Manual Rate",sourceType:"MANUAL",fetchedAt:new Date().toISOString(),fetchedMs:Date.now()};liveCache[clean]=row;saveLiveCache();return row;}
-      throw new Error(`${clean} chart price unavailable. Add manual fallback price.`);
+  const cached=cachedLive(clean);if(cached&&!manual)return cached;
+  if(isCryptoPair(clean)){
+    const row=await fetchCryptoPrice(clean);
+    liveCache[clean]=row;saveLiveCache();return row;
+  }
+  if(isForexPair(clean)){
+    try{const row=await fetchChartFeedPrice(clean);liveCache[clean]=row;saveLiveCache();return row;}catch(error){
+      if(isMetalPair(clean)){
+        if(manual&&manual>0){const row={ok:true,pair:clean,price:manual,display:fmtPrice(manual,"METAL"),change:"Manual",mood:"up",source:"Manual Rate",sourceType:"MANUAL",fetchedAt:new Date().toISOString(),fetchedMs:Date.now()};liveCache[clean]=row;saveLiveCache();return row;}
+        throw new Error(`${clean} chart feed unavailable. Add manual fallback price.`);
+      }
+      const row=await fetchForexPrice(clean);
+      row.source="ExchangeRate-API Fallback";
+      row.sourceType="LIVE_API_FALLBACK";
+      liveCache[clean]=row;saveLiveCache();return row;
     }
   }
-  const cached=cachedLive(clean);if(cached)return cached;
-  const row=isCryptoPair(clean)?await fetchCryptoPrice(clean):await fetchForexPrice(clean);
+  const row=await fetchForexPrice(clean);
   liveCache[clean]=row;saveLiveCache();return row;
 };
 App.refreshLivePrices=async(pairs,onEach)=>{
@@ -153,20 +183,27 @@ App.refreshLivePrices=async(pairs,onEach)=>{
   return out;
 };
 
-let metalChartTimer=null,metalChartKey="";
-App.stopMetalChartTicker=()=>{if(metalChartTimer){clearInterval(metalChartTimer);metalChartTimer=null;}metalChartKey="";};
-App.startMetalChartTicker=(pairs,onEach)=>{
-  const metalPairs=[...new Set((pairs||[]).map(x=>typeof x==="string"?x:x?.pair).filter(Boolean).map(normPair).filter(isMetalPair))];
-  if(!metalPairs.length)return false;
-  const key=metalPairs.sort().join("|");
-  if(key===metalChartKey&&metalChartTimer)return true;
-  App.stopMetalChartTicker();
-  metalChartKey=key;
-  const pull=()=>{metalPairs.forEach(async pair=>{try{const row=await fetchMetalChartPrice(pair);liveCache[pair]=row;saveLiveCache();if(typeof onEach==="function")onEach(row);}catch(err){if(typeof onEach==="function")onEach({ok:false,pair,error:err.message||"Chart price unavailable"});}});};
+let chartFeedTimer=null,chartFeedKey="";
+App.stopChartFeedTicker=()=>{if(chartFeedTimer){clearInterval(chartFeedTimer);chartFeedTimer=null;}chartFeedKey="";};
+App.startChartFeedTicker=(pairs,onEach)=>{
+  const chartPairs=[...new Set((pairs||[]).map(x=>typeof x==="string"?x:x?.pair).filter(Boolean).map(normPair).filter(isChartFeedPair))];
+  if(!chartPairs.length)return false;
+  const key=chartPairs.sort().join("|");
+  if(key===chartFeedKey&&chartFeedTimer)return true;
+  App.stopChartFeedTicker();
+  chartFeedKey=key;
+  const pull=()=>{chartPairs.forEach(async pair=>{try{const row=await fetchChartFeedPrice(pair);liveCache[pair]=row;saveLiveCache();if(typeof onEach==="function")onEach(row);}catch(err){
+    if(!isMetalPair(pair)){try{const row=await fetchForexPrice(pair);row.source="ExchangeRate-API Fallback";row.sourceType="LIVE_API_FALLBACK";liveCache[pair]=row;saveLiveCache();if(typeof onEach==="function")onEach(row);return;}catch{}}
+    if(typeof onEach==="function")onEach({ok:false,pair,error:err.message||"Chart feed unavailable"});
+  }});};
   pull();
-  metalChartTimer=setInterval(pull,7000);
+  chartFeedTimer=setInterval(pull,7000);
   return true;
 };
+App.stopMetalChartTicker=App.stopChartFeedTicker;
+App.startMetalChartTicker=(pairs,onEach)=>App.startChartFeedTicker((pairs||[]).filter(x=>isMetalPair(typeof x==="string"?x:x?.pair)),onEach);
+App.startForexChartTicker=(pairs,onEach)=>App.startChartFeedTicker((pairs||[]).filter(x=>isForexPair(typeof x==="string"?x:x?.pair)),onEach);
+
 
 const cryptoStreamSymbol=pair=>normPair(pair).replace("/","").toLowerCase();
 let cryptoTickerSocket=null,cryptoTickerKey="",cryptoTickerRetry=null,cryptoTickerSaveTimer=0;

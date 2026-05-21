@@ -319,13 +319,13 @@
   function aiPairPriceView(pair = "BTC/USDT") {
     const item = pairDataByPair(pair);
     const view = App.pairLiveView ? App.pairLiveView(item) : item;
-    const metal = App.isMetalPair && App.isMetalPair(view.pair);
+    const chartFeed = App.isChartFeedPair && App.isChartFeedPair(view.pair);
     return {
       pair: view.pair,
       price: view.price || "--",
-      source: metal ? (view.priceSource || "TradingView Chart Feed") : (view.priceSource || "Not fetched"),
+      source: chartFeed ? (view.priceSource || "TradingView Chart Feed") : (view.priceSource || "Not fetched"),
       change: view.change || "--",
-      metal
+      metal: App.isMetalPair && App.isMetalPair(view.pair)
     };
   }
 

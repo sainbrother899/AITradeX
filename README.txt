@@ -819,3 +819,12 @@ Phase 4.46 — Home Dashboard Runtime Fix Clean
 - User dashboard now renders safely when a latest AI auto trade exists.
 - No patch/block layer or backup files included.
 Changed files: user-app.js, README.txt
+
+Phase 4.47 — Forex Chart Feed Price Sync Clean
+- Forex pairs now try TradingView Chart Feed first, matching the chart source more closely.
+- ExchangeRate-API remains as a fallback only when chart feed is unavailable.
+- Gold/Silver continue to use the same chart-feed route with manual fallback when needed.
+- User forex cards, trade entry lock and admin AI entry price use the common price service.
+- Crypto Binance WebSocket flow remains unchanged.
+- No backup files, no patch/block layer.
+Changed files: core.js, user-app.js, admin-app.js, README.txt
