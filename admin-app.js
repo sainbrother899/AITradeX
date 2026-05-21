@@ -15,6 +15,9 @@
   let supportSearch = localStorage.getItem("AITradeX_ADMIN_SUPPORT_SEARCH") || "";
   let supportStatusFilter = localStorage.getItem("AITradeX_ADMIN_SUPPORT_STATUS") || "ALL";
   let walletHistoryPage = Math.max(1, Number(localStorage.getItem("AITradeX_ADMIN_WALLET_HISTORY_PAGE") || 1));
+  let usersPageNo = Math.max(1, Number(localStorage.getItem("AITradeX_ADMIN_USERS_PAGE") || 1));
+  let depositHistoryPage = Math.max(1, Number(localStorage.getItem("AITradeX_ADMIN_DEPOSIT_HISTORY_PAGE") || 1));
+  let withdrawalHistoryPage = Math.max(1, Number(localStorage.getItem("AITradeX_ADMIN_WITHDRAWAL_HISTORY_PAGE") || 1));
 
   function adminUser() {
     return App.currentUser();
@@ -552,6 +555,19 @@
       </section>`;
   }
 
+  function userSearchScore(user, query) {
+    if (!query) return 999;
+    const name = String(displayNameFor(user) || "").toLowerCase();
+    const email = String(user.email || "").toLowerCase();
+    const mobile = String(user.mobile || "").toLowerCase();
+    const referral = String(user.referralCode || "").toLowerCase();
+    if (email === query || mobile === query || referral === query) return 0;
+    if (name === query) return 1;
+    if (email.startsWith(query) || mobile.startsWith(query)) return 2;
+    if (name.startsWith(query)) return 3;
+    return 10;
+  }
+
   function usersPage() {
     const query = usersSearch.trim().toLowerCase();
     const users = allUsers()
@@ -559,7 +575,18 @@
       .filter(u => {
         if (!query) return true;
         return [displayNameFor(u), u.email, u.mobile, userStatus(u), u.referralCode, App.currentPlan(u.id)?.name].some(v => includesText(v, query));
+      })
+      .sort((a, b) => {
+        const score = userSearchScore(a, query) - userSearchScore(b, query);
+        if (score !== 0) return score;
+        return displayNameFor(a).localeCompare(displayNameFor(b));
       });
+
+    const userPageSize = 1;
+    const totalPages = Math.max(1, Math.ceil(users.length / userPageSize));
+    usersPageNo = Math.min(Math.max(1, usersPageNo), totalPages);
+    localStorage.setItem("AITradeX_ADMIN_USERS_PAGE", String(usersPageNo));
+    const visibleUsers = users.slice((usersPageNo - 1) * userPageSize, usersPageNo * userPageSize);
 
     shell(`
       ${userFilterBar()}
@@ -571,12 +598,17 @@
       </section>
       <section class="panel-card admin-user-manager-panel">
         <div class="section-head">
-          <div><h3>User & Wallet Control</h3><span>Search users, add/deduct wallet balance, change plan, block/unblock and review details from one place.</span></div>
+          <div><h3>User & Wallet Control</h3><span>One user card per page. Search/filter brings matching users to the top for quick wallet, plan and status control.</span></div>
           <span class="admin-count-pill">${users.length} result</span>
         </div>
-        <div class="admin-user-card-list">
-          ${users.map(u => userControlCard(u)).join("") || `<div class="empty-state">No users found.</div>`}
+        <div class="admin-user-page-meta">
+          <b>${visibleUsers.length ? `Showing user ${((usersPageNo - 1) * userPageSize) + 1} of ${users.length}` : "No user selected"}</b>
+          <span>${query ? `Search priority: ${esc(usersSearch)}` : "Use search to jump to a user quickly."}</span>
         </div>
+        <div class="admin-user-card-list paged-user-card-list">
+          ${visibleUsers.map(u => userControlCard(u)).join("") || `<div class="empty-state">No users found.</div>`}
+        </div>
+        ${users.length > userPageSize ? `<div class="admin-pagination users-main-pagination"><button class="ghost-action" ${usersPageNo <= 1 ? "disabled" : ""} onclick="AITradeXAdmin.changeUsersPage(-1)">Prev User</button><span>Page ${usersPageNo} of ${totalPages}</span><button class="ghost-action" ${usersPageNo >= totalPages ? "disabled" : ""} onclick="AITradeXAdmin.changeUsersPage(1)">Next User</button></div>` : ""}
       </section>
       ${walletHistoryPanel(users)}
     `);
@@ -965,11 +997,31 @@
           <div><h3>${isDepositSection ? "Deposit Requests" : "Withdrawal Requests"}</h3><span>${isDepositSection ? "Approve user deposits and credit real balance" : "Approve user withdrawals and debit real balance"}</span></div>
           <span class="admin-count-pill">${items.length} result</span>
         </div>
-        <div class="admin-request-list">
-          ${items.length ? items.map(({ user, request, type }) => walletRequestCard(user, request, type)).join("") : `<div class="empty-state">No ${isDepositSection ? "deposit" : "withdrawal"} requests found.</div>`}
-        </div>
+        ${financeHistoryPagedList(items, sectionType)}
       </section>
     `);
+  }
+
+  function financeHistoryPagedList(items, sectionType) {
+    const isDepositSection = sectionType === "DEPOSIT";
+    const pageSize = 5;
+    const pageKey = isDepositSection ? "AITradeX_ADMIN_DEPOSIT_HISTORY_PAGE" : "AITradeX_ADMIN_WITHDRAWAL_HISTORY_PAGE";
+    const currentPage = isDepositSection ? depositHistoryPage : withdrawalHistoryPage;
+    const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+    const safePage = Math.min(Math.max(1, currentPage), totalPages);
+    if (isDepositSection) depositHistoryPage = safePage; else withdrawalHistoryPage = safePage;
+    localStorage.setItem(pageKey, String(safePage));
+    const visible = items.slice((safePage - 1) * pageSize, safePage * pageSize);
+    return `
+      <div class="finance-page-meta admin-user-page-meta">
+        <b>${items.length ? `Showing ${((safePage - 1) * pageSize) + 1}-${Math.min(safePage * pageSize, items.length)} of ${items.length}` : "No records"}</b>
+        <span>${financeSearch ? `Filter active: ${esc(financeSearch)}` : "Filter is available above. History stays paginated to avoid long scroll."}</span>
+      </div>
+      <div class="admin-request-list paged-finance-list">
+        ${visible.length ? visible.map(({ user, request, type }) => walletRequestCard(user, request, type)).join("") : `<div class="empty-state">No ${isDepositSection ? "deposit" : "withdrawal"} requests found.</div>`}
+      </div>
+      ${items.length > pageSize ? `<div class="admin-pagination finance-history-pagination"><button class="ghost-action" ${safePage <= 1 ? "disabled" : ""} onclick="AITradeXAdmin.changeFinanceHistoryPage('${sectionType}', -1)">Prev</button><span>Page ${safePage} of ${totalPages}</span><button class="ghost-action" ${safePage >= totalPages ? "disabled" : ""} onclick="AITradeXAdmin.changeFinanceHistoryPage('${sectionType}', 1)">Next</button></div>` : ""}
+    `;
   }
 
   function walletRequestCard(user, request, type) {
@@ -2063,6 +2115,22 @@
       localStorage.setItem(key, String(Math.max(1, current + Number(delta || 0))));
       render();
     },
+    changeUsersPage(delta) {
+      usersPageNo = Math.max(1, usersPageNo + Number(delta || 0));
+      localStorage.setItem("AITradeX_ADMIN_USERS_PAGE", String(usersPageNo));
+      render();
+    },
+    changeFinanceHistoryPage(sectionType, delta) {
+      const isDeposit = sectionType === "DEPOSIT";
+      if (isDeposit) {
+        depositHistoryPage = Math.max(1, depositHistoryPage + Number(delta || 0));
+        localStorage.setItem("AITradeX_ADMIN_DEPOSIT_HISTORY_PAGE", String(depositHistoryPage));
+      } else {
+        withdrawalHistoryPage = Math.max(1, withdrawalHistoryPage + Number(delta || 0));
+        localStorage.setItem("AITradeX_ADMIN_WITHDRAWAL_HISTORY_PAGE", String(withdrawalHistoryPage));
+      }
+      render();
+    },
     login(event) {
       event.preventDefault();
       try {
@@ -2112,22 +2180,38 @@
     },
     setFinanceSearch(value) {
       financeSearch = value;
+      depositHistoryPage = 1;
+      withdrawalHistoryPage = 1;
       localStorage.setItem("AITradeX_ADMIN_FINANCE_SEARCH", financeSearch);
+      localStorage.setItem("AITradeX_ADMIN_DEPOSIT_HISTORY_PAGE", "1");
+      localStorage.setItem("AITradeX_ADMIN_WITHDRAWAL_HISTORY_PAGE", "1");
       render();
     },
     setFinanceStatusFilter(value) {
       financeStatusFilter = value;
+      depositHistoryPage = 1;
+      withdrawalHistoryPage = 1;
       localStorage.setItem("AITradeX_ADMIN_FINANCE_STATUS", financeStatusFilter);
+      localStorage.setItem("AITradeX_ADMIN_DEPOSIT_HISTORY_PAGE", "1");
+      localStorage.setItem("AITradeX_ADMIN_WITHDRAWAL_HISTORY_PAGE", "1");
       render();
     },
     setUsersSearch(value) {
       usersSearch = value;
+      usersPageNo = 1;
+      walletHistoryPage = 1;
       localStorage.setItem("AITradeX_ADMIN_USERS_SEARCH", usersSearch);
+      localStorage.setItem("AITradeX_ADMIN_USERS_PAGE", "1");
+      localStorage.setItem("AITradeX_ADMIN_WALLET_HISTORY_PAGE", "1");
       render();
     },
     setUsersStatusFilter(value) {
       usersStatusFilter = value;
+      usersPageNo = 1;
+      walletHistoryPage = 1;
       localStorage.setItem("AITradeX_ADMIN_USERS_STATUS", usersStatusFilter);
+      localStorage.setItem("AITradeX_ADMIN_USERS_PAGE", "1");
+      localStorage.setItem("AITradeX_ADMIN_WALLET_HISTORY_PAGE", "1");
       render();
     },
     setUserStatus(userId, status, button) {
