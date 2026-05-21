@@ -976,6 +976,43 @@
     return rows.length ? rows.map(([label, value]) => `${label}: ${value}`).join(" · ") : "No skipped users";
   }
 
+  function aiRemainingForUser(userId) {
+    const used = App.aiTradesToday(userId);
+    const limit = App.aiDailyLimit(userId);
+    return Math.max(0, Number(limit || 0) - Number(used || 0));
+  }
+
+  function aiValidationOverviewHtml(report) {
+    const users = (report?.eligible || []).slice(0, 8);
+    const skipped = report?.skipped || [];
+    return `
+      <section class="panel-card ai-validation-panel">
+        <div class="section-head">
+          <div><h3>AI User Validation</h3><span>Wallet balance, active plan, remaining AI limit and allocation check before opening trades.</span></div>
+          <span class="admin-count-pill">${users.length} shown · ${skipped.length} skipped</span>
+        </div>
+        <div class="admin-list">
+          ${users.length ? users.map(target => {
+            const plan = App.currentPlan ? App.currentPlan(target.id) : {};
+            const balance = App.realBalance(target.id);
+            const pool = App.aiAllowedAmount(target);
+            const used = App.aiTradesToday(target.id);
+            const limit = App.aiDailyLimit(target.id);
+            return `
+              <article class="admin-user-card ai-validation-card">
+                <div class="admin-user-main">
+                  <div><b>${esc(displayNameFor(target))}</b><span>${esc(plan.name || "Free")} · AI ${target.aiTradeOn ? "ON" : "OFF"} · ${Number(target.aiTradePercent || 25)}% allocation</span></div>
+                  <div class="admin-user-stats"><span>Wallet</span><b>${App.money(balance)}</b></div>
+                  <div class="admin-user-stats"><span>AI Pool</span><b>${App.money(pool)}</b></div>
+                  <div class="admin-user-stats"><span>Remaining</span><b>${aiRemainingForUser(target.id)}/${limit}</b></div>
+                  <div class="admin-user-stats"><span>Used</span><b>${used}</b></div>
+                </div>
+              </article>`;
+          }).join("") : `<div class="empty-state">No eligible AI users found. Check user status, AI ON, wallet balance and plan limit.</div>`}
+        </div>
+      </section>`;
+  }
+
 
   function aiPreviewStats(resultPercent = 2, leverage = 1, minBalance = 0, resultType = "PROFIT") {
     const percent = Math.max(0, Number(resultPercent || 0));
@@ -1182,6 +1219,8 @@
         ${metric("🎁", "Free AI / Day", Number(settings.freeAiTradesPerDay || 5))}
       </section>
 
+      ${aiValidationOverviewHtml(previewReport)}
+
       <section class="panel-card ai-desk-panel">
         <div class="section-head ai-desk-head">
           <div><h3>AI Trading Desk</h3><span>Execute one AI auto trade for all valid AI users.</span></div>
@@ -1349,6 +1388,8 @@
               <article><span>Exposure</span><b id="aiLivePreviewExposure">${App.money(aiLivePreviewStats(1,0).totalExposure)}</b></article>
               <article><span>Target</span><b id="aiLivePreviewTarget">Profit 2%</b></article>
               <article><span>Close rule</span><b id="aiLivePreviewDuration">Target/Admin</b></article>
+              <article><span>Plan limit check</span><b id="aiLivePreviewLimitCheck">${previewReport.reasons.limit ? previewReport.reasons.limit + " blocked" : "Passed"}</b></article>
+              <article><span>Wallet check</span><b id="aiLivePreviewWalletCheck">${previewReport.reasons.lowBalance || previewReport.reasons.noPool ? "Needs review" : "Passed"}</b></article>
             </div>
             <div class="premium-bank-card ai-last-card">
               <div class="copy-row"><b>Live position rule</b><span>Entry price locks on open. Close price locks only when target hits or admin closes manually.</span><button type="button">Ready</button></div>
@@ -2203,6 +2244,8 @@
       setText("aiLivePreviewExposure", App.money(stats.totalExposure));
       setText("aiLivePreviewTarget", `${targetType === "LOSS" ? "Loss" : "Profit"} ${targetPercent}%`);
       setText("aiLivePreviewDuration", "Target/Admin");
+      setText("aiLivePreviewLimitCheck", stats.report.reasons.limit ? `${stats.report.reasons.limit} blocked` : "Passed");
+      setText("aiLivePreviewWalletCheck", (stats.report.reasons.lowBalance || stats.report.reasons.noPool) ? "Needs review" : "Passed");
     },
     async openLiveAiPosition(event) {
       event.preventDefault();

@@ -888,3 +888,11 @@ Phase 4.54 - User UI Premium Lightweight Polish
 - Added compact Quick Actions card for Trade, Orders, Wallet and Support.
 - Refined user-side card shadows, spacing and mobile drawer/action layout.
 - No trading, wallet, admin, KYC, referral, support or price-feed logic was changed.
+
+Phase 4.59 - AI Dashboard Summary + Admin Validation Polish
+- Added a user-side AI Trading Summary card on the dashboard.
+- User can now see today AI trades used, remaining AI trades, AI trade pool, active AI positions, live AI P/L and total/today AI P/L.
+- Added admin-side AI User Validation panel showing eligible users with wallet balance, current plan, AI allocation pool, used AI count and remaining daily limit.
+- Live AI position preview now also shows plan limit and wallet validation status.
+- Kept existing UI baseline and previous AI wallet margin lock / settlement logic intact.
+- No patch layers or hidden old code added.

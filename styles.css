@@ -4303,3 +4303,5 @@ button.copy-failed, .referral-link-box button.copy-failed, .referral-hero-card b
   .quick-action-head h2{font-size:17px;}
   .home-summary-grid article{min-height:78px;}
 }
+
+.ai-trading-summary-card{position:relative;overflow:hidden}.ai-trading-summary-card:before{content:"";position:absolute;right:-70px;top:-80px;width:210px;height:210px;border-radius:50%;background:radial-gradient(circle,rgba(21,229,211,.22),transparent 68%);pointer-events:none}.ai-summary-grid article{min-height:96px}.ai-summary-grid b{font-size:19px}.ai-validation-panel{margin:14px 0}.ai-validation-card .admin-user-main{align-items:center}.ai-validation-card{background:linear-gradient(135deg,rgba(21,229,211,.075),rgba(255,255,255,.035))}.ai-validation-card .admin-user-stats b{white-space:nowrap}

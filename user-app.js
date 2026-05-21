@@ -677,6 +677,33 @@
     if (!u) return { used: 0, limit: 5 };
     return { used: App.aiTradesToday(u.id), limit: App.aiDailyLimit(u.id) };
   }
+
+  function aiRemainingTrades() {
+    const usage = aiDailyUsage();
+    return Math.max(0, Number(usage.limit || 0) - Number(usage.used || 0));
+  }
+
+  function totalAiOpenPnl() {
+    return aiOpenPositions().reduce((sum, position) => sum + aiPositionPnl(position), 0);
+  }
+
+  function todayAiClosedPnl() {
+    const u = user();
+    if (!u) return 0;
+    const today = App.todayKey ? App.todayKey() : new Date().toISOString().slice(0, 10);
+    return (App.state.trades || [])
+      .filter(t => t.userId === u.id && t.tradeType === "AI_AUTO" && String(t.createdDate || String(t.createdAt || "").slice(0, 10)) === today)
+      .reduce((sum, t) => sum + Number(t.pnl || 0), 0);
+  }
+
+  function totalAiClosedPnl() {
+    const u = user();
+    if (!u) return 0;
+    return (App.state.trades || [])
+      .filter(t => t.userId === u.id && t.tradeType === "AI_AUTO")
+      .reduce((sum, t) => sum + Number(t.pnl || 0), 0);
+  }
+
   function isAiLimitComplete() {
     const usage = aiDailyUsage();
     return Number(usage.limit || 0) > 0 && Number(usage.used || 0) >= Number(usage.limit || 0);
@@ -688,6 +715,36 @@
     return (App.state.trades || [])
       .filter(t => t.userId === u.id && t.tradeType === "AI_AUTO")
       .sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0))[0] || null;
+  }
+
+
+  function aiTradingSummaryCard() {
+    const ai = currentAiSettings();
+    const usage = aiDailyUsage();
+    const remaining = aiRemainingTrades();
+    const activePositions = aiOpenPositions();
+    const activePnl = totalAiOpenPnl();
+    const todayPnl = todayAiClosedPnl();
+    const totalPnl = totalAiClosedPnl();
+    const plan = currentPlan();
+    const pool = accountMode === "REAL" ? App.realBalance(user()?.id) * Number(ai.percent || 0) / 100 : 0;
+    return `
+      <section class="premium-card ai-trading-summary-card">
+        <div class="card-row">
+          <div>
+            <p>AI TRADING SUMMARY</p>
+            <h2>${App.escapeHtml(plan.name || "Free")} · ${ai.enabled ? "AI Active" : "AI OFF"}</h2>
+            <h4>Daily limit, live AI positions and profit/loss in one place.</h4>
+          </div>
+          <button class="change-pair-btn" onclick="AITradeXUser.go('orders')">View Orders</button>
+        </div>
+        <div class="compact-grid ai-summary-grid">
+          <article><span>Used Today</span><b>${usage.used}/${usage.limit}</b><small>${remaining} remaining</small></article>
+          <article><span>AI Trade Pool</span><b>${App.money(pool)}</b><small>${Number(ai.percent || 0)}% allocation</small></article>
+          <article><span>Active AI Position</span><b>${activePositions.length}</b><small class="${activePnl >= 0 ? "profit-text" : "loss-text"}">${activePnl >= 0 ? "+" : ""}${App.money(activePnl)} live P/L</small></article>
+          <article><span>Today AI P/L</span><b class="${todayPnl >= 0 ? "profit-text" : "loss-text"}">${todayPnl >= 0 ? "+" : ""}${App.money(todayPnl)}</b><small>Total ${totalPnl >= 0 ? "+" : ""}${App.money(totalPnl)}</small></article>
+        </div>
+      </section>`;
   }
 
   function aiActivityCard() {
@@ -1698,6 +1755,8 @@
         <article><span>KYC</span><b>${App.kycStatus(u.id).replace("_", " ")}</b><small>Verification</small></article>
         <article><span>Selected Pair</span><b>${selectedPair}</b><small>${pair.signal} bias</small></article>
       </section>
+
+      ${aiTradingSummaryCard()}
 
       <section class="premium-card quick-action-card">
         <div class="quick-action-head">
