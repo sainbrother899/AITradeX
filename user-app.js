@@ -236,7 +236,11 @@
 
   function aiPositionPnl(position) {
     const raw = aiPositionRawPnl(position);
-    if (raw < 0) return Math.max(raw, -Math.max(0, App.realBalance(position.userId)));
+    if (raw < 0) {
+      const margin = Math.max(0, Number(position.marginAmount || 0));
+      const maxLoss = position.marginLocked ? margin : Math.max(0, App.realBalance(position.userId));
+      return Math.max(raw, -maxLoss);
+    }
     return raw;
   }
 
@@ -249,7 +253,10 @@
     const current = positionCurrentPrice(position);
     let pnl = aiPositionPnl(position);
     const balanceBefore = App.realBalance(position.userId);
-    if (pnl < 0 && Math.abs(pnl) > balanceBefore) pnl = -balanceBefore;
+    const margin = Math.max(0, Number(position.marginAmount || 0));
+    if (position.marginLocked && pnl < -margin) pnl = -margin;
+    if (!position.marginLocked && pnl < 0 && Math.abs(pnl) > balanceBefore) pnl = -balanceBefore;
+    const settlementAmount = position.marginLocked ? Math.max(0, margin + pnl) : pnl;
     const now = new Date().toISOString();
     position.tradeType = "AI_AUTO";
     position.status = "CLOSED";
@@ -261,16 +268,19 @@
     position.resultType = pnl >= 0 ? "PROFIT" : "LOSS";
     position.resultPercent = Number(position.targetPercent || 0);
     position.pnl = Number(pnl.toFixed(2));
-    position.balanceAfter = Number((balanceBefore + position.pnl).toFixed(2));
+    position.settlementAmount = Number(settlementAmount.toFixed(2));
+    position.balanceAfter = Number((balanceBefore + position.settlementAmount).toFixed(2));
     position.source = "AI_LIVE_AUTO_CLOSE";
-    if (position.pnl !== 0) {
+    if (position.settlementAmount !== 0) {
       App.addLedger({
         userId: position.userId,
         accountType: "REAL",
-        type: position.pnl >= 0 ? "AI_LIVE_PROFIT" : "AI_LIVE_LOSS",
-        amount: position.pnl,
+        type: position.marginLocked ? "AI_LIVE_SETTLEMENT" : (position.pnl >= 0 ? "AI_LIVE_PROFIT" : "AI_LIVE_LOSS"),
+        amount: position.settlementAmount,
         referenceId: position.id,
-        note: `${position.pair} AI live ${position.side} closed · ${reason}`
+        note: position.marginLocked
+          ? `${position.pair} AI live ${position.side} closed · AI amount ${App.money(margin)} · P/L ${position.pnl >= 0 ? "+" : ""}${App.money(position.pnl)}`
+          : `${position.pair} AI live ${position.side} closed · ${reason}`
       });
     } else {
       App.saveState();

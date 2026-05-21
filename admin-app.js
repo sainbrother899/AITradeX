@@ -1061,8 +1061,9 @@
     if (!entry || !current || !exposure) return 0;
     const direction = String(position.side || "BUY").toUpperCase() === "SELL" ? -1 : 1;
     let pnl = exposure * ((current - entry) / entry) * direction;
-    const balance = App.realBalance(position.userId);
-    if (pnl < 0) pnl = Math.max(pnl, -Math.max(0, balance));
+    const margin = Math.max(0, Number(position.marginAmount || 0));
+    const maxLoss = position.marginLocked ? margin : Math.max(0, App.realBalance(position.userId));
+    if (pnl < 0) pnl = Math.max(pnl, -maxLoss);
     return Number(pnl.toFixed(2));
   }
 
@@ -1700,7 +1701,10 @@
     const current = Number(cached?.price || position.entryPrice || 0);
     let pnl = aiLivePositionPnl(position);
     const balanceBefore = App.realBalance(position.userId);
-    if (pnl < 0 && Math.abs(pnl) > balanceBefore) pnl = -balanceBefore;
+    const margin = Math.max(0, Number(position.marginAmount || 0));
+    if (position.marginLocked && pnl < -margin) pnl = -margin;
+    if (!position.marginLocked && pnl < 0 && Math.abs(pnl) > balanceBefore) pnl = -balanceBefore;
+    const settlementAmount = position.marginLocked ? Math.max(0, margin + pnl) : pnl;
     const now = new Date().toISOString();
     position.tradeType = "AI_AUTO";
     position.status = "CLOSED";
@@ -1712,16 +1716,19 @@
     position.resultType = pnl >= 0 ? "PROFIT" : "LOSS";
     position.resultPercent = Number(position.targetPercent || 0);
     position.pnl = Number(pnl.toFixed(2));
-    position.balanceAfter = Number((balanceBefore + position.pnl).toFixed(2));
+    position.settlementAmount = Number(settlementAmount.toFixed(2));
+    position.balanceAfter = Number((balanceBefore + position.settlementAmount).toFixed(2));
     position.source = "ADMIN_AI_LIVE_CLOSE";
-    if (position.pnl !== 0) {
+    if (position.settlementAmount !== 0) {
       App.addLedger({
         userId: position.userId,
         accountType: "REAL",
-        type: position.pnl >= 0 ? "AI_LIVE_PROFIT" : "AI_LIVE_LOSS",
-        amount: position.pnl,
+        type: position.marginLocked ? "AI_LIVE_SETTLEMENT" : (position.pnl >= 0 ? "AI_LIVE_PROFIT" : "AI_LIVE_LOSS"),
+        amount: position.settlementAmount,
         referenceId: position.id,
-        note: `${position.pair} AI live ${position.side} closed by admin`
+        note: position.marginLocked
+          ? `${position.pair} AI live ${position.side} closed by admin · AI amount ${App.money(margin)} · P/L ${position.pnl >= 0 ? "+" : ""}${App.money(position.pnl)}`
+          : `${position.pair} AI live ${position.side} closed by admin`
       });
     } else {
       App.saveState();
@@ -2182,8 +2189,24 @@
           return;
         }
         const exposure = margin * leverage;
+        const positionId = App.uid("ai_live");
+        try {
+          App.addLedger({
+            userId: target.id,
+            accountType: "REAL",
+            type: "AI_LIVE_MARGIN_LOCK",
+            amount: -Number(margin.toFixed(2)),
+            referenceId: positionId,
+            note: `${pair} AI live ${side} amount locked`
+          });
+        } catch (error) {
+          report.skipped.push({ userId: target.id, reason: error.message || "Insufficient wallet balance" });
+          report.reasons.noPool += 1;
+          return;
+        }
+        const balanceAfterLock = App.realBalance(target.id);
         const position = {
-          id: App.uid("ai_live"),
+          id: positionId,
           batchId,
           userId: target.id,
           tradeType: "AI_LIVE",
@@ -2198,6 +2221,7 @@
           priceLockedAt: priceRow?.fetchedAt || openedAt,
           leverage,
           marginAmount: Number(margin.toFixed(2)),
+          marginLocked: true,
           positionSize: Number(exposure.toFixed(2)),
           targetType,
           targetPercent,
@@ -2208,7 +2232,8 @@
           openedAt,
           createdAt: openedAt,
           createdDate: App.todayKey(),
-          balanceBefore: Number(balanceBefore.toFixed(2))
+          balanceBefore: Number(balanceBefore.toFixed(2)),
+          balanceAfterOpen: Number(balanceAfterLock.toFixed(2))
         };
         App.state.trades.unshift(position);
         appliedCount += 1;
