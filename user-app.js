@@ -37,6 +37,10 @@
   let manualCloseSelectorOpen = false;
   let manualHistoryPageIndex = Number(localStorage.getItem("AITradeX_MANUAL_HISTORY_PAGE") || 0);
   let aiHistoryPageIndex = Number(localStorage.getItem("AITradeX_AI_HISTORY_PAGE") || 0);
+  let historyViewTab = localStorage.getItem("AITradeX_HISTORY_VIEW_TAB") || "ALL";
+  let historySearch = localStorage.getItem("AITradeX_HISTORY_SEARCH") || "";
+  let historyPageIndex = Number(localStorage.getItem("AITradeX_HISTORY_PAGE") || 0);
+  let historyExpandedId = localStorage.getItem("AITradeX_HISTORY_EXPANDED") || "";
   let orderViewTab = localStorage.getItem("AITradeX_ORDER_VIEW_TAB") || "ALL";
   let aiOffConfirmOpen = false;
 
@@ -2614,126 +2618,180 @@
     return App.escapeHtml(t.status || "Closed").replace(/_/g, " ");
   }
 
-  function tradeHistoryCard(t, type) {
+  function tradeResultLabel(t, type) {
     const pnl = Number(t.pnl || 0);
-    const profit = pnl >= 0;
-    const title = type === "AI_AUTO" ? "AI Auto Trade" : "Manual Trade";
-    const entry = t.entryPriceDisplay || (t.entryPrice ? String(t.entryPrice) : "-");
-    const close = t.exitPriceDisplay || (t.exitPrice ? String(t.exitPrice) : (type === "AI_AUTO" ? "Settled" : "-"));
-    const amountLabel = type === "AI_AUTO" ? "AI Amount" : "Margin";
-    const timeLabel = type === "AI_AUTO" ? "Executed" : "Closed";
-    const resultLine = type === "AI_AUTO"
-      ? `${App.escapeHtml(t.resultType || (profit ? "PROFIT" : "LOSS"))} ${Number(t.resultPercent || 0)}%`
-      : historyStatus(t);
-
-    return `
-      <article class="history-trade-card ${profit ? "profit" : "loss"}">
-        <div class="history-trade-top">
-          <div>
-            <p>${title}</p>
-            <h3>${App.escapeHtml(t.pair || "-")} <span>${App.escapeHtml(t.side || "-")}</span></h3>
-          </div>
-          <strong class="${profit ? "profit-text" : "loss-text"}">${profit ? "+" : ""}${App.money(pnl)}</strong>
-        </div>
-        <div class="history-trade-meta">
-          <span>${App.escapeHtml(t.market || "-")}</span>
-          <span>${Number(t.leverage || 1)}x</span>
-          <span>${resultLine}</span>
-        </div>
-        <div class="history-trade-grid">
-          <article><span>Entry Price</span><b>${App.escapeHtml(entry)}</b></article>
-          <article><span>${type === "AI_AUTO" ? "Settlement" : "Close Price"}</span><b>${App.escapeHtml(close)}</b></article>
-          <article><span>${amountLabel}</span><b>${App.money(t.marginAmount || t.amount || 0)}</b></article>
-          <article><span>Exposure</span><b>${App.money(t.positionSize || ((t.marginAmount || t.amount || 0) * Number(t.leverage || 1)))}</b></article>
-          <article><span>Opened</span><b>${formatHistoryDate(t.openedAt || t.createdAt)}</b></article>
-          <article><span>${timeLabel}</span><b>${formatHistoryDate(t.closedAt || t.createdAt)}</b></article>
-        </div>
-        <div class="history-trade-foot">
-          <span>${App.escapeHtml(t.priceSource || "Live price")}</span>
-          <b>${type === "AI_AUTO" ? "AI Auto" : "Manual"}</b>
-        </div>
-      </article>`;
+    if (type === "AI") {
+      const result = String(t.resultType || (pnl >= 0 ? "PROFIT" : "LOSS")).replace(/_/g, " ");
+      const pct = Number(t.resultPercent || 0);
+      return `${result}${pct ? ` · ${pct}%` : ""}`;
+    }
+    return historyStatus(t);
   }
 
-  function historyPagingState(type) {
-    const isAi = type === "AI_AUTO";
+  function normalizeHistoryRow(t, type) {
+    const pnl = Number(t.pnl || 0);
+    const amount = Number(t.marginAmount || t.amount || 0);
+    const leverage = Number(t.leverage || 1);
+    const opened = t.openedAt || t.createdAt || "";
+    const closed = t.closedAt || t.createdAt || opened;
     return {
-      index: isAi ? aiHistoryPageIndex : manualHistoryPageIndex,
-      storageKey: isAi ? "AITradeX_AI_HISTORY_PAGE" : "AITradeX_MANUAL_HISTORY_PAGE",
-      fn: isAi ? "setAiHistoryPage" : "setManualHistoryPage"
+      ...t,
+      historyType: type,
+      historyId: `${type}_${t.id || t.createdAt || Math.random()}`,
+      pnl,
+      amount,
+      leverage,
+      opened,
+      closed,
+      sortTime: Date.parse(closed || opened || 0) || 0,
+      entryText: t.entryPriceDisplay || (t.entryPrice ? String(t.entryPrice) : "-"),
+      closeText: t.exitPriceDisplay || (t.exitPrice ? String(t.exitPrice) : (type === "AI" ? "Settled" : "-")),
+      resultText: tradeResultLabel(t, type),
+      exposure: Number(t.positionSize || (amount * leverage))
     };
   }
 
-  function historyCards(rows, type, emptyText) {
-    if (!rows.length) return `<div class="empty-state">${emptyText}</div>`;
-
-    const state = historyPagingState(type);
-    const maxIndex = Math.max(0, rows.length - 1);
-    const currentIndex = Math.min(Math.max(0, Number(state.index || 0)), maxIndex);
-    const current = rows[currentIndex];
-
-    if (type === "AI_AUTO") {
-      aiHistoryPageIndex = currentIndex;
-    } else {
-      manualHistoryPageIndex = currentIndex;
-    }
-    localStorage.setItem(state.storageKey, String(currentIndex));
-
-    const prevDisabled = currentIndex <= 0 ? "disabled" : "";
-    const nextDisabled = currentIndex >= maxIndex ? "disabled" : "";
-    return `
-      <div class="history-pager-wrap">
-        <div class="history-pager-status">
-          <span>${currentIndex + 1} / ${rows.length}</span>
-          <small>${type === "AI_AUTO" ? "AI auto trade card" : "Manual trade card"}</small>
-        </div>
-        <div class="unified-history-grid single-history-card">${tradeHistoryCard(current, type)}</div>
-        <div class="history-pager-controls">
-          <button ${prevDisabled} onclick="AITradeXUser.${state.fn}(${currentIndex - 1})">Previous</button>
-          <button ${nextDisabled} onclick="AITradeXUser.${state.fn}(${currentIndex + 1})">Next</button>
-        </div>
-      </div>`;
+  function historyFilteredRows() {
+    const aiRows = tradeRows("AI_AUTO")
+      .filter(t => String(t.status || "").toUpperCase() === "CLOSED")
+      .map(t => normalizeHistoryRow(t, "AI"));
+    const manualRows = tradeRows("MANUAL")
+      .filter(t => String(t.status || "").toUpperCase() === "CLOSED")
+      .map(t => normalizeHistoryRow(t, "MANUAL"));
+    const all = [...aiRows, ...manualRows].sort((a, b) => b.sortTime - a.sortTime);
+    const activeTab = ["ALL", "MANUAL", "AI", "PROFIT", "LOSS"].includes(historyViewTab) ? historyViewTab : "ALL";
+    const query = String(historySearch || "").trim().toLowerCase();
+    return all.filter(row => {
+      const pnlMatch = activeTab === "PROFIT" ? row.pnl >= 0 : activeTab === "LOSS" ? row.pnl < 0 : true;
+      const typeMatch = activeTab === "MANUAL" || activeTab === "AI" ? row.historyType === activeTab : true;
+      const searchText = [row.pair, row.side, row.market, row.historyType, row.resultText, row.status].join(" ").toLowerCase();
+      const searchMatch = !query || searchText.includes(query);
+      return pnlMatch && typeMatch && searchMatch;
+    });
   }
 
-  function historySummaryCard(label, rows) {
-    const total = rows.reduce((sum, t) => sum + Number(t.pnl || 0), 0);
-    const wins = rows.filter(t => Number(t.pnl || 0) >= 0).length;
-    const losses = rows.filter(t => Number(t.pnl || 0) < 0).length;
+  function historyStats(rows) {
+    const totalPnl = rows.reduce((sum, row) => sum + Number(row.pnl || 0), 0);
+    const wins = rows.filter(row => Number(row.pnl || 0) >= 0).length;
+    const best = rows.reduce((max, row) => Math.max(max, Number(row.pnl || 0)), 0);
+    const winRate = rows.length ? Math.round((wins / rows.length) * 100) : 0;
+    return { totalPnl, wins, best, winRate };
+  }
+
+  function historyStatCard(label, value, sub, tone = "") {
     return `
-      <article>
+      <article class="history-stat-card ${tone}">
         <span>${label}</span>
-        <b class="${total >= 0 ? "profit-text" : "loss-text"}">${total >= 0 ? "+" : ""}${App.money(total)}</b>
-        <small>${rows.length} closed · ${wins} profit · ${losses} loss</small>
+        <b>${value}</b>
+        <small>${sub}</small>
+      </article>`;
+  }
+
+  function historyRow(row) {
+    const profit = row.pnl >= 0;
+    const expanded = historyExpandedId === row.historyId;
+    const side = String(row.side || "-").toUpperCase();
+    const typeLabel = row.historyType === "AI" ? "AI Managed" : "Manual Trade";
+    const amountLabel = row.historyType === "AI" ? "AI Amount" : "Margin";
+    return `
+      <article class="history-real-row ${profit ? "profit" : "loss"} ${expanded ? "expanded" : ""}">
+        <button class="history-row-main" onclick="AITradeXUser.toggleHistoryDetails('${App.escapeHtml(row.historyId)}')">
+          <div class="history-pair-cell">
+            <strong>${App.escapeHtml(row.pair || "-")}</strong>
+            <span>${App.escapeHtml(side)} · ${App.escapeHtml(typeLabel)}</span>
+          </div>
+          <div class="history-tags-cell">
+            <span class="history-type-tag ${row.historyType.toLowerCase()}">${App.escapeHtml(typeLabel)}</span>
+            <span class="history-side-tag ${side.includes("SELL") || side.includes("SHORT") ? "sell" : "buy"}">${App.escapeHtml(side)}</span>
+          </div>
+          <div class="history-date-cell">
+            <span>${formatHistoryDate(row.closed)}</span>
+            <small>${App.escapeHtml(row.resultText || "Closed")}</small>
+          </div>
+          <div class="history-pnl-cell ${profit ? "profit-text" : "loss-text"}">${profit ? "+" : ""}${App.money(row.pnl)}</div>
+        </button>
+        ${expanded ? `
+          <div class="history-expanded-grid">
+            <article><span>Entry</span><b>${App.escapeHtml(row.entryText)}</b></article>
+            <article><span>${row.historyType === "AI" ? "Settlement" : "Close"}</span><b>${App.escapeHtml(row.closeText)}</b></article>
+            <article><span>${amountLabel}</span><b>${App.money(row.amount)}</b></article>
+            <article><span>Exposure</span><b>${App.money(row.exposure)}</b></article>
+            <article><span>Leverage</span><b>${row.leverage}x</b></article>
+            <article><span>Market</span><b>${App.escapeHtml(row.market || "-")}</b></article>
+            <article><span>Opened</span><b>${formatHistoryDate(row.opened)}</b></article>
+            <article><span>Closed</span><b>${formatHistoryDate(row.closed)}</b></article>
+          </div>` : ""}
       </article>`;
   }
 
   function historyPage() {
-    const aiRows = tradeRows("AI_AUTO").filter(t => String(t.status || "").toUpperCase() === "CLOSED");
-    const manualRows = tradeRows("MANUAL").filter(t => String(t.status || "").toUpperCase() === "CLOSED");
-    const allRows = [...aiRows, ...manualRows];
+    const aiRows = tradeRows("AI_AUTO").filter(t => String(t.status || "").toUpperCase() === "CLOSED").map(t => normalizeHistoryRow(t, "AI"));
+    const manualRows = tradeRows("MANUAL").filter(t => String(t.status || "").toUpperCase() === "CLOSED").map(t => normalizeHistoryRow(t, "MANUAL"));
+    const allRows = [...aiRows, ...manualRows].sort((a, b) => b.sortTime - a.sortTime);
+    const filteredRows = historyFilteredRows();
+    const stats = historyStats(allRows);
+    const pageSize = 5;
+    const maxPage = Math.max(0, Math.ceil(filteredRows.length / pageSize) - 1);
+    const currentPage = Math.min(Math.max(0, historyPageIndex), maxPage);
+    historyPageIndex = currentPage;
+    localStorage.setItem("AITradeX_HISTORY_PAGE", String(currentPage));
+    const pageRows = filteredRows.slice(currentPage * pageSize, currentPage * pageSize + pageSize);
+    const tabs = [
+      ["ALL", "All", allRows.length],
+      ["MANUAL", "Manual", manualRows.length],
+      ["AI", "AI", aiRows.length],
+      ["PROFIT", "Profit", allRows.filter(row => row.pnl >= 0).length],
+      ["LOSS", "Loss", allRows.filter(row => row.pnl < 0).length]
+    ];
+
     shell(`
-      <section class="compact-grid trade-history-summary">
-        ${historySummaryCard("Total Trade P/L", allRows)}
-        ${historySummaryCard("Manual Trades", manualRows)}
-        ${historySummaryCard("AI Auto Trades", aiRows)}
-        <article><span>Account</span><b>${accountMode}</b><small>Unified history view</small></article>
+      <section class="history-real-hero">
+        <div>
+          <p>TRADE HISTORY</p>
+          <h2>Closed trades in one clean timeline</h2>
+          <span>Manual and AI trades stay together, searchable and easy to review.</span>
+        </div>
+        <button onclick="AITradeXUser.go('wallet')">View Wallet Ledger</button>
       </section>
 
-      <section class="premium-card history-table-card unified-history-card">
-        <div class="card-row">
-          <div><p>TRADE HISTORY</p><h2>AI Auto Trades</h2></div>
-          <span class="history-mode">${accountMode}</span>
-        </div>
-        ${historyCards(aiRows, "AI_AUTO", "No AI auto trades yet. When admin executes AI Trading Desk, entries will show here.")}
+      <section class="history-real-stats">
+        ${historyStatCard("Total P/L", `${stats.totalPnl >= 0 ? "+" : ""}${App.money(stats.totalPnl)}`, `${allRows.length} closed trades`, stats.totalPnl >= 0 ? "profit" : "loss")}
+        ${historyStatCard("Win Rate", `${stats.winRate}%`, `${stats.wins} profit trades`, "")}
+        ${historyStatCard("Best Trade", `${stats.best >= 0 ? "+" : ""}${App.money(stats.best)}`, "Highest closed P/L", stats.best >= 0 ? "profit" : "loss")}
+        ${historyStatCard("Account", App.escapeHtml(accountMode), "Current account mode", "")}
       </section>
 
-      <section class="premium-card history-table-card unified-history-card">
-        <div class="card-row">
-          <div><p>TRADE HISTORY</p><h2>Manual Trades</h2></div>
-          <span class="history-mode">${accountMode}</span>
+      <section class="history-real-card">
+        <div class="history-real-head">
+          <div>
+            <p>HISTORY BOOK</p>
+            <h2>${filteredRows.length} result${filteredRows.length === 1 ? "" : "s"}</h2>
+          </div>
+          <span>Page ${currentPage + 1} / ${Math.max(1, maxPage + 1)}</span>
         </div>
-        ${historyCards(manualRows, "MANUAL", "No manual trades yet. Closed manual trades will show here.")}
-        <div class="empty-state small-note">Wallet deposit and withdrawal history stays inside Wallet page only.</div>
+
+        <div class="history-filter-bar">
+          <div class="history-tab-row">
+            ${tabs.map(([value, label, count]) => `
+              <button class="${historyViewTab === value ? "active" : ""}" onclick="AITradeXUser.setHistoryTab('${value}')">
+                ${label}<b>${count}</b>
+              </button>`).join("")}
+          </div>
+          <label class="history-search-box">
+            <span>Search</span>
+            <input value="${App.escapeHtml(historySearch)}" placeholder="Search pair, AI, manual, buy or sell" oninput="AITradeXUser.setHistorySearch(this.value)" />
+          </label>
+        </div>
+
+        <div class="history-real-list">
+          ${pageRows.length ? pageRows.map(historyRow).join("") : `<div class="empty-state">No matching trade history found.</div>`}
+        </div>
+
+        <div class="history-real-pagination">
+          <button ${currentPage <= 0 ? "disabled" : ""} onclick="AITradeXUser.setHistoryPage(${currentPage - 1})">Previous</button>
+          <span>${filteredRows.length ? `${currentPage * pageSize + 1}-${Math.min(filteredRows.length, currentPage * pageSize + pageRows.length)} of ${filteredRows.length}` : "0 records"}</span>
+          <button ${currentPage >= maxPage ? "disabled" : ""} onclick="AITradeXUser.setHistoryPage(${currentPage + 1})">Next</button>
+        </div>
       </section>
     `);
   }
@@ -4133,6 +4191,37 @@
       const maxIndex = Math.max(0, rows.length - 1);
       aiHistoryPageIndex = Math.min(Math.max(0, Number(index || 0)), maxIndex);
       localStorage.setItem("AITradeX_AI_HISTORY_PAGE", String(aiHistoryPageIndex));
+      render();
+    },
+    setHistoryTab(tab) {
+      historyViewTab = ["ALL", "MANUAL", "AI", "PROFIT", "LOSS"].includes(tab) ? tab : "ALL";
+      historyPageIndex = 0;
+      historyExpandedId = "";
+      localStorage.setItem("AITradeX_HISTORY_VIEW_TAB", historyViewTab);
+      localStorage.setItem("AITradeX_HISTORY_PAGE", "0");
+      localStorage.removeItem("AITradeX_HISTORY_EXPANDED");
+      render();
+    },
+    setHistorySearch(value) {
+      historySearch = String(value || "");
+      historyPageIndex = 0;
+      historyExpandedId = "";
+      localStorage.setItem("AITradeX_HISTORY_SEARCH", historySearch);
+      localStorage.setItem("AITradeX_HISTORY_PAGE", "0");
+      localStorage.removeItem("AITradeX_HISTORY_EXPANDED");
+      render();
+    },
+    setHistoryPage(index) {
+      const rows = historyFilteredRows();
+      const maxIndex = Math.max(0, Math.ceil(rows.length / 5) - 1);
+      historyPageIndex = Math.min(Math.max(0, Number(index || 0)), maxIndex);
+      localStorage.setItem("AITradeX_HISTORY_PAGE", String(historyPageIndex));
+      render();
+    },
+    toggleHistoryDetails(id) {
+      historyExpandedId = historyExpandedId === id ? "" : String(id || "");
+      if (historyExpandedId) localStorage.setItem("AITradeX_HISTORY_EXPANDED", historyExpandedId);
+      else localStorage.removeItem("AITradeX_HISTORY_EXPANDED");
       render();
     },
     setAutoPercent(value) {
