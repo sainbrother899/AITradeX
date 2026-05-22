@@ -4769,14 +4769,22 @@
   });
 
   function shouldAutoRenderAfterDbLoad(detail = {}) {
-    // No timer-based page refresh. Render only after real database changes or manual loads;
-    // never rebuild the active trade ticket/chart during background database updates.
+    // Never rebuild pages for realtime/background pulls. Manual button loads and first boot can render once.
     if (detail?.type === "direct-write") return false;
-    return page !== "trade";
+    if (String(detail?.source || "").startsWith("realtime:")) return false;
+    if (detail?.source === "boot") return false;
+    const activeTag = String(document.activeElement?.tagName || "").toLowerCase();
+    if (["input", "textarea", "select"].includes(activeTag)) return false;
+    return true;
   }
 
   window.addEventListener("aitradex:db-loaded", event => {
     if (shouldAutoRenderAfterDbLoad(event.detail || {})) render();
+  });
+
+  window.addEventListener("aitradex:db-soft-update", () => {
+    // Database state is updated in memory. Do not rerender current page, forms, chart, or modals.
+    try { updateManualLiveBar(); } catch {}
   });
 
   async function bootUserApp(){

@@ -607,7 +607,7 @@
     };
   }
 
-  async function pullCoreTables({ source = "manual" } = {}) {
+  async function pullCoreTables({ source = "manual", silent = false } = {}) {
     if (!SUPABASE_READY || !client) throw new Error("Supabase is not configured.");
 
     // Important: loading admin/user screens must not fail because one optional table has an RLS/schema issue.
@@ -697,7 +697,8 @@
     const loadedTotal = users.length + deposits.length + withdrawals.length + kyc.length + ledger.length + trades.length + batches.length;
     if (tableErrors.length) dbStatus(`Database loaded ${loadedTotal} critical row(s). ${tableErrors.length} optional/table warning(s) found; check policies if a section is empty.`, false);
     else dbStatus(`Core + trade tables loaded from Supabase: ${loadedTotal} row(s).`, true);
-    emitDbLoaded({ type: "pull", source, summary });
+    if (!silent) emitDbLoaded({ type: "pull", source, summary });
+    else { try { window.dispatchEvent(new CustomEvent("aitradex:db-soft-update", { detail: { type: "pull", source, summary } })); } catch {} }
     return summary;
   }
 
@@ -965,7 +966,7 @@
       try {
         do {
           realtimeQueued = false;
-          await pullCoreTables({ source: reason });
+          await pullCoreTables({ source: reason, silent: true });
         } while (realtimeQueued);
       } catch (err) {
         dbStatus(err?.message || "Realtime database refresh failed.", false);

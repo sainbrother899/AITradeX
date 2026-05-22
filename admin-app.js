@@ -4031,9 +4031,22 @@
     }
   };
 
+  function shouldAdminRenderAfterDbLoad(detail = {}) {
+    // Do not rerender any admin page for realtime/background pulls; it causes form/page flicker.
+    if (detail?.type === "direct-write") return false;
+    if (String(detail?.source || "").startsWith("realtime:")) return false;
+    if (detail?.source === "boot") return false;
+    const activeTag = String(document.activeElement?.tagName || "").toLowerCase();
+    if (["input", "textarea", "select"].includes(activeTag)) return false;
+    return true;
+  }
+
   window.addEventListener("aitradex:db-loaded", event => {
-    if ((event.detail || {}).type === "direct-write") return;
-    render();
+    if (shouldAdminRenderAfterDbLoad(event.detail || {})) render();
+  });
+
+  window.addEventListener("aitradex:db-soft-update", () => {
+    // State is updated in memory. Admin page will not flicker or rebuild automatically.
   });
 
   async function bootAdminApp(){
