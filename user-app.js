@@ -4607,7 +4607,7 @@
       App.toast("AI Auto Trading turned off.");
       render();
     },
-    async createSupportTicket(event) {
+    createSupportTicket(event) {
       event.preventDefault();
       const u = user();
       if (!u) return;
@@ -4660,8 +4660,8 @@
       if (next !== confirm) return App.toast("New password confirmation does not match.");
       u.password = next;
       u.passwordUpdatedAt = App.now();
-      if (App.isDatabaseMode?.() && window.AITradeXDB?.writeUser) await window.AITradeXDB.writeUser(u);
-      App.addNotification?.({ audience: "USER", userId: u.id, title: "Password updated", message: "Your account password was changed successfully.", type: "SECURITY", linkPage: "security", referenceId: `password_${Date.now()}` });
+      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeUser) await window.AITradeXDB.writeUser(u); } catch (err) { App.toast(`Password save failed: ${err.message || err}`); return; }
+      await App.addNotificationAsync?.({ audience: "USER", userId: u.id, title: "Password updated", message: "Your account password was changed successfully.", type: "SECURITY", linkPage: "security", referenceId: `password_${Date.now()}` });
       App.saveState();
       App.toast("Password updated successfully.");
       render();

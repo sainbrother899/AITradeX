@@ -2637,12 +2637,13 @@
       return null;
     }
   }
+
   async function logAdminActionAsync(action, targetType = "SYSTEM", targetId = "", meta = {}) {
     try {
       return await App.addAdminActionAsync?.({ action, targetType, targetId, meta });
     } catch (error) {
       console.warn("Admin action log failed", error);
-      return null;
+      throw error;
     }
   }
 
@@ -2772,7 +2773,7 @@
   }
 
 
-  async function settleAiLivePositionByAdmin(position, reason = "ADMIN_CLOSE") {
+  function settleAiLivePositionByAdmin(position, reason = "ADMIN_CLOSE") {
     if (!position || String(position.status || "").toUpperCase() !== "OPEN") return false;
     const cached = App.getCachedPairPrice ? App.getCachedPairPrice(position.pair) : null;
     const current = Number(cached?.price || position.entryPrice || 0);
@@ -2810,7 +2811,7 @@
     } else {
       App.saveState();
     }
-    try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) window.AITradeXDB.writeTrade(position).catch(err=>console.warn("trade write failed", err)); } catch {}
+    try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) window.AITradeXDB.writeTrade(position).catch(err=>console.warn("AI admin close write failed", err)); } catch {}
     App.addNotification?.({ audience: "USER", userId: position.userId, title: "AI live position closed", message: `${position.pair} ${position.side} closed. P/L ${position.pnl >= 0 ? "+" : ""}${App.money(position.pnl)}. Settlement ${App.money(position.settlementAmount)}.`, type: "AI", linkPage: "orders", referenceId: `ai_close_${position.id}` });
     App.addNotification?.({ audience: "ADMIN", title: "AI live trade closed", message: `${position.pair} ${position.side} closed for user ${position.userId}. P/L ${position.pnl >= 0 ? "+" : ""}${App.money(position.pnl)}.`, type: "AI", linkPage: "liveAi", referenceId: `admin_ai_close_${position.id}` });
     return true;
@@ -3098,7 +3099,7 @@
       App.toast(`User status changed to ${nextStatus}.`);
       render();
     },
-    async adjustUserWallet(event, userId) {
+    adjustUserWallet(event, userId) {
       event.preventDefault();
       const target = allUsers().find(u => u.id === userId);
       if (!target) return;
@@ -3130,7 +3131,7 @@
         App.toast(error.message || "Wallet update failed.");
       }
     },
-    async changeUserPlan(event, userId) {
+    changeUserPlan(event, userId) {
       event.preventDefault();
       const target = allUsers().find(u => u.id === userId);
       if (!target) return;
@@ -3717,7 +3718,7 @@
       App.toast(appliedCount ? `Live AI position opened for ${appliedCount} valid user(s).` : "No valid AI users found. Live position not opened.");
       render();
     },
-    async closeAiLiveBatch(batchId, button) {
+    closeAiLiveBatch(batchId, button) {
       const positions = aiLivePositions().filter(position => (position.batchId || position.id) === batchId);
       if (!positions.length) {
         App.toast("No open AI live positions found.");
@@ -3727,9 +3728,9 @@
       if (!confirm(`Close this AI live trade for ${positions.length} user(s)? Current profit/loss will be settled in real wallet.`)) return;
       markButton(button, "Closing...");
       let closed = 0;
-      for (const position of positions) {
-        try { if (await settleAiLivePositionByAdmin(position, "ADMIN_CLOSE")) closed += 1; } catch (error) {}
-      }
+      positions.forEach(position => {
+        try { if (settleAiLivePositionByAdmin(position, "ADMIN_CLOSE")) closed += 1; } catch (error) {}
+      });
       const batch = (App.state.aiLiveBatches || []).find(row => row.id === batchId);
       if (batch) {
         batch.status = "CLOSED";

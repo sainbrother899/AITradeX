@@ -124,25 +124,27 @@ const App={config:C,db,state:load(),session:loadSession(),now,uid,money,escapeHt
 App.reloadState=()=>{App.state=load();App.session=loadSession();return App.state;};
 App.hasLedgerEntry=({accountType="REAL",type,referenceId,userId})=>{const list=accountType==="DEMO"?App.state.demoLedger:App.state.walletLedger;return (list||[]).some(x=>(!type||x.type===type)&&(!referenceId||x.referenceId===referenceId)&&(!userId||x.userId===userId));};
 App.ensureNotifications=()=>{if(!Array.isArray(App.state.notifications))App.state.notifications=[];return App.state.notifications;};
-function buildNotificationRow({audience="USER",userId="",title="Notification",message="",type="INFO",linkPage="",referenceId=""}={}){
-  const cleanAudience=String(audience||"USER").toUpperCase();
-  const id=referenceId?`notif_${cleanAudience}_${userId||"all"}_${type}_${referenceId}`:uid("notif");
-  return {id,audience:cleanAudience,userId:userId||"",title:String(title||"Notification"),message:String(message||""),type:String(type||"INFO").toUpperCase(),linkPage:String(linkPage||""),referenceId:referenceId||"",read:false,createdAt:now()};
-}
 App.addNotification=(payload={})=>{
   App.ensureNotifications();
-  const row=buildNotificationRow(payload);
-  if(row.referenceId&&App.state.notifications.some(n=>n.id===row.id))return false;
+  const cleanAudience=String(payload.audience||"USER").toUpperCase();
+  const type=String(payload.type||"INFO").toUpperCase();
+  const referenceId=payload.referenceId||"";
+  const id=referenceId?`notif_${cleanAudience}_${payload.userId||"all"}_${type}_${referenceId}`:uid("notif");
+  if(referenceId&&App.state.notifications.some(n=>n.id===id))return false;
+  const row={id,audience:cleanAudience,userId:payload.userId||"",title:String(payload.title||"Notification"),message:String(payload.message||""),type,linkPage:String(payload.linkPage||""),referenceId,read:false,createdAt:now()};
   App.state.notifications.unshift(row);
-  try{ if(DB_ONLY&&window.AITradeXDB?.writeNotification) window.AITradeXDB.writeNotification(row).catch(err=>console.warn("notification write failed", err)); }catch{}
   App.saveState();
-  App.sendTelegramForNotification?.(row);
   return row;
 };
+
 App.addNotificationAsync=async (payload={})=>{
   App.ensureNotifications();
-  const row=buildNotificationRow(payload);
-  if(row.referenceId&&App.state.notifications.some(n=>n.id===row.id))return false;
+  const cleanAudience=String(payload.audience||"USER").toUpperCase();
+  const type=String(payload.type||"INFO").toUpperCase();
+  const referenceId=payload.referenceId||"";
+  const id=referenceId?`notif_${cleanAudience}_${payload.userId||"all"}_${type}_${referenceId}`:uid("notif");
+  if(referenceId&&App.state.notifications.some(n=>n.id===id))return false;
+  const row={id,audience:cleanAudience,userId:payload.userId||"",title:String(payload.title||"Notification"),message:String(payload.message||""),type,linkPage:String(payload.linkPage||""),referenceId,read:false,createdAt:now()};
   if(DB_ONLY&&window.AITradeXDB?.writeNotification) await window.AITradeXDB.writeNotification(row);
   App.state.notifications.unshift(row);
   App.saveState();
@@ -195,7 +197,7 @@ App.telegramNotificationText=({audience="USER",title="Notification",message="",t
   return lines.join("\n");
 };
 App.telegramAllowedTypes=()=>new Set(["KYC","DEPOSIT","WITHDRAWAL"]);
-App.sendTelegramForNotification=(payload)=>{
+App.sendTelegramForNotification=async (payload)=>{
   const t=App.telegramSettings();
   const aud=String(payload?.audience||"USER").toUpperCase();
   const type=String(payload?.type||"INFO").toUpperCase();
@@ -205,30 +207,28 @@ App.sendTelegramForNotification=(payload)=>{
   if(!App.telegramAllowedTypes().has(type))return;
   if(aud==="ADMIN"&&!t.adminAlerts)return;
   if(aud==="USER"&&!t.userAlerts)return;
-  App.sendTelegramMessage(App.telegramNotificationText(payload));
+  await App.sendTelegramMessage(App.telegramNotificationText(payload));
 };
 
 App.ensureAdminActionLogs=()=>{if(!Array.isArray(App.state.adminActionLogs))App.state.adminActionLogs=[];return App.state.adminActionLogs;};
-function buildAdminActionRow({action="ADMIN_ACTION",targetType="SYSTEM",targetId="",meta={}}={}){
-  const admin=App.currentUser?.()||{};
-  return {id:uid("adminlog"),adminUserId:admin.id||App.session?.userId||"admin",adminName:admin.name||admin.email||"Admin",action:String(action||"ADMIN_ACTION").toUpperCase(),targetType:String(targetType||"SYSTEM").toUpperCase(),targetId:String(targetId||""),meta:meta&&typeof meta==="object"?meta:{ note:String(meta||"") },createdAt:new Date().toISOString()};
-}
 App.addAdminAction=(payload={})=>{
   App.ensureAdminActionLogs();
-  const row=buildAdminActionRow(payload);
+  const admin=App.currentUser?.()||{};
+  const row={id:uid("adminlog"),adminUserId:admin.id||App.session?.userId||"admin",adminName:admin.name||admin.email||"Admin",action:String(payload.action||"ADMIN_ACTION").toUpperCase(),targetType:String(payload.targetType||"SYSTEM").toUpperCase(),targetId:String(payload.targetId||""),meta:payload.meta&&typeof payload.meta==="object"?payload.meta:{note:String(payload.meta||"")},createdAt:new Date().toISOString()};
   App.state.adminActionLogs.unshift(row);
-  try{ if(DB_ONLY&&window.AITradeXDB?.writeAdminAction) window.AITradeXDB.writeAdminAction(row).catch(err=>console.warn("admin action write failed", err)); }catch{}
   App.saveState();
   return row;
 };
 App.addAdminActionAsync=async (payload={})=>{
   App.ensureAdminActionLogs();
-  const row=buildAdminActionRow(payload);
+  const admin=App.currentUser?.()||{};
+  const row={id:uid("adminlog"),adminUserId:admin.id||App.session?.userId||"admin",adminName:admin.name||admin.email||"Admin",action:String(payload.action||"ADMIN_ACTION").toUpperCase(),targetType:String(payload.targetType||"SYSTEM").toUpperCase(),targetId:String(payload.targetId||""),meta:payload.meta&&typeof payload.meta==="object"?payload.meta:{note:String(payload.meta||"")},createdAt:new Date().toISOString()};
   if(DB_ONLY&&window.AITradeXDB?.writeAdminAction) await window.AITradeXDB.writeAdminAction(row);
   App.state.adminActionLogs.unshift(row);
   App.saveState();
   return row;
 };
+
 App.notificationsFor=({audience="USER",userId=""}={})=>{
   App.ensureNotifications();
   const cleanAudience=String(audience||"USER").toUpperCase();

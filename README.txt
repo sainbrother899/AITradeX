@@ -1,17 +1,17 @@
-AITradeX Phase 5.19 - Final Critical DB Action Cleanup
+AITradeX Phase 5.19 - Final Critical Actions Cleanup
 
-Base: Phase 5.18
+This package is built from Phase 5.18 and focuses on the remaining critical database reliability issues:
 
-Clean package notes:
-- No patch.js / fix.js / old.js / .bak files.
-- No duplicate app files.
-- Hidden full-state sync remains disabled in database mode.
-- Critical KYC/deposit/withdrawal notification flow uses awaited database notification writes.
-- Admin KYC/deposit/withdrawal/payment-method audit logs use awaited database action writes.
-- App.saveState() does not push business data in database mode.
-- Manual fullSync remains only for admin emergency repair/import/export tools.
+1. KYC, deposit, withdrawal user/admin notifications use awaited DB writes.
+2. Telegram alerts are sent only after the notification row is saved successfully.
+3. Admin critical audit logs for KYC, deposit, withdrawal, and bank actions use awaited DB writes.
+4. Hidden full-state auto sync remains disabled. Manual fullSync is retained only for emergency Database tools.
+5. Core notification/admin action helpers no longer use background AITradeXDB.fire writes.
+6. SQL files are version-aligned with Phase 5.19.
 
-Run in Supabase if needed:
-1. supabase-schema.sql
-2. supabase-core-sync-policies.sql
-3. supabase-storage-policies.sql (only for KYC/avatar storage)
+Run in Supabase SQL Editor after upload if not already current:
+- supabase-schema.sql
+- supabase-core-sync-policies.sql
+- supabase-storage-policies.sql (only if storage buckets are used)
+
+Important: This is still a frontend/anon-key prototype. For public launch, migrate to Supabase Auth, strict RLS, and server-side/Edge Function secrets for Telegram and wallet-sensitive actions.
