@@ -1191,7 +1191,7 @@
 
   function avatar(name) {
     const u = user();
-    const avatarData = u ? (localStorage.getItem(`AITradeX_AVATAR_${u.id}`) || u.avatarUrl || "") : "";
+    const avatarData = u ? (u.avatarUrl || "") : "";
     if (avatarData) {
       return `<span class="avatar image-avatar"><img src="${App.escapeHtml(avatarData)}" alt="Avatar"/></span>`;
     }
@@ -1224,7 +1224,7 @@
   function displayName() {
     const u = user();
     if (!u) return "User";
-    return localStorage.getItem(`AITradeX_DISPLAY_NAME_${u.id}`) || u.name || "User";
+    return u.name || "User";
   }
 
   function profileNameChip() {
@@ -3340,7 +3340,7 @@
     if (u?.lastLoginAt) rows.push({ label: "Last login", value: new Date(u.lastLoginAt).toLocaleString(), tone: "good" });
     rows.push({ label: "Session expiry", value: `${sessionMinutesLeft()} min left`, tone: sessionMinutesLeft() <= 30 ? "warn" : "good" });
     rows.push({ label: "Login protection", value: "6 wrong attempts = 10 min lock", tone: "neutral" });
-    rows.push({ label: "Database mode", value: window.AITradeXDB?.ready ? "Supabase connected" : "Local fallback", tone: window.AITradeXDB?.ready ? "good" : "warn" });
+    rows.push({ label: "Database mode", value: window.AITradeXDB?.ready ? "Supabase database" : "Database unavailable", tone: window.AITradeXDB?.ready ? "good" : "warn" });
     return rows;
   }
 
@@ -3362,7 +3362,7 @@
         <article><span>Session</span><b>${minutes} min</b></article>
         <article><span>Login Lock</span><b>6 Attempts</b></article>
         <article><span>Account</span><b>${App.escapeHtml(String(u?.status || "ACTIVE"))}</b></article>
-        <article><span>Database</span><b>${window.AITradeXDB?.ready ? "Connected" : "Local"}</b></article>
+        <article><span>Database</span><b>${window.AITradeXDB?.ready ? "Database" : "Unavailable"}</b></article>
       </section>
 
       <section class="premium-card security-control-card">
@@ -3376,7 +3376,7 @@
       </section>
 
       <section class="premium-card security-password-card">
-        <div class="card-row"><div><p>PASSWORD</p><h2>Change password</h2></div><span class="history-mode">Local Account</span></div>
+        <div class="card-row"><div><p>PASSWORD</p><h2>Change password</h2></div><span class="history-mode">Database Account</span></div>
         <div class="profile-form compact-inner-form security-form-grid">
           <label>Current Password<input id="securityCurrentPassword" type="password" placeholder="Current password" autocomplete="current-password"/></label>
           <label>New Password<input id="securityNewPassword" type="password" placeholder="Minimum 4 characters" autocomplete="new-password"/></label>
@@ -3582,10 +3582,11 @@
     scrollAuth() {
       document.getElementById("authBox")?.scrollIntoView({ behavior: "smooth" });
     },
-    register(event) {
+    async register(event) {
       event.preventDefault();
       try {
-        Auth.registerUser({
+        App.toast("Creating account in database...");
+        await Auth.registerUser({
           name: regName.value,
           email: regEmail.value,
           mobile: regMobile.value,
@@ -3601,10 +3602,11 @@
         App.toast(err.message);
       }
     },
-    login(event) {
+    async login(event) {
       event.preventDefault();
       try {
-        Auth.loginUser({ email: loginEmail.value, password: loginPassword.value });
+        App.toast("Checking database login...");
+        await Auth.loginUser({ email: loginEmail.value, password: loginPassword.value });
         page = "home";
         localStorage.setItem("AITradeX_ACTIVE_PAGE", page);
         App.toast("Logged in successfully.");
@@ -4691,14 +4693,13 @@
         return;
       }
 
-      localStorage.setItem(`AITradeX_DISPLAY_NAME_${u.id}`, nextName);
+      u.name = nextName;
 
       const file = fileInput?.files?.[0];
       if (file) {
         try {
           App.toast("Uploading avatar...");
           const uploaded = await uploadStorageFile({ bucket: "user-avatars", folder: "avatars", label: "avatar", file });
-          localStorage.setItem(`AITradeX_AVATAR_${u.id}`, uploaded.url);
           u.avatarName = uploaded.name;
           u.avatarBucket = uploaded.bucket;
           u.avatarPath = uploaded.path;
@@ -4727,9 +4728,13 @@
 
   window.addEventListener("storage", event => {
     if (event.key === (App.storageKey || "AITradeX_STATE_V1")) {
-      if (App.reloadState) App.reloadState();
+      if (!App.databaseOnly && App.reloadState) App.reloadState();
       render();
     }
+  });
+
+  window.addEventListener("aitradex:db-loaded", () => {
+    render();
   });
 
   render();

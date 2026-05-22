@@ -157,3 +157,17 @@ create table if not exists public.ai_trade_batches (
 
 create index if not exists ai_trade_batches_type_idx on public.ai_trade_batches(batch_type);
 create index if not exists ai_trade_batches_created_at_idx on public.ai_trade_batches(created_at desc);
+
+
+-- Phase 5.11 Database-only support
+create table if not exists public.app_settings (
+  id text primary key default 'main',
+  settings jsonb not null default '{}'::jsonb,
+  updated_at timestamptz default now()
+);
+
+alter table public.plans add column if not exists raw jsonb default '{}'::jsonb;
+alter table public.referrals add column if not exists raw jsonb default '{}'::jsonb;
+
+alter table public.users add column if not exists avatar_url text;
+alter table public.users add column if not exists avatar_path text;

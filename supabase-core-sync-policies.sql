@@ -49,3 +49,9 @@ create policy "Allow anon read ai trade batches" on public.ai_trade_batches for 
 create policy "Allow anon insert ai trade batches" on public.ai_trade_batches for insert to anon with check (true);
 create policy "Allow anon update ai trade batches" on public.ai_trade_batches for update to anon using (true) with check (true);
 create policy "Allow anon delete ai trade batches" on public.ai_trade_batches for delete to anon using (true);
+
+
+-- Phase 5.11 database-only app settings policies
+alter table public.app_settings enable row level security;
+drop policy if exists "Allow anon all app_settings" on public.app_settings;
+create policy "Allow anon all app_settings" on public.app_settings for all to anon using (true) with check (true);

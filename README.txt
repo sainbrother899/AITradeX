@@ -100,3 +100,9 @@ Phase 5.10 - Telegram Alerts Scope Fix
 - Telegram delivery is now limited to KYC, Deposit and Withdrawal types only.
 - Added Telegram-capable KYC submit / approve / reject notifications.
 - Signup, support, AI, wallet adjustment, plan and security notifications no longer go to Telegram.
+
+# Phase 5.11 Database Only Mode
+- Supabase is now the primary source for login/register and app data.
+- Browser localStorage is no longer used for the full app state when Supabase config is present.
+- Run supabase-schema.sql and supabase-core-sync-policies.sql before testing this version.
+- PC/mobile cross-device login now checks Supabase users table.

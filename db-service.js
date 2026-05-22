@@ -199,6 +199,19 @@
     return row;
   }
 
+  function emitDbLoaded(detail = {}) {
+    try { window.dispatchEvent(new CustomEvent("aitradex:db-loaded", { detail })); } catch {}
+  }
+
+  function replaceInState(listName, row) {
+    if (!row || !row.id) return null;
+    App.state[listName] = Array.isArray(App.state[listName]) ? App.state[listName] : [];
+    const idx = App.state[listName].findIndex(x => String(x.id) === String(row.id));
+    if (idx >= 0) App.state[listName][idx] = row;
+    else App.state[listName].push(row);
+    return row;
+  }
+
   function lastSyncStatus() {
     try { return JSON.parse(localStorage.getItem("AITradeX_DB_LAST_SYNC") || "null"); } catch { return null; }
   }
@@ -224,6 +237,8 @@
       ai_trade_on: !!u.aiTradeOn,
       ai_trade_percent: Number(u.aiTradePercent || 25),
       free_trial_started_at: u.freeTrialStartedAt ? dateIso(u.freeTrialStartedAt) : null,
+      avatar_url: u.avatarUrl || u.avatar_url || null,
+      avatar_path: u.avatarPath || u.avatar_path || null,
       created_at: dateIso(u.createdAt || u.created_at)
     }));
   }
@@ -318,6 +333,66 @@
       read: !!x.read,
       created_at: dateIso(x.createdAt || x.created_at)
     })).filter(x => x.id);
+  }
+
+
+  function appSettingsRows() {
+    return [{ id: "main", settings: safeClone(App?.state?.settings || {}), updated_at: new Date().toISOString() }];
+  }
+
+  function planRows() {
+    return (App?.state?.plans || []).map(p => ({
+      id: String(p.id),
+      name: p.name || "Plan",
+      price: Number(p.price || 0),
+      signals: Number(p.signals || p.aiTradeLimit || 0),
+      ai_access: p.aiAccess || "AI Access",
+      trade_limit: Number(p.tradeLimit || p.signals || 0),
+      is_active: String(p.status || "ACTIVE").toUpperCase() !== "INACTIVE",
+      raw: safeClone(p)
+    })).filter(p => p.id);
+  }
+
+  function subscriptionRows() {
+    return (App?.state?.subscriptions || []).map(x => ({
+      id: String(x.id),
+      user_id: x.userId || x.user_id,
+      plan_id: x.planId || x.plan_id,
+      plan_name: x.planName || x.plan_name || "",
+      amount: Number(x.amount || x.price || 0),
+      status: x.status || "ACTIVE",
+      starts_at: x.startsAt ? dateIso(x.startsAt) : (x.createdAt ? dateIso(x.createdAt) : null),
+      expires_at: x.expiresAt ? dateIso(x.expiresAt) : null,
+      created_at: dateIso(x.createdAt || x.created_at)
+    })).filter(x => x.id && x.user_id);
+  }
+
+  function referralRows() {
+    return (App?.state?.referrals || []).map(r => ({
+      id: String(r.id),
+      referrer_user_id: r.referrerUserId || r.referrer_user_id,
+      referred_user_id: r.referredUserId || r.referred_user_id,
+      status: r.status || "REGISTERED",
+      commission_paid: !!(r.commissionPaid || r.commission_paid || r.bonuses?.deposit?.credited || r.bonuses?.subscription?.credited),
+      commission_amount: Number(r.commissionAmount || r.commission_amount || r.bonuses?.deposit?.amount || r.bonuses?.subscription?.amount || 0),
+      created_at: dateIso(r.createdAt || r.created_at),
+      raw: safeClone(r)
+    })).filter(r => r.id && r.referrer_user_id && r.referred_user_id);
+  }
+
+  function supportRows() {
+    return (App?.state?.supportTickets || []).map(t => ({
+      id: String(t.id),
+      user_id: t.userId || t.user_id,
+      user_email: t.userEmail || t.user_email || getEmailForUser(t.userId || t.user_id),
+      subject: t.subject || "Support Ticket",
+      category: t.category || "GENERAL",
+      message: t.message || "",
+      status: t.status || "OPEN",
+      replies: Array.isArray(t.replies) ? t.replies : [],
+      created_at: dateIso(t.createdAt || t.created_at),
+      updated_at: dateIso(t.updatedAt || t.updated_at || t.createdAt || t.created_at)
+    })).filter(t => t.id && t.user_id);
   }
 
   function tradeRows() {
@@ -419,6 +494,11 @@
     results.push(await upsertRows("ai_trade_batches", aiBatchRows(), "AI trade batches"));
     results.push(await upsertRows("admin_action_logs", adminActionRows(), "Admin action logs"));
     results.push(await upsertRows("notifications", notificationRows(), "Notifications"));
+    results.push(await upsertRows("app_settings", appSettingsRows(), "App settings"));
+    results.push(await upsertRows("plans", planRows(), "Plans"));
+    results.push(await upsertRows("subscriptions", subscriptionRows(), "Subscriptions"));
+    results.push(await upsertRows("referrals", referralRows(), "Referrals"));
+    results.push(await upsertRows("support_tickets", supportRows(), "Support tickets"));
     const total = results.reduce((s, r) => s + Number(r.count || 0), 0);
     dbStatus(`Core tables synced: ${total} row(s).`, true);
     if (!silent && App?.toast) App.toast("Core database sync completed.");
@@ -429,7 +509,7 @@
     return {
       id: r.id, name: r.name || "", email: r.email || "", mobile: r.mobile || "", role: r.role || "user", status: r.status || "ACTIVE",
       referralCode: r.referral_code || "", referredBy: r.referred_by || null, password: r.password_hash || "",
-      aiTradeOn: !!r.ai_trade_on, aiTradePercent: Number(r.ai_trade_percent || 25), freeTrialStartedAt: r.free_trial_started_at || "", createdAt: r.created_at || ""
+      aiTradeOn: !!r.ai_trade_on, aiTradePercent: Number(r.ai_trade_percent || 25), freeTrialStartedAt: r.free_trial_started_at || "", avatarUrl: r.avatar_url || "", avatarPath: r.avatar_path || "", createdAt: r.created_at || ""
     };
   }
   function camelLedger(r) { return { id: r.id, userId: r.user_id, accountType: r.account_type || "REAL", type: r.type, amount: Number(r.amount || 0), referenceId: r.reference_id, note: r.note || "", balanceAfter: Number(r.balance_after || 0), createdAt: r.created_at }; }
@@ -439,6 +519,10 @@
   function camelKyc(r) { return { id: r.id, userId: r.user_id, userEmail: r.user_email, fullName: r.full_name || "", mobile: r.mobile || "", idNumber: r.id_number || "", address: r.address || "", status: r.status || "PENDING", reviewedAt: r.reviewed_at || "", createdAt: r.created_at }; }
   function camelNotification(r) { return { id: r.id, audience: r.audience || "USER", userId: r.user_id || "", title: r.title || "", message: r.message || "", type: r.type || "INFO", linkPage: r.link_page || "", referenceId: r.reference_id || "", read: !!r.read, createdAt: r.created_at }; }
   function camelAdminAction(r) { return { id: String(r.id), adminUserId: r.admin_user_id || "admin", action: r.action || "ADMIN_ACTION", targetType: r.target_type || "SYSTEM", targetId: r.target_id || "", meta: r.meta || {}, createdAt: r.created_at || "" }; }
+  function camelPlan(r) { return r.raw && typeof r.raw === "object" ? r.raw : { id: r.id, name: r.name || "Plan", price: Number(r.price || 0), signals: Number(r.signals || r.trade_limit || 0), aiAccess: r.ai_access || "AI Access", status: r.is_active === false ? "INACTIVE" : "ACTIVE" }; }
+  function camelSubscription(r) { return { id: r.id, userId: r.user_id, planId: r.plan_id, planName: r.plan_name || "", amount: Number(r.amount || 0), price: Number(r.amount || 0), status: r.status || "ACTIVE", startsAt: r.starts_at || "", expiresAt: r.expires_at || "", createdAt: r.created_at || "" }; }
+  function camelReferral(r) { return r.raw && typeof r.raw === "object" ? r.raw : { id: r.id, referrerUserId: r.referrer_user_id, referredUserId: r.referred_user_id, status: r.status || "REGISTERED", commissionPaid: !!r.commission_paid, commissionAmount: Number(r.commission_amount || 0), bonuses: {}, createdAt: r.created_at || "" }; }
+  function camelSupport(t) { return { id: t.id, userId: t.user_id, userEmail: t.user_email || "", subject: t.subject || "Support Ticket", category: t.category || "GENERAL", message: t.message || "", status: t.status || "OPEN", replies: Array.isArray(t.replies) ? t.replies : [], createdAt: t.created_at || "", updatedAt: t.updated_at || "" }; }
 
   function camelTrade(r) {
     const raw = r.raw && typeof r.raw === "object" ? r.raw : {};
@@ -512,7 +596,7 @@
       if (error) throw new Error(`${table}: ${error.message}`);
       return data || [];
     };
-    const [users, methods, kyc, deposits, withdrawals, ledger, trades, batches, adminLogs, notifications] = await Promise.all([
+    const [users, methods, kyc, deposits, withdrawals, ledger, trades, batches, adminLogs, notifications, appSettings, plans, subscriptions, referrals, supportTickets] = await Promise.all([
       fetchTable("users"),
       fetchTable("payment_methods"),
       fetchTable("kyc_requests"),
@@ -522,7 +606,12 @@
       fetchTable("trade_orders"),
       fetchTable("ai_trade_batches"),
       fetchTable("admin_action_logs"),
-      fetchTable("notifications")
+      fetchTable("notifications"),
+      fetchTable("app_settings"),
+      fetchTable("plans"),
+      fetchTable("subscriptions"),
+      fetchTable("referrals"),
+      fetchTable("support_tickets")
     ]);
     const adminLocal = (App.state.users || []).filter(u => u.role === "admin");
     const pulledUsers = users.map(camelUser);
@@ -539,9 +628,66 @@
     App.state.aiLiveBatches = pulledBatches.filter(b => String(b.batch_type || b.batchType || '').toUpperCase() === 'LIVE');
     App.state.adminActionLogs = adminLogs.map(camelAdminAction).sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0));
     App.state.notifications = notifications.map(camelNotification);
+    const mainSettings = (appSettings || []).find(x => String(x.id) === "main") || appSettings?.[0];
+    if (mainSettings?.settings && typeof mainSettings.settings === "object") App.state.settings = { ...(App.state.settings || {}), ...mainSettings.settings };
+    if (plans.length) App.state.plans = plans.map(camelPlan);
+    App.state.subscriptions = subscriptions.map(camelSubscription);
+    App.state.referrals = referrals.map(camelReferral);
+    App.state.supportTickets = supportTickets.map(camelSupport);
     App.saveState();
-    dbStatus(`Core tables loaded from Supabase: ${users.length + deposits.length + withdrawals.length + ledger.length + trades.length + batches.length} row(s).`, true);
-    return { users: users.length, methods: methods.length, kyc: kyc.length, deposits: deposits.length, withdrawals: withdrawals.length, walletLedger: ledger.length, trades: trades.length, aiBatches: batches.length, adminActionLogs: adminLogs.length, notifications: notifications.length };
+    const summary = { users: users.length, methods: methods.length, kyc: kyc.length, deposits: deposits.length, withdrawals: withdrawals.length, walletLedger: ledger.length, trades: trades.length, aiBatches: batches.length, adminActionLogs: adminLogs.length, notifications: notifications.length, appSettings: appSettings.length, plans: plans.length, subscriptions: subscriptions.length, referrals: referrals.length, supportTickets: supportTickets.length };
+    dbStatus(`Core + trade tables loaded from Supabase: ${users.length + deposits.length + withdrawals.length + ledger.length + trades.length + batches.length} row(s).`, true);
+    emitDbLoaded({ type: "pull", summary });
+    return summary;
+  }
+
+  async function findUserByEmail(email) {
+    if (!SUPABASE_READY || !client) throw new Error("Supabase is not configured.");
+    const clean = String(email || "").trim().toLowerCase();
+    if (!clean) return null;
+    const { data, error } = await client.from("users").select("*").eq("email", clean).limit(1).maybeSingle();
+    if (error) throw error;
+    const user = data ? camelUser(data) : null;
+    if (user) replaceInState("users", user);
+    return user;
+  }
+
+  async function findUserByMobile(mobile) {
+    if (!SUPABASE_READY || !client) throw new Error("Supabase is not configured.");
+    const clean = String(mobile || "").replace(/\D/g, "").slice(-10);
+    if (!clean) return null;
+    const { data, error } = await client.from("users").select("*").eq("mobile", clean).limit(1).maybeSingle();
+    if (error) throw error;
+    const user = data ? camelUser(data) : null;
+    if (user) replaceInState("users", user);
+    return user;
+  }
+
+  async function upsertUserRecord(user) {
+    if (!SUPABASE_READY || !client) throw new Error("Supabase is not configured.");
+    if (!user?.id) throw new Error("User record missing id.");
+    const row = {
+      id: String(user.id),
+      name: user.name || "",
+      email: String(user.email || "").toLowerCase(),
+      mobile: user.mobile || "",
+      role: user.role || "user",
+      status: user.status || "ACTIVE",
+      referral_code: user.referralCode || user.referral_code || "",
+      referred_by: user.referredBy || user.referred_by || null,
+      password_hash: user.password || user.password_hash || "",
+      ai_trade_on: !!user.aiTradeOn,
+      ai_trade_percent: Number(user.aiTradePercent || 25),
+      free_trial_started_at: user.freeTrialStartedAt ? dateIso(user.freeTrialStartedAt) : null,
+      avatar_url: user.avatarUrl || user.avatar_url || null,
+      avatar_path: user.avatarPath || user.avatar_path || null,
+      created_at: dateIso(user.createdAt || user.created_at)
+    };
+    const { error } = await client.from("users").upsert(row, { onConflict: "id" });
+    if (error) throw error;
+    replaceInState("users", user);
+    dbStatus(`User synced to Supabase: ${row.email}`, true);
+    return user;
   }
 
   let syncTimer = null;
@@ -582,8 +728,19 @@
     importLocalBackup,
     syncCoreTables,
     pullCoreTables,
+    findUserByEmail,
+    findUserByMobile,
+    upsertUserRecord,
     lastSyncStatus,
     uploadUserFile,
     signedUrl
   };
+
+  if (SUPABASE_READY && client && !window.__AITRADEX_DB_BOOT_PULL__) {
+    window.__AITRADEX_DB_BOOT_PULL__ = true;
+    setTimeout(async () => {
+      try { await pullCoreTables(); }
+      catch (err) { dbStatus(err?.message || "Database boot load failed.", false); emitDbLoaded({ type: "error", message: err?.message || String(err) }); }
+    }, 80);
+  }
 })();

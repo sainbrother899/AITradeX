@@ -4,11 +4,16 @@ const normEmail=e=>String(e||"").trim().toLowerCase();
 const normMobile=m=>String(m||"").replace(/\D/g,"").slice(-10);
 const byEmail=e=>App.state.users.find(u=>normEmail(u.email)===normEmail(e));
 const byMobile=m=>{const clean=normMobile(m);return clean?App.state.users.find(u=>normMobile(u.mobile)===clean):null};
-function registerUser({name,email,mobile,password,referralCode}){
+async function registerUser({name,email,mobile,password,referralCode}){
   email=normEmail(email);
   mobile=normMobile(mobile);
+  const DB=window.AITradeXDB;
   if(!name||!email||!mobile||!password)throw new Error("Please fill all required fields.");
   if(!/^\d{10}$/.test(mobile))throw new Error("Please enter a valid 10 digit mobile number.");
+  if(App.databaseOnly&&(!DB||!DB.ready))throw new Error("Database connection required. Please check Supabase settings.");
+  if(DB?.ready){
+    try{await DB.pullCoreTables();}catch(err){throw new Error(`Unable to load database users: ${err.message||err}`);}
+  }
   if(byEmail(email))throw new Error("This email is already registered. Please login instead.");
   if(byMobile(mobile))throw new Error("This mobile number is already linked with another account.");
   const cleanReferral=String(referralCode||"").trim().toUpperCase();
@@ -17,7 +22,13 @@ function registerUser({name,email,mobile,password,referralCode}){
   App.state.users.push(user);
   App.state.profiles.push({id:App.uid("profile"),userId:user.id,name:user.name,email:user.email,mobile:user.mobile,createdAt:App.now()});
   if(referredBy)App.state.referrals.push({id:App.uid("ref"),referrerUserId:referredBy,referredUserId:user.id,status:"REGISTERED",commissionPaid:false,bonuses:{},createdAt:new Date().toISOString()});
-  App.saveState();App.setSession(user.id,"user");return user
+  App.saveState();
+  if(DB?.ready){
+    await DB.upsertUserRecord(user);
+    await DB.syncCoreTables({silent:true});
+  }
+  App.setSession(user.id,"user");
+  return user
 }
 function userLockKey(email){return "AITradeX_USER_LOGIN_LOCK_"+normEmail(email)}
 function userLockInfo(email){try{return JSON.parse(localStorage.getItem(userLockKey(email))||"{}")||{}}catch{return {}}}
@@ -25,9 +36,14 @@ function saveUserLock(email,row){localStorage.setItem(userLockKey(email),JSON.st
 function clearUserLock(email){localStorage.removeItem(userLockKey(email))}
 function registerUserFailure(email){const row=userLockInfo(email);const attempts=Number(row.attempts||0)+1;const lockedUntil=attempts>=6?Date.now()+10*60*1000:0;saveUserLock(email,{attempts,lockedUntil,lastFailedAt:Date.now()});return {attempts,lockedUntil}}
 function guardUserLock(email){const row=userLockInfo(email);const lockedUntil=Number(row.lockedUntil||0);if(lockedUntil&&Date.now()<lockedUntil){const mins=Math.ceil((lockedUntil-Date.now())/60000);throw new Error(`Too many wrong login attempts. Try again in ${mins} minute(s).`)}}
-function loginUser({email,password}){
+async function loginUser({email,password}){
   email=normEmail(email);
+  const DB=window.AITradeXDB;
   guardUserLock(email);
+  if(App.databaseOnly&&(!DB||!DB.ready))throw new Error("Database connection required. Please check Supabase settings.");
+  if(DB?.ready){
+    try{await DB.pullCoreTables();}catch(err){throw new Error(`Unable to load account from database: ${err.message||err}`);}
+  }
   const u=byEmail(email);
   if(!u||u.password!==password||u.role!=="user"){
     const row=registerUserFailure(email);
@@ -41,6 +57,7 @@ function loginUser({email,password}){
   App.setSession(u.id,"user");
   u.lastLoginAt=App.now();
   App.saveState();
+  if(DB?.ready){try{await DB.upsertUserRecord(u);}catch{}}
   return u
 }
 function adminLockKey(email){return "AITradeX_ADMIN_LOGIN_LOCK_"+normEmail(email)}
@@ -49,9 +66,14 @@ function saveAdminLock(email,row){localStorage.setItem(adminLockKey(email),JSON.
 function clearAdminLock(email){localStorage.removeItem(adminLockKey(email))}
 function registerAdminFailure(email){const row=adminLockInfo(email);const attempts=Number(row.attempts||0)+1;const lockedUntil=attempts>=5?Date.now()+15*60*1000:0;saveAdminLock(email,{attempts,lockedUntil,lastFailedAt:Date.now()});return {attempts,lockedUntil}}
 function guardAdminLock(email){const row=adminLockInfo(email);const lockedUntil=Number(row.lockedUntil||0);if(lockedUntil&&Date.now()<lockedUntil){const mins=Math.ceil((lockedUntil-Date.now())/60000);throw new Error(`Too many wrong admin login attempts. Try again in ${mins} minute(s).`)}}
-function loginControl({email,password}){
+async function loginControl({email,password}){
   email=normEmail(email);
+  const DB=window.AITradeXDB;
   guardAdminLock(email);
+  if(App.databaseOnly&&(!DB||!DB.ready))throw new Error("Database connection required. Please check Supabase settings.");
+  if(DB?.ready){
+    try{await DB.pullCoreTables();}catch(err){throw new Error(`Unable to load admin account from database: ${err.message||err}`);}
+  }
   const u=byEmail(email);
   if(!u||u.password!==password||u.role!=="admin"){
     const row=registerAdminFailure(email);
@@ -72,8 +94,8 @@ window.AITradeXAuth={registerUser,loginUser,loginControl};
   const App = window.AITradeX;
   if (!Auth || !App || Auth.loginAdmin) return;
 
-  Auth.loginAdmin = function ({ email, password }) {
-    if (Auth.loginControl) return Auth.loginControl({ email, password });
+  Auth.loginAdmin = async function ({ email, password }) {
+    if (Auth.loginControl) return await Auth.loginControl({ email, password });
     const admin = App.state.users.find(
       u => u.role === "admin" && String(u.email).toLowerCase() === String(email).toLowerCase() && u.password === password
     );

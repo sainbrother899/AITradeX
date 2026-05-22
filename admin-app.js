@@ -2595,7 +2595,7 @@
             <h3>Database Sync Center</h3>
             <span>Supabase backup/restore plus Phase 5.4 row-by-row sync for users, wallet, deposits, withdrawals, trades, AI positions and orders.</span>
           </div>
-          <span class="admin-count-pill ${configured ? "text-profit" : "text-loss"}">${configured ? "Supabase Configured" : "Local Mode"}</span>
+          <span class="admin-count-pill ${configured ? "text-profit" : "text-loss"}">${configured ? "Database Mode" : "Database Missing"}</span>
         </div>
         <div class="database-status-panel">
           <article>
@@ -2623,11 +2623,11 @@
           <button class="save-profile-btn" onclick="AITradeXAdmin.testDatabase(this)">Test Supabase Connection</button>
           <button class="save-profile-btn" onclick="AITradeXAdmin.syncCoreDatabase(this)">Sync Core + Trades</button>
           <button class="ghost-action" onclick="AITradeXAdmin.pullCoreDatabase(this)">Load Core + Trades</button>
-          <button class="save-profile-btn" onclick="AITradeXAdmin.backupDatabase(this)">Backup Local Data to Supabase</button>
+          <button class="save-profile-btn" onclick="AITradeXAdmin.backupDatabase(this)">Backup Database Snapshot</button>
           <button class="ghost-action" onclick="AITradeXAdmin.restoreDatabase(this)">Restore Latest Backup</button>
           <button class="ghost-action" onclick="AITradeXAdmin.go('audit')">Open Audit Logs</button>
-          <button class="ghost-action" onclick="AITradeXAdmin.exportLocalData()">Download Local Backup JSON</button>
-          <label class="ghost-action import-backup-label">Import Backup JSON<input type="file" accept="application/json" onchange="AITradeXAdmin.importLocalData(this.files && this.files[0])" hidden/></label>
+          <button class="ghost-action" onclick="AITradeXAdmin.exportLocalData()">Download Emergency Backup JSON</button>
+          <label class="ghost-action import-backup-label">Import Emergency Backup JSON<input type="file" accept="application/json" onchange="AITradeXAdmin.importLocalData(this.files && this.files[0])" hidden/></label>
           <a class="ghost-action" href="supabase-schema.sql" download>Download SQL Schema</a>
           <a class="ghost-action" href="supabase-storage-policies.sql" download>Download Storage Policies</a>
           <a class="ghost-action" href="supabase-core-sync-policies.sql" download>Download Core Sync Policies</a>
@@ -2915,7 +2915,7 @@
         if (box) box.textContent = err.message || "Backup failed.";
         App.toast(err.message || "Backup failed.");
       } finally {
-        if (button) { button.disabled = false; button.textContent = button.dataset.oldText || "Backup Local Data to Supabase"; }
+        if (button) { button.disabled = false; button.textContent = button.dataset.oldText || "Backup Database Snapshot"; }
       }
     },
     async restoreDatabase(button) {
@@ -2938,7 +2938,7 @@
     },
     exportLocalData() {
       window.AITradeXDB.downloadLocalBackup();
-      App.toast("Local backup download started.");
+      App.toast("Emergency backup download started.");
     },
     exportAuditLogs() {
       const data = { app: "AITradeX", exportedAt: new Date().toISOString(), logs: auditLogRows() };
@@ -2990,11 +2990,12 @@
       if (!ok) return;
       if (typeof this[action] === "function") this[action](userId, requestId, button);
     },
-    login(event) {
+    async login(event) {
       event.preventDefault();
       try {
         const login = Auth.loginAdmin || Auth.loginControl;
-        login({
+        App.toast("Checking admin database login...");
+        await login({
           email: adminEmail.value,
           password: adminPassword.value
         });
@@ -4026,6 +4027,10 @@
       render();
     }
   };
+
+  window.addEventListener("aitradex:db-loaded", () => {
+    render();
+  });
 
   render();
 })();
