@@ -66,7 +66,7 @@ create table if not exists public.support_tickets (
 );
 
 create table if not exists public.admin_action_logs (
-  id bigserial primary key,
+  id text primary key,
   admin_user_id text,
   action text not null,
   target_type text,
@@ -74,6 +74,18 @@ create table if not exists public.admin_action_logs (
   meta jsonb default '{}'::jsonb,
   created_at timestamptz default now()
 );
+
+-- Phase 5.5 audit log compatibility: older schema used bigserial id. Keep existing projects sync-safe.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'admin_action_logs' and column_name = 'id' and data_type <> 'text'
+  ) then
+    alter table public.admin_action_logs alter column id drop default;
+    alter table public.admin_action_logs alter column id type text using id::text;
+  end if;
+end $$;
 
 -- Phase 5.4 Trade + AI + Orders Sync
 -- Generic table for manual positions, limit orders, closed manual history, AI live positions and instant AI user entries.

@@ -90,6 +90,7 @@
       instantAiTrades: (s.trades || []).filter(t => String(t.tradeType || '').toUpperCase() === 'AI_INSTANT').length,
       pendingOrders: (s.trades || []).filter(t => String(t.status || '').toUpperCase().includes('PENDING')).length,
       aiTradeBatches: (s.aiTradeBatches || []).length,
+      adminActionLogs: (s.adminActionLogs || []).length,
       aiLiveBatches: (s.aiLiveBatches || []).length,
       notifications: (s.notifications || []).length,
       supportTickets: (s.supportTickets || []).length,
@@ -392,6 +393,19 @@
     })).filter(x => x.id);
   }
 
+
+  function adminActionRows() {
+    return (App?.state?.adminActionLogs || []).map(x => ({
+      id: String(x.id || `${x.action || "action"}_${x.createdAt || Date.now()}`),
+      admin_user_id: x.adminUserId || x.admin_user_id || "admin",
+      action: x.action || "ADMIN_ACTION",
+      target_type: x.targetType || x.target_type || "SYSTEM",
+      target_id: String(x.targetId || x.target_id || ""),
+      meta: x.meta && typeof x.meta === "object" ? x.meta : {},
+      created_at: dateIso(x.createdAt || x.created_at)
+    })).filter(x => x.id && x.action);
+  }
+
   async function syncCoreTables({ silent = false } = {}) {
     if (!SUPABASE_READY || !client) throw new Error("Supabase is not configured.");
     const results = [];
@@ -403,6 +417,7 @@
     results.push(await upsertRows("wallet_ledger", walletLedgerRows(), "Wallet ledger"));
     results.push(await upsertRows("trade_orders", tradeRows(), "Manual/AI trades and orders"));
     results.push(await upsertRows("ai_trade_batches", aiBatchRows(), "AI trade batches"));
+    results.push(await upsertRows("admin_action_logs", adminActionRows(), "Admin action logs"));
     results.push(await upsertRows("notifications", notificationRows(), "Notifications"));
     const total = results.reduce((s, r) => s + Number(r.count || 0), 0);
     dbStatus(`Core tables synced: ${total} row(s).`, true);
@@ -423,6 +438,7 @@
   function camelMethod(r) { return { id: r.id, userId: r.user_id, userEmail: r.user_email, type: r.type || "BANK", holderName: r.holder_name || "", upiId: r.upi_id || "", bankName: r.bank_name || "", accountNumber: r.account_number || "", ifsc: r.ifsc || "", status: r.status || "PENDING", rejectReason: r.rejection_reason || "", createdAt: r.created_at }; }
   function camelKyc(r) { return { id: r.id, userId: r.user_id, userEmail: r.user_email, fullName: r.full_name || "", mobile: r.mobile || "", idNumber: r.id_number || "", address: r.address || "", status: r.status || "PENDING", reviewedAt: r.reviewed_at || "", createdAt: r.created_at }; }
   function camelNotification(r) { return { id: r.id, audience: r.audience || "USER", userId: r.user_id || "", title: r.title || "", message: r.message || "", type: r.type || "INFO", linkPage: r.link_page || "", referenceId: r.reference_id || "", read: !!r.read, createdAt: r.created_at }; }
+  function camelAdminAction(r) { return { id: String(r.id), adminUserId: r.admin_user_id || "admin", action: r.action || "ADMIN_ACTION", targetType: r.target_type || "SYSTEM", targetId: r.target_id || "", meta: r.meta || {}, createdAt: r.created_at || "" }; }
 
   function camelTrade(r) {
     const raw = r.raw && typeof r.raw === "object" ? r.raw : {};
@@ -496,7 +512,7 @@
       if (error) throw new Error(`${table}: ${error.message}`);
       return data || [];
     };
-    const [users, methods, kyc, deposits, withdrawals, ledger, trades, batches, notifications] = await Promise.all([
+    const [users, methods, kyc, deposits, withdrawals, ledger, trades, batches, adminLogs, notifications] = await Promise.all([
       fetchTable("users"),
       fetchTable("payment_methods"),
       fetchTable("kyc_requests"),
@@ -505,6 +521,7 @@
       fetchTable("wallet_ledger"),
       fetchTable("trade_orders"),
       fetchTable("ai_trade_batches"),
+      fetchTable("admin_action_logs"),
       fetchTable("notifications")
     ]);
     const adminLocal = (App.state.users || []).filter(u => u.role === "admin");
@@ -520,10 +537,11 @@
     const pulledBatches = batches.map(camelAiBatch);
     App.state.aiTradeBatches = pulledBatches.filter(b => String(b.batch_type || b.batchType || '').toUpperCase() === 'INSTANT');
     App.state.aiLiveBatches = pulledBatches.filter(b => String(b.batch_type || b.batchType || '').toUpperCase() === 'LIVE');
+    App.state.adminActionLogs = adminLogs.map(camelAdminAction).sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0));
     App.state.notifications = notifications.map(camelNotification);
     App.saveState();
     dbStatus(`Core tables loaded from Supabase: ${users.length + deposits.length + withdrawals.length + ledger.length + trades.length + batches.length} row(s).`, true);
-    return { users: users.length, methods: methods.length, kyc: kyc.length, deposits: deposits.length, withdrawals: withdrawals.length, walletLedger: ledger.length, trades: trades.length, aiBatches: batches.length, notifications: notifications.length };
+    return { users: users.length, methods: methods.length, kyc: kyc.length, deposits: deposits.length, withdrawals: withdrawals.length, walletLedger: ledger.length, trades: trades.length, aiBatches: batches.length, adminActionLogs: adminLogs.length, notifications: notifications.length };
   }
 
   let syncTimer = null;

@@ -8,6 +8,7 @@ alter table public.withdrawal_requests enable row level security;
 alter table public.payment_methods enable row level security;
 alter table public.kyc_requests enable row level security;
 alter table public.notifications enable row level security;
+alter table public.admin_action_logs enable row level security;
 
 drop policy if exists "AITradeX anon all users" on public.users;
 drop policy if exists "AITradeX anon all wallet ledger" on public.wallet_ledger;
@@ -16,6 +17,7 @@ drop policy if exists "AITradeX anon all withdrawals" on public.withdrawal_reque
 drop policy if exists "AITradeX anon all payment methods" on public.payment_methods;
 drop policy if exists "AITradeX anon all kyc" on public.kyc_requests;
 drop policy if exists "AITradeX anon all notifications" on public.notifications;
+drop policy if exists "AITradeX anon all admin action logs" on public.admin_action_logs;
 
 create policy "AITradeX anon all users" on public.users for all to anon using (true) with check (true);
 create policy "AITradeX anon all wallet ledger" on public.wallet_ledger for all to anon using (true) with check (true);
@@ -24,6 +26,7 @@ create policy "AITradeX anon all withdrawals" on public.withdrawal_requests for 
 create policy "AITradeX anon all payment methods" on public.payment_methods for all to anon using (true) with check (true);
 create policy "AITradeX anon all kyc" on public.kyc_requests for all to anon using (true) with check (true);
 create policy "AITradeX anon all notifications" on public.notifications for all to anon using (true) with check (true);
+create policy "AITradeX anon all admin action logs" on public.admin_action_logs for all to anon using (true) with check (true);
 
 -- Phase 5.4 policies for trade/order sync tables.
 alter table public.trade_orders enable row level security;

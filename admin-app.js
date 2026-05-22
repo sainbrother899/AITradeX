@@ -564,7 +564,8 @@
               navButton("referrals", "🎁", "Referrals", "Rewards"),
               navButton("support", "🎧", "Support Tickets", "Inbox"),
               navButton("settings", "⚙️", "Payment Settings", "UPI/bank"),
-              navButton("database", "🗄️", "Database", "Supabase sync")
+              navButton("database", "🗄️", "Database", "Supabase sync"),
+              navButton("audit", "🧾", "Audit Logs", "Security log")
             ])}
           </nav>
           <button class="logout-btn admin-pro-logout" onclick="AITradeXAdmin.logout()">🚪 Logout</button>
@@ -606,7 +607,8 @@
       referrals: "Referrals",
       support: "Support Tickets",
       settings: "Payment Settings",
-      database: "Database"
+      database: "Database",
+      audit: "Audit Logs"
     };
     return titles[page] || "Dashboard";
   }
@@ -2410,12 +2412,18 @@
         <div class="review-grid compact-review database-count-grid">
           ${countRows}
         </div>
+        <div class="database-status-panel security-status-panel">
+          <article><b>Security Notice</b><p class="text-loss">Testing policies are open for prototype mode. Public launch requires Supabase Auth roles or Edge Functions.</p></article>
+          <article><b>Admin Action Logs</b><p>${(App.state.adminActionLogs || []).length} local audit row(s) ready for Supabase sync.</p></article>
+          <article><b>Last Backup</b><p>${lastSync ? esc(new Date(lastSync.at).toLocaleString("en-IN")) : "No sync yet."}</p></article>
+        </div>
         <div class="database-action-grid">
           <button class="save-profile-btn" onclick="AITradeXAdmin.testDatabase(this)">Test Supabase Connection</button>
           <button class="save-profile-btn" onclick="AITradeXAdmin.syncCoreDatabase(this)">Sync Core + Trades</button>
           <button class="ghost-action" onclick="AITradeXAdmin.pullCoreDatabase(this)">Load Core + Trades</button>
           <button class="save-profile-btn" onclick="AITradeXAdmin.backupDatabase(this)">Backup Local Data to Supabase</button>
           <button class="ghost-action" onclick="AITradeXAdmin.restoreDatabase(this)">Restore Latest Backup</button>
+          <button class="ghost-action" onclick="AITradeXAdmin.go('audit')">Open Audit Logs</button>
           <button class="ghost-action" onclick="AITradeXAdmin.exportLocalData()">Download Local Backup JSON</button>
           <label class="ghost-action import-backup-label">Import Backup JSON<input type="file" accept="application/json" onchange="AITradeXAdmin.importLocalData(this.files && this.files[0])" hidden/></label>
           <a class="ghost-action" href="supabase-schema.sql" download>Download SQL Schema</a>
@@ -2430,7 +2438,63 @@
           <article><b>Step 1</b><span>Supabase schema + backup/restore foundation</span><em>Added now</em></article>
           <article><b>Step 2</b><span>Sync users, KYC, bank methods, wallet ledger, deposit and withdrawal rows</span><em>Added now</em></article>
           <article><b>Step 3</b><span>Sync manual trades, pending orders, AI live positions and instant AI batches</span><em>Added now</em></article>
-          <article><b>Step 4</b><span>Move login/auth reads fully to database with secure user/admin roles</span><em>Next</em></article>
+          <article><b>Step 4</b><span>Admin action audit logs and security status panel</span><em>Added now</em></article>
+          <article><b>Step 5</b><span>Move login/auth reads fully to database with secure user/admin roles</span><em>Next</em></article>
+        </div>
+      </section>
+    `);
+  }
+
+
+  function auditLogRows() {
+    App.state.adminActionLogs = Array.isArray(App.state.adminActionLogs) ? App.state.adminActionLogs : [];
+    return [...App.state.adminActionLogs].sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0));
+  }
+
+  function logAdminAction(action, targetType = "SYSTEM", targetId = "", meta = {}) {
+    try {
+      return App.addAdminAction?.({ action, targetType, targetId, meta });
+    } catch (error) {
+      console.warn("Admin action log failed", error);
+      return null;
+    }
+  }
+
+  function auditPage() {
+    const logs = auditLogRows();
+    const last = logs[0];
+    const todayKey = new Date().toLocaleDateString("en-IN");
+    const todayCount = logs.filter(row => row.createdAt && new Date(row.createdAt).toLocaleDateString("en-IN") === todayKey).length;
+    const sensitive = logs.filter(row => /WALLET|DEPOSIT|WITHDRAWAL|AI_|KYC|PAYMENT|USER_STATUS|PLAN|PASSWORD/.test(String(row.action || ""))).length;
+    const visible = logs.slice(0, 60);
+    shell(`
+      <section class="premium-card database-control-card audit-control-card">
+        <div class="section-head">
+          <div><h3>Admin Security & Audit Logs</h3><span>Every sensitive admin action is recorded locally and synced to Supabase admin_action_logs.</span></div>
+          <span class="admin-count-pill">${logs.length} logs</span>
+        </div>
+        <div class="database-status-panel security-status-panel">
+          <article><b>Security Mode</b><p class="text-loss">Prototype RLS mode is active. Before public launch, move admin actions behind Supabase Auth / Edge Functions.</p></article>
+          <article><b>Today Actions</b><p>${todayCount} admin action(s) recorded today.</p></article>
+          <article><b>Sensitive Actions</b><p>${sensitive} wallet, finance, KYC, AI, plan or user-control actions tracked.</p></article>
+          <article><b>Latest Action</b><p>${last ? `${esc(last.action)} · ${new Date(last.createdAt).toLocaleString("en-IN")}` : "No action recorded yet."}</p></article>
+        </div>
+        <div class="database-action-grid">
+          <button class="save-profile-btn" onclick="AITradeXAdmin.syncCoreDatabase(this)">Sync Audit Logs to Supabase</button>
+          <button class="ghost-action" onclick="AITradeXAdmin.exportAuditLogs()">Export Audit JSON</button>
+          <button class="ghost-action" onclick="AITradeXAdmin.go('database')">Open Database Center</button>
+        </div>
+      </section>
+      <section class="premium-card audit-log-list-card">
+        <div class="section-head"><div><h3>Recent Audit Timeline</h3><span>Latest 60 admin actions. Use export for full list.</span></div></div>
+        <div class="admin-mini-table audit-log-table">
+          ${visible.length ? visible.map(row => `
+            <div>
+              <span>${esc(row.action || "ADMIN_ACTION")}</span>
+              <b>${esc(row.targetType || "SYSTEM")}${row.targetId ? ` · ${esc(row.targetId)}` : ""}</b>
+              <small>${row.createdAt ? new Date(row.createdAt).toLocaleString("en-IN") : "-"} · ${esc(row.adminName || row.adminUserId || "Admin")} ${row.meta ? `· ${esc(Object.entries(row.meta).slice(0,3).map(([k,v]) => `${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`).join(" · "))}` : ""}</small>
+            </div>
+          `).join("") : `<div class="empty-state">No audit logs yet. Sensitive admin actions will appear here.</div>`}
         </div>
       </section>
     `);
@@ -2466,6 +2530,7 @@
     if (page === "support") return supportPage();
     if (page === "settings") return settingsPage();
     if (page === "database") return databasePage();
+    if (page === "audit") return auditPage();
     return dashboardPage();
   }
 
@@ -2556,6 +2621,7 @@
         markButton(button, "Syncing...");
         const result = await window.AITradeXDB.syncCoreTables({ silent: true });
         if (box) box.textContent = `Core + trade tables synced to Supabase. ${result.total || 0} row(s) upserted. Users, wallet, deposits, withdrawals, manual trades, AI live positions, pending orders and AI batches included.`;
+        logAdminAction("DATABASE_SYNC", "DATABASE", "core_trades", { rows: result.total || 0 });
         App.toast("Core + trade tables synced.");
         render();
       } catch (err) {
@@ -2573,6 +2639,7 @@
         markButton(button, "Loading...");
         const result = await window.AITradeXDB.pullCoreTables();
         if (box) box.textContent = `Core + trade tables loaded. Users: ${result.users || 0}, deposits: ${result.deposits || 0}, withdrawals: ${result.withdrawals || 0}, ledger: ${result.walletLedger || 0}, trades: ${result.trades || 0}, AI batches: ${result.aiBatches || 0}.`;
+        logAdminAction("DATABASE_LOAD", "DATABASE", "core_trades", result);
         App.toast("Core + trade tables loaded from Supabase.");
         render();
       } catch (err) {
@@ -2589,6 +2656,7 @@
         const admin = adminUser();
         const row = await window.AITradeXDB.backupFullState({ savedBy: admin?.email || admin?.id || "admin", note: "Manual backup from admin database page" });
         if (box) box.textContent = `Backup saved to Supabase. Snapshot #${row.id} · ${row.saved_at || ""}`;
+        logAdminAction("DATABASE_BACKUP", "DATABASE", String(row.id || "snapshot"), { savedAt: row.saved_at || "" });
         App.toast("Database backup saved.");
       } catch (err) {
         if (box) box.textContent = err.message || "Backup failed.";
@@ -2605,6 +2673,7 @@
         markButton(button, "Restoring...");
         const snap = await window.AITradeXDB.restoreLatestSnapshot();
         if (box) box.textContent = `Restored snapshot #${snap.id} from ${snap.saved_at || "database"}.`;
+        logAdminAction("DATABASE_RESTORE", "DATABASE", String(snap.id || "snapshot"), { savedAt: snap.saved_at || "" });
         App.toast("Database backup restored.");
         render();
       } catch (err) {
@@ -2617,6 +2686,17 @@
     exportLocalData() {
       window.AITradeXDB.downloadLocalBackup();
       App.toast("Local backup download started.");
+    },
+    exportAuditLogs() {
+      const data = { app: "AITradeX", exportedAt: new Date().toISOString(), logs: auditLogRows() };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `aitradex-admin-audit-${new Date().toISOString().slice(0,10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+      App.toast("Audit logs exported.");
     },
     async importLocalData(file) {
       try {
@@ -2751,6 +2831,7 @@
       markButton(button, "Updating...");
       target.status = nextStatus;
       target.statusUpdatedAt = App.now();
+      logAdminAction("USER_STATUS_CHANGE", "USER", userId, { user: displayNameFor(target), status: nextStatus });
       App.saveState();
       App.toast(`User status changed to ${nextStatus}.`);
       render();
@@ -2780,6 +2861,7 @@
           note: note || `Admin wallet ${action.toLowerCase()}`
         });
         App.addNotification?.({ audience: "USER", userId, title: action === "DEDUCT" ? "Wallet debited by admin" : "Wallet credited by admin", message: `${App.money(amount)} ${action === "DEDUCT" ? "deducted from" : "added to"} your real wallet.${note ? ` Note: ${note}` : ""}`, type: "WALLET", linkPage: "wallet", referenceId });
+        logAdminAction(action === "DEDUCT" ? "WALLET_DEBIT" : "WALLET_CREDIT", "USER", userId, { user: displayNameFor(target), amount, note, referenceId });
         App.toast(`Wallet ${action === "DEDUCT" ? "deducted" : "credited"} successfully.`);
         render();
       } catch (error) {
@@ -2823,6 +2905,7 @@
       target.planChangedAt = App.now();
       target.planChangedBy = "admin";
       App.addNotification?.({ audience: "USER", userId, title: "Subscription plan updated", message: `Your plan was changed to ${plan.name} by admin.`, type: "PLAN", linkPage: "subscription", referenceId: `plan_${userId}_${Date.now()}` });
+      logAdminAction("PLAN_CHANGE", "USER", userId, { user: displayNameFor(target), planId: plan.id, planName: plan.name });
       App.saveState();
       App.toast(`${displayNameFor(target)} plan updated to ${plan.name}.`);
       render();
@@ -2840,6 +2923,7 @@
       target.password = next;
       target.passwordUpdatedAt = App.now();
       target.passwordUpdatedBy = "admin";
+      logAdminAction("PASSWORD_RESET", "USER", userId, { user: displayNameFor(target) });
       App.saveState();
       App.toast("Password reset successfully.");
       render();
@@ -2882,6 +2966,7 @@
         return;
       }
       App.state.settings = { ...(App.state.settings || {}), supportWhatsAppNumber: raw };
+      logAdminAction("SUPPORT_SETTINGS_UPDATE", "SETTINGS", "support", { whatsapp: raw });
       App.saveState();
       App.toast("Support settings saved.");
       render();
@@ -2901,6 +2986,7 @@
       ticket.replies.push({ by: "admin", message, createdAt: App.now() });
       ticket.status = "REPLIED";
       ticket.updatedAt = App.now();
+      logAdminAction("SUPPORT_REPLY", "SUPPORT", ticketId, { subject: ticket.subject || "", userId: ticket.userId || "" });
       App.saveState();
       App.toast("Reply sent.");
       render();
@@ -2914,6 +3000,7 @@
       ticket.status = "CLOSED";
       ticket.closedAt = App.now();
       ticket.updatedAt = App.now();
+      logAdminAction("SUPPORT_CLOSE", "SUPPORT", ticketId, { subject: ticket.subject || "", userId: ticket.userId || "" });
       App.saveState();
       App.toast("Ticket closed.");
       render();
@@ -2949,6 +3036,7 @@
           postTrialFreeAiTradesPerDay: Math.max(0, Number(get("postTrial")?.value || 1))
         };
       }
+      logAdminAction("PLAN_SETTINGS_UPDATE", "PLAN", planId, { name: next.name, price: next.price, signals: next.signals, status: next.status });
       App.saveState();
       App.toast(`${next.name} plan saved.`);
       render();
@@ -2963,6 +3051,7 @@
         referralDepositEnabled: document.getElementById("referralDepositEnabled")?.value !== "false",
         referralSubscriptionEnabled: document.getElementById("referralSubscriptionEnabled")?.value !== "false"
       };
+      logAdminAction("REFERRAL_SETTINGS_UPDATE", "SETTINGS", "referrals", { depositPercent: App.state.settings.referralDepositPercent, subscriptionPercent: App.state.settings.referralSubscriptionPercent });
       App.saveState();
       App.toast("Referral settings saved.");
       render();
@@ -2986,6 +3075,7 @@
           minWithdrawal: Math.max(1, Number(inputValue("settingMinWithdrawal") || 1000)),
           usdtInrRate: Math.max(1, Number(inputValue("settingUsdtInrRate") || 95))
         };
+        logAdminAction("PAYMENT_SETTINGS_UPDATE", "SETTINGS", "payment", { upiEnabled: App.state.settings.depositUpiEnabled, bankEnabled: App.state.settings.depositBankEnabled, minDeposit: App.state.settings.minDeposit, minWithdrawal: App.state.settings.minWithdrawal });
         App.saveState();
         App.toast("Payment settings saved.");
         render();
@@ -3161,6 +3251,7 @@
         createdAt: new Date().toISOString()
       });
       App.addNotification?.({ audience: "ADMIN", title: "Instant AI trade applied", message: `${pair} ${side} applied to ${appliedCount} user(s). Total P/L ${totalPnl >= 0 ? "+" : ""}${App.money(totalPnl)}.`, type: "AI", linkPage: "instantAi", referenceId: batchId });
+      logAdminAction("AI_INSTANT_TRADE", "AI_BATCH", batchId, { pair, side, leverage, appliedCount, skippedCount: report.skipped.length, totalPnl: Number(totalPnl.toFixed(2)) });
       App.saveState();
       App.toast(appliedCount ? `AI trade applied to ${appliedCount} valid user(s). ${report.skipped.length} skipped.` : "No valid AI users found. Trade was not applied.");
       render();
@@ -3289,6 +3380,7 @@
         createdAt: openedAt
       });
       App.addNotification?.({ audience: "ADMIN", title: "Live AI position opened", message: `${pair} ${side} opened for ${appliedCount} user(s). Locked ${App.money(totalMargin)}.`, type: "AI", linkPage: "liveAi", referenceId: batchId });
+      logAdminAction("AI_LIVE_OPEN", "AI_BATCH", batchId, { pair, side, leverage, appliedCount, skippedCount: report.skipped.length, totalMargin: Number(totalMargin.toFixed(2)), totalExposure: Number(totalExposure.toFixed(2)) });
       App.saveState();
       App.toast(appliedCount ? `Live AI position opened for ${appliedCount} valid user(s).` : "No valid AI users found. Live position not opened.");
       render();
@@ -3312,6 +3404,7 @@
         batch.closedAt = new Date().toISOString();
         batch.closeReason = "ADMIN_CLOSE";
       }
+      logAdminAction("AI_LIVE_CLOSE", "AI_BATCH", batchId, { closed, totalPositions: positions.length });
       App.saveState();
       App.toast(closed ? `Closed AI live trade for ${closed} user(s).` : "Unable to close trade.");
       render();
@@ -3363,6 +3456,7 @@
         request.adminNote = duplicate?.total ? `Checked duplicate UTR warning: ${duplicate.total} similar request(s).` : "Approved by admin.";
         saveDepositRequests(target, requests);
         App.addNotification?.({ audience: "USER", userId: target.id, title: "Deposit approved", message: `${App.money(amount)} deposit approved and credited to your wallet.`, type: "DEPOSIT", linkPage: "wallet", referenceId: `dep_ok_${request.id}` });
+        logAdminAction("DEPOSIT_APPROVE", "DEPOSIT", request.id, { userId: target.id, user: displayNameFor(target), amount, utr: request.utr || "", ledgerApplied: !ledgerExists });
         if (ledgerAdded && !ledgerExists) {
           App.creditReferralBonus?.({ referredUserId: target.id, eventType: "DEPOSIT", amount, referenceId: request.id, sourceLabel: `Deposit UTR ${request.utr || "-"}` });
         }
@@ -3394,6 +3488,7 @@
       request.adminNote = request.rejectReason;
       saveDepositRequests(target, requests);
       App.addNotification?.({ audience: "USER", userId: target.id, title: "Deposit rejected", message: request.rejectReason, type: "DEPOSIT", linkPage: "wallet", referenceId: `dep_no_${request.id}` });
+      logAdminAction("DEPOSIT_REJECT", "DEPOSIT", request.id, { userId: target.id, user: displayNameFor(target), amount: request.amount || 0, reason: request.rejectReason });
       App.toast("Deposit rejected.");
       render();
     },
@@ -3443,6 +3538,7 @@
         request.adminNote = "Approved payout by admin.";
         saveWithdrawalRequests(target, requests);
         App.addNotification?.({ audience: "USER", userId: target.id, title: "Withdrawal approved", message: `${App.money(amount)} withdrawal payout approved.`, type: "WITHDRAWAL", linkPage: "wallet", referenceId: `wd_ok_${request.id}` });
+        logAdminAction("WITHDRAWAL_APPROVE", "WITHDRAWAL", request.id, { userId: target.id, user: displayNameFor(target), amount, ledgerApplied: !ledgerExists });
         App.toast(ledgerExists ? "Withdrawal marked approved. Ledger was already applied." : "Withdrawal approved and balance debited.");
       } catch (err) {
         App.toast(err.message || "Unable to approve withdrawal.");
@@ -3471,6 +3567,7 @@
       request.adminNote = request.rejectReason;
       saveWithdrawalRequests(target, requests);
       App.addNotification?.({ audience: "USER", userId: target.id, title: "Withdrawal rejected", message: request.rejectReason, type: "WITHDRAWAL", linkPage: "wallet", referenceId: `wd_no_${request.id}` });
+      logAdminAction("WITHDRAWAL_REJECT", "WITHDRAWAL", request.id, { userId: target.id, user: displayNameFor(target), amount: request.amount || 0, reason: request.rejectReason });
       App.toast("Withdrawal rejected.");
       render();
     },
@@ -3488,6 +3585,7 @@
       kyc.rejectReason = "";
       kyc.approvedAt = new Date().toISOString();
       kyc.rejectedAt = "";
+      logAdminAction("KYC_APPROVE", "KYC", kyc.id || userId, { userId: target.id, user: displayNameFor(target) });
       saveKyc(target, kyc);
       App.toast("KYC approved successfully.");
       render();
@@ -3520,6 +3618,7 @@
       kyc.rejectReason = note ? `${reason}: ${note}` : reason;
       kyc.rejectedAt = new Date().toISOString();
       kyc.approvedAt = "";
+      logAdminAction("KYC_REJECT", "KYC", kyc.id || userId, { userId: target.id, user: displayNameFor(target), reason: kyc.rejectReason });
       saveKyc(target, kyc);
       App.toast("KYC rejected successfully.");
       render();
@@ -3540,6 +3639,7 @@
       method.rejectReason = "";
       method.approvedAt = new Date().toISOString();
       method.rejectedAt = "";
+      logAdminAction("PAYMENT_METHOD_APPROVE", "PAYMENT_METHOD", method.id, { userId: target.id, user: displayNameFor(target), bankName: method.bankName || "" });
       savePaymentMethods(target, methods);
       App.toast("Payment method approved successfully.");
       render();
@@ -3562,6 +3662,7 @@
       method.rejectReason = reason || "Rejected by admin.";
       method.rejectedAt = new Date().toISOString();
       method.approvedAt = "";
+      logAdminAction("PAYMENT_METHOD_REJECT", "PAYMENT_METHOD", method.id, { userId: target.id, user: displayNameFor(target), reason: method.rejectReason });
       savePaymentMethods(target, methods);
       App.toast("Payment method rejected successfully.");
       render();
@@ -3578,6 +3679,7 @@
 
       markButton(button, "Deleting...");
       const next = methods.filter(m => m.id !== methodId);
+      logAdminAction("PAYMENT_METHOD_DELETE", "PAYMENT_METHOD", method.id, { userId: target.id, user: displayNameFor(target), label });
       savePaymentMethods(target, next);
       App.toast("Payment method deleted.");
       render();
