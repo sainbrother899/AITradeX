@@ -55,3 +55,10 @@ Important:
 - This phase adds database backup/restore foundation first.
 - The app still works in local mode if Supabase keys are blank.
 - Full row-by-row migration for auth, wallet, trades and notifications should be done in next phases.
+
+Phase 5.2 note:
+For KYC/avatar Supabase Storage uploads, run supabase-storage-policies.sql in Supabase SQL Editor after creating these buckets:
+- kyc-documents
+- user-avatars
+- support-attachments
+These policies are for testing/client mode only. Lock them down before public launch.

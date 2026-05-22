@@ -331,6 +331,17 @@
     return digits ? `XXXX XXXX ${digits.slice(-4)}` : "-";
   }
 
+  function kycStoredText(meta, fallbackName) {
+    const name = meta?.name || fallbackName || "-";
+    return `${name}${meta?.path ? " · Storage saved" : ""}`;
+  }
+
+  function kycFileLink(meta, label = "View") {
+    const url = meta?.url || "";
+    if (!url) return "";
+    return `<a class="kyc-file-link admin" href="${esc(url)}" target="_blank" rel="noopener">${esc(label)}</a>`;
+  }
+
   function duplicateAadhaarWarning(user, kyc) {
     const aadhaar = digitsOnly(kyc?.id?.number || kyc?.idDetails?.number, 12);
     if (!aadhaar) return "";
@@ -1106,9 +1117,9 @@
           <article><span>Document</span><b>Aadhaar Card</b></article>
           <article><span>Aadhaar No.</span><b>${esc(maskAadhaar(kyc.id.number))}</b></article>
           <article><span>Submitted</span><b>${kyc.submittedAt ? new Date(kyc.submittedAt).toLocaleString() : "-"}</b></article>
-          <article><span>Aadhaar Front</span><b>${esc(kyc.uploads.frontName || "-")}</b></article>
-          <article><span>Aadhaar Back</span><b>${esc(kyc.uploads.backName || "-")}</b></article>
-          <article><span>Selfie</span><b>${esc(kyc.uploads.selfieName || "-")}</b></article>
+          <article><span>Aadhaar Front</span><b>${esc(kycStoredText({ name: kyc.uploads.frontName, path: kyc.uploads.frontPath }, "-"))}</b>${kycFileLink({ url: kyc.uploads.frontUrl }, "Open")}</article>
+          <article><span>Aadhaar Back</span><b>${esc(kycStoredText({ name: kyc.uploads.backName, path: kyc.uploads.backPath }, "-"))}</b>${kycFileLink({ url: kyc.uploads.backUrl }, "Open")}</article>
+          <article><span>Selfie</span><b>${esc(kycStoredText({ name: kyc.uploads.selfieName, path: kyc.uploads.selfiePath }, "-"))}</b>${kycFileLink({ url: kyc.uploads.selfieUrl }, "Open")}</article>
         </div>
 
         ${dateLine("Approved", kyc.approvedAt)}
@@ -2388,7 +2399,7 @@
           </article>
           <article>
             <b>Setup Required</b>
-            <p>Run <code>supabase-schema.sql</code> in Supabase SQL Editor, then add your project URL and anon key in <code>config.js</code>.</p>
+            <p>Run <code>supabase-schema.sql</code>, then run <code>supabase-storage-policies.sql</code> after creating Storage buckets.</p>
           </article>
         </div>
         <div class="review-grid compact-review database-count-grid">
@@ -2401,6 +2412,7 @@
           <button class="ghost-action" onclick="AITradeXAdmin.exportLocalData()">Download Local Backup JSON</button>
           <label class="ghost-action import-backup-label">Import Backup JSON<input type="file" accept="application/json" onchange="AITradeXAdmin.importLocalData(this.files && this.files[0])" hidden/></label>
           <a class="ghost-action" href="supabase-schema.sql" download>Download SQL Schema</a>
+          <a class="ghost-action" href="supabase-storage-policies.sql" download>Download Storage Policies</a>
         </div>
         <div id="databaseStatusBox" class="database-result-box">No database action yet.</div>
       </section>

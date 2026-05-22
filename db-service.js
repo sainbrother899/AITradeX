@@ -6,6 +6,71 @@
   const client = SUPABASE_READY ? (App?.db || window.supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY)) : null;
   const SNAPSHOT_TABLE = "app_state_snapshots";
 
+  const STORAGE_BUCKETS = {
+    kyc: "kyc-documents",
+    avatars: "user-avatars",
+    support: "support-attachments"
+  };
+
+  function cleanFileName(name) {
+    return String(name || "file")
+      .replace(/\s+/g, "-")
+      .replace(/[^a-zA-Z0-9._-]/g, "")
+      .slice(0, 80) || "file";
+  }
+
+  function fileExt(name, type) {
+    const fromName = String(name || "").split(".").pop();
+    if (fromName && fromName !== name && fromName.length <= 8) return fromName.toLowerCase();
+    if (String(type || "").includes("png")) return "png";
+    if (String(type || "").includes("jpeg") || String(type || "").includes("jpg")) return "jpg";
+    if (String(type || "").includes("pdf")) return "pdf";
+    return "bin";
+  }
+
+  function storagePath({ folder = "uploads", userId = "guest", label = "file", file }) {
+    const safeUser = String(userId || "guest").replace(/[^a-zA-Z0-9_-]/g, "");
+    const ext = fileExt(file?.name, file?.type);
+    const base = cleanFileName(file?.name || `${label}.${ext}`).replace(new RegExp(`\\.${ext}$`, "i"), "");
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const random = Math.random().toString(36).slice(2, 8);
+    return `${folder}/${safeUser}/${stamp}-${random}-${label}-${base}.${ext}`;
+  }
+
+  async function signedUrl(bucket, path, expiresIn = 60 * 60 * 24 * 7) {
+    if (!SUPABASE_READY || !client) throw new Error("Supabase is not configured.");
+    if (!bucket || !path) throw new Error("Storage bucket/path missing.");
+    const { data, error } = await client.storage.from(bucket).createSignedUrl(path, expiresIn);
+    if (error) throw error;
+    return data?.signedUrl || "";
+  }
+
+  async function uploadUserFile({ bucket, folder = "uploads", userId, label = "file", file }) {
+    if (!file) throw new Error("Select a file first.");
+    if (!SUPABASE_READY || !client) throw new Error("Supabase is not configured. Add URL and anon key in config.js.");
+    const path = storagePath({ folder, userId, label, file });
+    const { error } = await client.storage.from(bucket).upload(path, file, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType: file.type || "application/octet-stream"
+    });
+    if (error) throw error;
+    let url = "";
+    try { url = await signedUrl(bucket, path); } catch {
+      const { data } = client.storage.from(bucket).getPublicUrl(path);
+      url = data?.publicUrl || "";
+    }
+    return {
+      bucket,
+      path,
+      url,
+      name: file.name || cleanFileName(path.split("/").pop()),
+      size: file.size || 0,
+      type: file.type || "",
+      uploadedAt: new Date().toISOString()
+    };
+  }
+
   function safeClone(value) {
     try { return JSON.parse(JSON.stringify(value || {})); } catch { return {}; }
   }
@@ -112,12 +177,15 @@
     ready: SUPABASE_READY,
     client,
     snapshotTable: SNAPSHOT_TABLE,
+    storageBuckets: STORAGE_BUCKETS,
     countsFromState,
     testConnection,
     backupFullState,
     latestSnapshot,
     restoreLatestSnapshot,
     downloadLocalBackup,
-    importLocalBackup
+    importLocalBackup,
+    uploadUserFile,
+    signedUrl
   };
 })();

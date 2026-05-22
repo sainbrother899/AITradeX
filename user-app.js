@@ -1191,11 +1191,34 @@
 
   function avatar(name) {
     const u = user();
-    const avatarData = u ? localStorage.getItem(`AITradeX_AVATAR_${u.id}`) : "";
+    const avatarData = u ? (localStorage.getItem(`AITradeX_AVATAR_${u.id}`) || u.avatarUrl || "") : "";
     if (avatarData) {
-      return `<span class="avatar image-avatar"><img src="${avatarData}" alt="Avatar"/></span>`;
+      return `<span class="avatar image-avatar"><img src="${App.escapeHtml(avatarData)}" alt="Avatar"/></span>`;
     }
     return `<span class="avatar">${String(name || "A").trim().charAt(0).toUpperCase()}</span>`;
+  }
+
+  function storageReady() {
+    return !!(window.AITradeXDB && window.AITradeXDB.ready && window.AITradeXDB.uploadUserFile);
+  }
+
+  async function uploadStorageFile({ bucket, folder, label, file }) {
+    const u = user();
+    if (!u) throw new Error("Login required.");
+    if (!storageReady()) throw new Error("Supabase storage is not ready. Check config.js and storage policies.");
+    return await window.AITradeXDB.uploadUserFile({ bucket, folder, label, file, userId: u.id });
+  }
+
+  function uploadStatusText(meta, fallbackName) {
+    const name = meta?.name || fallbackName || "-";
+    const stored = meta?.path ? " · Storage saved" : "";
+    return `${name}${stored}`;
+  }
+
+  function fileViewLink(meta, label = "View") {
+    const url = meta?.url || "";
+    if (!url) return "";
+    return `<a class="kyc-file-link" href="${App.escapeHtml(url)}" target="_blank" rel="noopener">${App.escapeHtml(label)}</a>`;
   }
 
   function displayName() {
@@ -1266,8 +1289,23 @@
     };
     const uploads = {
       frontName: saved.uploads?.frontName || "",
+      frontPath: saved.uploads?.frontPath || "",
+      frontBucket: saved.uploads?.frontBucket || "",
+      frontUrl: saved.uploads?.frontUrl || "",
+      frontSize: saved.uploads?.frontSize || 0,
+      frontType: saved.uploads?.frontType || "",
       backName: saved.uploads?.backName || "",
-      selfieName: saved.uploads?.selfieName || ""
+      backPath: saved.uploads?.backPath || "",
+      backBucket: saved.uploads?.backBucket || "",
+      backUrl: saved.uploads?.backUrl || "",
+      backSize: saved.uploads?.backSize || 0,
+      backType: saved.uploads?.backType || "",
+      selfieName: saved.uploads?.selfieName || "",
+      selfiePath: saved.uploads?.selfiePath || "",
+      selfieBucket: saved.uploads?.selfieBucket || "",
+      selfieUrl: saved.uploads?.selfieUrl || "",
+      selfieSize: saved.uploads?.selfieSize || 0,
+      selfieType: saved.uploads?.selfieType || ""
     };
     return {
       status: saved.status || "NOT_SUBMITTED",
@@ -1485,9 +1523,9 @@
           <article><span>Pincode</span><b>${App.escapeHtml(kyc.personal.pincode || "-")}</b></article>
           <article><span>Document</span><b>Aadhaar Card</b></article>
           <article><span>Aadhaar No.</span><b>${App.escapeHtml(maskAadhaar(kyc.id.number))}</b></article>
-          <article><span>Aadhaar Front</span><b>${App.escapeHtml(kyc.uploads.frontName || "-")}</b></article>
-          <article><span>Aadhaar Back</span><b>${App.escapeHtml(kyc.uploads.backName || "-")}</b></article>
-          <article><span>Selfie</span><b>${App.escapeHtml(kyc.uploads.selfieName || "-")}</b></article>
+          <article><span>Aadhaar Front</span><b>${App.escapeHtml(uploadStatusText({ name: kyc.uploads.frontName, path: kyc.uploads.frontPath }, "-"))}</b>${fileViewLink({ url: kyc.uploads.frontUrl }, "View")}</article>
+          <article><span>Aadhaar Back</span><b>${App.escapeHtml(uploadStatusText({ name: kyc.uploads.backName, path: kyc.uploads.backPath }, "-"))}</b>${fileViewLink({ url: kyc.uploads.backUrl }, "View")}</article>
+          <article><span>Selfie</span><b>${App.escapeHtml(uploadStatusText({ name: kyc.uploads.selfieName, path: kyc.uploads.selfiePath }, "-"))}</b>${fileViewLink({ url: kyc.uploads.selfieUrl }, "View")}</article>
           ${kyc.submittedAt ? `<article><span>Submitted On</span><b>${new Date(kyc.submittedAt).toLocaleString()}</b></article>` : ""}
           ${kyc.approvedAt ? `<article><span>Approved On</span><b>${new Date(kyc.approvedAt).toLocaleString()}</b></article>` : ""}
           ${kyc.rejectedAt ? `<article><span>Rejected On</span><b>${new Date(kyc.rejectedAt).toLocaleString()}</b></article>` : ""}
@@ -2977,15 +3015,15 @@
             <label class="upload-box inline-upload">
               <span>Aadhaar Front Image</span>
               <input id="kycFront" type="file" accept="image/*,.pdf"/>
-              <b>${App.escapeHtml(kyc.uploads.frontName || "Upload clear front side")}</b>
+              <b>${App.escapeHtml(uploadStatusText({ name: kyc.uploads.frontName, path: kyc.uploads.frontPath }, "Upload clear front side"))}</b>
             </label>
             <label class="upload-box inline-upload">
               <span>Aadhaar Back Image</span>
               <input id="kycBack" type="file" accept="image/*,.pdf"/>
-              <b>${App.escapeHtml(kyc.uploads.backName || "Upload clear back side")}</b>
+              <b>${App.escapeHtml(uploadStatusText({ name: kyc.uploads.backName, path: kyc.uploads.backPath }, "Upload clear back side"))}</b>
             </label>
           </div>
-          <div class="profile-note">Aadhaar number must be exactly 12 digits. Front and back images are required for admin review.</div>
+          <div class="profile-note">Aadhaar number must be exactly 12 digits. Front and back images upload to Supabase Storage for admin review.</div>
         ` : ""}
 
         ${kycStep === 3 ? `
@@ -2995,7 +3033,7 @@
             <label class="upload-box">
               <span>Selfie Image</span>
               <input id="kycSelfie" type="file" accept="image/*"/>
-              <b>${App.escapeHtml(kyc.uploads.selfieName || "Upload clear selfie")}</b>
+              <b>${App.escapeHtml(uploadStatusText({ name: kyc.uploads.selfieName, path: kyc.uploads.selfiePath }, "Upload clear selfie"))}</b>
             </label>
           </div>
           <label class="kyc-check-row">
@@ -3251,7 +3289,7 @@
         </div>
         <div class="profile-form compact-inner-form">
           <label>Display Name<input id="profileNameInput" value="${App.escapeHtml(savedName)}" placeholder="Your display name"/></label>
-          <label>Avatar Image<input id="profileAvatarInput" type="file" accept="image/*"/></label>
+          <label>Avatar Image<input id="profileAvatarInput" type="file" accept="image/*"/><small>Uploads to user-avatars bucket when Supabase Storage is ready.</small></label>
           <button class="save-profile-btn" onclick="AITradeXUser.saveProfile()">Save Profile</button>
         </div>
       </section>
@@ -3843,7 +3881,7 @@
       localStorage.setItem("AITradeX_KYC_STEP", String(kycStep));
       render();
     },
-    saveKycStep() {
+    async saveKycStep() {
       const kyc = currentKyc();
       if (kyc.status === "PENDING" || kyc.status === "APPROVED") {
         App.toast("KYC already submitted.");
@@ -3874,8 +3912,31 @@
         kyc.id.number = digitsOnly(document.getElementById("kycAadhaar")?.value || "", 12);
         const front = document.getElementById("kycFront")?.files?.[0];
         const back = document.getElementById("kycBack")?.files?.[0];
-        if (front) kyc.uploads.frontName = front.name;
-        if (back) kyc.uploads.backName = back.name;
+        try {
+          if (front) {
+            App.toast("Uploading Aadhaar front...");
+            const uploaded = await uploadStorageFile({ bucket: "kyc-documents", folder: "aadhaar-front", label: "aadhaar-front", file: front });
+            kyc.uploads.frontName = uploaded.name;
+            kyc.uploads.frontPath = uploaded.path;
+            kyc.uploads.frontBucket = uploaded.bucket;
+            kyc.uploads.frontUrl = uploaded.url;
+            kyc.uploads.frontSize = uploaded.size;
+            kyc.uploads.frontType = uploaded.type;
+          }
+          if (back) {
+            App.toast("Uploading Aadhaar back...");
+            const uploaded = await uploadStorageFile({ bucket: "kyc-documents", folder: "aadhaar-back", label: "aadhaar-back", file: back });
+            kyc.uploads.backName = uploaded.name;
+            kyc.uploads.backPath = uploaded.path;
+            kyc.uploads.backBucket = uploaded.bucket;
+            kyc.uploads.backUrl = uploaded.url;
+            kyc.uploads.backSize = uploaded.size;
+            kyc.uploads.backType = uploaded.type;
+          }
+        } catch (err) {
+          App.toast(`KYC document upload failed: ${err.message || err}`);
+          return;
+        }
         if (!/^\d{12}$/.test(kyc.id.number)) {
           App.toast("Please enter a valid 12-digit Aadhaar number.");
           return;
@@ -3892,7 +3953,21 @@
 
       if (kycStep === 3) {
         const selfie = document.getElementById("kycSelfie")?.files?.[0];
-        if (selfie) kyc.uploads.selfieName = selfie.name;
+        try {
+          if (selfie) {
+            App.toast("Uploading selfie...");
+            const uploaded = await uploadStorageFile({ bucket: "kyc-documents", folder: "selfies", label: "selfie", file: selfie });
+            kyc.uploads.selfieName = uploaded.name;
+            kyc.uploads.selfiePath = uploaded.path;
+            kyc.uploads.selfieBucket = uploaded.bucket;
+            kyc.uploads.selfieUrl = uploaded.url;
+            kyc.uploads.selfieSize = uploaded.size;
+            kyc.uploads.selfieType = uploaded.type;
+          }
+        } catch (err) {
+          App.toast(`Selfie upload failed: ${err.message || err}`);
+          return;
+        }
         kyc.declarationAccepted = !!document.getElementById("kycDeclaration")?.checked;
         if (!kyc.uploads.selfieName) {
           App.toast("Selfie image is required.");
@@ -4450,7 +4525,7 @@
       App.toast("Support ticket submitted.");
       render();
     },
-    saveProfile() {
+    async saveProfile() {
       const u = user();
       if (!u) return;
 
@@ -4467,14 +4542,23 @@
 
       const file = fileInput?.files?.[0];
       if (file) {
-        const reader = new FileReader();
-        reader.onload = () => {
-          localStorage.setItem(`AITradeX_AVATAR_${u.id}`, reader.result);
+        try {
+          App.toast("Uploading avatar...");
+          const uploaded = await uploadStorageFile({ bucket: "user-avatars", folder: "avatars", label: "avatar", file });
+          localStorage.setItem(`AITradeX_AVATAR_${u.id}`, uploaded.url);
+          u.avatarName = uploaded.name;
+          u.avatarBucket = uploaded.bucket;
+          u.avatarPath = uploaded.path;
+          u.avatarUrl = uploaded.url;
+          u.avatarUploadedAt = uploaded.uploadedAt;
+          App.saveState();
           App.toast("Profile updated.");
           render();
-        };
-        reader.readAsDataURL(file);
+        } catch (err) {
+          App.toast(`Avatar upload failed: ${err.message || err}`);
+        }
       } else {
+        App.saveState();
         App.toast("Profile updated.");
         render();
       }

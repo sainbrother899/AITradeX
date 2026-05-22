@@ -7441,3 +7441,31 @@ textarea::placeholder{
 .database-roadmap-list em{display:inline-flex;margin-top:10px;font-style:normal;color:rgba(221,231,255,.68);font-size:11px;border:1px solid rgba(255,255,255,.1);border-radius:999px;padding:5px 9px}
 @media(max-width:900px){.database-status-panel,.database-action-grid{grid-template-columns:1fr}.database-roadmap-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:560px){.database-roadmap-list{grid-template-columns:1fr}}
+
+/* Phase 5.2 · Supabase storage preview links */
+.kyc-file-link{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:max-content;
+  margin-top:6px;
+  padding:5px 10px;
+  border-radius:999px;
+  border:1px solid rgba(75,214,255,.28);
+  background:rgba(75,214,255,.08);
+  color:#8fe8ff;
+  font-size:11px;
+  font-weight:800;
+  text-decoration:none;
+  letter-spacing:.02em;
+}
+.kyc-file-link:hover{background:rgba(75,214,255,.16);border-color:rgba(75,214,255,.46)}
+.kyc-file-link.admin{border-color:rgba(46,229,157,.25);background:rgba(46,229,157,.08);color:#8fffd0}
+.upload-box small,
+.profile-form label small{
+  display:block;
+  margin-top:6px;
+  color:var(--muted);
+  font-size:11px;
+  font-weight:700;
+}
