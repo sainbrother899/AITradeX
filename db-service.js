@@ -714,12 +714,25 @@
     if (!SUPABASE_READY || !client) throw new Error("Supabase is not configured.");
     if (!user?.id) throw new Error("User record missing id.");
     const row = userToRow(user);
-    const existingByEmail = row.email ? await findUserByEmail(row.email) : null;
-    if (existingByEmail) return { user: existingByEmail, existed: true, match: String(existingByEmail.password || existingByEmail.password_hash || "") === String(user.password || user.password_hash || "") };
-    const existingByMobile = row.mobile ? await findUserByMobile(row.mobile) : null;
-    if (existingByMobile) return { user: existingByMobile, existed: true, match: String(existingByMobile.password || existingByMobile.password_hash || "") === String(user.password || user.password_hash || "") };
 
-    const { data, error } = await client.from("users").insert(row).select("*").single();
+    async function existingMatch(existing) {
+      return {
+        user: existing,
+        existed: true,
+        match: String(existing?.password || existing?.password_hash || "") === String(user.password || user.password_hash || "")
+      };
+    }
+
+    // Always check existing account first. This makes repeated signup/login recovery safe on PC and mobile.
+    const existingByEmail = row.email ? await findUserByEmail(row.email) : null;
+    if (existingByEmail) return existingMatch(existingByEmail);
+    const existingByMobile = row.mobile ? await findUserByMobile(row.mobile) : null;
+    if (existingByMobile) return existingMatch(existingByMobile);
+
+    // IMPORTANT: Do not chain .select().single() here. Some Supabase RLS setups allow INSERT
+    // but block RETURNING/SELECT, which creates the row and then shows a policy error on mobile.
+    // We insert with minimal returning and treat the local user object as the source of truth.
+    const { error } = await client.from("users").insert(row, { returning: "minimal" });
     if (error) {
       const msg = String(error.message || error || "");
       const duplicate = /duplicate key|unique constraint|users_email|users_mobile|users_pkey/i.test(msg);
@@ -727,12 +740,11 @@
       let recovered = null;
       try { recovered = row.email ? await findUserByEmail(row.email) : null; } catch {}
       if (!recovered && row.mobile) { try { recovered = await findUserByMobile(row.mobile); } catch {} }
-      if ((duplicate || policy) && recovered) {
-        return { user: recovered, existed: true, match: String(recovered.password || recovered.password_hash || "") === String(user.password || user.password_hash || "") };
-      }
+      if (recovered && (duplicate || policy)) return existingMatch(recovered);
       throw error;
     }
-    const saved = data ? camelUser(data) : user;
+
+    const saved = { ...user, email: row.email, mobile: row.mobile, password: row.password_hash, password_hash: row.password_hash };
     replaceInState("users", saved);
     dbStatus(`User created in Supabase: ${row.email}`, true);
     return { user: saved, existed: false, match: true };

@@ -89,27 +89,49 @@ function clearUserLock(email){localStorage.removeItem(userLockKey(email))}
 function registerUserFailure(email){const row=userLockInfo(email);const attempts=Number(row.attempts||0)+1;const lockedUntil=attempts>=6?Date.now()+10*60*1000:0;saveUserLock(email,{attempts,lockedUntil,lastFailedAt:Date.now()});return {attempts,lockedUntil}}
 function guardUserLock(email){const row=userLockInfo(email);const lockedUntil=Number(row.lockedUntil||0);if(lockedUntil&&Date.now()<lockedUntil){const mins=Math.ceil((lockedUntil-Date.now())/60000);throw new Error(`Too many wrong login attempts. Try again in ${mins} minute(s).`)}}
 async function loginUser({email,password}){
-  email=normEmail(email);
+  const loginId=String(email||"").trim();
+  email=normEmail(loginId);
+  const mobile=normMobile(loginId);
   const DB=window.AITradeXDB;
-  guardUserLock(email);
+  guardUserLock(email||mobile||loginId);
   if(App.databaseOnly&&(!DB||!DB.ready))throw new Error("Database connection required. Please check Supabase settings.");
+
+  // Database-only login must verify the account directly from users table.
+  // Do not pull every table before login; one RLS issue in another table should not block login.
+  let u=null;
   if(DB?.ready){
-    try{await DB.pullCoreTables();}catch(err){throw new Error(`Unable to load account from database: ${err.message||err}`);}
+    try{
+      if(email&&email.includes("@"))u=await DB.findUserByEmail(email);
+      if(!u&&mobile)u=await DB.findUserByMobile(mobile);
+      if(!u&&email)u=await DB.findUserByEmail(email);
+    }catch(err){
+      throw new Error(`Unable to check account in database: ${err.message||err}`);
+    }
+  }else{
+    u=byEmail(email)||byMobile(mobile);
   }
-  const u=byEmail(email);
-  if(!u||u.password!==password||u.role!=="user"){
-    const row=registerUserFailure(email);
+
+  if(!u||String(u.password||u.password_hash||"")!==String(password||"")||String(u.role||"user").toLowerCase()!=="user"){
+    const row=registerUserFailure(email||mobile||loginId);
     const left=Math.max(0,6-Number(row.attempts||0));
     throw new Error(left?`Invalid user login details. ${left} attempt(s) left before temporary lock.`:"Invalid user login details. Login temporarily locked.");
   }
   const status=String(u.status||"ACTIVE").toUpperCase();
   if(status==="BLOCKED")throw new Error("Your account is blocked.");
   if(status==="SUSPENDED")throw new Error("Your account is suspended. Please contact support.");
-  clearUserLock(email);
+  clearUserLock(email||mobile||loginId);
   App.setSession(u.id,"user");
   u.lastLoginAt=App.now();
-  App.saveState();
-  if(DB?.ready){try{await DB.upsertUserRecord(u);}catch{}}
+  App.__suspendDbAutoWrite=true;
+  try{
+    const idx=App.state.users.findIndex(x=>x.id===u.id||normEmail(x.email)===normEmail(u.email)||normMobile(x.mobile)===normMobile(u.mobile));
+    if(idx>=0)App.state.users[idx]=u; else App.state.users.push(u);
+    App.saveState();
+  }finally{App.__suspendDbAutoWrite=false;}
+  if(DB?.ready){
+    try{await DB.upsertUserRecord(u);}catch{}
+    try{await DB.pullCoreTables();}catch(err){try{console.warn("Post-login data load warning",err);}catch{}}
+  }
   return u
 }
 function adminLockKey(email){return "AITradeX_ADMIN_LOGIN_LOCK_"+normEmail(email)}
@@ -123,17 +145,20 @@ async function loginControl({email,password}){
   const DB=window.AITradeXDB;
   guardAdminLock(email);
   if(App.databaseOnly&&(!DB||!DB.ready))throw new Error("Database connection required. Please check Supabase settings.");
+
+  let u=null;
   if(DB?.ready){
-    try{await DB.pullCoreTables();}catch(err){throw new Error(`Unable to load admin account from database: ${err.message||err}`);}
+    try{u=await DB.findUserByEmail(email);}catch(err){throw new Error(`Unable to check admin account in database: ${err.message||err}`);}
   }
-  const u=byEmail(email);
-  if(!u||u.password!==password||u.role!=="admin"){
+  if(!u)u=byEmail(email);
+  if(!u||String(u.password||u.password_hash||"")!==String(password||"")||String(u.role||"").toLowerCase()!=="admin"){
     const row=registerAdminFailure(email);
     const left=Math.max(0,5-Number(row.attempts||0));
     throw new Error(left?`Invalid control center login. ${left} attempt(s) left before temporary lock.`:"Invalid control center login. Admin login temporarily locked.");
   }
   clearAdminLock(email);
   App.setSession(u.id,"admin");
+  try{await DB?.pullCoreTables?.();}catch(err){try{console.warn("Post-admin-login data load warning",err);}catch{}}
   App.addAdminAction?.({action:"ADMIN_LOGIN",targetType:"ADMIN",targetId:u.id,meta:{email}});
   return u
 }
