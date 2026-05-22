@@ -1259,7 +1259,20 @@
       depositBankName: "AITradeX Bank",
       depositAccountName: "AITradeX Private Wallet",
       depositAccountNumber: "123456789012",
-      depositIfsc: "AITX0001234"
+      depositIfsc: "AITX0001234",
+      depositEnabled: true,
+      withdrawalEnabled: true,
+      manualTradingEnabled: true,
+      aiTradingEnabled: true,
+      maintenanceMode: false,
+      maxDeposit: 1000000,
+      maxWithdrawal: 500000,
+      minManualTrade: 100,
+      maxManualTrade: 250000,
+      minAiTrade: 100,
+      maxAiTrade: 250000,
+      maxLeverage: 2000,
+      maxOpenPositionsPerUser: 10
     };
     App.state.settings = { ...defaults, ...(App.state.settings || {}) };
     return App.state.settings;
@@ -2318,7 +2331,9 @@
     const withdrawals = withdrawalRequests();
     const settings = platformSettings();
     const minDeposit = Number(settings.minDeposit || 500);
+    const maxDeposit = Number(settings.maxDeposit || 1000000);
     const minWithdrawal = Number(settings.minWithdrawal || 1000);
+    const maxWithdrawal = Number(settings.maxWithdrawal || 500000);
     const selectedWithdrawalMethod = approvedMethods.find(m => m.id === withdrawalDraft.methodId) || approvedMethods[0] || null;
     const platformUpi = settings.depositUpiId || "aitradex@upi";
     const bankDetails = {
@@ -2327,8 +2342,10 @@
       accountNumber: settings.depositAccountNumber || "123456789012",
       ifsc: settings.depositIfsc || "AITX0001234"
     };
-    const upiDepositEnabled = settings.depositUpiEnabled !== false;
-    const bankDepositEnabled = settings.depositBankEnabled !== false;
+    const depositMasterEnabled = settings.depositEnabled !== false && settings.maintenanceMode !== true;
+    const withdrawalMasterEnabled = settings.withdrawalEnabled !== false && settings.maintenanceMode !== true;
+    const upiDepositEnabled = depositMasterEnabled && settings.depositUpiEnabled !== false;
+    const bankDepositEnabled = depositMasterEnabled && settings.depositBankEnabled !== false;
     const enabledDepositTypes = [
       ...(upiDepositEnabled ? ["UPI"] : []),
       ...(bankDepositEnabled ? ["BANK"] : [])
@@ -2363,21 +2380,21 @@
           <div>
             <p>FAST DEPOSIT</p>
             <h2>${depositStep === 1 ? "Amount & Method" : depositStep === 2 ? "Payment Details" : "Review Deposit"}</h2>
-            <span>Step ${depositStep}/3 · Minimum ${App.money(minDeposit)}</span>
+            <span>Step ${depositStep}/3 · ${App.money(minDeposit)} - ${App.money(maxDeposit)}</span>
           </div>
           <b class="wallet-mini-badge">${depositDraft.type || "UPI"}</b>
         </div>
 
         ${!depositMethodsAvailable ? `
           <div class="kyc-required-box deposit-disabled-box">
-            Deposit methods are temporarily disabled by admin. Please try again later or contact support.
+            Deposit is temporarily disabled by admin. Please try again later or contact support.
           </div>
         ` : ""}
 
         ${depositMethodsAvailable && depositStep === 1 ? `
           <div class="wallet-two-col">
             <label>Deposit Amount
-              <input id="depositAmountInput" type="number" min="${minDeposit}" value="${App.escapeHtml(depositDraft.amount)}" placeholder="Minimum ${App.money(minDeposit)}"/>
+              <input id="depositAmountInput" type="number" min="${minDeposit}" max="${maxDeposit}" value="${App.escapeHtml(depositDraft.amount)}" placeholder="${App.money(minDeposit)} - ${App.money(maxDeposit)}"/>
             </label>
             <div class="wallet-method-choice compact-method-choice premium-method-pills">
               ${upiDepositEnabled ? `<button class="${depositDraft.type === "UPI" ? "active" : ""}" onclick="AITradeXUser.setDepositType('UPI')">
@@ -2444,11 +2461,14 @@
           <div>
             <p>FAST WITHDRAWAL</p>
             <h2>${withdrawalStep === 1 ? "Amount" : withdrawalStep === 2 ? "Approved Bank" : "Review Withdrawal"}</h2>
-            <span>Step ${withdrawalStep}/3 · Minimum ${App.money(minWithdrawal)}</span>
+            <span>Step ${withdrawalStep}/3 · ${App.money(minWithdrawal)} - ${App.money(maxWithdrawal)}</span>
           </div>
           <b class="wallet-mini-badge danger">Bank Payout</b>
         </div>
-        ${kyc.status !== "APPROVED" ? `
+        ${!withdrawalMasterEnabled ? `
+          <div class="kyc-required-box">Withdrawal is temporarily disabled by admin.</div>
+          <button class="save-profile-btn" onclick="AITradeXUser.go('support')">Contact Support</button>
+        ` : kyc.status !== "APPROVED" ? `
           <div class="kyc-required-box">KYC approval is required before withdrawal.</div>
           <button class="save-profile-btn" onclick="AITradeXUser.go('kyc')">Go to KYC</button>
         ` : approvedMethods.length === 0 ? `
@@ -2457,7 +2477,7 @@
         ` : `
           ${withdrawalStep === 1 ? `
             <label>Withdrawal Amount
-              <input id="withdrawalAmountInput" type="number" min="${minWithdrawal}" value="${App.escapeHtml(withdrawalDraft.amount)}" placeholder="Minimum ${App.money(minWithdrawal)}"/>
+              <input id="withdrawalAmountInput" type="number" min="${minWithdrawal}" max="${maxWithdrawal}" value="${App.escapeHtml(withdrawalDraft.amount)}" placeholder="${App.money(minWithdrawal)} - ${App.money(maxWithdrawal)}"/>
             </label>
             <div class="profile-note">Available balance: ${App.money(availableRealBalance())}. Pending withdrawals are not included in available balance.</div>
           ` : ""}
@@ -3766,7 +3786,12 @@
     nextDepositStep() {
       const settings = platformSettings();
       const minDeposit = Number(settings.minDeposit || 500);
+      const maxDeposit = Number(settings.maxDeposit || 1000000);
       const depositType = depositDraft.type === "BANK" ? "BANK" : "UPI";
+      if (settings.depositEnabled === false || settings.maintenanceMode === true) {
+        App.toast("Deposit is temporarily disabled by admin.");
+        return;
+      }
       if ((depositType === "UPI" && settings.depositUpiEnabled === false) || (depositType === "BANK" && settings.depositBankEnabled === false)) {
         App.toast("Selected deposit method is currently disabled.");
         return;
@@ -3776,6 +3801,10 @@
         const amount = Number(document.getElementById("depositAmountInput")?.value || 0);
         if (!amount || amount < minDeposit) {
           App.toast(`Minimum deposit is ${App.money(minDeposit)}.`);
+          return;
+        }
+        if (amount > maxDeposit) {
+          App.toast(`Maximum deposit is ${App.money(maxDeposit)}.`);
           return;
         }
         depositDraft.amount = amount;
@@ -3808,14 +3837,19 @@
       const settings = platformSettings();
       const amount = Number(depositDraft.amount || 0);
       const minDeposit = Number(settings.minDeposit || 500);
+      const maxDeposit = Number(settings.maxDeposit || 1000000);
       const depositType = depositDraft.type === "BANK" ? "BANK" : "UPI";
+      if (settings.depositEnabled === false || settings.maintenanceMode === true) {
+        App.toast("Deposit is temporarily disabled by admin.");
+        return;
+      }
       const utr = normalizeUtr(depositDraft.utr);
       if ((depositType === "UPI" && settings.depositUpiEnabled === false) || (depositType === "BANK" && settings.depositBankEnabled === false)) {
         App.toast("Selected deposit method is currently disabled.");
         return;
       }
-      if (!amount || amount < minDeposit || !/^\d{12}$/.test(utr)) {
-        App.toast("Complete deposit details with exactly 12 digit UTR.");
+      if (!amount || amount < minDeposit || amount > maxDeposit || !/^\d{12}$/.test(utr)) {
+        App.toast(`Deposit amount must be between ${App.money(minDeposit)} and ${App.money(maxDeposit)} with exactly 12 digit UTR.`);
         return;
       }
       if (isDuplicateDepositUtr(utr)) {
@@ -3850,8 +3884,14 @@
       render();
     },
     nextWithdrawalStep() {
-      const minWithdrawal = Number(platformSettings().minWithdrawal || 1000);
+      const settings = platformSettings();
+      const minWithdrawal = Number(settings.minWithdrawal || 1000);
+      const maxWithdrawal = Number(settings.maxWithdrawal || 500000);
       const approved = approvedPaymentMethods();
+      if (settings.withdrawalEnabled === false || settings.maintenanceMode === true) {
+        App.toast("Withdrawal is temporarily disabled by admin.");
+        return;
+      }
 
       if (currentKyc().status !== "APPROVED") {
         App.toast("KYC approval required.");
@@ -3867,6 +3907,10 @@
         const amount = Number(document.getElementById("withdrawalAmountInput")?.value || 0);
         if (!amount || amount < minWithdrawal) {
           App.toast(`Minimum withdrawal is ${App.money(minWithdrawal)}.`);
+          return;
+        }
+        if (amount > maxWithdrawal) {
+          App.toast(`Maximum withdrawal is ${App.money(maxWithdrawal)}.`);
           return;
         }
         if (amount > availableRealBalance()) {
@@ -3895,9 +3939,16 @@
       render();
     },
     submitWithdrawalRequest() {
+      const settings = platformSettings();
       const amount = Number(withdrawalDraft.amount || 0);
+      const minWithdrawal = Number(settings.minWithdrawal || 1000);
+      const maxWithdrawal = Number(settings.maxWithdrawal || 500000);
       const method = approvedPaymentMethods().find(m => m.id === withdrawalDraft.methodId) || approvedPaymentMethods()[0];
-      if (!amount || amount < 1000 || !method) {
+      if (settings.withdrawalEnabled === false || settings.maintenanceMode === true) {
+        App.toast("Withdrawal is temporarily disabled by admin.");
+        return;
+      }
+      if (!amount || amount < minWithdrawal || amount > maxWithdrawal || !method) {
         App.toast("Complete withdrawal details first.");
         return;
       }
@@ -4211,12 +4262,15 @@
     async placeManualTrade(side) {
       const u = user();
       if (!u) return;
+      const settings = platformSettings();
+      if (settings.maintenanceMode === true) { App.toast("Trading is paused during maintenance mode."); return; }
+      if (settings.manualTradingEnabled === false) { App.toast("Manual trading is currently disabled by admin."); return; }
       if (!isTradeActivePair(selectedPair)) {
         App.toast("This market is coming soon. Crypto trading is active now.");
         return;
       }
       const margin = Number(tradeAmountPreview || 0);
-      const leverage = Math.max(1, Number(tradeLeveragePreview || 1));
+      const leverage = Math.min(Number(settings.maxLeverage || 2000), Math.max(1, Number(tradeLeveragePreview || 1)));
       const normalizedSide = String(side || "BUY").toUpperCase() === "SELL" ? "SELL" : "BUY";
       const orderType = tradeOrderType === "LIMIT" ? "LIMIT" : "MARKET";
 
@@ -4224,6 +4278,9 @@
         App.toast("Enter valid margin amount.");
         return;
       }
+      if (margin < Number(settings.minManualTrade || 100)) { App.toast(`Minimum manual trade is ${App.money(settings.minManualTrade || 100)}.`); return; }
+      if (margin > Number(settings.maxManualTrade || 250000)) { App.toast(`Maximum manual trade is ${App.money(settings.maxManualTrade || 250000)}.`); return; }
+      if (manualOpenPositions().filter(p => p.accountType === accountMode).length >= Number(settings.maxOpenPositionsPerUser || 10)) { App.toast(`Maximum ${Number(settings.maxOpenPositionsPerUser || 10)} open positions allowed per user.`); return; }
       const availableMargin = availableForNewManualTrade();
       if (margin > availableMargin) {
         App.toast(`Available manual margin is ${App.money(availableMargin)}. Close a position or reduce amount.`);

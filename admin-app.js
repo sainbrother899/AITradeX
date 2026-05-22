@@ -371,7 +371,20 @@
       depositBankName: "AITradeX Bank",
       depositAccountName: "AITradeX Private Wallet",
       depositAccountNumber: "123456789012",
-      depositIfsc: "AITX0001234"
+      depositIfsc: "AITX0001234",
+      depositEnabled: true,
+      withdrawalEnabled: true,
+      manualTradingEnabled: true,
+      aiTradingEnabled: true,
+      maintenanceMode: false,
+      maxDeposit: 1000000,
+      maxWithdrawal: 500000,
+      minManualTrade: 100,
+      maxManualTrade: 250000,
+      minAiTrade: 100,
+      maxAiTrade: 250000,
+      maxLeverage: 2000,
+      maxOpenPositionsPerUser: 10
     };
     App.state.settings = { ...defaults, ...(App.state.settings || {}) };
     return App.state.settings;
@@ -563,7 +576,7 @@
               navButton("plans", "⭐", "Plans", "AI limits"),
               navButton("referrals", "🎁", "Referrals", "Rewards"),
               navButton("support", "🎧", "Support Tickets", "Inbox"),
-              navButton("settings", "⚙️", "Payment Settings", "UPI/bank"),
+              navButton("settings", "⚙️", "App Settings", "Payments/trading"),
               navButton("database", "🗄️", "Database", "Supabase sync"),
               navButton("security", "🔐", "Security", "Admin lock"),
               navButton("audit", "🧾", "Audit Logs", "Security log")
@@ -607,7 +620,7 @@
       plans: "Subscription Plans",
       referrals: "Referrals",
       support: "Support Tickets",
-      settings: "Payment Settings",
+      settings: "App Settings",
       database: "Database",
       security: "Security Center",
       audit: "Audit Logs"
@@ -2301,12 +2314,51 @@
     shell(`
       <section class="panel-card payment-settings-panel">
         <div class="section-head">
-          <div><h3>Payment Settings</h3><span>Control the deposit UPI, QR, bank details and wallet limits shown to users.</span></div>
+          <div><h3>App Settings & Trading Control</h3><span>Control payments, deposits, withdrawals, trading access, limits and maintenance mode.</span></div>
           <span class="admin-count-pill">Admin editable</span>
         </div>
 
         <div class="admin-grid-two payment-settings-grid">
           <form class="payment-form-card form-grid" onsubmit="AITradeXAdmin.savePaymentSettings(event)">
+            <p>APP ACCESS CONTROL</p>
+            <div class="method-toggle-grid app-control-grid">
+              <label>Maintenance Mode
+                <select id="settingMaintenanceMode">
+                  <option value="false" ${settings.maintenanceMode === true ? "" : "selected"}>OFF - App Live</option>
+                  <option value="true" ${settings.maintenanceMode === true ? "selected" : ""}>ON - User App Paused</option>
+                </select>
+                <small>Use this during urgent updates or checks.</small>
+              </label>
+              <label>Deposit Access
+                <select id="settingDepositEnabled">
+                  <option value="true" ${settings.depositEnabled !== false ? "selected" : ""}>Enabled</option>
+                  <option value="false" ${settings.depositEnabled === false ? "selected" : ""}>Disabled</option>
+                </select>
+                <small>Master switch for all user deposits.</small>
+              </label>
+              <label>Withdrawal Access
+                <select id="settingWithdrawalEnabled">
+                  <option value="true" ${settings.withdrawalEnabled !== false ? "selected" : ""}>Enabled</option>
+                  <option value="false" ${settings.withdrawalEnabled === false ? "selected" : ""}>Disabled</option>
+                </select>
+                <small>Master switch for withdrawal requests.</small>
+              </label>
+              <label>Manual Trading
+                <select id="settingManualTradingEnabled">
+                  <option value="true" ${settings.manualTradingEnabled !== false ? "selected" : ""}>Enabled</option>
+                  <option value="false" ${settings.manualTradingEnabled === false ? "selected" : ""}>Disabled</option>
+                </select>
+                <small>Controls user manual buy/sell trades.</small>
+              </label>
+              <label>AI Trading
+                <select id="settingAiTradingEnabled">
+                  <option value="true" ${settings.aiTradingEnabled !== false ? "selected" : ""}>Enabled</option>
+                  <option value="false" ${settings.aiTradingEnabled === false ? "selected" : ""}>Disabled</option>
+                </select>
+                <small>Controls instant AI and live AI positions.</small>
+              </label>
+            </div>
+
             <p>DEPOSIT METHOD ACCESS</p>
             <h2>Deposit Payment Setup</h2>
             <div class="method-toggle-grid">
@@ -2353,8 +2405,34 @@
             <label>Minimum Deposit
               <input id="settingMinDeposit" type="number" min="1" value="${Number(settings.minDeposit || 500)}" required/>
             </label>
+            <label>Maximum Deposit
+              <input id="settingMaxDeposit" type="number" min="1" value="${Number(settings.maxDeposit || 1000000)}" required/>
+            </label>
             <label>Minimum Withdrawal
               <input id="settingMinWithdrawal" type="number" min="1" value="${Number(settings.minWithdrawal || 1000)}" required/>
+            </label>
+            <label>Maximum Withdrawal
+              <input id="settingMaxWithdrawal" type="number" min="1" value="${Number(settings.maxWithdrawal || 500000)}" required/>
+            </label>
+
+            <p>TRADING LIMITS</p>
+            <label>Minimum Manual Trade
+              <input id="settingMinManualTrade" type="number" min="1" value="${Number(settings.minManualTrade || 100)}" required/>
+            </label>
+            <label>Maximum Manual Trade
+              <input id="settingMaxManualTrade" type="number" min="1" value="${Number(settings.maxManualTrade || 250000)}" required/>
+            </label>
+            <label>Minimum AI Trade
+              <input id="settingMinAiTrade" type="number" min="1" value="${Number(settings.minAiTrade || 100)}" required/>
+            </label>
+            <label>Maximum AI Trade
+              <input id="settingMaxAiTrade" type="number" min="1" value="${Number(settings.maxAiTrade || 250000)}" required/>
+            </label>
+            <label>Maximum Leverage
+              <input id="settingMaxLeverage" type="number" min="1" max="2000" value="${Number(settings.maxLeverage || 2000)}" required/>
+            </label>
+            <label>Max Open Positions / User
+              <input id="settingMaxOpenPositions" type="number" min="1" value="${Number(settings.maxOpenPositionsPerUser || 10)}" required/>
             </label>
 
             <p>CRYPTO INR DISPLAY</p>
@@ -2385,10 +2463,19 @@
               <div class="copy-row"><b>IFSC Code</b><span>${esc(settings.depositIfsc)}</span><button type="button">Copy</button></div>
             </div>
             <div class="review-grid compact-review">
+              <article><span>Maintenance</span><b class="${settings.maintenanceMode === true ? "text-loss" : "text-profit"}">${settings.maintenanceMode === true ? "ON" : "OFF"}</b></article>
+              <article><span>Deposits</span><b class="${settings.depositEnabled !== false ? "text-profit" : "text-loss"}">${settings.depositEnabled !== false ? "Enabled" : "Disabled"}</b></article>
+              <article><span>Withdrawals</span><b class="${settings.withdrawalEnabled !== false ? "text-profit" : "text-loss"}">${settings.withdrawalEnabled !== false ? "Enabled" : "Disabled"}</b></article>
+              <article><span>Manual Trading</span><b class="${settings.manualTradingEnabled !== false ? "text-profit" : "text-loss"}">${settings.manualTradingEnabled !== false ? "Enabled" : "Disabled"}</b></article>
+              <article><span>AI Trading</span><b class="${settings.aiTradingEnabled !== false ? "text-profit" : "text-loss"}">${settings.aiTradingEnabled !== false ? "Enabled" : "Disabled"}</b></article>
               <article><span>UPI / QR</span><b class="${settings.depositUpiEnabled !== false ? "text-profit" : "text-loss"}">${settings.depositUpiEnabled !== false ? "Enabled" : "Disabled"}</b></article>
               <article><span>Bank Transfer</span><b class="${settings.depositBankEnabled !== false ? "text-profit" : "text-loss"}">${settings.depositBankEnabled !== false ? "Enabled" : "Disabled"}</b></article>
               <article><span>Minimum Deposit</span><b>${App.money(settings.minDeposit)}</b></article>
               <article><span>Minimum Withdrawal</span><b>${App.money(settings.minWithdrawal)}</b></article>
+              <article><span>Max Manual Trade</span><b>${App.money(settings.maxManualTrade || 250000)}</b></article>
+              <article><span>Max AI Trade</span><b>${App.money(settings.maxAiTrade || 250000)}</b></article>
+              <article><span>Max Leverage</span><b>${Number(settings.maxLeverage || 2000)}x</b></article>
+              <article><span>Max Positions</span><b>${Number(settings.maxOpenPositionsPerUser || 10)}</b></article>
               <article><span>USDT-INR Rate</span><b>₹${Number(settings.usdtInrRate || 95).toLocaleString("en-IN")}</b></article>
             </div>
           </section>
@@ -3154,6 +3241,11 @@
       const apply = qrImage => {
         App.state.settings = {
           ...settings,
+          maintenanceMode: document.getElementById("settingMaintenanceMode")?.value === "true",
+          depositEnabled: document.getElementById("settingDepositEnabled")?.value !== "false",
+          withdrawalEnabled: document.getElementById("settingWithdrawalEnabled")?.value !== "false",
+          manualTradingEnabled: document.getElementById("settingManualTradingEnabled")?.value !== "false",
+          aiTradingEnabled: document.getElementById("settingAiTradingEnabled")?.value !== "false",
           depositUpiId: inputValue("settingUpiId") || "aitradex@upi",
           depositQrImage: qrImage ?? (settings.depositQrImage || ""),
           depositUpiEnabled: document.getElementById("settingUpiEnabled")?.value !== "false",
@@ -3163,12 +3255,20 @@
           depositAccountNumber: inputValue("settingAccountNumber") || "123456789012",
           depositIfsc: inputValue("settingIfsc").toUpperCase() || "AITX0001234",
           minDeposit: Math.max(1, Number(inputValue("settingMinDeposit") || 500)),
+          maxDeposit: Math.max(1, Number(inputValue("settingMaxDeposit") || 1000000)),
           minWithdrawal: Math.max(1, Number(inputValue("settingMinWithdrawal") || 1000)),
+          maxWithdrawal: Math.max(1, Number(inputValue("settingMaxWithdrawal") || 500000)),
+          minManualTrade: Math.max(1, Number(inputValue("settingMinManualTrade") || 100)),
+          maxManualTrade: Math.max(1, Number(inputValue("settingMaxManualTrade") || 250000)),
+          minAiTrade: Math.max(1, Number(inputValue("settingMinAiTrade") || 100)),
+          maxAiTrade: Math.max(1, Number(inputValue("settingMaxAiTrade") || 250000)),
+          maxLeverage: Math.min(2000, Math.max(1, Number(inputValue("settingMaxLeverage") || 2000))),
+          maxOpenPositionsPerUser: Math.max(1, Number(inputValue("settingMaxOpenPositions") || 10)),
           usdtInrRate: Math.max(1, Number(inputValue("settingUsdtInrRate") || 95))
         };
-        logAdminAction("PAYMENT_SETTINGS_UPDATE", "SETTINGS", "payment", { upiEnabled: App.state.settings.depositUpiEnabled, bankEnabled: App.state.settings.depositBankEnabled, minDeposit: App.state.settings.minDeposit, minWithdrawal: App.state.settings.minWithdrawal });
+        logAdminAction("APP_SETTINGS_UPDATE", "SETTINGS", "app", { depositEnabled: App.state.settings.depositEnabled, withdrawalEnabled: App.state.settings.withdrawalEnabled, manualTradingEnabled: App.state.settings.manualTradingEnabled, aiTradingEnabled: App.state.settings.aiTradingEnabled, maintenanceMode: App.state.settings.maintenanceMode, maxLeverage: App.state.settings.maxLeverage });
         App.saveState();
-        App.toast("Payment settings saved.");
+        App.toast("App settings saved.");
         render();
       };
 
@@ -3203,7 +3303,7 @@
     updateAiPreview() {
       const resultType = document.querySelector('input[name="aiTradeResultType"]:checked')?.value || "PROFIT";
       const resultPercent = Math.max(0, Number(inputValue("aiTradeResultPercent") || 0));
-      const leverage = normalizeAdminLeverage(inputValue("aiTradeLeverage") || 1);
+      const leverage = Math.min(Number(settings.maxLeverage || 2000), normalizeAdminLeverage(inputValue("aiTradeLeverage") || 1));
       const minBalance = Math.max(0, Number(inputValue("aiTradeMinBalance") || 0));
       const stats = aiPreviewStats(resultPercent, leverage, minBalance, resultType);
       const setText = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
@@ -3226,6 +3326,8 @@
     },
     async executeAiTrade(event) {
       event.preventDefault();
+      const settings = platformSettings();
+      if (settings.aiTradingEnabled === false) { App.toast("AI trading is disabled in App Settings."); return; }
       const selectedPairData = pairDataByPair(inputValue("aiTradePair") || "BTC/USDT");
       const market = selectedPairData.market || "CRYPTO";
       const pair = String(selectedPairData.pair || "BTC/USDT").toUpperCase();
@@ -3256,8 +3358,8 @@
 
       report.eligible.forEach(target => {
         const balanceBefore = App.realBalance(target.id);
-        const margin = Math.min(balanceBefore, App.aiAllowedAmount(target));
-        if (!margin || margin <= 0) {
+        const margin = Math.min(balanceBefore, App.aiAllowedAmount(target), Number(settings.maxAiTrade || 250000));
+        if (!margin || margin < Number(settings.minAiTrade || 100)) {
           report.skipped.push({ userId: target.id, reason: "No AI trade pool available" });
           report.reasons.noPool += 1;
           return;
@@ -3366,6 +3468,8 @@
     },
     async openLiveAiPosition(event) {
       event.preventDefault();
+      const settings = platformSettings();
+      if (settings.aiTradingEnabled === false) { App.toast("AI trading is disabled in App Settings."); return; }
       const selectedPairData = pairDataByPair(inputValue("aiLivePair") || "BTC/USDT");
       const market = selectedPairData.market || "CRYPTO";
       const pair = String(selectedPairData.pair || "BTC/USDT").toUpperCase();
@@ -3374,7 +3478,7 @@
         return;
       }
       const side = document.querySelector('input[name="aiLiveSide"]:checked')?.value || "BUY";
-      const leverage = normalizeAdminLeverage(inputValue("aiLiveLeverage") || 1);
+      const leverage = Math.min(Number(settings.maxLeverage || 2000), normalizeAdminLeverage(inputValue("aiLiveLeverage") || 1));
       const targetType = document.querySelector('input[name="aiLiveTargetType"]:checked')?.value || "PROFIT";
       const targetPercent = Math.max(0.01, Number(inputValue("aiLiveTargetPercent") || 0));
       const minBalance = Math.max(0, Number(inputValue("aiLiveMinBalance") || 0));
@@ -3398,8 +3502,8 @@
       const openedAt = new Date().toISOString();
       report.eligible.forEach(target => {
         const balanceBefore = App.realBalance(target.id);
-        const margin = Math.min(balanceBefore, App.aiAllowedAmount(target));
-        if (!margin || margin <= 0) {
+        const margin = Math.min(balanceBefore, App.aiAllowedAmount(target), Number(settings.maxAiTrade || 250000));
+        if (!margin || margin < Number(settings.minAiTrade || 100)) {
           report.skipped.push({ userId: target.id, reason: "No AI trade pool available" });
           report.reasons.noPool += 1;
           return;
