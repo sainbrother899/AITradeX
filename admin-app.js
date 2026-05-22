@@ -576,6 +576,7 @@
               navButton("plans", "⭐", "Plans", "AI limits"),
               navButton("referrals", "🎁", "Referrals", "Rewards"),
               navButton("support", "🎧", "Support Tickets", "Inbox"),
+              navButton("telegram", "📨", "Telegram Alerts", "KYC/deposit/payout"),
               navButton("settings", "⚙️", "App Settings", "Payments/trading"),
               navButton("database", "🗄️", "Database", "Supabase sync"),
               navButton("security", "🔐", "Security", "Admin lock"),
@@ -621,6 +622,7 @@
       referrals: "Referrals",
       support: "Support Tickets",
       settings: "App Settings",
+      telegram: "Telegram Alerts",
       database: "Database",
       security: "Security Center",
       audit: "Audit Logs"
@@ -2441,28 +2443,28 @@
               <small>This controls INR-only crypto price display. Default is ₹95 per USDT.</small>
             </label>
 
-            <p>TELEGRAM BOT ALERTS</p>
+            <p>TELEGRAM BOT ALERTS — KYC / DEPOSIT / WITHDRAWAL ONLY</p>
             <div class="method-toggle-grid">
               <label>Telegram Alerts
                 <select id="settingTelegramEnabled">
                   <option value="false" ${settings.telegramEnabled === true ? "" : "selected"}>Disabled</option>
                   <option value="true" ${settings.telegramEnabled === true ? "selected" : ""}>Enabled</option>
                 </select>
-                <small>Send important app alerts to your Telegram bot chat.</small>
+                <small>Only KYC, deposit and withdrawal alerts will be sent to Telegram.</small>
               </label>
               <label>Admin Alerts
                 <select id="settingTelegramAdminAlerts">
                   <option value="true" ${settings.telegramAdminAlerts !== false ? "selected" : ""}>Enabled</option>
                   <option value="false" ${settings.telegramAdminAlerts === false ? "selected" : ""}>Disabled</option>
                 </select>
-                <small>New deposit, withdrawal, signup, support and AI admin alerts.</small>
+                <small>Admin alerts only for new KYC, deposit and withdrawal requests.</small>
               </label>
               <label>User Alerts Mirror
                 <select id="settingTelegramUserAlerts">
                   <option value="false" ${settings.telegramUserAlerts === true ? "" : "selected"}>Disabled</option>
                   <option value="true" ${settings.telegramUserAlerts === true ? "selected" : ""}>Enabled</option>
                 </select>
-                <small>Optional: also mirror user notifications to Telegram.</small>
+                <small>Optional: also mirror user KYC/deposit/withdrawal approve/reject alerts.</small>
               </label>
             </div>
             <label>Telegram Bot Token
@@ -2718,6 +2720,7 @@
     if (page === "referrals") return referralsPage();
     if (page === "support") return supportPage();
     if (page === "settings") return settingsPage();
+    if (page === "telegram") return settingsPage();
     if (page === "database") return databasePage();
     if (page === "security") return securityPage();
     if (page === "audit") return auditPage();
@@ -3842,6 +3845,7 @@
       kyc.rejectedAt = "";
       logAdminAction("KYC_APPROVE", "KYC", kyc.id || userId, { userId: target.id, user: displayNameFor(target) });
       saveKyc(target, kyc);
+      App.addNotification?.({ audience: "USER", userId: target.id, title: "KYC approved", message: "Your KYC verification has been approved.", type: "KYC", linkPage: "kyc", referenceId: `kyc_ok_${kyc.id || userId}` });
       App.toast("KYC approved successfully.");
       render();
     },
@@ -3875,6 +3879,7 @@
       kyc.approvedAt = "";
       logAdminAction("KYC_REJECT", "KYC", kyc.id || userId, { userId: target.id, user: displayNameFor(target), reason: kyc.rejectReason });
       saveKyc(target, kyc);
+      App.addNotification?.({ audience: "USER", userId: target.id, title: "KYC rejected", message: kyc.rejectReason || "Your KYC verification was rejected.", type: "KYC", linkPage: "kyc", referenceId: `kyc_no_${kyc.id || userId}` });
       App.toast("KYC rejected successfully.");
       render();
     },

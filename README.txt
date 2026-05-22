@@ -90,6 +90,13 @@ Phase 5.9 - Telegram Bot Notifications
 - Admin App Settings now includes Telegram Alerts controls.
 - Configure Telegram bot token and chat ID from Admin > App Settings.
 - Send Test Telegram Alert verifies the connection.
-- Admin notifications such as new signup, deposit request, withdrawal request, support ticket, and AI trade alerts can be mirrored to Telegram.
+- Telegram alerts are limited to KYC, deposit and withdrawal only. Signup, support and AI alerts remain inside the website notification center.
 - Optional user alert mirroring is available but disabled by default.
 - Note: This frontend prototype stores the bot token in app settings/local state. For real production, move Telegram sending to a secure backend/Edge Function.
+
+
+Phase 5.10 - Telegram Alerts Scope Fix
+- Added a direct Admin > Telegram Alerts menu item.
+- Telegram delivery is now limited to KYC, Deposit and Withdrawal types only.
+- Added Telegram-capable KYC submit / approve / reject notifications.
+- Signup, support, AI, wallet adjustment, plan and security notifications no longer go to Telegram.

@@ -4134,6 +4134,7 @@
       kyc.rejectedAt = "";
       kyc.approvedAt = "";
       saveKycData(kyc);
+      App.addNotification?.({ audience: "ADMIN", title: "New KYC request", message: `${displayName()} submitted KYC for verification.`, type: "KYC", linkPage: "kyc", referenceId: `kyc_submit_${user()?.id || "user"}_${kyc.submittedAt}` });
       App.toast("KYC submitted for verification.");
       render();
     },
