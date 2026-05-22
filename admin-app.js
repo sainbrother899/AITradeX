@@ -2443,39 +2443,6 @@
               <small>This controls INR-only crypto price display. Default is ₹95 per USDT.</small>
             </label>
 
-            <p>TELEGRAM BOT ALERTS — KYC / DEPOSIT / WITHDRAWAL ONLY</p>
-            <div class="method-toggle-grid">
-              <label>Telegram Alerts
-                <select id="settingTelegramEnabled">
-                  <option value="false" ${settings.telegramEnabled === true ? "" : "selected"}>Disabled</option>
-                  <option value="true" ${settings.telegramEnabled === true ? "selected" : ""}>Enabled</option>
-                </select>
-                <small>Only KYC, deposit and withdrawal alerts will be sent to Telegram.</small>
-              </label>
-              <label>Admin Alerts
-                <select id="settingTelegramAdminAlerts">
-                  <option value="true" ${settings.telegramAdminAlerts !== false ? "selected" : ""}>Enabled</option>
-                  <option value="false" ${settings.telegramAdminAlerts === false ? "selected" : ""}>Disabled</option>
-                </select>
-                <small>Admin alerts only for new KYC, deposit and withdrawal requests.</small>
-              </label>
-              <label>User Alerts Mirror
-                <select id="settingTelegramUserAlerts">
-                  <option value="false" ${settings.telegramUserAlerts === true ? "" : "selected"}>Disabled</option>
-                  <option value="true" ${settings.telegramUserAlerts === true ? "selected" : ""}>Enabled</option>
-                </select>
-                <small>Optional: also mirror user KYC/deposit/withdrawal approve/reject alerts.</small>
-              </label>
-            </div>
-            <label>Telegram Bot Token
-              <input id="settingTelegramBotToken" value="${esc(settings.telegramBotToken || "")}" placeholder="123456789:ABC..." autocomplete="off"/>
-              <small>Keep this private. For production, bot token should be moved to a secure backend.</small>
-            </label>
-            <label>Telegram Chat ID
-              <input id="settingTelegramChatId" value="${esc(settings.telegramChatId || "")}" placeholder="123456789 or -100xxxxxxxxxx"/>
-              <small>Use your personal/group/channel chat ID where alerts should be delivered.</small>
-            </label>
-            <button type="button" class="outline-btn" onclick="AITradeXAdmin.testTelegramBot()">Send Test Telegram Alert</button>
             <button class="save-profile-btn">Save Payment Settings</button>
           </form>
 
@@ -2513,9 +2480,73 @@
               <article><span>Max Leverage</span><b>${Number(settings.maxLeverage || 2000)}x</b></article>
               <article><span>Max Positions</span><b>${Number(settings.maxOpenPositionsPerUser || 10)}</b></article>
               <article><span>USDT-INR Rate</span><b>₹${Number(settings.usdtInrRate || 95).toLocaleString("en-IN")}</b></article>
-              <article><span>Telegram Bot</span><b class="${settings.telegramEnabled === true ? "text-profit" : "text-loss"}">${settings.telegramEnabled === true ? "Enabled" : "Disabled"}</b></article>
-              <article><span>Admin TG Alerts</span><b class="${settings.telegramAdminAlerts !== false ? "text-profit" : "text-loss"}">${settings.telegramAdminAlerts !== false ? "Enabled" : "Disabled"}</b></article>
             </div>
+          </section>
+        </div>
+      </section>
+    `);
+  }
+
+
+  function telegramPage() {
+    const settings = platformSettings();
+    shell(`
+      <section class="panel-card payment-settings-panel telegram-settings-page">
+        <div class="section-head">
+          <div><h3>Telegram Alerts</h3><span>Configure Telegram only for KYC, deposit and withdrawal alerts.</span></div>
+          <span class="admin-count-pill">KYC + Finance only</span>
+        </div>
+        <div class="admin-grid-two payment-settings-grid">
+          <form class="payment-form-card form-grid" onsubmit="AITradeXAdmin.saveTelegramSettings(event)">
+            <p>TELEGRAM BOT ALERTS</p>
+            <div class="method-toggle-grid">
+              <label>Telegram Alerts
+                <select id="settingTelegramEnabled">
+                  <option value="false" ${settings.telegramEnabled === true ? "" : "selected"}>Disabled</option>
+                  <option value="true" ${settings.telegramEnabled === true ? "selected" : ""}>Enabled</option>
+                </select>
+                <small>Master switch for Telegram alerts.</small>
+              </label>
+              <label>Admin Alerts
+                <select id="settingTelegramAdminAlerts">
+                  <option value="true" ${settings.telegramAdminAlerts !== false ? "selected" : ""}>Enabled</option>
+                  <option value="false" ${settings.telegramAdminAlerts === false ? "selected" : ""}>Disabled</option>
+                </select>
+                <small>New KYC, deposit and withdrawal requests.</small>
+              </label>
+              <label>User Alerts Mirror
+                <select id="settingTelegramUserAlerts">
+                  <option value="false" ${settings.telegramUserAlerts === true ? "" : "selected"}>Disabled</option>
+                  <option value="true" ${settings.telegramUserAlerts === true ? "selected" : ""}>Enabled</option>
+                </select>
+                <small>Optional approve/reject mirror alerts.</small>
+              </label>
+            </div>
+            <label>Telegram Bot Token
+              <input id="settingTelegramBotToken" value="${esc(settings.telegramBotToken || "")}" placeholder="123456789:ABC..." autocomplete="off"/>
+              <small>Keep this private. For production, move token to backend/Supabase Edge Function.</small>
+            </label>
+            <label>Telegram Chat ID
+              <input id="settingTelegramChatId" value="${esc(settings.telegramChatId || "")}" placeholder="123456789 or -100xxxxxxxxxx"/>
+              <small>Personal, group or channel chat ID where alerts should be delivered.</small>
+            </label>
+            <div class="admin-inline-actions">
+              <button type="button" class="outline-btn" onclick="AITradeXAdmin.testTelegramBot()">Send Test Telegram Alert</button>
+              <button class="save-profile-btn">Save Telegram Settings</button>
+            </div>
+          </form>
+
+          <section class="payment-form-card payment-settings-preview">
+            <p>ALERT SCOPE</p>
+            <h2>Only KYC, Deposit & Withdrawal</h2>
+            <div class="review-grid compact-review">
+              <article><span>Telegram Bot</span><b class="${settings.telegramEnabled === true ? "text-profit" : "text-loss"}">${settings.telegramEnabled === true ? "Enabled" : "Disabled"}</b></article>
+              <article><span>Admin Alerts</span><b class="${settings.telegramAdminAlerts !== false ? "text-profit" : "text-loss"}">${settings.telegramAdminAlerts !== false ? "Enabled" : "Disabled"}</b></article>
+              <article><span>User Mirror</span><b class="${settings.telegramUserAlerts === true ? "text-profit" : "text-loss"}">${settings.telegramUserAlerts === true ? "Enabled" : "Disabled"}</b></article>
+              <article><span>Bot Token</span><b>${settings.telegramBotToken ? "Saved" : "Missing"}</b></article>
+              <article><span>Chat ID</span><b>${settings.telegramChatId ? esc(settings.telegramChatId) : "Missing"}</b></article>
+            </div>
+            <div class="duplicate-warning-box telegram-scope-note">Telegram will not send signup, support, AI trade, wallet-adjustment, plan or security alerts. It is limited to KYC, deposit and withdrawal only.</div>
           </section>
         </div>
       </section>
@@ -2720,7 +2751,7 @@
     if (page === "referrals") return referralsPage();
     if (page === "support") return supportPage();
     if (page === "settings") return settingsPage();
-    if (page === "telegram") return settingsPage();
+    if (page === "telegram") return telegramPage();
     if (page === "database") return databasePage();
     if (page === "security") return securityPage();
     if (page === "audit") return auditPage();
@@ -3273,6 +3304,22 @@
       App.toast("Referral settings saved.");
       render();
     },
+    saveTelegramSettings(event) {
+      event.preventDefault();
+      const settings = platformSettings();
+      App.state.settings = {
+        ...settings,
+        telegramEnabled: document.getElementById("settingTelegramEnabled")?.value === "true",
+        telegramBotToken: inputValue("settingTelegramBotToken"),
+        telegramChatId: inputValue("settingTelegramChatId"),
+        telegramAdminAlerts: document.getElementById("settingTelegramAdminAlerts")?.value !== "false",
+        telegramUserAlerts: document.getElementById("settingTelegramUserAlerts")?.value === "true"
+      };
+      logAdminAction("TELEGRAM_SETTINGS_UPDATE", "SETTINGS", "telegram", { telegramEnabled: App.state.settings.telegramEnabled, adminAlerts: App.state.settings.telegramAdminAlerts, userMirror: App.state.settings.telegramUserAlerts });
+      App.saveState();
+      App.toast("Telegram settings saved.");
+      render();
+    },
     savePaymentSettings(event) {
       event.preventDefault();
       const settings = platformSettings();
@@ -3303,14 +3350,9 @@
           maxAiTrade: Math.max(1, Number(inputValue("settingMaxAiTrade") || 250000)),
           maxLeverage: Math.min(2000, Math.max(1, Number(inputValue("settingMaxLeverage") || 2000))),
           maxOpenPositionsPerUser: Math.max(1, Number(inputValue("settingMaxOpenPositions") || 10)),
-          usdtInrRate: Math.max(1, Number(inputValue("settingUsdtInrRate") || 95)),
-          telegramEnabled: document.getElementById("settingTelegramEnabled")?.value === "true",
-          telegramBotToken: inputValue("settingTelegramBotToken"),
-          telegramChatId: inputValue("settingTelegramChatId"),
-          telegramAdminAlerts: document.getElementById("settingTelegramAdminAlerts")?.value !== "false",
-          telegramUserAlerts: document.getElementById("settingTelegramUserAlerts")?.value === "true"
+          usdtInrRate: Math.max(1, Number(inputValue("settingUsdtInrRate") || 95))
         };
-        logAdminAction("APP_SETTINGS_UPDATE", "SETTINGS", "app", { depositEnabled: App.state.settings.depositEnabled, withdrawalEnabled: App.state.settings.withdrawalEnabled, manualTradingEnabled: App.state.settings.manualTradingEnabled, aiTradingEnabled: App.state.settings.aiTradingEnabled, maintenanceMode: App.state.settings.maintenanceMode, maxLeverage: App.state.settings.maxLeverage, telegramEnabled: App.state.settings.telegramEnabled });
+        logAdminAction("APP_SETTINGS_UPDATE", "SETTINGS", "app", { depositEnabled: App.state.settings.depositEnabled, withdrawalEnabled: App.state.settings.withdrawalEnabled, manualTradingEnabled: App.state.settings.manualTradingEnabled, aiTradingEnabled: App.state.settings.aiTradingEnabled, maintenanceMode: App.state.settings.maintenanceMode, maxLeverage: App.state.settings.maxLeverage });
         App.saveState();
         App.toast("App settings saved.");
         render();
