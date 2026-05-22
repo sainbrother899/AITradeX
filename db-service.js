@@ -93,7 +93,8 @@
         subscriptions:(subs||[]).map(r=>({id:r.id,userId:r.user_id,planId:r.plan_id,planName:r.plan_name,amount:num(r.amount),status:r.status,startsAt:r.starts_at,expiresAt:r.expires_at,createdAt:r.created_at})),
         referrals:(refs||[]).map(r=>({...(r.raw||{}),id:r.id,referrerUserId:r.referrer_user_id,referredUserId:r.referred_user_id,status:r.status,commissionPaid:!!r.commission_paid,commissionAmount:num(r.commission_amount),createdAt:r.created_at}))
       };
-      const settings=settingsRows.find(x=>x.id==="main")?.settings; if(settings&&typeof settings==="object") App.state.settings={...base.settings,...settings};
+      const settingsRow=settingsRows.find(x=>x.id==="main")||settingsRows.find(x=>x.id==="global");
+      const settings=settingsRow?.settings; if(settings&&typeof settings==="object") App.state.settings={...base.settings,...settings};
       if(plans.length) App.state.plans=plans.map(r=>({...(r.raw||{}),id:r.id,name:r.name,price:num(r.price),signals:num(r.signals),aiAccess:r.ai_access,tradeLimit:num(r.trade_limit),status:r.is_active===false?"INACTIVE":"ACTIVE"}));
       status(`Loaded database rows: users ${users.length}, KYC ${kyc.length}, deposits ${deposits.length}, withdrawals ${withdrawals.length}.`, true);
       loading=null; return App.state;
@@ -119,7 +120,11 @@
     }catch(err){ status(err?.message||"Database save failed", false); throw err; }
     finally{ syncing=false; }
   }
-  function scheduleFullSync(){ if(!ready) return; clearTimeout(syncTimer); syncTimer=setTimeout(()=>fullSync().catch(()=>{}),350); }
+  function scheduleFullSync(){
+    // Phase 5.17 strict database runtime: no hidden/background full-state sync.
+    // Business actions use action-specific write* methods; manual fullSync remains only for admin repair/export workflows.
+    return {disabled:true, reason:"Action-based database runtime"};
+  }
   async function testConnection(){ if(!ready) return {ok:false,message:"Supabase is not configured."}; try{ const {error}=await client.from("users").select("id",{head:true,count:"exact"}); if(error) throw error; return {ok:true,message:"Supabase connected."}; }catch(err){ return {ok:false,message:err?.message||"Supabase connection failed."}; } }
   async function sendTelegramMessage(textHtml){
     const st=App?.state?.settings||{}; if(!st.telegramEnabled||!st.telegramBotToken||!st.telegramChatId) return {ok:false,skipped:true};
@@ -137,8 +142,23 @@
   async function writeAiBatch(row){ assertReady(); const clean=rowBatch(row); const {error}=await client.from("ai_trade_batches").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
   async function writeNotification(row){ assertReady(); const clean=rowNotification(row); const {error}=await client.from("notifications").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
   async function writeAdminAction(row){ assertReady(); const clean=rowAdminLog(row); const {error}=await client.from("admin_action_logs").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
-  async function writeSettings(settings){ assertReady(); const row={id:"global",settings:clone(settings||App.state.settings||{}),updated_at:new Date().toISOString()}; const {error}=await client.from("app_settings").upsert(row,{onConflict:"id"}); if(error) throw error; return row; }
+  async function writeSettings(settings){ assertReady(); const row={id:"main",settings:{...clone(settings||App.state.settings||{}),databaseRuntimeVersion:"5.17",updatedBy:"admin"},updated_at:new Date().toISOString()}; const {error}=await client.from("app_settings").upsert(row,{onConflict:"id"}); if(error) throw error; return row; }
   function fire(promise,label){ if(!ready) return; Promise.resolve(promise).catch(err=>{ console.warn(`[AITradeX DB] ${label||"write"} failed:`, err?.message||err); status(`${label||"DB write"} failed: ${err?.message||err}`, false); }); }
+
+  async function uploadUserFile({bucket,folder="uploads",label="file",file,userId}){
+    assertReady();
+    if(!file) throw new Error("No file selected.");
+    const safeBucket=text(bucket).trim();
+    if(!safeBucket) throw new Error("Storage bucket missing.");
+    const ext=(String(file.name||"file").split(".").pop()||"bin").replace(/[^a-z0-9]/gi,"").toLowerCase()||"bin";
+    const cleanFolder=text(folder||"uploads").replace(/[^a-z0-9/_-]/gi,"-").replace(/-+/g,"-");
+    const cleanLabel=text(label||"file").replace(/[^a-z0-9_-]/gi,"-").replace(/-+/g,"-");
+    const path=`${cleanFolder}/${text(userId||"guest")}/${Date.now()}_${cleanLabel}.${ext}`;
+    const {error}=await client.storage.from(safeBucket).upload(path,file,{upsert:true,contentType:file.type||"application/octet-stream"});
+    if(error) throw error;
+    const {data}=client.storage.from(safeBucket).getPublicUrl(path);
+    return {bucket:safeBucket,path,url:data?.publicUrl||"",name:file.name||`${cleanLabel}.${ext}`,size:file.size||0,type:file.type||"",uploadedAt:new Date().toISOString()};
+  }
 
   async function backupFullState({savedBy="admin",note="Manual backup"}={}){ assertReady(); const payload={app_version:"AITradeX-Phase5.15",saved_by:savedBy,note,counts:{users:(App.state.users||[]).length},state:clone(App.state)}; const {data,error}=await client.from("app_state_snapshots").insert(payload).select("id,saved_at,counts,note").single(); if(error) throw error; return data; }
   async function latestSnapshot(){ assertReady(); const {data,error}=await client.from("app_state_snapshots").select("id,saved_at,saved_by,note,counts,state").order("saved_at",{ascending:false}).limit(1).maybeSingle(); if(error) throw error; return data; }
@@ -146,6 +166,6 @@
   function downloadLocalBackup(){ const blob=new Blob([JSON.stringify({app:"AITradeX",exportedAt:new Date().toISOString(),state:clone(App.state)},null,2)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`aitradex-backup-${new Date().toISOString().slice(0,10)}.json`; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},400); }
   function importLocalBackup(file){ return new Promise((resolve,reject)=>{ const r=new FileReader(); r.onload=async()=>{ try{ const json=JSON.parse(String(r.result||"{}")); App.state=json.state||json; await fullSync(); resolve(true); }catch(e){reject(e);} }; r.onerror=()=>reject(new Error("Unable to read backup file.")); r.readAsText(file); }); }
 
-  const api={ready,client,loadAll,pullCoreTables:loadAll,syncCoreTables:fullSync,fullSync,scheduleFullSync,testConnection,findUser,createUser,updateUser,writeUser,writeKycRequest,writePaymentMethod,writeDepositRequest,writeWithdrawalRequest,writeLedger,writeTrade,writeAiBatch,writeNotification,writeAdminAction,writeSettings,fire,lastSyncStatus,sendTelegramMessage,backupFullState,latestSnapshot,restoreLatestSnapshot,downloadLocalBackup,importLocalBackup};
+  const api={ready,client,loadAll,pullCoreTables:loadAll,syncCoreTables:fullSync,fullSync,scheduleFullSync,testConnection,findUser,createUser,updateUser,writeUser,writeKycRequest,writePaymentMethod,writeDepositRequest,writeWithdrawalRequest,writeLedger,writeTrade,writeAiBatch,writeNotification,writeAdminAction,writeSettings,uploadUserFile,fire,lastSyncStatus,sendTelegramMessage,backupFullState,latestSnapshot,restoreLatestSnapshot,downloadLocalBackup,importLocalBackup};
   window.AITradeXDB=api; window.AppDB=api;
 })();

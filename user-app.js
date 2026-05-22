@@ -1193,7 +1193,7 @@
 
   function avatar(name) {
     const u = user();
-    const avatarData = u ? (localStorage.getItem(`AITradeX_AVATAR_${u.id}`) || u.avatarUrl || "") : "";
+    const avatarData = u ? (u.avatarUrl || "") : "";
     if (avatarData) {
       return `<span class="avatar image-avatar"><img src="${App.escapeHtml(avatarData)}" alt="Avatar"/></span>`;
     }
@@ -1226,7 +1226,7 @@
   function displayName() {
     const u = user();
     if (!u) return "User";
-    return localStorage.getItem(`AITradeX_DISPLAY_NAME_${u.id}`) || u.name || "User";
+    return u.name || "User";
   }
 
   function profileNameChip() {
@@ -4654,6 +4654,7 @@
       if (next !== confirm) return App.toast("New password confirmation does not match.");
       u.password = next;
       u.passwordUpdatedAt = App.now();
+      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeUser) window.AITradeXDB.fire(window.AITradeXDB.writeUser(u), "user password write"); } catch {}
       App.addNotification?.({ audience: "USER", userId: u.id, title: "Password updated", message: "Your account password was changed successfully.", type: "SECURITY", linkPage: "security", referenceId: `password_${Date.now()}` });
       App.saveState();
       App.toast("Password updated successfully.");
@@ -4672,19 +4673,19 @@
         return;
       }
 
-      localStorage.setItem(`AITradeX_DISPLAY_NAME_${u.id}`, nextName);
+      u.name = nextName;
 
       const file = fileInput?.files?.[0];
       if (file) {
         try {
           App.toast("Uploading avatar...");
           const uploaded = await uploadStorageFile({ bucket: "user-avatars", folder: "avatars", label: "avatar", file });
-          localStorage.setItem(`AITradeX_AVATAR_${u.id}`, uploaded.url);
           u.avatarName = uploaded.name;
           u.avatarBucket = uploaded.bucket;
           u.avatarPath = uploaded.path;
           u.avatarUrl = uploaded.url;
           u.avatarUploadedAt = uploaded.uploadedAt;
+          try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeUser) await window.AITradeXDB.writeUser(u); } catch (err) { App.toast(`Profile database update failed: ${err.message || err}`); return; }
           App.saveState();
           App.toast("Profile updated.");
           render();
@@ -4692,6 +4693,7 @@
           App.toast(`Avatar upload failed: ${err.message || err}`);
         }
       } else {
+        try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeUser) await window.AITradeXDB.writeUser(u); } catch (err) { App.toast(`Profile database update failed: ${err.message || err}`); return; }
         App.saveState();
         App.toast("Profile updated.");
         render();

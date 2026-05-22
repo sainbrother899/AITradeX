@@ -434,6 +434,14 @@
     return `<div class="admin-date-line"><span>${label}</span><b>${new Date(value).toLocaleString()}</b></div>`;
   }
 
+  function persistSettings(label="settings") {
+    try {
+      if (App.isDatabaseMode?.() && window.AITradeXDB?.writeSettings) {
+        window.AITradeXDB.fire(window.AITradeXDB.writeSettings(App.state.settings || {}), `${label} write`);
+      }
+    } catch {}
+  }
+
   function jsArg(value) {
     return JSON.stringify(String(value ?? "")).replace(/</g, "\\u003c");
   }
@@ -3208,6 +3216,7 @@
       }
       App.state.settings = { ...(App.state.settings || {}), supportWhatsAppNumber: raw };
       logAdminAction("SUPPORT_SETTINGS_UPDATE", "SETTINGS", "support", { whatsapp: raw });
+      persistSettings("support settings");
       App.saveState();
       App.toast("Support settings saved.");
       render();
@@ -3278,6 +3287,7 @@
         };
       }
       logAdminAction("PLAN_SETTINGS_UPDATE", "PLAN", planId, { name: next.name, price: next.price, signals: next.signals, status: next.status });
+      persistSettings("plan settings");
       App.saveState();
       App.toast(`${next.name} plan saved.`);
       render();
@@ -3293,6 +3303,7 @@
         referralSubscriptionEnabled: document.getElementById("referralSubscriptionEnabled")?.value !== "false"
       };
       logAdminAction("REFERRAL_SETTINGS_UPDATE", "SETTINGS", "referrals", { depositPercent: App.state.settings.referralDepositPercent, subscriptionPercent: App.state.settings.referralSubscriptionPercent });
+      persistSettings("referral settings");
       App.saveState();
       App.toast("Referral settings saved.");
       render();
@@ -3309,6 +3320,7 @@
         telegramUserAlerts: document.getElementById("settingTelegramUserAlerts")?.value === "true"
       };
       logAdminAction("TELEGRAM_SETTINGS_UPDATE", "SETTINGS", "telegram", { telegramEnabled: App.state.settings.telegramEnabled, adminAlerts: App.state.settings.telegramAdminAlerts, userMirror: App.state.settings.telegramUserAlerts });
+      persistSettings("telegram settings");
       App.saveState();
       App.toast("Telegram settings saved.");
       render();
@@ -3336,6 +3348,7 @@
         usdtInrRate: Math.max(1, Number(inputValue("settingUsdtInrRate") || 95))
       };
       logAdminAction("APP_SETTINGS_UPDATE", "SETTINGS", "app", { depositEnabled: App.state.settings.depositEnabled, withdrawalEnabled: App.state.settings.withdrawalEnabled, manualTradingEnabled: App.state.settings.manualTradingEnabled, aiTradingEnabled: App.state.settings.aiTradingEnabled, maintenanceMode: App.state.settings.maintenanceMode, maxLeverage: App.state.settings.maxLeverage });
+      persistSettings("app settings");
       App.saveState();
       App.toast("App settings saved.");
       render();
@@ -3357,6 +3370,7 @@
           depositIfsc: inputValue("settingIfsc").toUpperCase() || "AITX0001234"
         };
         logAdminAction("PAYMENT_METHODS_UPDATE", "SETTINGS", "paymentMethods", { upiEnabled: App.state.settings.depositUpiEnabled, bankEnabled: App.state.settings.depositBankEnabled, upiId: App.state.settings.depositUpiId, bankName: App.state.settings.depositBankName });
+        persistSettings("payment methods settings");
         App.saveState();
         App.toast("Payment methods saved.");
         render();

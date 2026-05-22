@@ -1,3 +1,6 @@
+-- AITradeX Phase 5.17 Strict Action-Based Database Runtime
+-- Keeps schema/RLS aligned with direct action writes and manual repair sync.
+
 -- AITradeX Phase 5.16.1 Clean Action Database Runtime Schema
 -- Updated: 2026-05-23
 -- Purpose: Keep Supabase schema aligned with the action-based database runtime.
