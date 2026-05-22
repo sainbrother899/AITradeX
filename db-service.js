@@ -679,6 +679,17 @@
     return user;
   }
 
+  async function findUserById(id) {
+    if (!SUPABASE_READY || !client) throw new Error("Supabase is not configured.");
+    const clean = String(id || "").trim();
+    if (!clean) return null;
+    const { data, error } = await client.from("users").select("*").eq("id", clean).limit(1).maybeSingle();
+    if (error) throw error;
+    const user = data ? camelUser(data) : null;
+    if (user) replaceInState("users", user);
+    return user;
+  }
+
   function userToRow(user) {
     return {
       id: String(user.id),
@@ -879,6 +890,7 @@
     pullCoreTables,
     findUserByEmail,
     findUserByMobile,
+    findUserById,
     upsertUserRecord,
     createUserAccount,
     directWriteChangedTables,

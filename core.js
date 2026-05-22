@@ -117,7 +117,15 @@ async function fetchChartFeedPrice(pair){
 
 
 const App={config:C,db,state:load(),session:loadSession(),now,uid,money,escapeHtml:esc,storageKey:SK,sessionKey:SS};
-App.reloadState=()=>{App.state=load();App.session=loadSession();return App.state;};
+App.reloadState=()=>{
+  App.session=loadSession();
+  // In database-only mode, never reset the in-memory database-loaded state back to defaults.
+  // Resetting here was the root cause of: login success toast, then dashboard not opening;
+  // and admin user lists looking empty until a manual reload.
+  if(DB_ONLY)return App.state;
+  App.state=load();
+  return App.state;
+};
 App.hasLedgerEntry=({accountType="REAL",type,referenceId,userId})=>{const list=accountType==="DEMO"?App.state.demoLedger:App.state.walletLedger;return (list||[]).some(x=>(!type||x.type===type)&&(!referenceId||x.referenceId===referenceId)&&(!userId||x.userId===userId));};
 App.ensureNotifications=()=>{if(!Array.isArray(App.state.notifications))App.state.notifications=[];return App.state.notifications;};
 App.addNotification=({audience="USER",userId="",title="Notification",message="",type="INFO",linkPage="",referenceId=""}={})=>{

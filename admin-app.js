@@ -4032,5 +4032,15 @@
     render();
   });
 
-  render();
+  async function bootAdminApp(){
+    if(App.databaseOnly && App.session?.userId && window.AITradeXDB?.ready){
+      try{
+        await window.AITradeXDB.findUserById?.(App.session.userId);
+        try{await window.AITradeXDB.pullCoreTables?.();}catch(err){try{console.warn("Admin app data load warning",err);}catch{}}
+      }catch(err){try{console.warn("Admin session hydrate warning",err);}catch{}}
+    }
+    render();
+  }
+
+  bootAdminApp();
 })();

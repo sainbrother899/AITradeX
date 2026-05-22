@@ -4737,5 +4737,15 @@
     render();
   });
 
-  render();
+  async function bootUserApp(){
+    if(App.databaseOnly && App.session?.userId && window.AITradeXDB?.ready){
+      try{
+        await window.AITradeXDB.findUserById?.(App.session.userId);
+        try{await window.AITradeXDB.pullCoreTables?.();}catch(err){try{console.warn("User app data load warning",err);}catch{}}
+      }catch(err){try{console.warn("User session hydrate warning",err);}catch{}}
+    }
+    render();
+  }
+
+  bootUserApp();
 })();
