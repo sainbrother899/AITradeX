@@ -163,20 +163,27 @@
     }));
   }
 
-  function reconcileUserAiLiveMarginLocks() {
+  async function reconcileUserAiLiveMarginLocks() {
     const u = user();
     if (!u) return 0;
     let fixed = 0;
-    aiOpenPositions().forEach(position => {
+    for (const position of aiOpenPositions()) {
       if (aiLiveMarginLockExists(position)) {
         position.marginLocked = true;
-        return;
+        continue;
       }
       const margin = Number(Number(position.marginAmount || 0).toFixed(2));
-      if (!Number.isFinite(margin) || margin <= 0) return;
+      if (!Number.isFinite(margin) || margin <= 0) continue;
       try {
         const before = App.realBalance(u.id);
-        const added = App.addLedger({
+        const added = App.addLedgerAsync ? await App.addLedgerAsync({
+          userId: u.id,
+          accountType: "REAL",
+          type: "AI_LIVE_MARGIN_LOCK",
+          amount: -margin,
+          referenceId: position.id,
+          note: `${position.pair} AI live ${position.side || "BUY"} amount locked`
+        }) : App.addLedger({
           userId: u.id,
           accountType: "REAL",
           type: "AI_LIVE_MARGIN_LOCK",
@@ -190,13 +197,13 @@
         position.balanceAfterOpen = Number(App.realBalance(u.id).toFixed(2));
         position.marginLockedAt = position.marginLockedAt || new Date().toISOString();
         if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) {
-          window.AITradeXDB.writeTrade(position).catch(err => console.warn("AI live margin lock DB sync failed", err));
+          await window.AITradeXDB.writeTrade(position);
         }
         fixed += 1;
       } catch (error) {
         position.marginLockError = error.message || "AI amount lock failed";
       }
-    });
+    }
     if (fixed) App.saveState();
     return fixed;
   }
@@ -3569,7 +3576,7 @@
 
   function render() {
     if (App.reloadState) App.reloadState();
-    reconcileUserAiLiveMarginLocks();
+    reconcileUserAiLiveMarginLocks().catch(err => console.warn("User AI live margin reconcile failed", err));
     ensurePairForMarket();
     const u = user();
     if (!u || u.role !== "user") return landing();

@@ -1561,19 +1561,26 @@
     }));
   }
 
-  function lockAiLiveMargin(position, balanceBeforeOverride = null) {
+  async function lockAiLiveMargin(position, balanceBeforeOverride = null) {
     if (!position || !position.userId) return false;
     const margin = Number(Number(position.marginAmount || 0).toFixed(2));
     if (!Number.isFinite(margin) || margin <= 0) return false;
     if (aiLiveMarginLockExists(position)) {
       position.marginLocked = true;
       if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) {
-        window.AITradeXDB.writeTrade(position).catch(err => console.warn("AI live margin status DB sync failed", err));
+        await window.AITradeXDB.writeTrade(position);
       }
       return true;
     }
     const before = balanceBeforeOverride === null ? App.realBalance(position.userId) : Number(balanceBeforeOverride || 0);
-    const added = App.addLedger({
+    const added = App.addLedgerAsync ? await App.addLedgerAsync({
+      userId: position.userId,
+      accountType: "REAL",
+      type: "AI_LIVE_MARGIN_LOCK",
+      amount: -margin,
+      referenceId: position.id,
+      note: `${position.pair} AI live ${position.side || "BUY"} amount locked`
+    }) : App.addLedger({
       userId: position.userId,
       accountType: "REAL",
       type: "AI_LIVE_MARGIN_LOCK",
@@ -1587,25 +1594,25 @@
     position.balanceAfterOpen = Number(App.realBalance(position.userId).toFixed(2));
     position.marginLockedAt = position.marginLockedAt || new Date().toISOString();
     if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) {
-      window.AITradeXDB.writeTrade(position).catch(err => console.warn("AI live margin lock DB sync failed", err));
+      await window.AITradeXDB.writeTrade(position);
     }
     return true;
   }
 
-  function reconcileAiLiveMarginLocks() {
+  async function reconcileAiLiveMarginLocks() {
     let fixed = 0;
-    aiLivePositions().forEach(position => {
+    for (const position of aiLivePositions()) {
       if (aiLiveMarginLockExists(position)) {
         position.marginLocked = true;
-        return;
+        continue;
       }
       try {
-        lockAiLiveMargin(position);
+        await lockAiLiveMargin(position);
         fixed += 1;
       } catch (error) {
         position.marginLockError = error.message || "AI amount lock failed";
       }
-    });
+    }
     if (fixed) App.saveState();
     return fixed;
   }
@@ -2749,7 +2756,7 @@
 
   function render() {
     if (App.reloadState) App.reloadState();
-    reconcileAiLiveMarginLocks();
+    reconcileAiLiveMarginLocks().catch(err => console.warn("AI live margin reconcile failed", err));
     page = localStorage.getItem("AITradeX_ADMIN_PAGE") || "dashboard";
     const current = adminUser();
     if (!current || current.role !== "admin") return loginPage();
@@ -3624,6 +3631,9 @@
               note: `${pair} ${side} AI auto trade · ${resultType} ${resultPercent}% · ${leverage}x`
             });
           } catch (err) {
+            if (App.isDatabaseMode?.() && window.AITradeXDB?.deleteTrade) {
+              try { await window.AITradeXDB.deleteTrade(trade.id); } catch (rollbackErr) { console.warn("AI instant trade rollback delete failed", rollbackErr); }
+            }
             report.skipped.push({ userId: target.id, reason: `Ledger DB save failed: ${err.message || err}` });
             continue;
           }
@@ -3664,7 +3674,14 @@
         completedAt: new Date().toISOString()
       };
       try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeAiBatch) await window.AITradeXDB.writeAiBatch(instantBatch); }
-      catch (err) { App.toast(`AI batch save failed: ${err.message || err}`); return; }
+      catch (err) {
+        instantBatch.status = "SAVE_FAILED";
+        instantBatch.errorMessage = err.message || String(err);
+        App.state.aiTradeBatches.unshift(instantBatch);
+        App.saveState();
+        App.toast(`AI batch final save failed. Trades already saved; batch marked for review: ${err.message || err}`);
+        return;
+      }
       App.state.aiTradeBatches.unshift(instantBatch);
       await (App.addNotificationAsync ? App.addNotificationAsync({ audience: "ADMIN", title: "Instant AI trade applied", message: `${pair} ${side} applied to ${appliedCount} user(s). Total P/L ${totalPnl >= 0 ? "+" : ""}${App.money(totalPnl)}.`, type: "AI", linkPage: "instantAi", referenceId: batchId }) : App.addNotification?.({ audience: "ADMIN", title: "Instant AI trade applied", message: `${pair} ${side} applied to ${appliedCount} user(s). Total P/L ${totalPnl >= 0 ? "+" : ""}${App.money(totalPnl)}.`, type: "AI", linkPage: "instantAi", referenceId: batchId }));
       await (typeof logAdminActionAsync === "function" ? logAdminActionAsync("AI_INSTANT_TRADE", "AI_BATCH", batchId, { pair, side, leverage, appliedCount, skippedCount: report.skipped.length, totalPnl: Number(totalPnl.toFixed(2)) }) : logAdminAction("AI_INSTANT_TRADE", "AI_BATCH", batchId, { pair, side, leverage, appliedCount, skippedCount: report.skipped.length, totalPnl: Number(totalPnl.toFixed(2)) }));
@@ -3848,7 +3865,14 @@
         createdAt: openedAt
       };
       try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeAiBatch) await window.AITradeXDB.writeAiBatch(liveBatch); }
-      catch (err) { App.toast(`AI live batch save failed: ${err.message || err}`); return; }
+      catch (err) {
+        liveBatch.status = "SAVE_FAILED";
+        liveBatch.errorMessage = err.message || String(err);
+        App.state.aiLiveBatches.unshift(liveBatch);
+        App.saveState();
+        App.toast(`AI live batch final save failed. Positions already saved; batch marked for review: ${err.message || err}`);
+        return;
+      }
       App.state.aiLiveBatches.unshift(liveBatch);
       await (App.addNotificationAsync ? App.addNotificationAsync({ audience: "ADMIN", title: "Live AI position opened", message: `${pair} ${side} opened for ${appliedCount} user(s). Locked ${App.money(totalMargin)}.`, type: "AI", linkPage: "liveAi", referenceId: batchId }) : App.addNotification?.({ audience: "ADMIN", title: "Live AI position opened", message: `${pair} ${side} opened for ${appliedCount} user(s). Locked ${App.money(totalMargin)}.`, type: "AI", linkPage: "liveAi", referenceId: batchId }));
       await (typeof logAdminActionAsync === "function" ? logAdminActionAsync("AI_LIVE_OPEN", "AI_BATCH", batchId, { pair, side, leverage, appliedCount, skippedCount: report.skipped.length, totalMargin: Number(totalMargin.toFixed(2)), totalExposure: Number(totalExposure.toFixed(2)) }) : logAdminAction("AI_LIVE_OPEN", "AI_BATCH", batchId, { pair, side, leverage, appliedCount, skippedCount: report.skipped.length, totalMargin: Number(totalMargin.toFixed(2)), totalExposure: Number(totalExposure.toFixed(2)) }));

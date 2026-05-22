@@ -1,4 +1,4 @@
-AITradeX Phase 5.25 - Final Admin/User Logic Fix
+AITradeX Phase 5.26 - Final Admin/User Logic Fix
 
 What changed in this build:
 - Default Supabase admin seed/fallback added for control@aitradex.com / admin123.
@@ -10,7 +10,7 @@ What changed in this build:
 - Admin Instant AI and Live AI no longer stop the whole batch when one eligible user has too-small margin.
 - Referral bonus now has an awaited async DB flow.
 - Wallet ledger SQL uniqueness now matches app logic: user + account type + type + reference ID.
-- Cache version bumped to phase525adminuserlogicfix.
+- Cache version bumped to phase526deepconsistency.
 - Database runtime version bumped to 5.25.
 
 Before upload/deploy:
@@ -20,3 +20,14 @@ Before upload/deploy:
 
 Testing note:
 This build is cleaner for functional testing. For real public funds/users, build a secure backend/service-role API and strict RLS before launch.
+
+
+Phase5.26 Deep Consistency Fix:
+- SQL/runtime/cache version aligned to 5.26.
+- Added trade/batch rollback helpers for safer AI consistency.
+- Instant AI trade rollback deletes the saved trade if ledger save fails.
+- AI live/instant batch final-save failures are marked locally for admin review instead of silently disappearing.
+- AI live margin reconcile DB writes are awaited; no background fire-and-forget trade status sync remains in reconcile helpers.
+- Removed duplicate live AI checks/fields found during the final audit.
+
+Security note: this package is suitable for functional testing only. Public real-money launch still requires a secure backend/service-role API and strict Supabase RLS.
