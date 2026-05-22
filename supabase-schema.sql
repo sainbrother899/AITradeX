@@ -222,6 +222,9 @@ alter table public.withdrawal_requests add column if not exists reviewed_at time
 alter table public.withdrawal_requests add column if not exists reviewed_by text;
 alter table public.withdrawal_requests add column if not exists rejection_reason text;
 alter table public.wallet_ledger add column if not exists raw jsonb default '{}'::jsonb;
+alter table public.plans add column if not exists raw jsonb default '{}'::jsonb;
+alter table public.subscriptions add column if not exists raw jsonb default '{}'::jsonb;
+alter table public.referrals add column if not exists raw jsonb default '{}'::jsonb;
 alter table public.notifications add column if not exists raw jsonb default '{}'::jsonb;
 alter table public.admin_action_logs add column if not exists raw jsonb default '{}'::jsonb;
 

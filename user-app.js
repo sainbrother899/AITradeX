@@ -4453,7 +4453,7 @@
       App.toast("Pending limit order cancelled.");
       render();
     },
-    buyPlan(planId) {
+    async buyPlan(planId) {
       const u = user();
       const plan = App.planById(planId);
       if (!u || !plan) {
@@ -4488,19 +4488,22 @@
           referenceId: subId,
           note: `${plan.name} subscription purchased`
         });
+        const changedSubscriptions = [];
         (App.state.subscriptions || []).forEach(row => {
           if (row.userId === u.id && row.status === "ACTIVE") {
             row.status = "REPLACED";
             row.replacedAt = new Date().toISOString();
+            changedSubscriptions.push(row);
           }
         });
         if (!App.state.subscriptions) App.state.subscriptions = [];
-        App.state.subscriptions.unshift({
+        const newSubscription = {
           id: subId,
           userId: u.id,
           planId: plan.id,
           planName: plan.name,
           price,
+          amount: price,
           aiTradeLimit: Number(plan.signals || 0),
           signals: Number(plan.signals || 0),
           durationDays,
@@ -4509,7 +4512,12 @@
           startsAt: startedAt.toISOString(),
           expiresAt,
           ledgerReferenceId: subId
-        });
+        };
+        App.state.subscriptions.unshift(newSubscription);
+        if (App.isDatabaseMode?.() && window.AITradeXDB?.writeSubscription) {
+          for (const row of changedSubscriptions) await window.AITradeXDB.writeSubscription(row);
+          await window.AITradeXDB.writeSubscription(newSubscription);
+        }
         App.saveState();
         App.creditReferralBonus?.({ referredUserId: u.id, eventType: "SUBSCRIPTION", amount: price, referenceId: subId, sourceLabel: plan.name });
         App.toast(`${plan.name} activated successfully.`);
@@ -4563,17 +4571,18 @@
       else localStorage.removeItem("AITradeX_HISTORY_EXPANDED");
       render();
     },
-    setAutoPercent(value) {
+    async setAutoPercent(value) {
       const u = user();
       autoPercent = Number(value);
       localStorage.setItem("AITradeX_AUTO_PERCENT", autoPercent);
       if (u) {
         u.aiTradePercent = autoPercent;
+        try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeUser) await window.AITradeXDB.writeUser(u); } catch (err) { App.toast(`AI setting save failed: ${err.message || err}`); return; }
         App.saveState();
       }
       render();
     },
-    toggleAutoTrade() {
+    async toggleAutoTrade() {
       const u = user();
       if (autoTradeOn) {
         aiOffConfirmOpen = true;
@@ -4585,6 +4594,7 @@
       if (u) {
         u.aiTradeOn = true;
         if (!u.aiTradePercent) u.aiTradePercent = autoPercent || 75;
+        try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeUser) await window.AITradeXDB.writeUser(u); } catch (err) { App.toast(`AI setting save failed: ${err.message || err}`); return; }
         App.saveState();
       }
       App.toast("AI Auto Trading turned on.");
@@ -4594,7 +4604,7 @@
       aiOffConfirmOpen = false;
       render();
     },
-    confirmAiOff() {
+    async confirmAiOff() {
       const u = user();
       aiOffConfirmOpen = false;
       autoTradeOn = false;
@@ -4602,12 +4612,13 @@
       if (u) {
         u.aiTradeOn = false;
         if (!u.aiTradePercent) u.aiTradePercent = autoPercent || 75;
+        try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeUser) await window.AITradeXDB.writeUser(u); } catch (err) { App.toast(`AI setting save failed: ${err.message || err}`); return; }
         App.saveState();
       }
       App.toast("AI Auto Trading turned off.");
       render();
     },
-    createSupportTicket(event) {
+    async createSupportTicket(event) {
       event.preventDefault();
       const u = user();
       if (!u) return;
@@ -4620,7 +4631,7 @@
       }
       App.state.supportTickets = App.state.supportTickets || [];
       const id = App.uid("ticket");
-      App.state.supportTickets.unshift({
+      const ticket = {
         id,
         userId: u.id,
         userName: displayName(),
@@ -4633,7 +4644,11 @@
         replies: [],
         createdAt: App.now(),
         updatedAt: App.now()
-      });
+      };
+      App.state.supportTickets.unshift(ticket);
+      if (App.isDatabaseMode?.() && window.AITradeXDB?.writeSupportTicket) {
+        try { await window.AITradeXDB.writeSupportTicket(ticket); } catch (err) { App.toast(`Support ticket save failed: ${err.message || err}`); return; }
+      }
       App.addNotification?.({ audience: "ADMIN", title: "New support ticket", message: `${displayName()} opened: ${subject}`, type: "SUPPORT", linkPage: "support", referenceId: id });
       App.saveState();
       App.toast("Support ticket submitted.");

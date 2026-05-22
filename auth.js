@@ -47,7 +47,12 @@
     App.state.users.push(user);
     App.state.profiles=App.state.profiles||[];
     App.state.profiles.push({id:uid("profile"),userId:user.id,name:user.name,email:user.email,mobile:user.mobile,createdAt:App.now()});
-    if(referredBy){ App.state.referrals=App.state.referrals||[]; App.state.referrals.push({id:uid("ref"),referrerUserId:referredBy,referredUserId:user.id,status:"REGISTERED",commissionPaid:false,bonuses:{},createdAt:new Date().toISOString()}); }
+    if(referredBy){
+      App.state.referrals=App.state.referrals||[];
+      const refRow={id:uid("ref"),referrerUserId:referredBy,referredUserId:user.id,status:"REGISTERED",commissionPaid:false,bonuses:{},createdAt:new Date().toISOString()};
+      App.state.referrals.push(refRow);
+      if(isDb()&&DB.writeReferral) await DB.writeReferral(refRow);
+    }
     App.setSession(user.id,"user");
     App.saveState();
     return user;

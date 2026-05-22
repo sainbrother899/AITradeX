@@ -15,3 +15,7 @@ Run in Supabase SQL Editor after upload if not already current:
 - supabase-storage-policies.sql (only if storage buckets are used)
 
 Important: This is still a frontend/anon-key prototype. For public launch, migrate to Supabase Auth, strict RLS, and server-side/Edge Function secrets for Telegram and wallet-sensitive actions.
+
+Phase 5.21 audit cleanup:
+- Added DB persistence for plans, subscriptions, referrals, support tickets, user status/password changes and AI ON/OFF settings.
+- Run supabase-schema.sql and supabase-core-sync-policies.sql in Supabase before using this build in database mode.

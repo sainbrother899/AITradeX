@@ -56,6 +56,14 @@
   function stateAdminLog(r){ return {id:r.id,adminUserId:r.admin_user_id,action:r.action,targetType:r.target_type,targetId:r.target_id,meta:r.meta||{},createdAt:r.created_at}; }
   function rowBatch(x){ const raw=clone(x); return {id:text(x.id),batch_type:x.batchType||x.batch_type||"INSTANT",market:x.market||"CRYPTO",pair:x.pair||"",side:x.side||"",leverage:num(x.leverage||1),status:x.status||"OPEN",entry_price:num(x.entryPrice||x.entry_price),entry_price_display:x.entryPriceDisplay||x.entry_price_display||"",target_type:x.targetType||x.target_type||"",target_percent:num(x.targetPercent||x.target_percent),min_balance:num(x.minBalance||x.min_balance),total_margin:num(x.totalMargin||x.total_margin),total_exposure:num(x.totalExposure||x.total_exposure),total_pnl:num(x.totalPnl||x.total_pnl),applied_count:num(x.appliedCount||x.applied_count),skipped_count:num(x.skippedCount||x.skipped_count),skip_reasons:x.skipReasons||x.skip_reasons||{},note:x.note||"",raw,created_at:iso(x.createdAt||x.created_at),closed_at:x.closedAt?iso(x.closedAt):null}; }
   function stateBatch(r){ const raw=r.raw&&typeof r.raw==="object"?r.raw:{}; return {...raw,id:r.id,batchType:r.batch_type||raw.batchType,market:r.market||raw.market,pair:r.pair||raw.pair,side:r.side||raw.side,leverage:num(r.leverage||raw.leverage),status:r.status||raw.status,entryPrice:num(r.entry_price||raw.entryPrice),entryPriceDisplay:r.entry_price_display||raw.entryPriceDisplay,targetType:r.target_type||raw.targetType,targetPercent:num(r.target_percent||raw.targetPercent),minBalance:num(r.min_balance||raw.minBalance),totalMargin:num(r.total_margin||raw.totalMargin),totalExposure:num(r.total_exposure||raw.totalExposure),totalPnl:num(r.total_pnl||raw.totalPnl),appliedCount:num(r.applied_count||raw.appliedCount),skippedCount:num(r.skipped_count||raw.skippedCount),skipReasons:r.skip_reasons||raw.skipReasons||{},note:r.note||raw.note,createdAt:r.created_at||raw.createdAt,closedAt:r.closed_at||raw.closedAt}; }
+  function rowPlan(x){ const raw=clone(x); return {id:text(x.id),name:text(x.name||"Plan"),price:num(x.price),signals:num(x.signals||x.aiTradeLimit),ai_access:text(x.aiAccess||x.ai_access||"AI Access"),trade_limit:num(x.tradeLimit||x.trade_limit||x.signals),is_active:String(x.status||"ACTIVE").toUpperCase()!=="INACTIVE",raw}; }
+  function statePlan(r){ const raw=r.raw&&typeof r.raw==="object"?r.raw:{}; return {...raw,id:r.id,name:r.name||raw.name||"Plan",price:num(r.price||raw.price),signals:num(r.signals||raw.signals||r.trade_limit||raw.tradeLimit),aiAccess:r.ai_access||raw.aiAccess||"AI Access",tradeLimit:num(r.trade_limit||raw.tradeLimit),status:r.is_active===false?"INACTIVE":(raw.status||"ACTIVE")}; }
+  function rowSubscription(x){ const raw=clone(x); return {id:text(x.id),user_id:x.userId||x.user_id,plan_id:x.planId||x.plan_id,plan_name:x.planName||x.plan_name||"",amount:num(x.amount||x.price),status:x.status||"ACTIVE",starts_at:x.startsAt||x.starts_at?iso(x.startsAt||x.starts_at):null,expires_at:x.expiresAt||x.expires_at?iso(x.expiresAt||x.expires_at):null,raw,created_at:iso(x.createdAt||x.created_at)}; }
+  function stateSubscription(r){ const raw=r.raw&&typeof r.raw==="object"?r.raw:{}; return {...raw,id:r.id,userId:r.user_id,planId:r.plan_id,planName:r.plan_name,amount:num(r.amount),price:num(raw.price||r.amount),status:r.status||raw.status||"ACTIVE",startsAt:r.starts_at||raw.startsAt,expiresAt:r.expires_at||raw.expiresAt,createdAt:r.created_at||raw.createdAt}; }
+  function rowReferral(x){ const raw=clone(x); return {id:text(x.id),referrer_user_id:x.referrerUserId||x.referrer_user_id,referred_user_id:x.referredUserId||x.referred_user_id,status:x.status||"REGISTERED",commission_paid:!!(x.commissionPaid||x.commission_paid||x.bonuses?.deposit?.credited||x.bonuses?.subscription?.credited),commission_amount:num(x.commissionAmount||x.commission_amount||x.bonuses?.deposit?.amount||0)+num(x.bonuses?.subscription?.amount||0),raw,created_at:iso(x.createdAt||x.created_at)}; }
+  function stateReferral(r){ const raw=r.raw&&typeof r.raw==="object"?r.raw:{}; return {...raw,id:r.id,referrerUserId:r.referrer_user_id,referredUserId:r.referred_user_id,status:r.status||raw.status||"REGISTERED",commissionPaid:!!r.commission_paid,commissionAmount:num(r.commission_amount),createdAt:r.created_at||raw.createdAt}; }
+  function rowSupportTicket(x){ return {id:text(x.id),user_id:x.userId||x.user_id,user_email:x.userEmail||x.user_email||"",subject:text(x.subject),category:text(x.category||"Other"),message:text(x.message),status:x.status||"OPEN",replies:Array.isArray(x.replies)?x.replies:[],created_at:iso(x.createdAt||x.created_at),updated_at:iso(x.updatedAt||x.updated_at||x.createdAt||x.created_at)}; }
+  function stateSupportTicket(r){ return {id:r.id,userId:r.user_id,userEmail:r.user_email,subject:r.subject,category:r.category,message:r.message,status:r.status,replies:r.replies||[],createdAt:r.created_at,updatedAt:r.updated_at}; }
 
   async function findUser(login){
     assertReady(); const key=lower(login), mob=cleanMobile(login);
@@ -89,13 +97,13 @@
         aiLiveBatches:batches.map(stateBatch).filter(b=>String(b.batchType||"").toUpperCase()==="LIVE"),
         adminActionLogs:logs.map(stateAdminLog).sort((a,b)=>Date.parse(b.createdAt||0)-Date.parse(a.createdAt||0)),
         notifications:notifications.map(stateNotification),
-        supportTickets:(support||[]).map(r=>({id:r.id,userId:r.user_id,userEmail:r.user_email,subject:r.subject,category:r.category,message:r.message,status:r.status,replies:r.replies||[],createdAt:r.created_at,updatedAt:r.updated_at})),
-        subscriptions:(subs||[]).map(r=>({id:r.id,userId:r.user_id,planId:r.plan_id,planName:r.plan_name,amount:num(r.amount),status:r.status,startsAt:r.starts_at,expiresAt:r.expires_at,createdAt:r.created_at})),
-        referrals:(refs||[]).map(r=>({...(r.raw||{}),id:r.id,referrerUserId:r.referrer_user_id,referredUserId:r.referred_user_id,status:r.status,commissionPaid:!!r.commission_paid,commissionAmount:num(r.commission_amount),createdAt:r.created_at}))
+        supportTickets:(support||[]).map(stateSupportTicket),
+        subscriptions:(subs||[]).map(stateSubscription),
+        referrals:(refs||[]).map(stateReferral)
       };
       const settingsRow=settingsRows.find(x=>x.id==="main")||settingsRows.find(x=>x.id==="global");
       const settings=settingsRow?.settings; if(settings&&typeof settings==="object") App.state.settings={...base.settings,...settings};
-      if(plans.length) App.state.plans=plans.map(r=>({...(r.raw||{}),id:r.id,name:r.name,price:num(r.price),signals:num(r.signals),aiAccess:r.ai_access,tradeLimit:num(r.trade_limit),status:r.is_active===false?"INACTIVE":"ACTIVE"}));
+      if(plans.length) App.state.plans=plans.map(statePlan);
       status(`Loaded database rows: users ${users.length}, KYC ${kyc.length}, deposits ${deposits.length}, withdrawals ${withdrawals.length}.`, true);
       loading=null; return App.state;
     })();
@@ -115,6 +123,10 @@
       await upsert("ai_trade_batches", [...(s.aiTradeBatches||[]),...(s.aiLiveBatches||[])].map(rowBatch), {onConflict:"id"});
       await upsert("notifications", (s.notifications||[]).map(rowNotification), {onConflict:"id"});
       await upsert("admin_action_logs", (s.adminActionLogs||[]).map(rowAdminLog), {onConflict:"id"});
+      await upsert("plans", (s.plans||[]).map(rowPlan), {onConflict:"id"});
+      await upsert("subscriptions", (s.subscriptions||[]).map(rowSubscription), {onConflict:"id"});
+      await upsert("referrals", (s.referrals||[]).map(rowReferral), {onConflict:"id"});
+      await upsert("support_tickets", (s.supportTickets||[]).map(rowSupportTicket), {onConflict:"id"});
       await upsert("app_settings", [{id:"main",settings:clone(s.settings||{}),updated_at:new Date().toISOString()}], {onConflict:"id"});
       status("Database saved.", true); return {ok:true};
     }catch(err){ status(err?.message||"Database save failed", false); throw err; }
@@ -140,6 +152,10 @@
   async function writeLedger(row){ assertReady(); const clean=rowLedger(row); const {error}=await client.from("wallet_ledger").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
   async function writeTrade(row){ assertReady(); const clean=rowTrade(row); const {error}=await client.from("trade_orders").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
   async function writeAiBatch(row){ assertReady(); const clean=rowBatch(row); const {error}=await client.from("ai_trade_batches").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
+  async function writePlan(row){ assertReady(); const clean=rowPlan(row); const {error}=await client.from("plans").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
+  async function writeSubscription(row){ assertReady(); const clean=rowSubscription(row); const {error}=await client.from("subscriptions").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
+  async function writeReferral(row){ assertReady(); const clean=rowReferral(row); const {error}=await client.from("referrals").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
+  async function writeSupportTicket(row){ assertReady(); const clean=rowSupportTicket(row); const {error}=await client.from("support_tickets").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
   async function writeNotification(row){ assertReady(); const clean=rowNotification(row); const {error}=await client.from("notifications").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
   async function writeAdminAction(row){ assertReady(); const clean=rowAdminLog(row); const {error}=await client.from("admin_action_logs").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
   async function writeSettings(settings){ assertReady(); const row={id:"main",settings:{...clone(settings||App.state.settings||{}),databaseRuntimeVersion:"5.17",updatedBy:"admin"},updated_at:new Date().toISOString()}; const {error}=await client.from("app_settings").upsert(row,{onConflict:"id"}); if(error) throw error; return row; }
@@ -166,6 +182,6 @@
   function downloadLocalBackup(){ const blob=new Blob([JSON.stringify({app:"AITradeX",exportedAt:new Date().toISOString(),state:clone(App.state)},null,2)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`aitradex-backup-${new Date().toISOString().slice(0,10)}.json`; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},400); }
   function importLocalBackup(file){ return new Promise((resolve,reject)=>{ const r=new FileReader(); r.onload=async()=>{ try{ const json=JSON.parse(String(r.result||"{}")); App.state=json.state||json; await fullSync(); resolve(true); }catch(e){reject(e);} }; r.onerror=()=>reject(new Error("Unable to read backup file.")); r.readAsText(file); }); }
 
-  const api={ready,client,loadAll,pullCoreTables:loadAll,syncCoreTables:fullSync,fullSync,scheduleFullSync,testConnection,findUser,createUser,updateUser,writeUser,writeKycRequest,writePaymentMethod,writeDepositRequest,writeWithdrawalRequest,writeLedger,writeTrade,writeAiBatch,writeNotification,writeAdminAction,writeSettings,uploadUserFile,fire,lastSyncStatus,sendTelegramMessage,backupFullState,latestSnapshot,restoreLatestSnapshot,downloadLocalBackup,importLocalBackup};
+  const api={ready,client,loadAll,pullCoreTables:loadAll,syncCoreTables:fullSync,fullSync,scheduleFullSync,testConnection,findUser,createUser,updateUser,writeUser,writeKycRequest,writePaymentMethod,writeDepositRequest,writeWithdrawalRequest,writeLedger,writeTrade,writeAiBatch,writePlan,writeSubscription,writeReferral,writeSupportTicket,writeNotification,writeAdminAction,writeSettings,uploadUserFile,fire,lastSyncStatus,sendTelegramMessage,backupFullState,latestSnapshot,restoreLatestSnapshot,downloadLocalBackup,importLocalBackup};
   window.AITradeXDB=api; window.AppDB=api;
 })();

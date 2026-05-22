@@ -3080,7 +3080,7 @@
       localStorage.setItem("AITradeX_ADMIN_WALLET_HISTORY_PAGE", "1");
       render();
     },
-    setUserStatus(userId, status, button) {
+    async setUserStatus(userId, status, button) {
       const target = allUsers().find(u => u.id === userId);
       if (!target) return;
       const nextStatus = String(status || "ACTIVE").toUpperCase();
@@ -3094,6 +3094,7 @@
       markButton(button, "Updating...");
       target.status = nextStatus;
       target.statusUpdatedAt = App.now();
+      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeUser) await window.AITradeXDB.writeUser(target); } catch (err) { App.toast(`User status save failed: ${err.message || err}`); render(); return; }
       logAdminAction("USER_STATUS_CHANGE", "USER", userId, { user: displayNameFor(target), status: nextStatus });
       App.saveState();
       App.toast(`User status changed to ${nextStatus}.`);
@@ -3131,7 +3132,7 @@
         App.toast(error.message || "Wallet update failed.");
       }
     },
-    changeUserPlan(event, userId) {
+    async changeUserPlan(event, userId) {
       event.preventDefault();
       const target = allUsers().find(u => u.id === userId);
       if (!target) return;
@@ -3140,40 +3141,53 @@
       if (!plan) return;
       if (!confirm(`Change ${displayNameFor(target)} plan to ${plan.name}?`)) return;
       App.state.subscriptions = App.state.subscriptions || [];
+      const changedSubscriptions = [];
       App.state.subscriptions.forEach(sub => {
         if (sub.userId === userId && sub.status === "ACTIVE") {
           sub.status = "ADMIN_REPLACED";
           sub.replacedAt = App.now();
+          changedSubscriptions.push(sub);
         }
       });
+      let newSubscription = null;
       if (plan.id !== "free") {
         const days = Math.max(1, Number(plan.durationDays || 30));
         const created = new Date();
         const expires = new Date(created.getTime() + days * 86400000);
-        App.state.subscriptions.push({
+        newSubscription = {
           id: App.uid("sub"),
           userId,
           planId: plan.id,
           planName: plan.name,
           price: Number(plan.price || 0),
+          amount: Number(plan.price || 0),
           aiTradeLimit: Number(plan.signals || 0),
           signals: Number(plan.signals || 0),
           durationDays: days,
           status: "ACTIVE",
           source: "ADMIN_PLAN_CHANGE",
           createdAt: created.toISOString(),
+          startsAt: created.toISOString(),
           expiresAt: expires.toISOString()
-        });
+        };
+        App.state.subscriptions.push(newSubscription);
+      }
+      if (App.isDatabaseMode?.() && window.AITradeXDB?.writeSubscription) {
+        try {
+          for (const row of changedSubscriptions) await window.AITradeXDB.writeSubscription(row);
+          if (newSubscription) await window.AITradeXDB.writeSubscription(newSubscription);
+        } catch (err) { App.toast(`Plan database save failed: ${err.message || err}`); return; }
       }
       target.planChangedAt = App.now();
       target.planChangedBy = "admin";
+      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeUser) await window.AITradeXDB.writeUser(target); } catch (err) { App.toast(`User plan marker save failed: ${err.message || err}`); return; }
       App.addNotification?.({ audience: "USER", userId, title: "Subscription plan updated", message: `Your plan was changed to ${plan.name} by admin.`, type: "PLAN", linkPage: "subscription", referenceId: `plan_${userId}_${Date.now()}` });
       logAdminAction("PLAN_CHANGE", "USER", userId, { user: displayNameFor(target), planId: plan.id, planName: plan.name });
       App.saveState();
       App.toast(`${displayNameFor(target)} plan updated to ${plan.name}.`);
       render();
     },
-    resetUserPassword(event, userId) {
+    async resetUserPassword(event, userId) {
       event.preventDefault();
       const target = allUsers().find(u => u.id === userId);
       if (!target) return;
@@ -3186,6 +3200,7 @@
       target.password = next;
       target.passwordUpdatedAt = App.now();
       target.passwordUpdatedBy = "admin";
+      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeUser) await window.AITradeXDB.writeUser(target); } catch (err) { App.toast(`Password save failed: ${err.message || err}`); return; }
       logAdminAction("PASSWORD_RESET", "USER", userId, { user: displayNameFor(target) });
       App.saveState();
       App.toast("Password reset successfully.");
@@ -3235,7 +3250,7 @@
       App.toast("Support settings saved.");
       render();
     },
-    replySupportTicket(event, ticketId) {
+    async replySupportTicket(event, ticketId) {
       event.preventDefault();
       App.state.supportTickets = App.state.supportTickets || [];
       const ticket = App.state.supportTickets.find(t => t.id === ticketId);
@@ -3250,12 +3265,13 @@
       ticket.replies.push({ by: "admin", message, createdAt: App.now() });
       ticket.status = "REPLIED";
       ticket.updatedAt = App.now();
+      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeSupportTicket) await window.AITradeXDB.writeSupportTicket(ticket); } catch (err) { App.toast(`Support reply save failed: ${err.message || err}`); return; }
       logAdminAction("SUPPORT_REPLY", "SUPPORT", ticketId, { subject: ticket.subject || "", userId: ticket.userId || "" });
       App.saveState();
       App.toast("Reply sent.");
       render();
     },
-    closeSupportTicket(ticketId, button) {
+    async closeSupportTicket(ticketId, button) {
       App.state.supportTickets = App.state.supportTickets || [];
       const ticket = App.state.supportTickets.find(t => t.id === ticketId);
       if (!ticket) return;
@@ -3264,6 +3280,7 @@
       ticket.status = "CLOSED";
       ticket.closedAt = App.now();
       ticket.updatedAt = App.now();
+      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeSupportTicket) await window.AITradeXDB.writeSupportTicket(ticket); } catch (err) { App.toast(`Support close save failed: ${err.message || err}`); return; }
       logAdminAction("SUPPORT_CLOSE", "SUPPORT", ticketId, { subject: ticket.subject || "", userId: ticket.userId || "" });
       App.saveState();
       App.toast("Ticket closed.");
@@ -3300,6 +3317,8 @@
           postTrialFreeAiTradesPerDay: Math.max(0, Number(get("postTrial")?.value || 1))
         };
       }
+      const savedPlan = App.planById(planId) || App.normalizePlan(next);
+      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writePlan) await window.AITradeXDB.writePlan(savedPlan); } catch (err) { App.toast(`Plan save failed: ${err.message || err}`); return; }
       logAdminAction("PLAN_SETTINGS_UPDATE", "PLAN", planId, { name: next.name, price: next.price, signals: next.signals, status: next.status });
       await persistSettings("plan settings");
       App.saveState();

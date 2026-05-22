@@ -565,6 +565,7 @@ App.creditReferralBonus=({referredUserId,eventType,amount,referenceId,sourceLabe
     referral.bonuses[key]={credited:true,amount:bonus,percent,baseAmount,referenceId,ledgerReferenceId:ledgerRef,creditedAt:new Date().toISOString(),eventType:key.toUpperCase()};
     referral.status=referral.bonuses.deposit?.credited&&referral.bonuses.subscription?.credited?"BONUSES_CREDITED":key==="deposit"?"DEPOSIT_BONUS_CREDITED":"SUBSCRIPTION_BONUS_CREDITED";
     referral.updatedAt=new Date().toISOString();
+    if(DB_ONLY&&window.AITradeXDB?.writeReferral){window.AITradeXDB.writeReferral(referral).catch(err=>console.warn("referral write failed",err));}
     App.saveState();
     return {credited:!!added,amount:bonus,percent,referral};
   }catch(err){return {credited:false,reason:err.message||"Unable to credit referral bonus"};}
