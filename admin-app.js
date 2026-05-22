@@ -2555,31 +2555,31 @@
       try {
         markButton(button, "Syncing...");
         const result = await window.AITradeXDB.syncCoreTables({ silent: true });
-        if (box) box.textContent = `Core tables synced to Supabase. ${result.total || 0} row(s) upserted.`;
-        App.toast("Core tables synced.");
+        if (box) box.textContent = `Core + trade tables synced to Supabase. ${result.total || 0} row(s) upserted. Users, wallet, deposits, withdrawals, manual trades, AI live positions, pending orders and AI batches included.`;
+        App.toast("Core + trade tables synced.");
         render();
       } catch (err) {
         if (box) box.textContent = err.message || "Core sync failed.";
         App.toast(err.message || "Core sync failed.");
       } finally {
-        if (button) { button.disabled = false; button.textContent = button.dataset.oldText || "Sync Core Tables"; }
+        if (button) { button.disabled = false; button.textContent = button.dataset.oldText || "Sync Core + Trades"; }
       }
     },
     async pullCoreDatabase(button) {
-      const ok = confirm("Load core rows from Supabase into this browser? This replaces local users, wallet ledger, deposits, withdrawals, KYC, bank methods and notifications on this device.");
+      const ok = confirm("Load core + trade rows from Supabase into this browser? This replaces local users, wallet ledger, deposits, withdrawals, KYC, bank methods, notifications, manual trades, AI positions and AI batches on this device.");
       if (!ok) return;
       const box = document.getElementById("databaseStatusBox");
       try {
         markButton(button, "Loading...");
         const result = await window.AITradeXDB.pullCoreTables();
-        if (box) box.textContent = `Core tables loaded. Users: ${result.users || 0}, deposits: ${result.deposits || 0}, withdrawals: ${result.withdrawals || 0}, ledger: ${result.walletLedger || 0}.`;
-        App.toast("Core tables loaded from Supabase.");
+        if (box) box.textContent = `Core + trade tables loaded. Users: ${result.users || 0}, deposits: ${result.deposits || 0}, withdrawals: ${result.withdrawals || 0}, ledger: ${result.walletLedger || 0}, trades: ${result.trades || 0}, AI batches: ${result.aiBatches || 0}.`;
+        App.toast("Core + trade tables loaded from Supabase.");
         render();
       } catch (err) {
         if (box) box.textContent = err.message || "Load core tables failed.";
         App.toast(err.message || "Load core tables failed.");
       } finally {
-        if (button) { button.disabled = false; button.textContent = button.dataset.oldText || "Load Core Tables"; }
+        if (button) { button.disabled = false; button.textContent = button.dataset.oldText || "Load Core + Trades"; }
       }
     },
     async backupDatabase(button) {

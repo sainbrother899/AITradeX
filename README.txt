@@ -65,7 +65,7 @@ These policies are for testing/client mode only. Lock them down before public la
 
 Phase 5.3 Notes:
 - Added row-by-row Supabase core sync for users, KYC, bank methods, deposit requests, withdrawal requests, wallet ledger and notifications.
-- Admin > Database now has Sync Core Tables and Load Core Tables buttons.
+- Admin > Database now has Sync Core + Trades and Load Core + Trades buttons.
 - Auto-sync is debounced after local state changes when Supabase is configured.
 - If Supabase shows row-level security errors for core tables, run supabase-core-sync-policies.sql in SQL Editor for prototype/testing.
 - Before public launch, replace broad anon policies with secure authenticated policies or Edge Functions.
@@ -76,3 +76,6 @@ Phase 5.4 Notes:
 - Admin > Database Sync Core + Trades now pushes users, wallet/deposit/withdrawal data and trading/order data together.
 - Run the updated supabase-schema.sql to create trade_orders and ai_trade_batches.
 - Run the updated supabase-core-sync-policies.sql if Supabase shows RLS errors for trade/order sync tables.
+
+
+Phase 5.4.1 note: Admin Database button labels were corrected to clearly show Core + Trades sync/load. The sync function already includes trade_orders and ai_trade_batches.
