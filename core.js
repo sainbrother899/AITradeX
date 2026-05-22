@@ -6,7 +6,7 @@ const now=()=>new Date().toLocaleString("en-IN");
 const uid=(p="id")=>`${p}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 const money=n=>"₹"+Number(n||0).toLocaleString("en-IN");
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
-function initial(){return{users:[{id:"control_root",name:"AITradeX Control",email:"control@aitradex.com",password:"admin123",role:"admin",status:"ACTIVE",createdAt:now()}],profiles:[],kycRequests:[],paymentMethods:[],depositRequests:[],withdrawalRequests:[],supportTickets:[],notifications:[],adminActionLogs:[],walletLedger:[],demoLedger:[],trades:[],aiTradeBatches:[],plans:[{id:"free",name:"Free Trial",price:0,signals:5,aiAccess:"Trial AI",durationDays:7,status:"ACTIVE",benefits:["5 AI auto trades per day for 7 days","1 AI auto trade per day after trial","Manual trading access","Live price cards"]},{id:"starter",name:"Standard",price:999,signals:15,aiAccess:"Standard AI",durationDays:30,status:"ACTIVE",benefits:["15 AI auto trades per day","Higher AI trading access","Priority dashboard visibility"]},{id:"pro",name:"Premium",price:2999,signals:50,aiAccess:"Premium AI",durationDays:30,status:"ACTIVE",benefits:["50 AI auto trades per day","Premium AI access","Faster plan priority"]},{id:"premium",name:"VIP",price:9999,signals:999999,aiAccess:"VIP Advanced AI",durationDays:30,status:"ACTIVE",benefits:["Unlimited AI auto trades per day","VIP advanced AI priority","Highest daily AI trades"]}],subscriptions:[],referrals:[],settings:{minDeposit:Number(C.MIN_DEPOSIT||500),minWithdrawal:Number(C.MIN_WITHDRAWAL||1000),referralFirstDepositPercent:Number(C.REFERRAL_FIRST_DEPOSIT_PERCENT||10),referralDepositPercent:Number(C.REFERRAL_DEPOSIT_PERCENT||10),referralSubscriptionPercent:Number(C.REFERRAL_SUBSCRIPTION_PERCENT||10),referralDepositEnabled:true,referralSubscriptionEnabled:true,demoBalance:Number(C.DEMO_BALANCE||100000),platformName:"AITradeX",depositUpiId:"aitradex@upi",depositQrImage:"",depositUpiEnabled:true,depositBankEnabled:true,depositBankName:"AITradeX Bank",depositAccountName:"AITradeX Private Wallet",depositAccountNumber:"123456789012",depositIfsc:"AITX0001234",depositEnabled:true,withdrawalEnabled:true,manualTradingEnabled:true,aiTradingEnabled:true,maintenanceMode:false,maxDeposit:1000000,maxWithdrawal:500000,minManualTrade:100,maxManualTrade:250000,minAiTrade:100,maxAiTrade:250000,maxLeverage:2000,maxOpenPositionsPerUser:10,freeAiTradesPerDay:5,postTrialFreeAiTradesPerDay:1,freeTrialDays:7,supportWhatsAppNumber:"919999999999",usdtInrRate:Number(C.USDT_INR_RATE||95)}}}
+function initial(){return{users:[{id:"control_root",name:"AITradeX Control",email:"control@aitradex.com",password:"admin123",role:"admin",status:"ACTIVE",createdAt:now()}],profiles:[],kycRequests:[],paymentMethods:[],depositRequests:[],withdrawalRequests:[],supportTickets:[],notifications:[],adminActionLogs:[],walletLedger:[],demoLedger:[],trades:[],aiTradeBatches:[],plans:[{id:"free",name:"Free Trial",price:0,signals:5,aiAccess:"Trial AI",durationDays:7,status:"ACTIVE",benefits:["5 AI auto trades per day for 7 days","1 AI auto trade per day after trial","Manual trading access","Live price cards"]},{id:"starter",name:"Standard",price:999,signals:15,aiAccess:"Standard AI",durationDays:30,status:"ACTIVE",benefits:["15 AI auto trades per day","Higher AI trading access","Priority dashboard visibility"]},{id:"pro",name:"Premium",price:2999,signals:50,aiAccess:"Premium AI",durationDays:30,status:"ACTIVE",benefits:["50 AI auto trades per day","Premium AI access","Faster plan priority"]},{id:"premium",name:"VIP",price:9999,signals:999999,aiAccess:"VIP Advanced AI",durationDays:30,status:"ACTIVE",benefits:["Unlimited AI auto trades per day","VIP advanced AI priority","Highest daily AI trades"]}],subscriptions:[],referrals:[],settings:{minDeposit:Number(C.MIN_DEPOSIT||500),minWithdrawal:Number(C.MIN_WITHDRAWAL||1000),referralFirstDepositPercent:Number(C.REFERRAL_FIRST_DEPOSIT_PERCENT||10),referralDepositPercent:Number(C.REFERRAL_DEPOSIT_PERCENT||10),referralSubscriptionPercent:Number(C.REFERRAL_SUBSCRIPTION_PERCENT||10),referralDepositEnabled:true,referralSubscriptionEnabled:true,demoBalance:Number(C.DEMO_BALANCE||100000),platformName:"AITradeX",depositUpiId:"aitradex@upi",depositQrImage:"",depositUpiEnabled:true,depositBankEnabled:true,depositBankName:"AITradeX Bank",depositAccountName:"AITradeX Private Wallet",depositAccountNumber:"123456789012",depositIfsc:"AITX0001234",depositEnabled:true,withdrawalEnabled:true,manualTradingEnabled:true,aiTradingEnabled:true,maintenanceMode:false,maxDeposit:1000000,maxWithdrawal:500000,minManualTrade:100,maxManualTrade:250000,minAiTrade:100,maxAiTrade:250000,maxLeverage:2000,maxOpenPositionsPerUser:10,freeAiTradesPerDay:5,postTrialFreeAiTradesPerDay:1,freeTrialDays:7,supportWhatsAppNumber:"919999999999",usdtInrRate:Number(C.USDT_INR_RATE||95),telegramEnabled:false,telegramBotToken:"",telegramChatId:"",telegramAdminAlerts:true,telegramUserAlerts:false}}}
 const load=()=>{try{return JSON.parse(localStorage.getItem(SK)||"null")||initial()}catch{return initial()}};
 const loadSession=()=>{try{return JSON.parse(localStorage.getItem(SS)||"null")}catch{return null}};
 
@@ -125,9 +125,65 @@ App.addNotification=({audience="USER",userId="",title="Notification",message="",
   const cleanAudience=String(audience||"USER").toUpperCase();
   const id=referenceId?`notif_${cleanAudience}_${userId||"all"}_${type}_${referenceId}`:uid("notif");
   if(referenceId&&App.state.notifications.some(n=>n.id===id))return false;
-  App.state.notifications.unshift({id,audience:cleanAudience,userId:userId||"",title:String(title||"Notification"),message:String(message||""),type:String(type||"INFO").toUpperCase(),linkPage:String(linkPage||""),referenceId:referenceId||"",read:false,createdAt:now()});
+  const row={id,audience:cleanAudience,userId:userId||"",title:String(title||"Notification"),message:String(message||""),type:String(type||"INFO").toUpperCase(),linkPage:String(linkPage||""),referenceId:referenceId||"",read:false,createdAt:now()};
+  App.state.notifications.unshift(row);
   App.saveState();
+  App.sendTelegramForNotification?.(row);
   return true;
+};
+
+
+App.telegramSettings=()=>{
+  App.state.settings=App.state.settings||{};
+  return {
+    enabled:App.state.settings.telegramEnabled===true,
+    botToken:String(App.state.settings.telegramBotToken||"").trim(),
+    chatId:String(App.state.settings.telegramChatId||"").trim(),
+    adminAlerts:App.state.settings.telegramAdminAlerts!==false,
+    userAlerts:App.state.settings.telegramUserAlerts===true
+  };
+};
+App.telegramReady=()=>{const t=App.telegramSettings();return !!(t.enabled&&t.botToken&&t.chatId);};
+App.telegramEscape=(value)=>String(value||"").replace(/[&<>]/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[ch]));
+App.sendTelegramMessage=async(message)=>{
+  const t=App.telegramSettings();
+  if(!t.enabled)return {ok:false,skipped:true,reason:"Telegram disabled"};
+  if(!t.botToken||!t.chatId)return {ok:false,reason:"Telegram bot token or chat ID missing"};
+  const text=String(message||"").slice(0,3900);
+  try{
+    const res=await fetch(`https://api.telegram.org/bot${t.botToken}/sendMessage`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({chat_id:t.chatId,text,parse_mode:"HTML",disable_web_page_preview:true})
+    });
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok||data.ok===false)throw new Error(data.description||`Telegram HTTP ${res.status}`);
+    return {ok:true,data};
+  }catch(error){
+    console.warn("Telegram notification failed",error);
+    return {ok:false,error:String(error?.message||error)};
+  }
+};
+App.telegramNotificationText=({audience="USER",title="Notification",message="",type="INFO",linkPage=""}={})=>{
+  const tag=String(type||"INFO").toUpperCase();
+  const aud=String(audience||"USER").toUpperCase();
+  const lines=[
+    `🚨 <b>AITradeX ${App.telegramEscape(tag)} Alert</b>`,
+    `<b>${App.telegramEscape(title)}</b>`,
+    App.telegramEscape(message),
+    `Audience: ${App.telegramEscape(aud)}`,
+    linkPage?`Page: ${App.telegramEscape(linkPage)}`:"",
+    `Time: ${new Date().toLocaleString("en-IN",{timeZone:"Asia/Kolkata"})}`
+  ].filter(Boolean);
+  return lines.join("\n");
+};
+App.sendTelegramForNotification=(payload)=>{
+  const t=App.telegramSettings();
+  const aud=String(payload?.audience||"USER").toUpperCase();
+  if(!t.enabled)return;
+  if(aud==="ADMIN"&&!t.adminAlerts)return;
+  if(aud==="USER"&&!t.userAlerts)return;
+  App.sendTelegramMessage(App.telegramNotificationText(payload));
 };
 
 App.ensureAdminActionLogs=()=>{if(!Array.isArray(App.state.adminActionLogs))App.state.adminActionLogs=[];return App.state.adminActionLogs;};
@@ -187,6 +243,11 @@ App.logoHtml=(variant="full",className="")=>{
 if(!Array.isArray(App.state.adminActionLogs))App.state.adminActionLogs=[];
 App.state.settings={freeAiTradesPerDay:5,postTrialFreeAiTradesPerDay:1,freeTrialDays:7,usdtInrRate:Number(C.USDT_INR_RATE||95),...(App.state.settings||{})};
 App.state.settings.usdtInrRate=Math.max(1,Number(App.state.settings.usdtInrRate||95));
+App.state.settings.telegramEnabled=App.state.settings.telegramEnabled===true;
+App.state.settings.telegramBotToken=String(App.state.settings.telegramBotToken||"");
+App.state.settings.telegramChatId=String(App.state.settings.telegramChatId||"");
+App.state.settings.telegramAdminAlerts=App.state.settings.telegramAdminAlerts!==false;
+App.state.settings.telegramUserAlerts=App.state.settings.telegramUserAlerts===true;
 if(!Array.isArray(App.state.plans))App.state.plans=initial().plans;
 const freePlan=App.state.plans.find(p=>p.id==="free");
 if(freePlan){

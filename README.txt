@@ -85,3 +85,11 @@ Phase 5.6 - Admin Login Security Hardening
 - Admin login gets temporarily locked for 15 minutes after 5 wrong password attempts on the same browser.
 - Admin Security Center added in sidebar.
 - Admin login/logout actions are written to audit logs.
+
+Phase 5.9 - Telegram Bot Notifications
+- Admin App Settings now includes Telegram Alerts controls.
+- Configure Telegram bot token and chat ID from Admin > App Settings.
+- Send Test Telegram Alert verifies the connection.
+- Admin notifications such as new signup, deposit request, withdrawal request, support ticket, and AI trade alerts can be mirrored to Telegram.
+- Optional user alert mirroring is available but disabled by default.
+- Note: This frontend prototype stores the bot token in app settings/local state. For real production, move Telegram sending to a secure backend/Edge Function.

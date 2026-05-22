@@ -2440,6 +2440,40 @@
               <input id="settingUsdtInrRate" type="number" min="1" step="0.01" value="${Number(settings.usdtInrRate || 95)}" required/>
               <small>This controls INR-only crypto price display. Default is ₹95 per USDT.</small>
             </label>
+
+            <p>TELEGRAM BOT ALERTS</p>
+            <div class="method-toggle-grid">
+              <label>Telegram Alerts
+                <select id="settingTelegramEnabled">
+                  <option value="false" ${settings.telegramEnabled === true ? "" : "selected"}>Disabled</option>
+                  <option value="true" ${settings.telegramEnabled === true ? "selected" : ""}>Enabled</option>
+                </select>
+                <small>Send important app alerts to your Telegram bot chat.</small>
+              </label>
+              <label>Admin Alerts
+                <select id="settingTelegramAdminAlerts">
+                  <option value="true" ${settings.telegramAdminAlerts !== false ? "selected" : ""}>Enabled</option>
+                  <option value="false" ${settings.telegramAdminAlerts === false ? "selected" : ""}>Disabled</option>
+                </select>
+                <small>New deposit, withdrawal, signup, support and AI admin alerts.</small>
+              </label>
+              <label>User Alerts Mirror
+                <select id="settingTelegramUserAlerts">
+                  <option value="false" ${settings.telegramUserAlerts === true ? "" : "selected"}>Disabled</option>
+                  <option value="true" ${settings.telegramUserAlerts === true ? "selected" : ""}>Enabled</option>
+                </select>
+                <small>Optional: also mirror user notifications to Telegram.</small>
+              </label>
+            </div>
+            <label>Telegram Bot Token
+              <input id="settingTelegramBotToken" value="${esc(settings.telegramBotToken || "")}" placeholder="123456789:ABC..." autocomplete="off"/>
+              <small>Keep this private. For production, bot token should be moved to a secure backend.</small>
+            </label>
+            <label>Telegram Chat ID
+              <input id="settingTelegramChatId" value="${esc(settings.telegramChatId || "")}" placeholder="123456789 or -100xxxxxxxxxx"/>
+              <small>Use your personal/group/channel chat ID where alerts should be delivered.</small>
+            </label>
+            <button type="button" class="outline-btn" onclick="AITradeXAdmin.testTelegramBot()">Send Test Telegram Alert</button>
             <button class="save-profile-btn">Save Payment Settings</button>
           </form>
 
@@ -2477,6 +2511,8 @@
               <article><span>Max Leverage</span><b>${Number(settings.maxLeverage || 2000)}x</b></article>
               <article><span>Max Positions</span><b>${Number(settings.maxOpenPositionsPerUser || 10)}</b></article>
               <article><span>USDT-INR Rate</span><b>₹${Number(settings.usdtInrRate || 95).toLocaleString("en-IN")}</b></article>
+              <article><span>Telegram Bot</span><b class="${settings.telegramEnabled === true ? "text-profit" : "text-loss"}">${settings.telegramEnabled === true ? "Enabled" : "Disabled"}</b></article>
+              <article><span>Admin TG Alerts</span><b class="${settings.telegramAdminAlerts !== false ? "text-profit" : "text-loss"}">${settings.telegramAdminAlerts !== false ? "Enabled" : "Disabled"}</b></article>
             </div>
           </section>
         </div>
@@ -3264,9 +3300,14 @@
           maxAiTrade: Math.max(1, Number(inputValue("settingMaxAiTrade") || 250000)),
           maxLeverage: Math.min(2000, Math.max(1, Number(inputValue("settingMaxLeverage") || 2000))),
           maxOpenPositionsPerUser: Math.max(1, Number(inputValue("settingMaxOpenPositions") || 10)),
-          usdtInrRate: Math.max(1, Number(inputValue("settingUsdtInrRate") || 95))
+          usdtInrRate: Math.max(1, Number(inputValue("settingUsdtInrRate") || 95)),
+          telegramEnabled: document.getElementById("settingTelegramEnabled")?.value === "true",
+          telegramBotToken: inputValue("settingTelegramBotToken"),
+          telegramChatId: inputValue("settingTelegramChatId"),
+          telegramAdminAlerts: document.getElementById("settingTelegramAdminAlerts")?.value !== "false",
+          telegramUserAlerts: document.getElementById("settingTelegramUserAlerts")?.value === "true"
         };
-        logAdminAction("APP_SETTINGS_UPDATE", "SETTINGS", "app", { depositEnabled: App.state.settings.depositEnabled, withdrawalEnabled: App.state.settings.withdrawalEnabled, manualTradingEnabled: App.state.settings.manualTradingEnabled, aiTradingEnabled: App.state.settings.aiTradingEnabled, maintenanceMode: App.state.settings.maintenanceMode, maxLeverage: App.state.settings.maxLeverage });
+        logAdminAction("APP_SETTINGS_UPDATE", "SETTINGS", "app", { depositEnabled: App.state.settings.depositEnabled, withdrawalEnabled: App.state.settings.withdrawalEnabled, manualTradingEnabled: App.state.settings.manualTradingEnabled, aiTradingEnabled: App.state.settings.aiTradingEnabled, maintenanceMode: App.state.settings.maintenanceMode, maxLeverage: App.state.settings.maxLeverage, telegramEnabled: App.state.settings.telegramEnabled });
         App.saveState();
         App.toast("App settings saved.");
         render();
@@ -3280,6 +3321,25 @@
       } else {
         apply(settings.depositQrImage || "");
       }
+    },
+    async testTelegramBot() {
+      const currentSettings = platformSettings();
+      const temp = {
+        ...currentSettings,
+        telegramEnabled: document.getElementById("settingTelegramEnabled")?.value === "true",
+        telegramBotToken: inputValue("settingTelegramBotToken"),
+        telegramChatId: inputValue("settingTelegramChatId"),
+        telegramAdminAlerts: document.getElementById("settingTelegramAdminAlerts")?.value !== "false",
+        telegramUserAlerts: document.getElementById("settingTelegramUserAlerts")?.value === "true"
+      };
+      if (!temp.telegramEnabled) { App.toast("Enable Telegram Alerts first."); return; }
+      if (!temp.telegramBotToken || !temp.telegramChatId) { App.toast("Telegram token and chat ID are required."); return; }
+      const oldSettings = App.state.settings || {};
+      App.state.settings = { ...oldSettings, ...temp };
+      App.toast("Sending Telegram test...");
+      const result = await App.sendTelegramMessage?.(`✅ <b>AITradeX Telegram Test</b>\nTelegram bot alerts are connected.\nTime: ${new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}`);
+      App.state.settings = oldSettings;
+      if (result?.ok) App.toast("Telegram test alert sent."); else App.toast(result?.error || result?.reason || "Telegram test failed.");
     },
     onAiPairChange() {
       this.updateAiPreview();
