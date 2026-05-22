@@ -11,22 +11,69 @@ async function registerUser({name,email,mobile,password,referralCode}){
   if(!name||!email||!mobile||!password)throw new Error("Please fill all required fields.");
   if(!/^\d{10}$/.test(mobile))throw new Error("Please enter a valid 10 digit mobile number.");
   if(App.databaseOnly&&(!DB||!DB.ready))throw new Error("Database connection required. Please check Supabase settings.");
+
   if(DB?.ready){
     try{await DB.pullCoreTables();}catch(err){throw new Error(`Unable to load database users: ${err.message||err}`);}
   }
-  if(byEmail(email))throw new Error("This email is already registered. Please login instead.");
-  if(byMobile(mobile))throw new Error("This mobile number is already linked with another account.");
+
+  const existingEmail=byEmail(email);
+  const existingMobile=byMobile(mobile);
+  if(existingEmail){
+    if(String(existingEmail.password||existingEmail.password_hash||"")===String(password||"")&&existingEmail.role==="user"){
+      App.setSession(existingEmail.id,"user");
+      return existingEmail;
+    }
+    throw new Error("This email is already registered. Please login instead.");
+  }
+  if(existingMobile)throw new Error("This mobile number is already linked with another account.");
+
   const cleanReferral=String(referralCode||"").trim().toUpperCase();
   const referredBy=cleanReferral?App.state.users.find(u=>String(u.referralCode||"").toUpperCase()===cleanReferral)?.id||null:null;
   const user={id:App.uid("user"),name:name.trim(),email,mobile,password,role:"user",status:"ACTIVE",referralCode:"AITX"+Math.random().toString(36).slice(2,8).toUpperCase(),referredBy,aiTradeOn:true,aiTradePercent:75,freeTrialStartedAt:new Date().toISOString(),createdAt:App.now()};
-  App.state.users.push(user);
-  App.state.profiles.push({id:App.uid("profile"),userId:user.id,name:user.name,email:user.email,mobile:user.mobile,createdAt:App.now()});
-  if(referredBy)App.state.referrals.push({id:App.uid("ref"),referrerUserId:referredBy,referredUserId:user.id,status:"REGISTERED",commissionPaid:false,bonuses:{},createdAt:new Date().toISOString()});
-  App.saveState();
-  if(DB?.ready){
-    await DB.upsertUserRecord(user);
-    await DB.syncCoreTables({silent:true});
+
+  const pushLocal=()=>{
+    App.state.users=Array.isArray(App.state.users)?App.state.users:[];
+    App.state.profiles=Array.isArray(App.state.profiles)?App.state.profiles:[];
+    App.state.referrals=Array.isArray(App.state.referrals)?App.state.referrals:[];
+    if(!App.state.users.some(u=>u.id===user.id||normEmail(u.email)===email||normMobile(u.mobile)===mobile))App.state.users.push(user);
+    if(!App.state.profiles.some(p=>p.userId===user.id))App.state.profiles.push({id:App.uid("profile"),userId:user.id,name:user.name,email:user.email,mobile:user.mobile,createdAt:App.now()});
+    if(referredBy&&!App.state.referrals.some(r=>r.referredUserId===user.id))App.state.referrals.push({id:App.uid("ref"),referrerUserId:referredBy,referredUserId:user.id,status:"REGISTERED",commissionPaid:false,bonuses:{},createdAt:new Date().toISOString()});
+  };
+
+  try{
+    App.__suspendDbAutoWrite=true;
+    pushLocal();
+    App.saveState();
+  }finally{
+    App.__suspendDbAutoWrite=false;
   }
+
+  if(DB?.ready){
+    try{
+      await DB.upsertUserRecord(user);
+      DB.directWriteChangedTables?.({reason:"user-register",force:false}).catch?.(()=>{});
+    }catch(err){
+      const msg=String(err?.message||err||"");
+      const duplicate=/duplicate key|unique constraint|users_email|users_mobile/i.test(msg);
+      if(duplicate){
+        let existing=null;
+        try{existing=await DB.findUserByEmail(email);}catch{}
+        if(!existing&&mobile){try{existing=await DB.findUserByMobile(mobile);}catch{}}
+        if(existing&&String(existing.role||"user")==="user"){
+          if(String(existing.password||existing.password_hash||"")===String(password||"")){
+            App.setSession(existing.id,"user");
+            return existing;
+          }
+          throw new Error("This email/mobile is already registered. Please login with the existing password.");
+        }
+      }
+      App.state.users=(App.state.users||[]).filter(u=>u.id!==user.id);
+      App.state.profiles=(App.state.profiles||[]).filter(p=>p.userId!==user.id);
+      App.state.referrals=(App.state.referrals||[]).filter(r=>r.referredUserId!==user.id);
+      throw new Error(`Signup could not be saved to database: ${msg}`);
+    }
+  }
+
   App.setSession(user.id,"user");
   return user
 }

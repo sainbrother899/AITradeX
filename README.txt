@@ -42,3 +42,9 @@ Recommended tests:
 
 Notes:
 - This remains a frontend/Supabase prototype. For a public launch, move sensitive admin operations and Telegram bot sending behind a backend/Supabase Edge Function.
+
+Phase 5.12.1 Signup Duplicate Recovery Fix
+- Signup no longer shows a false failure after the user row is already saved in Supabase.
+- Retry with the same email/password will log into the existing account instead of creating a duplicate.
+- Auto direct-write is paused during the critical signup insert to avoid race-condition duplicate errors.
+- User rows are de-duplicated before bulk repair/sync.

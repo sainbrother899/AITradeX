@@ -224,23 +224,39 @@
   }
 
   function userRows() {
-    return (App?.state?.users || []).map(u => ({
-      id: String(u.id),
-      name: u.name || "",
-      email: String(u.email || "").toLowerCase(),
-      mobile: u.mobile || "",
-      role: u.role || "user",
-      status: u.status || "ACTIVE",
-      referral_code: u.referralCode || u.referral_code || "",
-      referred_by: u.referredBy || u.referred_by || null,
-      password_hash: u.password || u.password_hash || null,
-      ai_trade_on: !!u.aiTradeOn,
-      ai_trade_percent: Number(u.aiTradePercent || 25),
-      free_trial_started_at: u.freeTrialStartedAt ? dateIso(u.freeTrialStartedAt) : null,
-      avatar_url: u.avatarUrl || u.avatar_url || null,
-      avatar_path: u.avatarPath || u.avatar_path || null,
-      created_at: dateIso(u.createdAt || u.created_at)
-    }));
+    const rows = [];
+    const seenId = new Set();
+    const seenEmail = new Set();
+    const seenMobile = new Set();
+    (App?.state?.users || []).forEach(u => {
+      const id = String(u.id || "").trim();
+      const email = String(u.email || "").trim().toLowerCase();
+      const mobile = String(u.mobile || "").replace(/\D/g, "").slice(-10);
+      if (!id || seenId.has(id)) return;
+      if (email && seenEmail.has(email)) return;
+      if (mobile && seenMobile.has(mobile)) return;
+      seenId.add(id);
+      if (email) seenEmail.add(email);
+      if (mobile) seenMobile.add(mobile);
+      rows.push({
+        id,
+        name: u.name || "",
+        email,
+        mobile: mobile || u.mobile || "",
+        role: u.role || "user",
+        status: u.status || "ACTIVE",
+        referral_code: u.referralCode || u.referral_code || "",
+        referred_by: u.referredBy || u.referred_by || null,
+        password_hash: u.password || u.password_hash || null,
+        ai_trade_on: !!u.aiTradeOn,
+        ai_trade_percent: Number(u.aiTradePercent || 25),
+        free_trial_started_at: u.freeTrialStartedAt ? dateIso(u.freeTrialStartedAt) : null,
+        avatar_url: u.avatarUrl || u.avatar_url || null,
+        avatar_path: u.avatarPath || u.avatar_path || null,
+        created_at: dateIso(u.createdAt || u.created_at)
+      });
+    });
+    return rows;
   }
 
   function walletLedgerRows() {
@@ -786,8 +802,10 @@
     const originalSaveState = App.saveState;
     App.saveState = function () {
       const result = originalSaveState.apply(App, arguments);
-      scheduleDirectWrite("App.saveState");
-      scheduleCoreSync();
+      if (!App.__suspendDbAutoWrite) {
+        scheduleDirectWrite("App.saveState");
+        scheduleCoreSync();
+      }
       return result;
     };
     App.__dbSyncWrapped = true;
