@@ -34,7 +34,19 @@
     if(error) throw new Error(`${table}: ${error.message}`);
     return {table,count:rows.length};
   }
-  async function removeMissing(table, ids){ return {table,deleted:0}; }
+  async function removeMissing(table, ids){
+    if(!ready || !client) return {table,deleted:0};
+    const keep = new Set((ids||[]).filter(Boolean).map(String));
+    const {data,error}=await client.from(table).select("id");
+    if(error) throw new Error(`${table} stale-row scan: ${error.message}`);
+    const stale=(data||[]).map(r=>String(r.id)).filter(id=>!keep.has(id));
+    for(let i=0;i<stale.length;i+=100){
+      const chunk=stale.slice(i,i+100);
+      const res=await client.from(table).delete().in("id", chunk);
+      if(res.error) throw new Error(`${table} stale-row delete: ${res.error.message}`);
+    }
+    return {table,deleted:stale.length};
+  }
 
   function rowUser(u){ return { id:text(u.id), name:text(u.name), email:lower(u.email), mobile:cleanMobile(u.mobile), role:text(u.role||"user"), status:text(u.status||"ACTIVE"), referral_code:text(u.referralCode||u.referral_code||""), referred_by:u.referredBy||u.referred_by||null, password_hash:u.passwordHash||u.password_hash||u.password||null, ai_trade_on:!!u.aiTradeOn, ai_trade_percent:num(u.aiTradePercent||25), free_trial_started_at:u.freeTrialStartedAt?iso(u.freeTrialStartedAt):null, last_login_at:(u.lastLoginAt||u.last_login_at)?iso(u.lastLoginAt||u.last_login_at):null, updated_at:new Date().toISOString(), avatar_url:u.avatarUrl||u.avatar_url||null, avatar_path:u.avatarPath||u.avatar_path||null, created_at:iso(u.createdAt||u.created_at)}; }
   function stateUser(r){ const pass=r.password_hash||""; return { id:r.id, name:r.name||"", email:r.email||"", mobile:r.mobile||"", role:r.role||"user", status:r.status||"ACTIVE", referralCode:r.referral_code||"", referredBy:r.referred_by||null, password:pass, passwordHash:pass, aiTradeOn:!!r.ai_trade_on, aiTradePercent:num(r.ai_trade_percent||25), freeTrialStartedAt:r.free_trial_started_at||"", lastLoginAt:r.last_login_at||"", avatarUrl:r.avatar_url||"", avatarPath:r.avatar_path||"", createdAt:r.created_at||"" }; }
@@ -91,7 +103,8 @@
         kycRequests:kyc.map(stateKyc),
         depositRequests:deposits.map(stateDeposit),
         withdrawalRequests:withdrawals.map(stateWithdrawal),
-        walletLedger:ledger.map(stateLedger),
+        walletLedger:ledger.map(stateLedger).filter(x=>String(x.accountType||"REAL").toUpperCase()==="REAL"),
+        demoLedger:ledger.map(stateLedger).filter(x=>String(x.accountType||"REAL").toUpperCase()==="DEMO"),
         trades:trades.map(stateTrade).sort((a,b)=>Date.parse(b.createdAt||0)-Date.parse(a.createdAt||0)),
         aiTradeBatches:batches.map(stateBatch).filter(b=>String(b.batchType||"").toUpperCase()!=="LIVE"),
         aiLiveBatches:batches.map(stateBatch).filter(b=>String(b.batchType||"").toUpperCase()==="LIVE"),
@@ -115,10 +128,11 @@
       const s=App.state||{};
       await upsert("users", (s.users||[]).map(rowUser), {onConflict:"id"});
       await upsert("payment_methods", (s.paymentMethods||[]).map(rowMethod), {onConflict:"id"});
+      await removeMissing("payment_methods", (s.paymentMethods||[]).map(x=>x.id));
       await upsert("kyc_requests", (s.kycRequests||[]).map(rowKyc), {onConflict:"id"});
       await upsert("deposit_requests", (s.depositRequests||[]).map(rowDeposit), {onConflict:"id"});
       await upsert("withdrawal_requests", (s.withdrawalRequests||[]).map(rowWithdrawal), {onConflict:"id"});
-      await upsert("wallet_ledger", (s.walletLedger||[]).map(rowLedger), {onConflict:"id"});
+      await upsert("wallet_ledger", [...(s.walletLedger||[]),...(s.demoLedger||[])].map(rowLedger), {onConflict:"id"});
       await upsert("trade_orders", (s.trades||[]).map(rowTrade), {onConflict:"id"});
       await upsert("ai_trade_batches", [...(s.aiTradeBatches||[]),...(s.aiLiveBatches||[])].map(rowBatch), {onConflict:"id"});
       await upsert("notifications", (s.notifications||[]).map(rowNotification), {onConflict:"id"});

@@ -4290,8 +4290,16 @@
           App.toast("Enter valid limit price.");
           return;
         }
+        let limitLedgerRow = null;
         try {
-          App.addLedger({
+          limitLedgerRow = App.isDatabaseMode?.() && App.addLedgerAsync ? await App.addLedgerAsync({
+            userId: u.id,
+            accountType: accountMode,
+            type: "MANUAL_LIMIT_MARGIN_LOCK",
+            amount: -margin,
+            referenceId: tradeId,
+            note: `${selectedPair} manual ${normalizedSide} limit margin locked`
+          }) : App.addLedger({
             userId: u.id,
             accountType: accountMode,
             type: "MANUAL_LIMIT_MARGIN_LOCK",
@@ -4327,8 +4335,15 @@
           createdAt: new Date().toISOString(),
           createdDate: App.todayKey()
         };
+        try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) await window.AITradeXDB.writeTrade(order); }
+        catch (err) {
+          if (limitLedgerRow) {
+            try { await (App.addLedgerAsync ? App.addLedgerAsync({ userId: u.id, accountType: accountMode, type: "MANUAL_LIMIT_MARGIN_ROLLBACK", amount: margin, referenceId: `${tradeId}_rollback`, note: `Rollback: ${selectedPair} limit order save failed` }) : App.addLedger({ userId: u.id, accountType: accountMode, type: "MANUAL_LIMIT_MARGIN_ROLLBACK", amount: margin, referenceId: `${tradeId}_rollback`, note: `Rollback: ${selectedPair} limit order save failed` })); } catch {}
+          }
+          App.toast(`Trade save failed: ${err.message || err}`);
+          return;
+        }
         App.state.trades.unshift(order);
-        try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) await window.AITradeXDB.writeTrade(order); } catch (err) { App.toast(`Trade save failed: ${err.message || err}`); return; }
         App.saveState();
         resetTradeTicketAfterOrder("Limit order placed", `${selectedPair} ${normalizedSide} limit placed at ${order.limitPriceDisplay}.`);
         render();
@@ -4348,8 +4363,16 @@
         App.toast("Live entry price unavailable. Please try again.");
         return;
       }
+      let marketLedgerRow = null;
       try {
-        App.addLedger({
+        marketLedgerRow = App.isDatabaseMode?.() && App.addLedgerAsync ? await App.addLedgerAsync({
+          userId: u.id,
+          accountType: accountMode,
+          type: "MANUAL_TRADE_MARGIN_LOCK",
+          amount: -margin,
+          referenceId: tradeId,
+          note: `${selectedPair} manual ${normalizedSide} margin locked`
+        }) : App.addLedger({
           userId: u.id,
           accountType: accountMode,
           type: "MANUAL_TRADE_MARGIN_LOCK",
@@ -4385,8 +4408,15 @@
         createdAt: new Date().toISOString(),
         createdDate: App.todayKey()
       };
+        try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) await window.AITradeXDB.writeTrade(trade); }
+      catch (err) {
+        if (marketLedgerRow) {
+          try { await (App.addLedgerAsync ? App.addLedgerAsync({ userId: u.id, accountType: accountMode, type: "MANUAL_TRADE_MARGIN_ROLLBACK", amount: margin, referenceId: `${tradeId}_rollback`, note: `Rollback: ${selectedPair} market trade save failed` }) : App.addLedger({ userId: u.id, accountType: accountMode, type: "MANUAL_TRADE_MARGIN_ROLLBACK", amount: margin, referenceId: `${tradeId}_rollback`, note: `Rollback: ${selectedPair} market trade save failed` })); } catch {}
+        }
+        App.toast(`Trade save failed: ${err.message || err}`);
+        return;
+      }
       App.state.trades.unshift(trade);
-        try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) await window.AITradeXDB.writeTrade(trade); } catch (err) { App.toast(`Trade save failed: ${err.message || err}`); return; }
       App.saveState();
       resetTradeTicketAfterOrder("Market order opened", `${trade.side} ${selectedPair} opened at ${trade.entryPriceDisplay}.`);
       render();
@@ -4486,7 +4516,14 @@
       const durationDays = Math.max(0, Number(plan.durationDays || 30));
       const expiresAt = durationDays ? new Date(startedAt.getTime() + durationDays * 86400000).toISOString() : "";
       try {
-        App.addLedger({
+        const subscriptionLedgerRow = App.isDatabaseMode?.() && App.addLedgerAsync ? await App.addLedgerAsync({
+          userId: u.id,
+          accountType: "REAL",
+          type: "SUBSCRIPTION_PURCHASE",
+          amount: -price,
+          referenceId: subId,
+          note: `${plan.name} subscription purchased`
+        }) : App.addLedger({
           userId: u.id,
           accountType: "REAL",
           type: "SUBSCRIPTION_PURCHASE",
@@ -4521,8 +4558,15 @@
         };
         App.state.subscriptions.unshift(newSubscription);
         if (App.isDatabaseMode?.() && window.AITradeXDB?.writeSubscription) {
-          for (const row of changedSubscriptions) await window.AITradeXDB.writeSubscription(row);
-          await window.AITradeXDB.writeSubscription(newSubscription);
+          try {
+            for (const row of changedSubscriptions) await window.AITradeXDB.writeSubscription(row);
+            await window.AITradeXDB.writeSubscription(newSubscription);
+          } catch (err) {
+            try { await (App.addLedgerAsync ? App.addLedgerAsync({ userId: u.id, accountType: "REAL", type: "SUBSCRIPTION_PURCHASE_ROLLBACK", amount: price, referenceId: `${subId}_rollback`, note: `Rollback: ${plan.name} subscription save failed` }) : App.addLedger({ userId: u.id, accountType: "REAL", type: "SUBSCRIPTION_PURCHASE_ROLLBACK", amount: price, referenceId: `${subId}_rollback`, note: `Rollback: ${plan.name} subscription save failed` })); } catch {}
+            App.state.subscriptions = (App.state.subscriptions || []).filter(row => row.id !== subId);
+            changedSubscriptions.forEach(row => { if (row.status === "REPLACED") { row.status = "ACTIVE"; delete row.replacedAt; } });
+            throw err;
+          }
         }
         App.saveState();
         App.creditReferralBonus?.({ referredUserId: u.id, eventType: "SUBSCRIPTION", amount: price, referenceId: subId, sourceLabel: plan.name });
