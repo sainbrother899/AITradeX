@@ -124,19 +124,31 @@ const App={config:C,db,state:load(),session:loadSession(),now,uid,money,escapeHt
 App.reloadState=()=>{App.state=load();App.session=loadSession();return App.state;};
 App.hasLedgerEntry=({accountType="REAL",type,referenceId,userId})=>{const list=accountType==="DEMO"?App.state.demoLedger:App.state.walletLedger;return (list||[]).some(x=>(!type||x.type===type)&&(!referenceId||x.referenceId===referenceId)&&(!userId||x.userId===userId));};
 App.ensureNotifications=()=>{if(!Array.isArray(App.state.notifications))App.state.notifications=[];return App.state.notifications;};
-App.addNotification=({audience="USER",userId="",title="Notification",message="",type="INFO",linkPage="",referenceId=""}={})=>{
-  App.ensureNotifications();
+function buildNotificationRow({audience="USER",userId="",title="Notification",message="",type="INFO",linkPage="",referenceId=""}={}){
   const cleanAudience=String(audience||"USER").toUpperCase();
   const id=referenceId?`notif_${cleanAudience}_${userId||"all"}_${type}_${referenceId}`:uid("notif");
-  if(referenceId&&App.state.notifications.some(n=>n.id===id))return false;
-  const row={id,audience:cleanAudience,userId:userId||"",title:String(title||"Notification"),message:String(message||""),type:String(type||"INFO").toUpperCase(),linkPage:String(linkPage||""),referenceId:referenceId||"",read:false,createdAt:now()};
+  return {id,audience:cleanAudience,userId:userId||"",title:String(title||"Notification"),message:String(message||""),type:String(type||"INFO").toUpperCase(),linkPage:String(linkPage||""),referenceId:referenceId||"",read:false,createdAt:now()};
+}
+App.addNotification=(payload={})=>{
+  App.ensureNotifications();
+  const row=buildNotificationRow(payload);
+  if(row.referenceId&&App.state.notifications.some(n=>n.id===row.id))return false;
   App.state.notifications.unshift(row);
-  try{ if(DB_ONLY&&window.AITradeXDB?.writeNotification) window.AITradeXDB.fire(window.AITradeXDB.writeNotification(row), "notification write"); }catch{}
+  try{ if(DB_ONLY&&window.AITradeXDB?.writeNotification) window.AITradeXDB.writeNotification(row).catch(err=>console.warn("notification write failed", err)); }catch{}
   App.saveState();
   App.sendTelegramForNotification?.(row);
-  return true;
+  return row;
 };
-
+App.addNotificationAsync=async (payload={})=>{
+  App.ensureNotifications();
+  const row=buildNotificationRow(payload);
+  if(row.referenceId&&App.state.notifications.some(n=>n.id===row.id))return false;
+  if(DB_ONLY&&window.AITradeXDB?.writeNotification) await window.AITradeXDB.writeNotification(row);
+  App.state.notifications.unshift(row);
+  App.saveState();
+  if(App.sendTelegramForNotification) await App.sendTelegramForNotification(row);
+  return row;
+};
 
 App.telegramSettings=()=>{
   App.state.settings=App.state.settings||{};
@@ -197,27 +209,26 @@ App.sendTelegramForNotification=(payload)=>{
 };
 
 App.ensureAdminActionLogs=()=>{if(!Array.isArray(App.state.adminActionLogs))App.state.adminActionLogs=[];return App.state.adminActionLogs;};
-App.addAdminAction=({action="ADMIN_ACTION",targetType="SYSTEM",targetId="",meta={}}={})=>{
-  App.ensureAdminActionLogs();
+function buildAdminActionRow({action="ADMIN_ACTION",targetType="SYSTEM",targetId="",meta={}}={}){
   const admin=App.currentUser?.()||{};
-  const row={
-    id:uid("adminlog"),
-    adminUserId:admin.id||App.session?.userId||"admin",
-    adminName:admin.name||admin.email||"Admin",
-    action:String(action||"ADMIN_ACTION").toUpperCase(),
-    targetType:String(targetType||"SYSTEM").toUpperCase(),
-    targetId:String(targetId||""),
-    meta:meta&&typeof meta==="object"?meta:{ note:String(meta||"") },
-    createdAt:new Date().toISOString()
-  };
+  return {id:uid("adminlog"),adminUserId:admin.id||App.session?.userId||"admin",adminName:admin.name||admin.email||"Admin",action:String(action||"ADMIN_ACTION").toUpperCase(),targetType:String(targetType||"SYSTEM").toUpperCase(),targetId:String(targetId||""),meta:meta&&typeof meta==="object"?meta:{ note:String(meta||"") },createdAt:new Date().toISOString()};
+}
+App.addAdminAction=(payload={})=>{
+  App.ensureAdminActionLogs();
+  const row=buildAdminActionRow(payload);
   App.state.adminActionLogs.unshift(row);
-  try{ if(DB_ONLY&&window.AITradeXDB?.writeAdminAction) window.AITradeXDB.fire(window.AITradeXDB.writeAdminAction(row), "admin action write"); }catch{}
+  try{ if(DB_ONLY&&window.AITradeXDB?.writeAdminAction) window.AITradeXDB.writeAdminAction(row).catch(err=>console.warn("admin action write failed", err)); }catch{}
   App.saveState();
   return row;
 };
-
-App.addNotificationAsync=async (payload={})=>{App.ensureNotifications();const row=App.addNotification(payload); if(DB_ONLY&&window.AITradeXDB?.writeNotification&&row){await window.AITradeXDB.writeNotification(row);} return row;};
-App.addAdminActionAsync=async (payload={})=>{App.ensureAdminActionLogs();const row=App.addAdminAction(payload); if(DB_ONLY&&window.AITradeXDB?.writeAdminAction&&row){await window.AITradeXDB.writeAdminAction(row);} return row;};
+App.addAdminActionAsync=async (payload={})=>{
+  App.ensureAdminActionLogs();
+  const row=buildAdminActionRow(payload);
+  if(DB_ONLY&&window.AITradeXDB?.writeAdminAction) await window.AITradeXDB.writeAdminAction(row);
+  App.state.adminActionLogs.unshift(row);
+  App.saveState();
+  return row;
+};
 App.notificationsFor=({audience="USER",userId=""}={})=>{
   App.ensureNotifications();
   const cleanAudience=String(audience||"USER").toUpperCase();

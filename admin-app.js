@@ -2637,6 +2637,14 @@
       return null;
     }
   }
+  async function logAdminActionAsync(action, targetType = "SYSTEM", targetId = "", meta = {}) {
+    try {
+      return await App.addAdminActionAsync?.({ action, targetType, targetId, meta });
+    } catch (error) {
+      console.warn("Admin action log failed", error);
+      return null;
+    }
+  }
 
   function securityPage() {
     const admin = adminUser();
@@ -2764,7 +2772,7 @@
   }
 
 
-  function settleAiLivePositionByAdmin(position, reason = "ADMIN_CLOSE") {
+  async function settleAiLivePositionByAdmin(position, reason = "ADMIN_CLOSE") {
     if (!position || String(position.status || "").toUpperCase() !== "OPEN") return false;
     const cached = App.getCachedPairPrice ? App.getCachedPairPrice(position.pair) : null;
     const current = Number(cached?.price || position.entryPrice || 0);
@@ -2802,7 +2810,7 @@
     } else {
       App.saveState();
     }
-    try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) window.AITradeXDB.fire(window.AITradeXDB.writeTrade(position), "AI admin close write"); } catch {}
+    try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) window.AITradeXDB.writeTrade(position).catch(err=>console.warn("trade write failed", err)); } catch {}
     App.addNotification?.({ audience: "USER", userId: position.userId, title: "AI live position closed", message: `${position.pair} ${position.side} closed. P/L ${position.pnl >= 0 ? "+" : ""}${App.money(position.pnl)}. Settlement ${App.money(position.settlementAmount)}.`, type: "AI", linkPage: "orders", referenceId: `ai_close_${position.id}` });
     App.addNotification?.({ audience: "ADMIN", title: "AI live trade closed", message: `${position.pair} ${position.side} closed for user ${position.userId}. P/L ${position.pnl >= 0 ? "+" : ""}${App.money(position.pnl)}.`, type: "AI", linkPage: "liveAi", referenceId: `admin_ai_close_${position.id}` });
     return true;
@@ -3090,7 +3098,7 @@
       App.toast(`User status changed to ${nextStatus}.`);
       render();
     },
-    adjustUserWallet(event, userId) {
+    async adjustUserWallet(event, userId) {
       event.preventDefault();
       const target = allUsers().find(u => u.id === userId);
       if (!target) return;
@@ -3122,7 +3130,7 @@
         App.toast(error.message || "Wallet update failed.");
       }
     },
-    changeUserPlan(event, userId) {
+    async changeUserPlan(event, userId) {
       event.preventDefault();
       const target = allUsers().find(u => u.id === userId);
       if (!target) return;
@@ -3529,7 +3537,7 @@
         };
 
         App.state.trades.unshift(trade);
-        try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) window.AITradeXDB.fire(window.AITradeXDB.writeTrade(trade), "trade write"); } catch {}
+        try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) window.AITradeXDB.writeTrade(trade).catch(err=>console.warn("trade write failed", err)); } catch {}
         if (trade.pnl !== 0) {
           App.addLedger({
             userId: target.id,
@@ -3675,7 +3683,7 @@
           return;
         }
         App.state.trades.unshift(position);
-        try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) window.AITradeXDB.fire(window.AITradeXDB.writeTrade(position), "trade write"); } catch {}
+        try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) window.AITradeXDB.writeTrade(position).catch(err=>console.warn("trade write failed", err)); } catch {}
         App.addNotification?.({ audience: "USER", userId: target.id, title: "AI live position opened", message: `${pair} ${side} opened with ${App.money(position.marginAmount)} AI amount at ${leverage}x.`, type: "AI", linkPage: "orders", referenceId: `live_open_${position.id}` });
         appliedCount += 1;
         totalMargin += margin;
@@ -3709,7 +3717,7 @@
       App.toast(appliedCount ? `Live AI position opened for ${appliedCount} valid user(s).` : "No valid AI users found. Live position not opened.");
       render();
     },
-    closeAiLiveBatch(batchId, button) {
+    async closeAiLiveBatch(batchId, button) {
       const positions = aiLivePositions().filter(position => (position.batchId || position.id) === batchId);
       if (!positions.length) {
         App.toast("No open AI live positions found.");
@@ -3719,9 +3727,9 @@
       if (!confirm(`Close this AI live trade for ${positions.length} user(s)? Current profit/loss will be settled in real wallet.`)) return;
       markButton(button, "Closing...");
       let closed = 0;
-      positions.forEach(position => {
-        try { if (settleAiLivePositionByAdmin(position, "ADMIN_CLOSE")) closed += 1; } catch (error) {}
-      });
+      for (const position of positions) {
+        try { if (await settleAiLivePositionByAdmin(position, "ADMIN_CLOSE")) closed += 1; } catch (error) {}
+      }
       const batch = (App.state.aiLiveBatches || []).find(row => row.id === batchId);
       if (batch) {
         batch.status = "CLOSED";
@@ -3786,8 +3794,8 @@
         request.balanceApplied = true;
         request.adminNote = duplicate?.total ? `Checked duplicate UTR warning: ${duplicate.total} similar request(s).` : "Approved by admin.";
         await saveDepositRequests(target, requests);
-        App.addNotification?.({ audience: "USER", userId: target.id, title: "Deposit approved", message: `${App.money(amount)} deposit approved and credited to your wallet.`, type: "DEPOSIT", linkPage: "wallet", referenceId: `dep_ok_${request.id}` });
-        logAdminAction("DEPOSIT_APPROVE", "DEPOSIT", request.id, { userId: target.id, user: displayNameFor(target), amount, utr: request.utr || "", ledgerApplied: !ledgerExists });
+        await App.addNotificationAsync?.({ audience: "USER", userId: target.id, title: "Deposit approved", message: `${App.money(amount)} deposit approved and credited to your wallet.`, type: "DEPOSIT", linkPage: "wallet", referenceId: `dep_ok_${request.id}` });
+        await logAdminActionAsync("DEPOSIT_APPROVE", "DEPOSIT", request.id, { userId: target.id, user: displayNameFor(target), amount, utr: request.utr || "", ledgerApplied: !ledgerExists });
         if (ledgerAdded && !ledgerExists) {
           App.creditReferralBonus?.({ referredUserId: target.id, eventType: "DEPOSIT", amount, referenceId: request.id, sourceLabel: `Deposit UTR ${request.utr || "-"}` });
         }
@@ -3818,8 +3826,8 @@
       request.balanceApplied = false;
       request.adminNote = request.rejectReason;
       await saveDepositRequests(target, requests);
-      App.addNotification?.({ audience: "USER", userId: target.id, title: "Deposit rejected", message: request.rejectReason, type: "DEPOSIT", linkPage: "wallet", referenceId: `dep_no_${request.id}` });
-      logAdminAction("DEPOSIT_REJECT", "DEPOSIT", request.id, { userId: target.id, user: displayNameFor(target), amount: request.amount || 0, reason: request.rejectReason });
+      await App.addNotificationAsync?.({ audience: "USER", userId: target.id, title: "Deposit rejected", message: request.rejectReason, type: "DEPOSIT", linkPage: "wallet", referenceId: `dep_no_${request.id}` });
+      await logAdminActionAsync("DEPOSIT_REJECT", "DEPOSIT", request.id, { userId: target.id, user: displayNameFor(target), amount: request.amount || 0, reason: request.rejectReason });
       App.toast("Deposit rejected.");
       render();
     },
@@ -3876,8 +3884,8 @@
         request.balanceApplied = true;
         request.adminNote = "Approved payout by admin.";
         await saveWithdrawalRequests(target, requests);
-        App.addNotification?.({ audience: "USER", userId: target.id, title: "Withdrawal approved", message: `${App.money(amount)} withdrawal payout approved.`, type: "WITHDRAWAL", linkPage: "wallet", referenceId: `wd_ok_${request.id}` });
-        logAdminAction("WITHDRAWAL_APPROVE", "WITHDRAWAL", request.id, { userId: target.id, user: displayNameFor(target), amount, ledgerApplied: !ledgerExists });
+        await App.addNotificationAsync?.({ audience: "USER", userId: target.id, title: "Withdrawal approved", message: `${App.money(amount)} withdrawal payout approved.`, type: "WITHDRAWAL", linkPage: "wallet", referenceId: `wd_ok_${request.id}` });
+        await logAdminActionAsync("WITHDRAWAL_APPROVE", "WITHDRAWAL", request.id, { userId: target.id, user: displayNameFor(target), amount, ledgerApplied: !ledgerExists });
         App.toast(ledgerExists ? "Withdrawal marked approved. Ledger was already applied." : "Withdrawal approved and balance debited.");
       } catch (err) {
         App.toast(err.message || "Unable to approve withdrawal.");
@@ -3905,8 +3913,8 @@
       request.balanceApplied = false;
       request.adminNote = request.rejectReason;
       await saveWithdrawalRequests(target, requests);
-      App.addNotification?.({ audience: "USER", userId: target.id, title: "Withdrawal rejected", message: request.rejectReason, type: "WITHDRAWAL", linkPage: "wallet", referenceId: `wd_no_${request.id}` });
-      logAdminAction("WITHDRAWAL_REJECT", "WITHDRAWAL", request.id, { userId: target.id, user: displayNameFor(target), amount: request.amount || 0, reason: request.rejectReason });
+      await App.addNotificationAsync?.({ audience: "USER", userId: target.id, title: "Withdrawal rejected", message: request.rejectReason, type: "WITHDRAWAL", linkPage: "wallet", referenceId: `wd_no_${request.id}` });
+      await logAdminActionAsync("WITHDRAWAL_REJECT", "WITHDRAWAL", request.id, { userId: target.id, user: displayNameFor(target), amount: request.amount || 0, reason: request.rejectReason });
       App.toast("Withdrawal rejected.");
       render();
     },
@@ -3924,9 +3932,9 @@
       kyc.rejectReason = "";
       kyc.approvedAt = new Date().toISOString();
       kyc.rejectedAt = "";
-      logAdminAction("KYC_APPROVE", "KYC", kyc.id || userId, { userId: target.id, user: displayNameFor(target) });
+      await logAdminActionAsync("KYC_APPROVE", "KYC", kyc.id || userId, { userId: target.id, user: displayNameFor(target) });
       await saveKyc(target, kyc);
-      App.addNotification?.({ audience: "USER", userId: target.id, title: "KYC approved", message: "Your KYC verification has been approved.", type: "KYC", linkPage: "kyc", referenceId: `kyc_ok_${kyc.id || userId}` });
+      await App.addNotificationAsync?.({ audience: "USER", userId: target.id, title: "KYC approved", message: "Your KYC verification has been approved.", type: "KYC", linkPage: "kyc", referenceId: `kyc_ok_${kyc.id || userId}` });
       App.toast("KYC approved successfully.");
       render();
     },
@@ -3958,9 +3966,9 @@
       kyc.rejectReason = note ? `${reason}: ${note}` : reason;
       kyc.rejectedAt = new Date().toISOString();
       kyc.approvedAt = "";
-      logAdminAction("KYC_REJECT", "KYC", kyc.id || userId, { userId: target.id, user: displayNameFor(target), reason: kyc.rejectReason });
+      await logAdminActionAsync("KYC_REJECT", "KYC", kyc.id || userId, { userId: target.id, user: displayNameFor(target), reason: kyc.rejectReason });
       await saveKyc(target, kyc);
-      App.addNotification?.({ audience: "USER", userId: target.id, title: "KYC rejected", message: kyc.rejectReason || "Your KYC verification was rejected.", type: "KYC", linkPage: "kyc", referenceId: `kyc_no_${kyc.id || userId}` });
+      await App.addNotificationAsync?.({ audience: "USER", userId: target.id, title: "KYC rejected", message: kyc.rejectReason || "Your KYC verification was rejected.", type: "KYC", linkPage: "kyc", referenceId: `kyc_no_${kyc.id || userId}` });
       App.toast("KYC rejected successfully.");
       render();
     },
@@ -3980,7 +3988,7 @@
       method.rejectReason = "";
       method.approvedAt = new Date().toISOString();
       method.rejectedAt = "";
-      logAdminAction("PAYMENT_METHOD_APPROVE", "PAYMENT_METHOD", method.id, { userId: target.id, user: displayNameFor(target), bankName: method.bankName || "" });
+      await logAdminActionAsync("PAYMENT_METHOD_APPROVE", "PAYMENT_METHOD", method.id, { userId: target.id, user: displayNameFor(target), bankName: method.bankName || "" });
       await savePaymentMethods(target, methods);
       App.toast("Payment method approved successfully.");
       render();
@@ -4003,7 +4011,7 @@
       method.rejectReason = reason || "Rejected by admin.";
       method.rejectedAt = new Date().toISOString();
       method.approvedAt = "";
-      logAdminAction("PAYMENT_METHOD_REJECT", "PAYMENT_METHOD", method.id, { userId: target.id, user: displayNameFor(target), reason: method.rejectReason });
+      await logAdminActionAsync("PAYMENT_METHOD_REJECT", "PAYMENT_METHOD", method.id, { userId: target.id, user: displayNameFor(target), reason: method.rejectReason });
       await savePaymentMethods(target, methods);
       App.toast("Payment method rejected successfully.");
       render();
@@ -4020,7 +4028,7 @@
 
       markButton(button, "Deleting...");
       const next = methods.filter(m => m.id !== methodId);
-      logAdminAction("PAYMENT_METHOD_DELETE", "PAYMENT_METHOD", method.id, { userId: target.id, user: displayNameFor(target), label });
+      await logAdminActionAsync("PAYMENT_METHOD_DELETE", "PAYMENT_METHOD", method.id, { userId: target.id, user: displayNameFor(target), label });
       await savePaymentMethods(target, next);
       App.toast("Payment method deleted.");
       render();

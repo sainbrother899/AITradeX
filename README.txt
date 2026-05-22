@@ -1,27 +1,17 @@
-AITradeX Phase 5.18 - Await-Based Direct Database Actions
+AITradeX Phase 5.19 - Final Critical DB Action Cleanup
 
-This build keeps the UI/design baseline and cleans the database runtime for critical actions.
+Base: Phase 5.18
 
-Changed files:
-- core.js
-- db-service.js
-- auth.js
-- user-app.js
-- admin-app.js
-- supabase-schema.sql
-- supabase-core-sync-policies.sql
+Clean package notes:
+- No patch.js / fix.js / old.js / .bak files.
+- No duplicate app files.
+- Hidden full-state sync remains disabled in database mode.
+- Critical KYC/deposit/withdrawal notification flow uses awaited database notification writes.
+- Admin KYC/deposit/withdrawal/payment-method audit logs use awaited database action writes.
+- App.saveState() does not push business data in database mode.
+- Manual fullSync remains only for admin emergency repair/import/export tools.
 
-Important runtime changes:
-- KYC submit/update now awaits Supabase write before local UI success state.
-- Deposit request now awaits Supabase write before success message.
-- Withdrawal request now awaits Supabase write before success message.
-- Bank/payment method submit now awaits Supabase write before success message.
-- Admin KYC/deposit/withdrawal/bank approve-reject helpers await Supabase write before UI success state.
-- App.saveState does not push full app state in database mode.
-- Hidden scheduleFullSync remains disabled; manual fullSync remains only for emergency Database tools.
-- No patch.js/fix.js/old.js/duplicate files added.
-
-Run in Supabase if not already updated:
+Run in Supabase if needed:
 1. supabase-schema.sql
 2. supabase-core-sync-policies.sql
-3. supabase-storage-policies.sql if using KYC/avatar storage.
+3. supabase-storage-policies.sql (only for KYC/avatar storage)

@@ -1,4 +1,4 @@
--- AITradeX Phase 5.18 Await-Based Direct DB Actions
+-- AITradeX Phase 5.19 Final Critical DB Action Cleanup
 -- AITradeX Phase 5.18 Strict Action-Based Database Runtime
 -- Keeps schema/RLS aligned with direct action writes and manual repair sync.
 

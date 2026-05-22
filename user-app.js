@@ -347,7 +347,7 @@
     } else {
       App.saveState();
     }
-    try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) window.AITradeXDB.fire(window.AITradeXDB.writeTrade(position), "AI position close write"); } catch {}
+    try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) window.AITradeXDB.writeTrade(position).catch(err=>console.warn("AI position close write failed", err)); } catch {}
     return true;
   }
 
@@ -445,7 +445,7 @@
     } else {
       App.saveState();
     }
-    try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) window.AITradeXDB.fire(window.AITradeXDB.writeTrade(position), "manual position close write"); } catch {}
+    try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) window.AITradeXDB.writeTrade(position).catch(err=>console.warn("manual position close write failed", err)); } catch {}
     return true;
   }
 
@@ -3854,7 +3854,7 @@
         rejectReason: ""
       });
       await saveDepositRequests(requests);
-      App.addNotification?.({ audience: "ADMIN", title: "New deposit request", message: `${displayName()} requested ${App.money(amount)} deposit. UTR ${utr}.`, type: "DEPOSIT", linkPage: "deposits", referenceId: requestId });
+      await App.addNotificationAsync?.({ audience: "ADMIN", title: "New deposit request", message: `${displayName()} requested ${App.money(amount)} deposit. UTR ${utr}.`, type: "DEPOSIT", linkPage: "deposits", referenceId: requestId });
 
       depositDraft = { amount: "", type: settings.depositUpiEnabled !== false ? "UPI" : "BANK", utr: "" };
       depositStep = 1;
@@ -3955,7 +3955,7 @@
         rejectReason: ""
       });
       await saveWithdrawalRequests(requests);
-      App.addNotification?.({ audience: "ADMIN", title: "New withdrawal request", message: `${displayName()} requested ${App.money(amount)} withdrawal.`, type: "WITHDRAWAL", linkPage: "withdrawals", referenceId: requestId });
+      await App.addNotificationAsync?.({ audience: "ADMIN", title: "New withdrawal request", message: `${displayName()} requested ${App.money(amount)} withdrawal.`, type: "WITHDRAWAL", linkPage: "withdrawals", referenceId: requestId });
 
       withdrawalDraft = { amount: "", methodId: "" };
       withdrawalStep = 1;
@@ -4119,7 +4119,7 @@
       kyc.rejectedAt = "";
       kyc.approvedAt = "";
       await saveKycData(kyc);
-      App.addNotification?.({ audience: "ADMIN", title: "New KYC request", message: `${displayName()} submitted KYC for verification.`, type: "KYC", linkPage: "kyc", referenceId: `kyc_submit_${user()?.id || "user"}_${kyc.submittedAt}` });
+      await App.addNotificationAsync?.({ audience: "ADMIN", title: "New KYC request", message: `${displayName()} submitted KYC for verification.`, type: "KYC", linkPage: "kyc", referenceId: `kyc_submit_${user()?.id || "user"}_${kyc.submittedAt}` });
       App.toast("KYC submitted for verification.");
       render();
     },
@@ -4607,7 +4607,7 @@
       App.toast("AI Auto Trading turned off.");
       render();
     },
-    createSupportTicket(event) {
+    async createSupportTicket(event) {
       event.preventDefault();
       const u = user();
       if (!u) return;
@@ -4649,7 +4649,7 @@
         landing();
       }
     },
-    changePassword() {
+    async changePassword() {
       const u = user();
       if (!u) return;
       const current = document.getElementById("securityCurrentPassword")?.value || "";
@@ -4660,7 +4660,7 @@
       if (next !== confirm) return App.toast("New password confirmation does not match.");
       u.password = next;
       u.passwordUpdatedAt = App.now();
-      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeUser) window.AITradeXDB.fire(window.AITradeXDB.writeUser(u), "user password write"); } catch {}
+      if (App.isDatabaseMode?.() && window.AITradeXDB?.writeUser) await window.AITradeXDB.writeUser(u);
       App.addNotification?.({ audience: "USER", userId: u.id, title: "Password updated", message: "Your account password was changed successfully.", type: "SECURITY", linkPage: "security", referenceId: `password_${Date.now()}` });
       App.saveState();
       App.toast("Password updated successfully.");
