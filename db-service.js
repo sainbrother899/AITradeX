@@ -679,14 +679,12 @@
     return user;
   }
 
-  async function upsertUserRecord(user) {
-    if (!SUPABASE_READY || !client) throw new Error("Supabase is not configured.");
-    if (!user?.id) throw new Error("User record missing id.");
-    const row = {
+  function userToRow(user) {
+    return {
       id: String(user.id),
       name: user.name || "",
       email: String(user.email || "").toLowerCase(),
-      mobile: user.mobile || "",
+      mobile: String(user.mobile || "").replace(/\D/g, "").slice(-10) || user.mobile || "",
       role: user.role || "user",
       status: user.status || "ACTIVE",
       referral_code: user.referralCode || user.referral_code || "",
@@ -699,11 +697,45 @@
       avatar_path: user.avatarPath || user.avatar_path || null,
       created_at: dateIso(user.createdAt || user.created_at)
     };
+  }
+
+  async function upsertUserRecord(user) {
+    if (!SUPABASE_READY || !client) throw new Error("Supabase is not configured.");
+    if (!user?.id) throw new Error("User record missing id.");
+    const row = userToRow(user);
     const { error } = await client.from("users").upsert(row, { onConflict: "id" });
     if (error) throw error;
     replaceInState("users", user);
     dbStatus(`User synced to Supabase: ${row.email}`, true);
     return user;
+  }
+
+  async function createUserAccount(user) {
+    if (!SUPABASE_READY || !client) throw new Error("Supabase is not configured.");
+    if (!user?.id) throw new Error("User record missing id.");
+    const row = userToRow(user);
+    const existingByEmail = row.email ? await findUserByEmail(row.email) : null;
+    if (existingByEmail) return { user: existingByEmail, existed: true, match: String(existingByEmail.password || existingByEmail.password_hash || "") === String(user.password || user.password_hash || "") };
+    const existingByMobile = row.mobile ? await findUserByMobile(row.mobile) : null;
+    if (existingByMobile) return { user: existingByMobile, existed: true, match: String(existingByMobile.password || existingByMobile.password_hash || "") === String(user.password || user.password_hash || "") };
+
+    const { data, error } = await client.from("users").insert(row).select("*").single();
+    if (error) {
+      const msg = String(error.message || error || "");
+      const duplicate = /duplicate key|unique constraint|users_email|users_mobile|users_pkey/i.test(msg);
+      const policy = /row-level security|violates row-level security|policy/i.test(msg);
+      let recovered = null;
+      try { recovered = row.email ? await findUserByEmail(row.email) : null; } catch {}
+      if (!recovered && row.mobile) { try { recovered = await findUserByMobile(row.mobile); } catch {} }
+      if ((duplicate || policy) && recovered) {
+        return { user: recovered, existed: true, match: String(recovered.password || recovered.password_hash || "") === String(user.password || user.password_hash || "") };
+      }
+      throw error;
+    }
+    const saved = data ? camelUser(data) : user;
+    replaceInState("users", saved);
+    dbStatus(`User created in Supabase: ${row.email}`, true);
+    return { user: saved, existed: false, match: true };
   }
 
   const DIRECT_TABLE_PLANS = [
@@ -746,19 +778,27 @@
     if (!SUPABASE_READY || !client || !App?.state) return { ok: false, message: "Supabase is not configured." };
     const results = [];
     let total = 0;
+    const errors = [];
     for (const plan of DIRECT_TABLE_PLANS) {
       const rows = plan.rows();
       const changed = force ? rows : changedRowsFor(plan.table, rows);
       if (!changed.length) continue;
-      const result = await upsertRows(plan.table, changed, plan.label);
-      results.push(result);
-      total += changed.length;
+      try {
+        const result = await upsertRows(plan.table, changed, plan.label);
+        results.push(result);
+        total += changed.length;
+      } catch (err) {
+        errors.push({ table: plan.table, label: plan.label, message: err?.message || String(err) });
+      }
     }
-    if (total > 0) {
+    if (total > 0) emitDbLoaded({ type: "direct-write", reason, total, results, errors });
+    if (errors.length) {
+      dbStatus(`Direct database write partially saved ${total} row(s). ${errors.length} table(s) need policy/schema check.`, false);
+      try { console.warn("AITradeX direct write partial errors", errors); } catch {}
+    } else if (total > 0) {
       dbStatus(`Direct database write saved ${total} changed row(s).`, true);
-      emitDbLoaded({ type: "direct-write", reason, total, results });
     }
-    return { ok: true, total, results };
+    return { ok: !errors.length, total, results, errors };
   }
 
   let directWriteTimer = null;
@@ -828,6 +868,7 @@
     findUserByEmail,
     findUserByMobile,
     upsertUserRecord,
+    createUserAccount,
     directWriteChangedTables,
     scheduleDirectWrite,
     lastSyncStatus,

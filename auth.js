@@ -12,70 +12,75 @@ async function registerUser({name,email,mobile,password,referralCode}){
   if(!/^\d{10}$/.test(mobile))throw new Error("Please enter a valid 10 digit mobile number.");
   if(App.databaseOnly&&(!DB||!DB.ready))throw new Error("Database connection required. Please check Supabase settings.");
 
+  // Database-only signup: pehle exact email/mobile database se check karo.
+  let existingEmail=null, existingMobile=null;
   if(DB?.ready){
-    try{await DB.pullCoreTables();}catch(err){throw new Error(`Unable to load database users: ${err.message||err}`);}
+    try{existingEmail=await DB.findUserByEmail(email);}catch(err){throw new Error(`Unable to check email in database: ${err.message||err}`);}
+    try{existingMobile=await DB.findUserByMobile(mobile);}catch(err){throw new Error(`Unable to check mobile in database: ${err.message||err}`);}
+  }else{
+    existingEmail=byEmail(email);
+    existingMobile=byMobile(mobile);
   }
-
-  const existingEmail=byEmail(email);
-  const existingMobile=byMobile(mobile);
   if(existingEmail){
-    if(String(existingEmail.password||existingEmail.password_hash||"")===String(password||"")&&existingEmail.role==="user"){
+    if(String(existingEmail.password||existingEmail.password_hash||"")===String(password||"")&&String(existingEmail.role||"user")==="user"){
       App.setSession(existingEmail.id,"user");
       return existingEmail;
     }
     throw new Error("This email is already registered. Please login instead.");
   }
-  if(existingMobile)throw new Error("This mobile number is already linked with another account.");
+  if(existingMobile){
+    if(String(existingMobile.password||existingMobile.password_hash||"")===String(password||"")&&String(existingMobile.role||"user")==="user"){
+      App.setSession(existingMobile.id,"user");
+      return existingMobile;
+    }
+    throw new Error("This mobile number is already linked with another account.");
+  }
 
   const cleanReferral=String(referralCode||"").trim().toUpperCase();
   const referredBy=cleanReferral?App.state.users.find(u=>String(u.referralCode||"").toUpperCase()===cleanReferral)?.id||null:null;
   const user={id:App.uid("user"),name:name.trim(),email,mobile,password,role:"user",status:"ACTIVE",referralCode:"AITX"+Math.random().toString(36).slice(2,8).toUpperCase(),referredBy,aiTradeOn:true,aiTradePercent:75,freeTrialStartedAt:new Date().toISOString(),createdAt:App.now()};
 
-  const pushLocal=()=>{
+  const pushLocal=(savedUser=user)=>{
     App.state.users=Array.isArray(App.state.users)?App.state.users:[];
     App.state.profiles=Array.isArray(App.state.profiles)?App.state.profiles:[];
     App.state.referrals=Array.isArray(App.state.referrals)?App.state.referrals:[];
-    if(!App.state.users.some(u=>u.id===user.id||normEmail(u.email)===email||normMobile(u.mobile)===mobile))App.state.users.push(user);
-    if(!App.state.profiles.some(p=>p.userId===user.id))App.state.profiles.push({id:App.uid("profile"),userId:user.id,name:user.name,email:user.email,mobile:user.mobile,createdAt:App.now()});
-    if(referredBy&&!App.state.referrals.some(r=>r.referredUserId===user.id))App.state.referrals.push({id:App.uid("ref"),referrerUserId:referredBy,referredUserId:user.id,status:"REGISTERED",commissionPaid:false,bonuses:{},createdAt:new Date().toISOString()});
+    const u={...user,...savedUser,password:savedUser.password||savedUser.password_hash||user.password,referralCode:savedUser.referralCode||savedUser.referral_code||user.referralCode};
+    const existingIndex=App.state.users.findIndex(x=>x.id===u.id||normEmail(x.email)===email||normMobile(x.mobile)===mobile);
+    if(existingIndex>=0)App.state.users[existingIndex]=u; else App.state.users.push(u);
+    if(!App.state.profiles.some(p=>p.userId===u.id))App.state.profiles.push({id:App.uid("profile"),userId:u.id,name:u.name,email:u.email,mobile:u.mobile,createdAt:App.now()});
+    if(referredBy&&!App.state.referrals.some(r=>r.referredUserId===u.id))App.state.referrals.push({id:App.uid("ref"),referrerUserId:referredBy,referredUserId:u.id,status:"REGISTERED",commissionPaid:false,bonuses:{},createdAt:new Date().toISOString()});
+    return u;
   };
 
+  let finalUser=user;
+  if(DB?.ready){
+    try{
+      const result=DB.createUserAccount?await DB.createUserAccount(user):{user:await DB.upsertUserRecord(user),existed:false,match:true};
+      if(result?.existed&&!result?.match)throw new Error("This email/mobile is already registered. Please login with the existing password.");
+      finalUser=result?.user||user;
+    }catch(err){
+      const msg=String(err?.message||err||"");
+      // Agar insert ke baad policy/duplicate error aaya, to database se recover karke login allow karo.
+      let recovered=null;
+      try{recovered=await DB.findUserByEmail(email);}catch{}
+      if(!recovered){try{recovered=await DB.findUserByMobile(mobile);}catch{}}
+      if(recovered&&String(recovered.role||"user")==="user"&&String(recovered.password||recovered.password_hash||"")===String(password||"")){
+        finalUser=recovered;
+      }else{
+        throw new Error(`Signup could not be completed: ${msg}`);
+      }
+    }
+  }
+
+  App.__suspendDbAutoWrite=true;
   try{
-    App.__suspendDbAutoWrite=true;
-    pushLocal();
+    finalUser=pushLocal(finalUser);
     App.saveState();
   }finally{
     App.__suspendDbAutoWrite=false;
   }
-
-  if(DB?.ready){
-    try{
-      await DB.upsertUserRecord(user);
-      DB.directWriteChangedTables?.({reason:"user-register",force:false}).catch?.(()=>{});
-    }catch(err){
-      const msg=String(err?.message||err||"");
-      const duplicate=/duplicate key|unique constraint|users_email|users_mobile/i.test(msg);
-      if(duplicate){
-        let existing=null;
-        try{existing=await DB.findUserByEmail(email);}catch{}
-        if(!existing&&mobile){try{existing=await DB.findUserByMobile(mobile);}catch{}}
-        if(existing&&String(existing.role||"user")==="user"){
-          if(String(existing.password||existing.password_hash||"")===String(password||"")){
-            App.setSession(existing.id,"user");
-            return existing;
-          }
-          throw new Error("This email/mobile is already registered. Please login with the existing password.");
-        }
-      }
-      App.state.users=(App.state.users||[]).filter(u=>u.id!==user.id);
-      App.state.profiles=(App.state.profiles||[]).filter(p=>p.userId!==user.id);
-      App.state.referrals=(App.state.referrals||[]).filter(r=>r.referredUserId!==user.id);
-      throw new Error(`Signup could not be saved to database: ${msg}`);
-    }
-  }
-
-  App.setSession(user.id,"user");
-  return user
+  App.setSession(finalUser.id,"user");
+  return finalUser;
 }
 function userLockKey(email){return "AITradeX_USER_LOGIN_LOCK_"+normEmail(email)}
 function userLockInfo(email){try{return JSON.parse(localStorage.getItem(userLockKey(email))||"{}")||{}}catch{return {}}}
