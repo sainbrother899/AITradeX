@@ -565,6 +565,7 @@
               navButton("support", "🎧", "Support Tickets", "Inbox"),
               navButton("settings", "⚙️", "Payment Settings", "UPI/bank"),
               navButton("database", "🗄️", "Database", "Supabase sync"),
+              navButton("security", "🔐", "Security", "Admin lock"),
               navButton("audit", "🧾", "Audit Logs", "Security log")
             ])}
           </nav>
@@ -576,7 +577,7 @@
               <p>AITradeX Admin</p>
               <h1>${pageTitle()}</h1>
             </div>
-            <div class="admin-header-actions"><button class="notification-bell admin-bell" onclick="AITradeXAdmin.go('notifications')" aria-label="Notifications">🔔${adminNotificationBadgeHtml()}</button><div class="admin-profile-chip">${avatar(admin?.name || "A")}<b>${esc(admin?.name || "Admin")}</b></div></div>
+            <div class="admin-header-actions"><span class="admin-session-pill">${adminSessionLabel()}</span><button class="notification-bell admin-bell" onclick="AITradeXAdmin.go('notifications')" aria-label="Notifications">🔔${adminNotificationBadgeHtml()}</button><div class="admin-profile-chip">${avatar(admin?.name || "A")}<b>${esc(admin?.name || "Admin")}</b></div></div>
           </div>
           ${content}
         </main>
@@ -608,9 +609,21 @@
       support: "Support Tickets",
       settings: "Payment Settings",
       database: "Database",
+      security: "Security Center",
       audit: "Audit Logs"
     };
     return titles[page] || "Dashboard";
+  }
+
+  function adminSessionLabel() {
+    const ms = App.sessionTimeLeft?.() || 0;
+    if (!ms) return "Session secure";
+    const mins = Math.max(1, Math.ceil(ms / 60000));
+    return mins >= 60 ? `Session ${Math.floor(mins / 60)}h ${mins % 60}m` : `Session ${mins}m`;
+  }
+
+  function adminLockRow(email) {
+    try { return JSON.parse(localStorage.getItem("AITradeX_ADMIN_LOGIN_LOCK_" + String(email || "").trim().toLowerCase()) || "{}") || {}; } catch { return {}; }
   }
 
   function loginPage() {
@@ -620,9 +633,14 @@
           <div class="brand center aitx-login-logo">${App.logoHtml("full", "aitx-logo-login")}</div>
           <p class="eyebrow">AI Control Center</p>
           <h1>Admin Login</h1>
+          <div class="admin-login-security-note">
+            <b>Protected Control Center</b>
+            <span>5 wrong attempts lock admin login for 15 minutes. Session expires automatically after 2 hours.</span>
+          </div>
           <form onsubmit="AITradeXAdmin.login(event)" class="form-grid">
-            <label>Email<input id="adminEmail" type="email" required placeholder="control@aitradex.com"/></label>
+            <label>Email<input id="adminEmail" type="email" required placeholder="control@aitradex.com" oninput="AITradeXAdmin.previewAdminLock && AITradeXAdmin.previewAdminLock(this.value)"/></label>
             <label>Password<input id="adminPassword" type="password" required placeholder="admin123"/></label>
+            <div id="adminLoginLockStatus" class="admin-login-lock-status"></div>
             <button class="btn">Login</button>
           </form>
         </section>
@@ -2460,6 +2478,53 @@
     }
   }
 
+  function securityPage() {
+    const admin = adminUser();
+    const sessionMs = App.sessionTimeLeft?.() || 0;
+    const loginLogs = auditLogRows().filter(x => String(x.action || "").includes("LOGIN")).slice(0, 12);
+    const lockKeys = Object.keys(localStorage).filter(k => k.startsWith("AITradeX_ADMIN_LOGIN_LOCK_"));
+    const locks = lockKeys.map(k => ({ key: k, email: k.replace("AITradeX_ADMIN_LOGIN_LOCK_", ""), row: (() => { try { return JSON.parse(localStorage.getItem(k) || "{}") || {}; } catch { return {}; } })() }));
+    shell(`
+      <section class="admin-module-hero security-hero">
+        <div>
+          <p class="eyebrow">Admin Security</p>
+          <h2>Control Center Protection</h2>
+          <span>Session expiry, login attempt lock, and security audit visibility for sensitive admin access.</span>
+        </div>
+        <div class="admin-hero-stats"><b>${adminSessionLabel()}</b><span>Current admin session</span></div>
+      </section>
+      <section class="metrics-grid security-metrics-grid">
+        <article><span>Admin</span><b>${esc(admin?.email || "-")}</b></article>
+        <article><span>Session left</span><b>${Math.max(0, Math.ceil(sessionMs / 60000))} min</b></article>
+        <article><span>Login lock rule</span><b>5 attempts</b></article>
+        <article><span>Lock duration</span><b>15 min</b></article>
+      </section>
+      <section class="admin-grid-two">
+        <article class="premium-card security-card">
+          <div class="section-head"><div><h3>Security Rules</h3><span>Active in this ZIP</span></div></div>
+          <div class="admin-list">
+            <article class="admin-small-row"><b>Admin session expiry</b><span>Auto logout after 2 hours</span></article>
+            <article class="admin-small-row"><b>Wrong password lock</b><span>5 wrong attempts = 15 minute lock</span></article>
+            <article class="admin-small-row"><b>Audit record</b><span>Admin login/logout and sensitive actions are recorded locally + syncable</span></article>
+            <article class="admin-small-row"><b>Manual logout</b><span>Clears current admin session immediately</span></article>
+          </div>
+        </article>
+        <article class="premium-card security-card">
+          <div class="section-head"><div><h3>Login Lock Status</h3><span>Stored on this browser/device</span></div><button class="ghost-action" onclick="AITradeXAdmin.clearAdminLocks()">Clear Locks</button></div>
+          <div class="admin-list">
+            ${locks.length ? locks.map(x => { const until = Number(x.row.lockedUntil || 0); const active = until && Date.now() < until; return `<article class="admin-small-row"><b>${esc(x.email)}</b><span>${active ? `Locked · ${Math.ceil((until - Date.now()) / 60000)} min left` : `${Number(x.row.attempts || 0)} failed attempt(s)`}</span></article>`; }).join("") : `<article class="admin-small-row"><b>No active lock</b><span>Admin login is clear on this browser</span></article>`}
+          </div>
+        </article>
+      </section>
+      <section class="premium-card security-card">
+        <div class="section-head"><div><h3>Recent Security Timeline</h3><span>Login/logout and database/security actions</span></div><button class="ghost-action" onclick="AITradeXAdmin.go('audit')">Open Full Audit</button></div>
+        <div class="admin-mini-table audit-log-table">
+          ${loginLogs.length ? loginLogs.map(row => `<div><span>${esc(row.action || "SECURITY")}</span><b>${esc(row.adminName || row.adminUserId || "Admin")}</b><small>${row.createdAt ? new Date(row.createdAt).toLocaleString("en-IN") : "-"}</small></div>`).join("") : `<div class="empty-state">No security login timeline yet.</div>`}
+        </div>
+      </section>
+    `);
+  }
+
   function auditPage() {
     const logs = auditLogRows();
     const last = logs[0];
@@ -2513,6 +2578,7 @@
     page = localStorage.getItem("AITradeX_ADMIN_PAGE") || "dashboard";
     const current = adminUser();
     if (!current || current.role !== "admin") return loginPage();
+    if (App.touchSession && !App.touchSession()) return loginPage();
 
     if (page === "dashboard") return dashboardPage();
     if (page === "notifications") return notificationsPage();
@@ -2530,6 +2596,7 @@
     if (page === "support") return supportPage();
     if (page === "settings") return settingsPage();
     if (page === "database") return databasePage();
+    if (page === "security") return securityPage();
     if (page === "audit") return auditPage();
     return dashboardPage();
   }
@@ -2707,6 +2774,28 @@
         App.toast(err.message || "Import failed.");
       }
     },
+    previewAdminLock(email) {
+      const box = document.getElementById("adminLoginLockStatus");
+      if (!box) return;
+      const row = adminLockRow(email);
+      const until = Number(row.lockedUntil || 0);
+      if (until && Date.now() < until) {
+        box.textContent = `Temporarily locked. Try again in ${Math.ceil((until - Date.now()) / 60000)} minute(s).`;
+        box.className = "admin-login-lock-status locked";
+      } else if (Number(row.attempts || 0) > 0) {
+        box.textContent = `${Number(row.attempts || 0)} failed attempt(s) on this browser.`;
+        box.className = "admin-login-lock-status warn";
+      } else {
+        box.textContent = "";
+        box.className = "admin-login-lock-status";
+      }
+    },
+    clearAdminLocks() {
+      Object.keys(localStorage).filter(k => k.startsWith("AITradeX_ADMIN_LOGIN_LOCK_")).forEach(k => localStorage.removeItem(k));
+      logAdminAction("ADMIN_LOGIN_LOCKS_CLEARED", "SECURITY", "local_browser", {});
+      App.toast("Admin login locks cleared on this browser.");
+      render();
+    },
     confirmFinanceAction(action, userId, requestId, userName, amountText, button) {
       const actionTitle = String(action || "").includes("approve") ? "Approve" : "Reject";
       const isWithdrawal = String(action || "").toLowerCase().includes("withdrawal");
@@ -2725,6 +2814,7 @@
         });
         page = "dashboard";
         localStorage.setItem("AITradeX_ADMIN_PAGE", page);
+        logAdminAction("ADMIN_LOGIN", "ADMIN", App.session?.userId || "admin", { email: adminEmail.value });
         App.toast("Admin logged in.");
         render();
       } catch (err) {
@@ -2732,6 +2822,7 @@
       }
     },
     logout() {
+      logAdminAction("ADMIN_LOGOUT", "ADMIN", App.session?.userId || "admin", {});
       App.clearSession();
       localStorage.removeItem("AITradeX_ADMIN_PAGE");
       page = "dashboard";

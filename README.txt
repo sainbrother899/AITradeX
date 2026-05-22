@@ -79,3 +79,9 @@ Phase 5.4 Notes:
 
 
 Phase 5.4.1 note: Admin Database button labels were corrected to clearly show Core + Trades sync/load. The sync function already includes trade_orders and ai_trade_batches.
+
+Phase 5.6 - Admin Login Security Hardening
+- Admin session now expires automatically after 2 hours.
+- Admin login gets temporarily locked for 15 minutes after 5 wrong password attempts on the same browser.
+- Admin Security Center added in sidebar.
+- Admin login/logout actions are written to audit logs.

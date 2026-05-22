@@ -357,9 +357,28 @@ App.startCryptoLiveTicker=(pairs,onEach)=>{
 };
 
 App.saveState=()=>localStorage.setItem(SK,JSON.stringify(App.state));
-App.setSession=(userId,role)=>{App.session={userId,role,savedAt:Date.now()};localStorage.setItem(SS,JSON.stringify(App.session))};
+App.sessionDurationMs=(role)=>String(role||App.session?.role||"").toLowerCase()==="admin"?2*60*60*1000:24*60*60*1000;
+App.setSession=(userId,role)=>{
+  const cleanRole=role||App.state.users.find(u=>u.id===userId)?.role||"user";
+  const savedAt=Date.now();
+  App.session={userId,role:cleanRole,savedAt,expiresAt:savedAt+App.sessionDurationMs(cleanRole)};
+  localStorage.setItem(SS,JSON.stringify(App.session));
+};
 App.clearSession=()=>{App.session=null;localStorage.removeItem(SS)};
-App.currentUser=()=>App.state.users.find(u=>u.id===App.session?.userId)||null;
+App.isSessionExpired=()=>!!(App.session?.expiresAt&&Date.now()>Number(App.session.expiresAt));
+App.sessionTimeLeft=()=>App.session?.expiresAt?Math.max(0,Number(App.session.expiresAt)-Date.now()):0;
+App.touchSession=()=>{
+  if(!App.session?.userId)return false;
+  if(App.isSessionExpired()){App.clearSession();return false;}
+  App.session.savedAt=Date.now();
+  App.session.expiresAt=Date.now()+App.sessionDurationMs(App.session.role);
+  localStorage.setItem(SS,JSON.stringify(App.session));
+  return true;
+};
+App.currentUser=()=>{
+  if(App.isSessionExpired()){App.clearSession();return null;}
+  return App.state.users.find(u=>u.id===App.session?.userId)||null;
+};
 App.realBalance=id=>App.state.walletLedger.filter(x=>x.userId===id).reduce((s,x)=>s+Number(x.amount||0),0);
 App.demoBalance=id=>{const rows=App.state.demoLedger.filter(x=>x.userId===id);return rows.reduce((s,x)=>s+Number(x.amount||0),Number(App.state.settings.demoBalance||100000))};
 App.pendingDeposit=id=>App.state.depositRequests.filter(x=>x.userId===id&&x.status==="PENDING").reduce((s,x)=>s+Number(x.amount||0),0);

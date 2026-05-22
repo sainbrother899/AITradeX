@@ -20,7 +20,26 @@ function registerUser({name,email,mobile,password,referralCode}){
   App.saveState();App.setSession(user.id,"user");return user
 }
 function loginUser({email,password}){const u=byEmail(email);if(!u||u.password!==password||u.role!=="user")throw new Error("Invalid user login details.");const status=String(u.status||"ACTIVE").toUpperCase();if(status==="BLOCKED")throw new Error("Your account is blocked.");if(status==="SUSPENDED")throw new Error("Your account is suspended. Please contact support.");App.setSession(u.id,"user");return u}
-function loginControl({email,password}){const u=byEmail(email);if(!u||u.password!==password||u.role!=="admin")throw new Error("Invalid control center login.");App.setSession(u.id,"admin");return u}
+function adminLockKey(email){return "AITradeX_ADMIN_LOGIN_LOCK_"+normEmail(email)}
+function adminLockInfo(email){try{return JSON.parse(localStorage.getItem(adminLockKey(email))||"{}")||{}}catch{return {}}}
+function saveAdminLock(email,row){localStorage.setItem(adminLockKey(email),JSON.stringify(row||{}))}
+function clearAdminLock(email){localStorage.removeItem(adminLockKey(email))}
+function registerAdminFailure(email){const row=adminLockInfo(email);const attempts=Number(row.attempts||0)+1;const lockedUntil=attempts>=5?Date.now()+15*60*1000:0;saveAdminLock(email,{attempts,lockedUntil,lastFailedAt:Date.now()});return {attempts,lockedUntil}}
+function guardAdminLock(email){const row=adminLockInfo(email);const lockedUntil=Number(row.lockedUntil||0);if(lockedUntil&&Date.now()<lockedUntil){const mins=Math.ceil((lockedUntil-Date.now())/60000);throw new Error(`Too many wrong admin login attempts. Try again in ${mins} minute(s).`)}}
+function loginControl({email,password}){
+  email=normEmail(email);
+  guardAdminLock(email);
+  const u=byEmail(email);
+  if(!u||u.password!==password||u.role!=="admin"){
+    const row=registerAdminFailure(email);
+    const left=Math.max(0,5-Number(row.attempts||0));
+    throw new Error(left?`Invalid control center login. ${left} attempt(s) left before temporary lock.`:"Invalid control center login. Admin login temporarily locked.");
+  }
+  clearAdminLock(email);
+  App.setSession(u.id,"admin");
+  App.addAdminAction?.({action:"ADMIN_LOGIN",targetType:"ADMIN",targetId:u.id,meta:{email}});
+  return u
+}
 window.AITradeXAuth={registerUser,loginUser,loginControl};
 })();
 
@@ -31,15 +50,12 @@ window.AITradeXAuth={registerUser,loginUser,loginControl};
   if (!Auth || !App || Auth.loginAdmin) return;
 
   Auth.loginAdmin = function ({ email, password }) {
+    if (Auth.loginControl) return Auth.loginControl({ email, password });
     const admin = App.state.users.find(
       u => u.role === "admin" && String(u.email).toLowerCase() === String(email).toLowerCase() && u.password === password
     );
-
-    if (!admin) {
-      throw new Error("Invalid admin login.");
-    }
-
-    App.setSession(admin.id);
+    if (!admin) throw new Error("Invalid admin login.");
+    App.setSession(admin.id, "admin");
     return admin;
   };
 })();
