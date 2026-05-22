@@ -1,13 +1,17 @@
 (()=>{
-const C=window.AITRADEX_CONFIG||{},has=!!(C.SUPABASE_URL&&C.SUPABASE_ANON_KEY&&window.supabase),DB_ONLY=has;
+const C=window.AITRADEX_CONFIG||{},has=!!(C.SUPABASE_URL&&C.SUPABASE_ANON_KEY&&window.supabase);
 const db=has?window.supabase.createClient(C.SUPABASE_URL,C.SUPABASE_ANON_KEY):null;
+const DB_ONLY=has;
 const SK="AITradeX_STATE_V1",SS="AITradeX_SESSION_V1";
 const now=()=>new Date().toLocaleString("en-IN");
 const uid=(p="id")=>`${p}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 const money=n=>"₹"+Number(n||0).toLocaleString("en-IN");
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
 function initial(){return{users:[{id:"control_root",name:"AITradeX Control",email:"control@aitradex.com",password:"admin123",role:"admin",status:"ACTIVE",createdAt:now()}],profiles:[],kycRequests:[],paymentMethods:[],depositRequests:[],withdrawalRequests:[],supportTickets:[],notifications:[],adminActionLogs:[],walletLedger:[],demoLedger:[],trades:[],aiTradeBatches:[],plans:[{id:"free",name:"Free Trial",price:0,signals:5,aiAccess:"Trial AI",durationDays:7,status:"ACTIVE",benefits:["5 AI auto trades per day for 7 days","1 AI auto trade per day after trial","Manual trading access","Live price cards"]},{id:"starter",name:"Standard",price:999,signals:15,aiAccess:"Standard AI",durationDays:30,status:"ACTIVE",benefits:["15 AI auto trades per day","Higher AI trading access","Priority dashboard visibility"]},{id:"pro",name:"Premium",price:2999,signals:50,aiAccess:"Premium AI",durationDays:30,status:"ACTIVE",benefits:["50 AI auto trades per day","Premium AI access","Faster plan priority"]},{id:"premium",name:"VIP",price:9999,signals:999999,aiAccess:"VIP Advanced AI",durationDays:30,status:"ACTIVE",benefits:["Unlimited AI auto trades per day","VIP advanced AI priority","Highest daily AI trades"]}],subscriptions:[],referrals:[],settings:{minDeposit:Number(C.MIN_DEPOSIT||500),minWithdrawal:Number(C.MIN_WITHDRAWAL||1000),referralFirstDepositPercent:Number(C.REFERRAL_FIRST_DEPOSIT_PERCENT||10),referralDepositPercent:Number(C.REFERRAL_DEPOSIT_PERCENT||10),referralSubscriptionPercent:Number(C.REFERRAL_SUBSCRIPTION_PERCENT||10),referralDepositEnabled:true,referralSubscriptionEnabled:true,demoBalance:Number(C.DEMO_BALANCE||100000),platformName:"AITradeX",depositUpiId:"aitradex@upi",depositQrImage:"",depositUpiEnabled:true,depositBankEnabled:true,depositBankName:"AITradeX Bank",depositAccountName:"AITradeX Private Wallet",depositAccountNumber:"123456789012",depositIfsc:"AITX0001234",depositEnabled:true,withdrawalEnabled:true,manualTradingEnabled:true,aiTradingEnabled:true,maintenanceMode:false,maxDeposit:1000000,maxWithdrawal:500000,minManualTrade:100,maxManualTrade:250000,minAiTrade:100,maxAiTrade:250000,maxLeverage:2000,maxOpenPositionsPerUser:10,freeAiTradesPerDay:5,postTrialFreeAiTradesPerDay:1,freeTrialDays:7,supportWhatsAppNumber:"919999999999",usdtInrRate:Number(C.USDT_INR_RATE||95),telegramEnabled:false,telegramBotToken:"",telegramChatId:"",telegramAdminAlerts:true,telegramUserAlerts:false}}}
-const load=()=>{if(DB_ONLY)return initial();try{return JSON.parse(localStorage.getItem(SK)||"null")||initial()}catch{return initial()}};
+const load=()=>{
+  if(DB_ONLY) return initial();
+  try{return JSON.parse(localStorage.getItem(SK)||"null")||initial()}catch{return initial()}
+};
 const loadSession=()=>{try{return JSON.parse(localStorage.getItem(SS)||"null")}catch{return null}};
 
 const MARKET_PAIRS={
@@ -117,15 +121,7 @@ async function fetchChartFeedPrice(pair){
 
 
 const App={config:C,db,state:load(),session:loadSession(),now,uid,money,escapeHtml:esc,storageKey:SK,sessionKey:SS};
-App.reloadState=()=>{
-  App.session=loadSession();
-  // In database-only mode, never reset the in-memory database-loaded state back to defaults.
-  // Resetting here was the root cause of: login success toast, then dashboard not opening;
-  // and admin user lists looking empty until a manual reload.
-  if(DB_ONLY)return App.state;
-  App.state=load();
-  return App.state;
-};
+App.reloadState=()=>{App.state=load();App.session=loadSession();return App.state;};
 App.hasLedgerEntry=({accountType="REAL",type,referenceId,userId})=>{const list=accountType==="DEMO"?App.state.demoLedger:App.state.walletLedger;return (list||[]).some(x=>(!type||x.type===type)&&(!referenceId||x.referenceId===referenceId)&&(!userId||x.userId===userId));};
 App.ensureNotifications=()=>{if(!Array.isArray(App.state.notifications))App.state.notifications=[];return App.state.notifications;};
 App.addNotification=({audience="USER",userId="",title="Notification",message="",type="INFO",linkPage="",referenceId=""}={})=>{
@@ -186,26 +182,17 @@ App.telegramNotificationText=({audience="USER",title="Notification",message="",t
   return lines.join("\n");
 };
 App.telegramAllowedTypes=()=>new Set(["KYC","DEPOSIT","WITHDRAWAL"]);
-App.sendTelegramForNotification=async(payload)=>{
-  let t=App.telegramSettings();
+App.sendTelegramForNotification=(payload)=>{
+  const t=App.telegramSettings();
   const aud=String(payload?.audience||"USER").toUpperCase();
   const type=String(payload?.type||"INFO").toUpperCase();
+  if(!t.enabled)return;
   // Telegram is intentionally limited to KYC, Deposit and Withdrawal alerts only.
   // Other app notifications still stay inside the website notification center.
-  if(!App.telegramAllowedTypes().has(type))return {ok:false,skipped:true,reason:"type_not_allowed"};
-
-  // In database-only mode, user devices may not have the latest admin Telegram settings
-  // in memory yet. Refresh app_settings once before deciding that Telegram is disabled.
-  if((!t.enabled||!t.botToken||!t.chatId)&&window.AITradeXDB?.loadAppSettingsIntoState){
-    try{await window.AITradeXDB.loadAppSettingsIntoState();}catch(err){try{console.warn("Telegram settings refresh warning",err);}catch{}}
-    t=App.telegramSettings();
-  }
-
-  if(!t.enabled)return {ok:false,skipped:true,reason:"telegram_disabled"};
-  if(!t.botToken||!t.chatId)return {ok:false,skipped:true,reason:"telegram_missing_token_or_chat"};
-  if(aud==="ADMIN"&&!t.adminAlerts)return {ok:false,skipped:true,reason:"admin_alerts_disabled"};
-  if(aud==="USER"&&!t.userAlerts)return {ok:false,skipped:true,reason:"user_alerts_disabled"};
-  return App.sendTelegramMessage(App.telegramNotificationText(payload));
+  if(!App.telegramAllowedTypes().has(type))return;
+  if(aud==="ADMIN"&&!t.adminAlerts)return;
+  if(aud==="USER"&&!t.userAlerts)return;
+  App.sendTelegramMessage(App.telegramNotificationText(payload));
 };
 
 App.ensureAdminActionLogs=()=>{if(!Array.isArray(App.state.adminActionLogs))App.state.adminActionLogs=[];return App.state.adminActionLogs;};
@@ -439,7 +426,19 @@ App.startCryptoLiveTicker=(pairs,onEach)=>{
   return true;
 };
 
-App.saveState=()=>{if(DB_ONLY)return true;localStorage.setItem(SK,JSON.stringify(App.state));return true};
+App.isDatabaseMode=()=>DB_ONLY;
+App.saveState=()=>{
+  if(DB_ONLY){
+    try{ if(window.AITradeXDB&&typeof window.AITradeXDB.scheduleFullSync==="function") window.AITradeXDB.scheduleFullSync(); }catch{}
+    return true;
+  }
+  try{localStorage.setItem(SK,JSON.stringify(App.state));return true;}catch{return false;}
+};
+App.reloadState=()=>{
+  if(DB_ONLY) return App.state;
+  App.state=load();
+  return App.state;
+};
 App.sessionDurationMs=(role)=>String(role||App.session?.role||"").toLowerCase()==="admin"?2*60*60*1000:24*60*60*1000;
 App.setSession=(userId,role)=>{
   const cleanRole=role||App.state.users.find(u=>u.id===userId)?.role||"user";
@@ -559,5 +558,5 @@ App.referralStats=userId=>{
   return {totalInvited:rows.length,depositBonus,subscriptionBonus,totalBonus:depositBonus+subscriptionBonus,credited:rows.filter(r=>r.bonuses?.deposit?.credited||r.bonuses?.subscription?.credited).length};
 };
 App.toast=m=>{let e=document.querySelector(".toast");if(e)e.remove();e=document.createElement("div");e.className="toast";e.textContent=m;document.body.appendChild(e);setTimeout(()=>e.classList.add("show"),10);setTimeout(()=>{e.classList.remove("show");setTimeout(()=>e.remove(),250)},2600)};
-App.saveState();App.databaseOnly=DB_ONLY;window.AITradeX=App;
+App.saveState();window.AITradeX=App;
 })();

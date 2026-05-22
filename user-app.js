@@ -1191,7 +1191,7 @@
 
   function avatar(name) {
     const u = user();
-    const avatarData = u ? (u.avatarUrl || "") : "";
+    const avatarData = u ? (localStorage.getItem(`AITradeX_AVATAR_${u.id}`) || u.avatarUrl || "") : "";
     if (avatarData) {
       return `<span class="avatar image-avatar"><img src="${App.escapeHtml(avatarData)}" alt="Avatar"/></span>`;
     }
@@ -1224,7 +1224,7 @@
   function displayName() {
     const u = user();
     if (!u) return "User";
-    return u.name || "User";
+    return localStorage.getItem(`AITradeX_DISPLAY_NAME_${u.id}`) || u.name || "User";
   }
 
   function profileNameChip() {
@@ -1282,74 +1282,30 @@
     return JSON.stringify(String(value ?? ""));
   }
 
-  function normalizeKycRecord(saved = {}) {
-    const u = user() || {};
+  function currentKyc() {
+    const u = user();
+    if (!u) return null;
+    const saved = ([...(App.state.kycRequests || [])].reverse().find(x => x.userId === u.id)) || {};
     const personal = {
-      fullName: saved.personal?.fullName || saved.fullName || displayName(),
-      mobile: u.mobile || saved.personal?.mobile || saved.mobile || "",
-      email: u.email || saved.personal?.email || saved.userEmail || "",
+      fullName: saved.personal?.fullName || displayName(),
+      mobile: u.mobile || saved.personal?.mobile || "",
+      email: u.email || saved.personal?.email || "",
       dob: saved.personal?.dob || "",
       gender: saved.personal?.gender || "",
       city: saved.personal?.city || "",
       state: saved.personal?.state || "",
       pincode: saved.personal?.pincode || ""
     };
-    const id = {
-      type: "Aadhaar Card",
-      number: saved.id?.number || saved.idDetails?.number || saved.idNumber || ""
-    };
+    const id = { type: "Aadhaar Card", number: saved.id?.number || saved.idDetails?.number || "" };
     const uploads = {
-      frontName: saved.uploads?.frontName || "",
-      frontPath: saved.uploads?.frontPath || "",
-      frontBucket: saved.uploads?.frontBucket || "",
-      frontUrl: saved.uploads?.frontUrl || "",
-      frontSize: saved.uploads?.frontSize || 0,
-      frontType: saved.uploads?.frontType || "",
-      backName: saved.uploads?.backName || "",
-      backPath: saved.uploads?.backPath || "",
-      backBucket: saved.uploads?.backBucket || "",
-      backUrl: saved.uploads?.backUrl || "",
-      backSize: saved.uploads?.backSize || 0,
-      backType: saved.uploads?.backType || "",
-      selfieName: saved.uploads?.selfieName || "",
-      selfiePath: saved.uploads?.selfiePath || "",
-      selfieBucket: saved.uploads?.selfieBucket || "",
-      selfieUrl: saved.uploads?.selfieUrl || "",
-      selfieSize: saved.uploads?.selfieSize || 0,
-      selfieType: saved.uploads?.selfieType || ""
+      frontName: saved.uploads?.frontName || "", frontPath: saved.uploads?.frontPath || "", frontBucket: saved.uploads?.frontBucket || "", frontUrl: saved.uploads?.frontUrl || "", frontSize: saved.uploads?.frontSize || 0, frontType: saved.uploads?.frontType || "",
+      backName: saved.uploads?.backName || "", backPath: saved.uploads?.backPath || "", backBucket: saved.uploads?.backBucket || "", backUrl: saved.uploads?.backUrl || "", backSize: saved.uploads?.backSize || 0, backType: saved.uploads?.backType || "",
+      selfieName: saved.uploads?.selfieName || "", selfiePath: saved.uploads?.selfiePath || "", selfieBucket: saved.uploads?.selfieBucket || "", selfieUrl: saved.uploads?.selfieUrl || "", selfieSize: saved.uploads?.selfieSize || 0, selfieType: saved.uploads?.selfieType || ""
     };
-    return {
-      id: saved.id || "",
-      status: saved.status || "NOT_SUBMITTED",
-      personal,
-      id: saved.idDetails || id,
-      uploads,
-      declarationAccepted: !!saved.declarationAccepted,
-      finalAccepted: !!saved.finalAccepted,
-      submittedAt: saved.submittedAt || saved.createdAt || "",
-      approvedAt: saved.approvedAt || (String(saved.status || "").toUpperCase() === "APPROVED" ? (saved.reviewedAt || "") : ""),
-      rejectedAt: saved.rejectedAt || (String(saved.status || "").toUpperCase() === "REJECTED" ? (saved.reviewedAt || "") : ""),
-      rejectReason: saved.rejectReason || ""
-    };
-  }
-
-  function currentKyc() {
-    const u = user();
-    if (!u) return null;
-    const local = readJson(userKey("KYC"), null) || {};
-    const stateRow = (App.state.kycRequests || []).find(x => String(x.userId || x.user_id) === String(u.id));
-    const localStatus = String(local.status || "NOT_SUBMITTED").toUpperCase();
-    const stateStatus = String(stateRow?.status || "").toUpperCase();
-
-    // Database-only mode: final admin review state must always win over stale device-local KYC JSON.
-    if (App.databaseOnly && stateRow && ["APPROVED", "REJECTED"].includes(stateStatus)) return normalizeKycRecord(stateRow);
-    if (App.databaseOnly && stateRow && (!local.status || localStatus === "NOT_SUBMITTED")) return normalizeKycRecord(stateRow);
-    if (App.databaseOnly && stateRow && stateStatus === "PENDING" && localStatus === "PENDING") return normalizeKycRecord({ ...local, ...stateRow, personal: stateRow.personal || local.personal, idDetails: stateRow.idDetails || local.idDetails || local.id, uploads: stateRow.uploads || local.uploads });
-    return normalizeKycRecord(local);
+    return { status: saved.status || "NOT_SUBMITTED", personal, id, uploads, declarationAccepted: !!saved.declarationAccepted, finalAccepted: !!saved.finalAccepted, submittedAt: saved.submittedAt || "", approvedAt: saved.approvedAt || "", rejectedAt: saved.rejectedAt || "", rejectReason: saved.rejectReason || "" };
   }
 
   function saveKycData(data) {
-    writeJson(userKey("KYC"), data);
     syncKycToState(data);
   }
 
@@ -1401,12 +1357,10 @@
 
   function paymentMethods() {
     const u = user();
-    if (App.databaseOnly && u) return (App.state.paymentMethods || []).filter(m => String(m.userId || m.user_id) === String(u.id)).map(m => ({ ...m }));
-    return readJson(userKey("PAYMENT_METHODS"), []);
+    return (App.state.paymentMethods || []).filter(m => m.userId === u?.id).map(m => ({ ...m }));
   }
 
   function savePaymentMethods(methods) {
-    writeJson(userKey("PAYMENT_METHODS"), methods);
     syncPaymentMethodsToState(methods);
   }
 
@@ -1423,8 +1377,7 @@
 
   function depositRequests() {
     const u = user();
-    if (App.databaseOnly && u) return (App.state.depositRequests || []).filter(r => String(r.userId || r.user_id) === String(u.id)).map(r => ({ ...r }));
-    return readJson(userKey("DEPOSIT_REQUESTS"), []);
+    return (App.state.depositRequests || []).filter(r => r.userId === u?.id).sort((a,b)=>Date.parse(b.createdAt||0)-Date.parse(a.createdAt||0));
   }
 
   function normalizeUtr(value) {
@@ -1442,31 +1395,16 @@
   }
 
   function saveDepositRequests(requests) {
-    writeJson(userKey("DEPOSIT_REQUESTS"), requests);
     syncDepositRequestsToState(requests);
   }
 
   function withdrawalRequests() {
     const u = user();
-    if (App.databaseOnly && u) return (App.state.withdrawalRequests || []).filter(r => String(r.userId || r.user_id) === String(u.id)).map(r => ({ ...r }));
-    return readJson(userKey("WITHDRAWAL_REQUESTS"), []);
+    return (App.state.withdrawalRequests || []).filter(r => r.userId === u?.id).sort((a,b)=>Date.parse(b.createdAt||0)-Date.parse(a.createdAt||0));
   }
 
   function saveWithdrawalRequests(requests) {
-    writeJson(userKey("WITHDRAWAL_REQUESTS"), requests);
     syncWithdrawalRequestsToState(requests);
-  }
-
-  async function forceDbWrite(reason = "user-critical-action") {
-    if (!App.databaseOnly || !window.AITradeXDB?.directWriteChangedTables) return;
-    try { await window.AITradeXDB.directWriteChangedTables({ reason, force: true }); }
-    catch (err) { try { console.warn("Critical database write warning", err); } catch {} }
-  }
-
-  async function refreshUserData(reason = "user-refresh") {
-    if (!App.databaseOnly || !window.AITradeXDB?.pullCoreTables) return;
-    try { await window.AITradeXDB.pullCoreTables(); }
-    catch (err) { try { console.warn(reason, err); } catch {} }
   }
 
   function syncDepositRequestsToState(requests) {
@@ -1474,7 +1412,7 @@
     if (!u || !App.state.depositRequests) return;
 
     App.state.depositRequests = App.state.depositRequests.filter(r => r.userId !== u.id);
-    requests.forEach(r => App.state.depositRequests.push({ ...r, userId: u.id }));
+    requests.forEach(r => App.state.depositRequests.push({ ...r, userId: u.id, userEmail: u.email }));
     App.saveState();
   }
 
@@ -1483,7 +1421,7 @@
     if (!u || !App.state.withdrawalRequests) return;
 
     App.state.withdrawalRequests = App.state.withdrawalRequests.filter(r => r.userId !== u.id);
-    requests.forEach(r => App.state.withdrawalRequests.push({ ...r, userId: u.id }));
+    requests.forEach(r => App.state.withdrawalRequests.push({ ...r, userId: u.id, userEmail: u.email }));
     App.saveState();
   }
 
@@ -3372,7 +3310,7 @@
     if (u?.lastLoginAt) rows.push({ label: "Last login", value: new Date(u.lastLoginAt).toLocaleString(), tone: "good" });
     rows.push({ label: "Session expiry", value: `${sessionMinutesLeft()} min left`, tone: sessionMinutesLeft() <= 30 ? "warn" : "good" });
     rows.push({ label: "Login protection", value: "6 wrong attempts = 10 min lock", tone: "neutral" });
-    rows.push({ label: "Database mode", value: window.AITradeXDB?.ready ? "Supabase database" : "Database unavailable", tone: window.AITradeXDB?.ready ? "good" : "warn" });
+    rows.push({ label: "Database mode", value: window.AITradeXDB?.ready ? "Supabase connected" : "Local fallback", tone: window.AITradeXDB?.ready ? "good" : "warn" });
     return rows;
   }
 
@@ -3394,7 +3332,7 @@
         <article><span>Session</span><b>${minutes} min</b></article>
         <article><span>Login Lock</span><b>6 Attempts</b></article>
         <article><span>Account</span><b>${App.escapeHtml(String(u?.status || "ACTIVE"))}</b></article>
-        <article><span>Database</span><b>${window.AITradeXDB?.ready ? "Database" : "Unavailable"}</b></article>
+        <article><span>Database</span><b>${window.AITradeXDB?.ready ? "Connected" : "Local"}</b></article>
       </section>
 
       <section class="premium-card security-control-card">
@@ -3408,7 +3346,7 @@
       </section>
 
       <section class="premium-card security-password-card">
-        <div class="card-row"><div><p>PASSWORD</p><h2>Change password</h2></div><span class="history-mode">Database Account</span></div>
+        <div class="card-row"><div><p>PASSWORD</p><h2>Change password</h2></div><span class="history-mode">Local Account</span></div>
         <div class="profile-form compact-inner-form security-form-grid">
           <label>Current Password<input id="securityCurrentPassword" type="password" placeholder="Current password" autocomplete="current-password"/></label>
           <label>New Password<input id="securityNewPassword" type="password" placeholder="Minimum 4 characters" autocomplete="new-password"/></label>
@@ -3579,7 +3517,7 @@
   }
 
   function render() {
-    if (!App.databaseOnly && App.reloadState) App.reloadState();
+    if (App.reloadState) App.reloadState();
     reconcileUserAiLiveMarginLocks();
     ensurePairForMarket();
     const u = user();
@@ -3617,7 +3555,6 @@
     async register(event) {
       event.preventDefault();
       try {
-        App.toast("Creating account in database...");
         await Auth.registerUser({
           name: regName.value,
           email: regEmail.value,
@@ -3637,7 +3574,6 @@
     async login(event) {
       event.preventDefault();
       try {
-        App.toast("Checking database login...");
         await Auth.loginUser({ email: loginEmail.value, password: loginPassword.value });
         page = "home";
         localStorage.setItem("AITradeX_ACTIVE_PAGE", page);
@@ -3867,7 +3803,7 @@
       localStorage.setItem("AITradeX_DEPOSIT_STEP", String(depositStep));
       render();
     },
-    async submitDepositRequest() {
+    submitDepositRequest() {
       const settings = platformSettings();
       const amount = Number(depositDraft.amount || 0);
       const minDeposit = Number(settings.minDeposit || 500);
@@ -3904,7 +3840,6 @@
       });
       saveDepositRequests(requests);
       App.addNotification?.({ audience: "ADMIN", title: "New deposit request", message: `${displayName()} requested ${App.money(amount)} deposit. UTR ${utr}.`, type: "DEPOSIT", linkPage: "deposits", referenceId: requestId });
-      await forceDbWrite("deposit-request-submit");
 
       depositDraft = { amount: "", type: settings.depositUpiEnabled !== false ? "UPI" : "BANK", utr: "" };
       depositStep = 1;
@@ -3973,7 +3908,7 @@
       localStorage.setItem("AITradeX_WITHDRAWAL_STEP", String(withdrawalStep));
       render();
     },
-    async submitWithdrawalRequest() {
+    submitWithdrawalRequest() {
       const settings = platformSettings();
       const amount = Number(withdrawalDraft.amount || 0);
       const minWithdrawal = Number(settings.minWithdrawal || 1000);
@@ -4006,7 +3941,6 @@
       });
       saveWithdrawalRequests(requests);
       App.addNotification?.({ audience: "ADMIN", title: "New withdrawal request", message: `${displayName()} requested ${App.money(amount)} withdrawal.`, type: "WITHDRAWAL", linkPage: "withdrawals", referenceId: requestId });
-      await forceDbWrite("withdrawal-request-submit");
 
       withdrawalDraft = { amount: "", methodId: "" };
       withdrawalStep = 1;
@@ -4140,7 +4074,7 @@
       localStorage.setItem("AITradeX_KYC_STEP", String(kycStep));
       render();
     },
-    async submitKyc() {
+    submitKyc() {
       const kyc = currentKyc();
       kyc.finalAccepted = !!document.getElementById("kycFinalConfirm")?.checked;
       if (!kyc.personal.fullName || !kyc.personal.dob || !kyc.personal.gender || !kyc.personal.mobile || !kyc.personal.email || !kyc.personal.city || !kyc.personal.state || !/^\d{6}$/.test(String(kyc.personal.pincode || ""))) {
@@ -4171,7 +4105,6 @@
       kyc.approvedAt = "";
       saveKycData(kyc);
       App.addNotification?.({ audience: "ADMIN", title: "New KYC request", message: `${displayName()} submitted KYC for verification.`, type: "KYC", linkPage: "kyc", referenceId: `kyc_submit_${user()?.id || "user"}_${kyc.submittedAt}` });
-      await forceDbWrite("kyc-submit");
       App.toast("KYC submitted for verification.");
       render();
     },
@@ -4728,13 +4661,14 @@
         return;
       }
 
-      u.name = nextName;
+      localStorage.setItem(`AITradeX_DISPLAY_NAME_${u.id}`, nextName);
 
       const file = fileInput?.files?.[0];
       if (file) {
         try {
           App.toast("Uploading avatar...");
           const uploaded = await uploadStorageFile({ bucket: "user-avatars", folder: "avatars", label: "avatar", file });
+          localStorage.setItem(`AITradeX_AVATAR_${u.id}`, uploaded.url);
           u.avatarName = uploaded.name;
           u.avatarBucket = uploaded.bucket;
           u.avatarPath = uploaded.path;
@@ -4761,35 +4695,12 @@
     }
   };
 
-  window.addEventListener("storage", event => {
-    if (event.key === (App.storageKey || "AITradeX_STATE_V1")) {
-      if (!App.databaseOnly && App.reloadState) App.reloadState();
-      render();
-    }
-  });
-
-  function markBackgroundDbUpdate(detail = {}) {
-    try { updateManualLiveBar(); } catch {}
-    try {
-      const text = detail?.summary ? "Live data updated" : "Database updated";
-      document.body.dataset.aitxDbUpdate = text;
-    } catch {}
-  }
-
-  window.addEventListener("aitradex:db-soft-update", event => {
-    // Clean runtime: never rebuild the current page from a background DB event.
-    // User forms, charts, wallet steps and trade inputs stay untouched.
-    markBackgroundDbUpdate(event.detail || {});
-  });
-
   async function bootUserApp(){
-    if(App.databaseOnly && App.session?.userId && window.AITradeXDB?.ready){
-      try{
-        await window.AITradeXDB.findUserById?.(App.session.userId);
-        await window.AITradeXDB.pullCoreTables?.({ source: "user-boot", silent: true });
-      }catch(err){try{console.warn("User session hydrate warning",err);}catch{}}
-    }
-    try { window.AITradeXDB?.startRealtimeSubscriptions?.(); } catch {}
+    try{
+      if(App.session?.userId && window.AITradeXDB?.ready){
+        await window.AITradeXDB.loadAll();
+      }
+    }catch(err){ console.warn("AITradeX user boot DB load skipped", err?.message||err); }
     render();
   }
 
