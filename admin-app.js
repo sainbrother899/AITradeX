@@ -2784,7 +2784,7 @@
     if (!position.marginLocked && pnl < 0 && Math.abs(pnl) > balanceBefore) pnl = -balanceBefore;
     const settlementAmount = position.marginLocked ? Math.max(0, margin + pnl) : pnl;
     const now = new Date().toISOString();
-    position.tradeType = "AI_AUTO";
+    position.tradeType = "AI_LIVE";
     position.status = "CLOSED";
     position.exitPrice = current;
     position.exitPriceDisplay = cached?.display || String(current || position.entryPrice || "-");
@@ -3557,8 +3557,9 @@
       });
 
       if (!App.state.aiTradeBatches) App.state.aiTradeBatches = [];
-      App.state.aiTradeBatches.unshift({
+      const instantBatch = {
         id: batchId,
+        batchType: "INSTANT",
         market,
         pair,
         side,
@@ -3579,7 +3580,9 @@
         skipReasons: report.reasons,
         totalPnl: Number(totalPnl.toFixed(2)),
         createdAt: new Date().toISOString()
-      });
+      };
+      App.state.aiTradeBatches.unshift(instantBatch);
+      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeAiBatch) window.AITradeXDB.writeAiBatch(instantBatch).catch(err=>console.warn("AI instant batch write failed", err)); } catch {}
       App.addNotification?.({ audience: "ADMIN", title: "Instant AI trade applied", message: `${pair} ${side} applied to ${appliedCount} user(s). Total P/L ${totalPnl >= 0 ? "+" : ""}${App.money(totalPnl)}.`, type: "AI", linkPage: "instantAi", referenceId: batchId });
       logAdminAction("AI_INSTANT_TRADE", "AI_BATCH", batchId, { pair, side, leverage, appliedCount, skippedCount: report.skipped.length, totalPnl: Number(totalPnl.toFixed(2)) });
       App.saveState();
@@ -3691,8 +3694,9 @@
         totalExposure += exposure;
       });
       if (!App.state.aiLiveBatches) App.state.aiLiveBatches = [];
-      App.state.aiLiveBatches.unshift({
+      const liveBatch = {
         id: batchId,
+        batchType: "LIVE",
         market,
         pair,
         side,
@@ -3711,7 +3715,9 @@
         totalExposure: Number(totalExposure.toFixed(2)),
         status: "OPEN",
         createdAt: openedAt
-      });
+      };
+      App.state.aiLiveBatches.unshift(liveBatch);
+      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeAiBatch) window.AITradeXDB.writeAiBatch(liveBatch).catch(err=>console.warn("AI live batch write failed", err)); } catch {}
       App.addNotification?.({ audience: "ADMIN", title: "Live AI position opened", message: `${pair} ${side} opened for ${appliedCount} user(s). Locked ${App.money(totalMargin)}.`, type: "AI", linkPage: "liveAi", referenceId: batchId });
       logAdminAction("AI_LIVE_OPEN", "AI_BATCH", batchId, { pair, side, leverage, appliedCount, skippedCount: report.skipped.length, totalMargin: Number(totalMargin.toFixed(2)), totalExposure: Number(totalExposure.toFixed(2)) });
       App.saveState();
@@ -3736,6 +3742,7 @@
         batch.status = "CLOSED";
         batch.closedAt = new Date().toISOString();
         batch.closeReason = "ADMIN_CLOSE";
+        try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeAiBatch) window.AITradeXDB.writeAiBatch(batch).catch(err=>console.warn("AI live batch close write failed", err)); } catch {}
       }
       logAdminAction("AI_LIVE_CLOSE", "AI_BATCH", batchId, { closed, totalPositions: positions.length });
       App.saveState();

@@ -320,7 +320,7 @@
     if (!position.marginLocked && pnl < 0 && Math.abs(pnl) > balanceBefore) pnl = -balanceBefore;
     const settlementAmount = position.marginLocked ? Math.max(0, margin + pnl) : pnl;
     const now = new Date().toISOString();
-    position.tradeType = "AI_AUTO";
+    position.tradeType = "AI_LIVE";
     position.status = "CLOSED";
     position.exitPrice = current;
     position.exitPriceDisplay = positionCurrentDisplay(position);
