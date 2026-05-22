@@ -7482,3 +7482,34 @@ textarea::placeholder{
 .security-metrics-grid article{border:1px solid rgba(148,163,184,.16);background:rgba(15,23,42,.78)}
 .security-card{border:1px solid rgba(34,211,238,.12);background:rgba(15,23,42,.82);box-shadow:0 20px 60px rgba(2,6,23,.28)}
 @media(max-width:720px){.admin-session-pill{display:none}.admin-login-security-note{border-radius:14px}}
+
+/* Phase 5.7 User Security polish */
+.security-hero-card{
+  border:1px solid rgba(70,210,255,.24);
+  background:linear-gradient(135deg,rgba(11,21,39,.96),rgba(11,31,48,.92));
+  box-shadow:0 18px 50px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.08);
+}
+.security-status-strip article,.security-control-card,.security-password-card,.security-timeline-card{
+  border-color:rgba(125,211,252,.16);
+}
+.security-form-grid{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  align-items:end;
+}
+.security-form-grid .save-profile-btn{height:48px;align-self:end;}
+.security-timeline-list{display:grid;gap:10px;}
+.security-timeline-row{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:13px 14px;border-radius:18px;background:rgba(255,255,255,.045);
+  border:1px solid rgba(255,255,255,.08);
+}
+.security-timeline-row span{color:rgba(226,232,240,.72);font-size:12px;}
+.security-timeline-row b{font-size:13px;color:#f8fafc;text-align:right;}
+.security-timeline-row.good b{color:#22c55e;}
+.security-timeline-row.warn b{color:#f59e0b;}
+.security-timeline-row.bad b{color:#ef4444;}
+@media (max-width:720px){
+  .security-form-grid{grid-template-columns:1fr;}
+  .security-timeline-row{align-items:flex-start;flex-direction:column;}
+  .security-timeline-row b{text-align:left;}
+}

@@ -1624,6 +1624,7 @@
           ${drawerItem({ pageKey: "kyc", icon: "🛡️", title: "KYC Verification", subtitle: "Required for verified withdrawals", badge: kycBadge })}
           ${drawerItem({ pageKey: "payments", icon: "🏦", title: "Bank Accounts", subtitle: "Approved payout methods", badge: bankBadge })}
           ${drawerItem({ pageKey: "notifications", icon: "🔔", title: "Notifications", subtitle: "Wallet, AI and support updates", badge: unread ? { label: `${unread} New`, tone: "warn" } : { label: "Clear", tone: "good" } })}
+          ${drawerItem({ pageKey: "security", icon: "🔐", title: "Security", subtitle: "Session, password and login safety", badge: { label: "Protected", tone: "good" } })}
         </div>
 
         <div class="drawer-group rich-group">
@@ -3306,6 +3307,73 @@
     `);
   }
 
+
+  function sessionMinutesLeft() {
+    const ms = App.sessionTimeLeft ? App.sessionTimeLeft() : 0;
+    return Math.max(0, Math.ceil(ms / 60000));
+  }
+
+  function securityTimelineRows() {
+    const u = user();
+    const rows = [];
+    if (u?.createdAt) rows.push({ label: "Account created", value: new Date(u.createdAt).toLocaleString(), tone: "good" });
+    if (u?.lastLoginAt) rows.push({ label: "Last login", value: new Date(u.lastLoginAt).toLocaleString(), tone: "good" });
+    rows.push({ label: "Session expiry", value: `${sessionMinutesLeft()} min left`, tone: sessionMinutesLeft() <= 30 ? "warn" : "good" });
+    rows.push({ label: "Login protection", value: "6 wrong attempts = 10 min lock", tone: "neutral" });
+    rows.push({ label: "Database mode", value: window.AITradeXDB?.ready ? "Supabase connected" : "Local fallback", tone: window.AITradeXDB?.ready ? "good" : "warn" });
+    return rows;
+  }
+
+  function securityPage() {
+    const u = user();
+    const minutes = sessionMinutesLeft();
+    const timeline = securityTimelineRows();
+    shell(`
+      <section class="inner-hero-card security-hero-card">
+        <div>
+          <p>ACCOUNT SECURITY</p>
+          <h1>Keep your AITradeX account safe</h1>
+          <span>Session, password and login protection for this device.</span>
+        </div>
+        <span class="history-mode">${minutes} min left</span>
+      </section>
+
+      <section class="inner-status-strip security-status-strip">
+        <article><span>Session</span><b>${minutes} min</b></article>
+        <article><span>Login Lock</span><b>6 Attempts</b></article>
+        <article><span>Account</span><b>${App.escapeHtml(String(u?.status || "ACTIVE"))}</b></article>
+        <article><span>Database</span><b>${window.AITradeXDB?.ready ? "Connected" : "Local"}</b></article>
+      </section>
+
+      <section class="premium-card security-control-card">
+        <div class="card-row"><div><p>SESSION CONTROL</p><h2>Current login session</h2></div><button class="mini-action" onclick="AITradeXUser.extendSession()">Extend Session</button></div>
+        <div class="profile-info-grid compact-info-grid">
+          <article><span>Signed in as</span><b>${App.escapeHtml(u?.email || "-")}</b></article>
+          <article><span>Role</span><b>User</b></article>
+          <article><span>Session time left</span><b>${minutes} min</b></article>
+          <article><span>Auto logout</span><b>After 24 hours</b></article>
+        </div>
+      </section>
+
+      <section class="premium-card security-password-card">
+        <div class="card-row"><div><p>PASSWORD</p><h2>Change password</h2></div><span class="history-mode">Local Account</span></div>
+        <div class="profile-form compact-inner-form security-form-grid">
+          <label>Current Password<input id="securityCurrentPassword" type="password" placeholder="Current password" autocomplete="current-password"/></label>
+          <label>New Password<input id="securityNewPassword" type="password" placeholder="Minimum 4 characters" autocomplete="new-password"/></label>
+          <label>Confirm New Password<input id="securityConfirmPassword" type="password" placeholder="Repeat new password" autocomplete="new-password"/></label>
+          <button class="save-profile-btn" onclick="AITradeXUser.changePassword()">Update Password</button>
+        </div>
+      </section>
+
+      <section class="premium-card security-timeline-card">
+        <div class="card-row"><div><p>SECURITY TIMELINE</p><h2>Recent account safety</h2></div><button class="ghost-action" onclick="AITradeXUser.logout()">Logout</button></div>
+        <div class="security-timeline-list">
+          ${timeline.map(row => `<article class="security-timeline-row ${row.tone}"><span>${App.escapeHtml(row.label)}</span><b>${App.escapeHtml(row.value)}</b></article>`).join("")}
+        </div>
+      </section>
+    `);
+  }
+
   function supportTicketsForUser() {
     const u = user();
     if (!u) return [];
@@ -3479,6 +3547,7 @@
     if (page === "subscription") return subscriptionPage();
     if (page === "referral") return referralPage();
     if (page === "profile") return profilePage();
+    if (page === "security") return securityPage();
     if (page === "support") return supportPage();
     if (page === "notifications") return notificationPage();
     return homePage();
@@ -4523,6 +4592,32 @@
       App.addNotification?.({ audience: "ADMIN", title: "New support ticket", message: `${displayName()} opened: ${subject}`, type: "SUPPORT", linkPage: "support", referenceId: id });
       App.saveState();
       App.toast("Support ticket submitted.");
+      render();
+    },
+    extendSession() {
+      if (App.touchSession && App.touchSession()) {
+        App.toast("Session extended.");
+        render();
+      } else {
+        App.toast("Session expired. Please login again.");
+        App.clearSession();
+        landing();
+      }
+    },
+    changePassword() {
+      const u = user();
+      if (!u) return;
+      const current = document.getElementById("securityCurrentPassword")?.value || "";
+      const next = document.getElementById("securityNewPassword")?.value || "";
+      const confirm = document.getElementById("securityConfirmPassword")?.value || "";
+      if (u.password !== current) return App.toast("Current password is incorrect.");
+      if (String(next).length < 4) return App.toast("New password must be at least 4 characters.");
+      if (next !== confirm) return App.toast("New password confirmation does not match.");
+      u.password = next;
+      u.passwordUpdatedAt = App.now();
+      App.addNotification?.({ audience: "USER", userId: u.id, title: "Password updated", message: "Your account password was changed successfully.", type: "SECURITY", linkPage: "security", referenceId: `password_${Date.now()}` });
+      App.saveState();
+      App.toast("Password updated successfully.");
       render();
     },
     async saveProfile() {

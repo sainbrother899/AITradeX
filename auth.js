@@ -19,7 +19,30 @@ function registerUser({name,email,mobile,password,referralCode}){
   if(referredBy)App.state.referrals.push({id:App.uid("ref"),referrerUserId:referredBy,referredUserId:user.id,status:"REGISTERED",commissionPaid:false,bonuses:{},createdAt:new Date().toISOString()});
   App.saveState();App.setSession(user.id,"user");return user
 }
-function loginUser({email,password}){const u=byEmail(email);if(!u||u.password!==password||u.role!=="user")throw new Error("Invalid user login details.");const status=String(u.status||"ACTIVE").toUpperCase();if(status==="BLOCKED")throw new Error("Your account is blocked.");if(status==="SUSPENDED")throw new Error("Your account is suspended. Please contact support.");App.setSession(u.id,"user");return u}
+function userLockKey(email){return "AITradeX_USER_LOGIN_LOCK_"+normEmail(email)}
+function userLockInfo(email){try{return JSON.parse(localStorage.getItem(userLockKey(email))||"{}")||{}}catch{return {}}}
+function saveUserLock(email,row){localStorage.setItem(userLockKey(email),JSON.stringify(row||{}))}
+function clearUserLock(email){localStorage.removeItem(userLockKey(email))}
+function registerUserFailure(email){const row=userLockInfo(email);const attempts=Number(row.attempts||0)+1;const lockedUntil=attempts>=6?Date.now()+10*60*1000:0;saveUserLock(email,{attempts,lockedUntil,lastFailedAt:Date.now()});return {attempts,lockedUntil}}
+function guardUserLock(email){const row=userLockInfo(email);const lockedUntil=Number(row.lockedUntil||0);if(lockedUntil&&Date.now()<lockedUntil){const mins=Math.ceil((lockedUntil-Date.now())/60000);throw new Error(`Too many wrong login attempts. Try again in ${mins} minute(s).`)}}
+function loginUser({email,password}){
+  email=normEmail(email);
+  guardUserLock(email);
+  const u=byEmail(email);
+  if(!u||u.password!==password||u.role!=="user"){
+    const row=registerUserFailure(email);
+    const left=Math.max(0,6-Number(row.attempts||0));
+    throw new Error(left?`Invalid user login details. ${left} attempt(s) left before temporary lock.`:"Invalid user login details. Login temporarily locked.");
+  }
+  const status=String(u.status||"ACTIVE").toUpperCase();
+  if(status==="BLOCKED")throw new Error("Your account is blocked.");
+  if(status==="SUSPENDED")throw new Error("Your account is suspended. Please contact support.");
+  clearUserLock(email);
+  App.setSession(u.id,"user");
+  u.lastLoginAt=App.now();
+  App.saveState();
+  return u
+}
 function adminLockKey(email){return "AITradeX_ADMIN_LOGIN_LOCK_"+normEmail(email)}
 function adminLockInfo(email){try{return JSON.parse(localStorage.getItem(adminLockKey(email))||"{}")||{}}catch{return {}}}
 function saveAdminLock(email,row){localStorage.setItem(adminLockKey(email),JSON.stringify(row||{}))}
