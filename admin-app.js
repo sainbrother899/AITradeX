@@ -566,7 +566,8 @@
             ])}
             ${navGroup("Finance", [
               navButton("deposits", "⬇️", "Deposits", "UTR/proof"),
-              navButton("withdrawals", "⬆️", "Withdrawals", "Payout control")
+              navButton("withdrawals", "⬆️", "Withdrawals", "Payout control"),
+              navButton("paymentMethods", "💳", "Payment Methods", "UPI/bank setup")
             ])}
             ${navGroup("AI Trading", [
               navButton("instantAi", "⚡", "Instant AI Trade", "Direct result"),
@@ -622,6 +623,7 @@
       referrals: "Referrals",
       support: "Support Tickets",
       settings: "App Settings",
+      paymentMethods: "Payment Methods",
       telegram: "Telegram Alerts",
       database: "Database",
       security: "Security Center",
@@ -2314,9 +2316,9 @@
   function settingsPage() {
     const settings = platformSettings();
     shell(`
-      <section class="panel-card payment-settings-panel">
+      <section class="panel-card payment-settings-panel app-settings-clean-panel">
         <div class="section-head">
-          <div><h3>App Settings & Trading Control</h3><span>Control payments, deposits, withdrawals, trading access, limits and maintenance mode.</span></div>
+          <div><h3>App Settings & Trading Control</h3><span>Global app access, limits, maintenance and trading rules. Payment bank/UPI details are now managed separately.</span></div>
           <span class="admin-count-pill">Admin editable</span>
         </div>
 
@@ -2361,48 +2363,6 @@
               </label>
             </div>
 
-            <p>DEPOSIT METHOD ACCESS</p>
-            <h2>Deposit Payment Setup</h2>
-            <div class="method-toggle-grid">
-              <label>UPI / QR Method
-                <select id="settingUpiEnabled">
-                  <option value="true" ${settings.depositUpiEnabled !== false ? "selected" : ""}>Enabled</option>
-                  <option value="false" ${settings.depositUpiEnabled === false ? "selected" : ""}>Disabled</option>
-                </select>
-                <small>Disable this if UPI/QR is unavailable.</small>
-              </label>
-              <label>Bank Transfer Method
-                <select id="settingBankEnabled">
-                  <option value="true" ${settings.depositBankEnabled !== false ? "selected" : ""}>Enabled</option>
-                  <option value="false" ${settings.depositBankEnabled === false ? "selected" : ""}>Disabled</option>
-                </select>
-                <small>Disable this if bank transfer is unavailable.</small>
-              </label>
-            </div>
-
-            <p>UPI / QR DETAILS</p>
-            <label>UPI ID
-              <input id="settingUpiId" value="${esc(settings.depositUpiId)}" placeholder="aitradex@upi" required/>
-            </label>
-            <label>QR Image
-              <input id="settingQrImage" type="file" accept="image/*"/>
-            </label>
-            <div class="profile-note">Upload a new QR only when you want to replace the current QR. Saved QR is stored in this browser for now.</div>
-
-            <p>BANK DETAILS</p>
-            <label>Bank Name
-              <input id="settingBankName" value="${esc(settings.depositBankName)}" placeholder="Bank name" required/>
-            </label>
-            <label>Account Holder Name
-              <input id="settingAccountName" value="${esc(settings.depositAccountName)}" placeholder="Account holder name" required/>
-            </label>
-            <label>Account Number
-              <input id="settingAccountNumber" value="${esc(settings.depositAccountNumber)}" placeholder="Account number" required/>
-            </label>
-            <label>IFSC Code
-              <input id="settingIfsc" value="${esc(settings.depositIfsc)}" placeholder="IFSC code" required/>
-            </label>
-
             <p>WALLET LIMITS</p>
             <label>Minimum Deposit
               <input id="settingMinDeposit" type="number" min="1" value="${Number(settings.minDeposit || 500)}" required/>
@@ -2443,12 +2403,96 @@
               <small>This controls INR-only crypto price display. Default is ₹95 per USDT.</small>
             </label>
 
-            <button class="save-profile-btn">Save Payment Settings</button>
+            <button class="save-profile-btn">Save App Settings</button>
+          </form>
+
+          <section class="payment-form-card payment-settings-preview">
+            <p>APP CONTROL PREVIEW</p>
+            <h2>Current Global Rules</h2>
+            <div class="review-grid compact-review">
+              <article><span>Maintenance</span><b class="${settings.maintenanceMode === true ? "text-loss" : "text-profit"}">${settings.maintenanceMode === true ? "ON" : "OFF"}</b></article>
+              <article><span>Deposits</span><b class="${settings.depositEnabled !== false ? "text-profit" : "text-loss"}">${settings.depositEnabled !== false ? "Enabled" : "Disabled"}</b></article>
+              <article><span>Withdrawals</span><b class="${settings.withdrawalEnabled !== false ? "text-profit" : "text-loss"}">${settings.withdrawalEnabled !== false ? "Enabled" : "Disabled"}</b></article>
+              <article><span>Manual Trading</span><b class="${settings.manualTradingEnabled !== false ? "text-profit" : "text-loss"}">${settings.manualTradingEnabled !== false ? "Enabled" : "Disabled"}</b></article>
+              <article><span>AI Trading</span><b class="${settings.aiTradingEnabled !== false ? "text-profit" : "text-loss"}">${settings.aiTradingEnabled !== false ? "Enabled" : "Disabled"}</b></article>
+              <article><span>Deposit Range</span><b>${App.money(settings.minDeposit)} - ${App.money(settings.maxDeposit)}</b></article>
+              <article><span>Withdrawal Range</span><b>${App.money(settings.minWithdrawal)} - ${App.money(settings.maxWithdrawal)}</b></article>
+              <article><span>Manual Trade Range</span><b>${App.money(settings.minManualTrade || 100)} - ${App.money(settings.maxManualTrade || 250000)}</b></article>
+              <article><span>AI Trade Range</span><b>${App.money(settings.minAiTrade || 100)} - ${App.money(settings.maxAiTrade || 250000)}</b></article>
+              <article><span>Max Leverage</span><b>${Number(settings.maxLeverage || 2000)}x</b></article>
+              <article><span>Max Positions</span><b>${Number(settings.maxOpenPositionsPerUser || 10)}</b></article>
+              <article><span>USDT-INR Rate</span><b>₹${Number(settings.usdtInrRate || 95).toLocaleString("en-IN")}</b></article>
+            </div>
+            <div class="duplicate-warning-box telegram-scope-note">Payment UPI/QR and bank details are now in Admin → Payment Methods. This keeps App Settings clean and prevents accidental bank-detail edits while changing trading limits.</div>
+            <button class="mini-action" onclick="AITradeXAdmin.go('paymentMethods')">Open Payment Methods</button>
+          </section>
+        </div>
+      </section>
+    `);
+  }
+
+  function paymentMethodsSettingsPage() {
+    const settings = platformSettings();
+    shell(`
+      <section class="panel-card payment-settings-panel payment-methods-control-panel">
+        <div class="section-head">
+          <div><h3>Payment Methods</h3><span>Manage user deposit UPI/QR and bank transfer details separately from global app settings.</span></div>
+          <span class="admin-count-pill">Deposit setup</span>
+        </div>
+
+        <div class="admin-grid-two payment-settings-grid">
+          <form class="payment-form-card form-grid" onsubmit="AITradeXAdmin.saveDepositPaymentMethods(event)">
+            <p>METHOD AVAILABILITY</p>
+            <div class="method-toggle-grid">
+              <label>UPI / QR Method
+                <select id="settingUpiEnabled">
+                  <option value="true" ${settings.depositUpiEnabled !== false ? "selected" : ""}>Enabled</option>
+                  <option value="false" ${settings.depositUpiEnabled === false ? "selected" : ""}>Disabled</option>
+                </select>
+                <small>Disable this if UPI/QR is unavailable.</small>
+              </label>
+              <label>Bank Transfer Method
+                <select id="settingBankEnabled">
+                  <option value="true" ${settings.depositBankEnabled !== false ? "selected" : ""}>Enabled</option>
+                  <option value="false" ${settings.depositBankEnabled === false ? "selected" : ""}>Disabled</option>
+                </select>
+                <small>Disable this if bank transfer is unavailable.</small>
+              </label>
+            </div>
+
+            <p>UPI / QR DETAILS</p>
+            <label>UPI ID
+              <input id="settingUpiId" value="${esc(settings.depositUpiId)}" placeholder="aitradex@upi" required/>
+            </label>
+            <label>QR Image
+              <input id="settingQrImage" type="file" accept="image/*"/>
+            </label>
+            <div class="profile-note">Upload a new QR only when you want to replace the current QR. Saved QR is stored in this browser for now.</div>
+
+            <p>BANK DETAILS</p>
+            <label>Bank Name
+              <input id="settingBankName" value="${esc(settings.depositBankName)}" placeholder="Bank name" required/>
+            </label>
+            <label>Account Holder Name
+              <input id="settingAccountName" value="${esc(settings.depositAccountName)}" placeholder="Account holder name" required/>
+            </label>
+            <label>Account Number
+              <input id="settingAccountNumber" value="${esc(settings.depositAccountNumber)}" placeholder="Account number" required/>
+            </label>
+            <label>IFSC Code
+              <input id="settingIfsc" value="${esc(settings.depositIfsc)}" placeholder="IFSC code" required/>
+            </label>
+
+            <button class="save-profile-btn">Save Payment Methods</button>
           </form>
 
           <section class="payment-form-card payment-settings-preview">
             <p>USER SIDE PREVIEW</p>
-            <h2>Deposit Details Preview</h2>
+            <h2>Deposit Payment Details</h2>
+            <div class="review-grid compact-review">
+              <article><span>UPI / QR</span><b class="${settings.depositUpiEnabled !== false ? "text-profit" : "text-loss"}">${settings.depositUpiEnabled !== false ? "Enabled" : "Disabled"}</b></article>
+              <article><span>Bank Transfer</span><b class="${settings.depositBankEnabled !== false ? "text-profit" : "text-loss"}">${settings.depositBankEnabled !== false ? "Enabled" : "Disabled"}</b></article>
+            </div>
             <div class="upi-pay-card settings-upi-preview">
               <div class="qr-large-box">
                 ${settings.depositQrImage ? `<img src="${esc(settings.depositQrImage)}" alt="Deposit QR"/>` : `<div class="qr-grid-mark">QR</div>`}
@@ -2456,7 +2500,7 @@
               <div class="upi-pay-info">
                 <p>PAY VIA UPI</p>
                 <h2>${esc(settings.depositUpiId)}</h2>
-                <span>This is what users will see on deposit step 3.</span>
+                <span>This is what users will see inside the deposit panel.</span>
               </div>
             </div>
             <div class="premium-bank-card">
@@ -2465,28 +2509,12 @@
               <div class="copy-row"><b>Account No.</b><span>${esc(settings.depositAccountNumber)}</span><button type="button">Copy</button></div>
               <div class="copy-row"><b>IFSC Code</b><span>${esc(settings.depositIfsc)}</span><button type="button">Copy</button></div>
             </div>
-            <div class="review-grid compact-review">
-              <article><span>Maintenance</span><b class="${settings.maintenanceMode === true ? "text-loss" : "text-profit"}">${settings.maintenanceMode === true ? "ON" : "OFF"}</b></article>
-              <article><span>Deposits</span><b class="${settings.depositEnabled !== false ? "text-profit" : "text-loss"}">${settings.depositEnabled !== false ? "Enabled" : "Disabled"}</b></article>
-              <article><span>Withdrawals</span><b class="${settings.withdrawalEnabled !== false ? "text-profit" : "text-loss"}">${settings.withdrawalEnabled !== false ? "Enabled" : "Disabled"}</b></article>
-              <article><span>Manual Trading</span><b class="${settings.manualTradingEnabled !== false ? "text-profit" : "text-loss"}">${settings.manualTradingEnabled !== false ? "Enabled" : "Disabled"}</b></article>
-              <article><span>AI Trading</span><b class="${settings.aiTradingEnabled !== false ? "text-profit" : "text-loss"}">${settings.aiTradingEnabled !== false ? "Enabled" : "Disabled"}</b></article>
-              <article><span>UPI / QR</span><b class="${settings.depositUpiEnabled !== false ? "text-profit" : "text-loss"}">${settings.depositUpiEnabled !== false ? "Enabled" : "Disabled"}</b></article>
-              <article><span>Bank Transfer</span><b class="${settings.depositBankEnabled !== false ? "text-profit" : "text-loss"}">${settings.depositBankEnabled !== false ? "Enabled" : "Disabled"}</b></article>
-              <article><span>Minimum Deposit</span><b>${App.money(settings.minDeposit)}</b></article>
-              <article><span>Minimum Withdrawal</span><b>${App.money(settings.minWithdrawal)}</b></article>
-              <article><span>Max Manual Trade</span><b>${App.money(settings.maxManualTrade || 250000)}</b></article>
-              <article><span>Max AI Trade</span><b>${App.money(settings.maxAiTrade || 250000)}</b></article>
-              <article><span>Max Leverage</span><b>${Number(settings.maxLeverage || 2000)}x</b></article>
-              <article><span>Max Positions</span><b>${Number(settings.maxOpenPositionsPerUser || 10)}</b></article>
-              <article><span>USDT-INR Rate</span><b>₹${Number(settings.usdtInrRate || 95).toLocaleString("en-IN")}</b></article>
-            </div>
+            <div class="duplicate-warning-box telegram-scope-note">Deposit master ON/OFF and min/max deposit amount stay in App Settings. This page controls only payment method availability and the actual UPI/bank details shown to users.</div>
           </section>
         </div>
       </section>
     `);
   }
-
 
   function telegramPage() {
     const settings = platformSettings();
@@ -2751,6 +2779,7 @@
     if (page === "referrals") return referralsPage();
     if (page === "support") return supportPage();
     if (page === "settings") return settingsPage();
+    if (page === "paymentMethods") return paymentMethodsSettingsPage();
     if (page === "telegram") return telegramPage();
     if (page === "database") return databasePage();
     if (page === "security") return securityPage();
@@ -3323,15 +3352,37 @@
     savePaymentSettings(event) {
       event.preventDefault();
       const settings = platformSettings();
+      App.state.settings = {
+        ...settings,
+        maintenanceMode: document.getElementById("settingMaintenanceMode")?.value === "true",
+        depositEnabled: document.getElementById("settingDepositEnabled")?.value !== "false",
+        withdrawalEnabled: document.getElementById("settingWithdrawalEnabled")?.value !== "false",
+        manualTradingEnabled: document.getElementById("settingManualTradingEnabled")?.value !== "false",
+        aiTradingEnabled: document.getElementById("settingAiTradingEnabled")?.value !== "false",
+        minDeposit: Math.max(1, Number(inputValue("settingMinDeposit") || 500)),
+        maxDeposit: Math.max(1, Number(inputValue("settingMaxDeposit") || 1000000)),
+        minWithdrawal: Math.max(1, Number(inputValue("settingMinWithdrawal") || 1000)),
+        maxWithdrawal: Math.max(1, Number(inputValue("settingMaxWithdrawal") || 500000)),
+        minManualTrade: Math.max(1, Number(inputValue("settingMinManualTrade") || 100)),
+        maxManualTrade: Math.max(1, Number(inputValue("settingMaxManualTrade") || 250000)),
+        minAiTrade: Math.max(1, Number(inputValue("settingMinAiTrade") || 100)),
+        maxAiTrade: Math.max(1, Number(inputValue("settingMaxAiTrade") || 250000)),
+        maxLeverage: Math.min(2000, Math.max(1, Number(inputValue("settingMaxLeverage") || 2000))),
+        maxOpenPositionsPerUser: Math.max(1, Number(inputValue("settingMaxOpenPositions") || 10)),
+        usdtInrRate: Math.max(1, Number(inputValue("settingUsdtInrRate") || 95))
+      };
+      logAdminAction("APP_SETTINGS_UPDATE", "SETTINGS", "app", { depositEnabled: App.state.settings.depositEnabled, withdrawalEnabled: App.state.settings.withdrawalEnabled, manualTradingEnabled: App.state.settings.manualTradingEnabled, aiTradingEnabled: App.state.settings.aiTradingEnabled, maintenanceMode: App.state.settings.maintenanceMode, maxLeverage: App.state.settings.maxLeverage });
+      App.saveState();
+      App.toast("App settings saved.");
+      render();
+    },
+    saveDepositPaymentMethods(event) {
+      event.preventDefault();
+      const settings = platformSettings();
       const file = document.getElementById("settingQrImage")?.files?.[0];
       const apply = qrImage => {
         App.state.settings = {
           ...settings,
-          maintenanceMode: document.getElementById("settingMaintenanceMode")?.value === "true",
-          depositEnabled: document.getElementById("settingDepositEnabled")?.value !== "false",
-          withdrawalEnabled: document.getElementById("settingWithdrawalEnabled")?.value !== "false",
-          manualTradingEnabled: document.getElementById("settingManualTradingEnabled")?.value !== "false",
-          aiTradingEnabled: document.getElementById("settingAiTradingEnabled")?.value !== "false",
           depositUpiId: inputValue("settingUpiId") || "aitradex@upi",
           depositQrImage: qrImage ?? (settings.depositQrImage || ""),
           depositUpiEnabled: document.getElementById("settingUpiEnabled")?.value !== "false",
@@ -3339,25 +3390,13 @@
           depositBankName: inputValue("settingBankName") || "AITradeX Bank",
           depositAccountName: inputValue("settingAccountName") || "AITradeX Private Wallet",
           depositAccountNumber: inputValue("settingAccountNumber") || "123456789012",
-          depositIfsc: inputValue("settingIfsc").toUpperCase() || "AITX0001234",
-          minDeposit: Math.max(1, Number(inputValue("settingMinDeposit") || 500)),
-          maxDeposit: Math.max(1, Number(inputValue("settingMaxDeposit") || 1000000)),
-          minWithdrawal: Math.max(1, Number(inputValue("settingMinWithdrawal") || 1000)),
-          maxWithdrawal: Math.max(1, Number(inputValue("settingMaxWithdrawal") || 500000)),
-          minManualTrade: Math.max(1, Number(inputValue("settingMinManualTrade") || 100)),
-          maxManualTrade: Math.max(1, Number(inputValue("settingMaxManualTrade") || 250000)),
-          minAiTrade: Math.max(1, Number(inputValue("settingMinAiTrade") || 100)),
-          maxAiTrade: Math.max(1, Number(inputValue("settingMaxAiTrade") || 250000)),
-          maxLeverage: Math.min(2000, Math.max(1, Number(inputValue("settingMaxLeverage") || 2000))),
-          maxOpenPositionsPerUser: Math.max(1, Number(inputValue("settingMaxOpenPositions") || 10)),
-          usdtInrRate: Math.max(1, Number(inputValue("settingUsdtInrRate") || 95))
+          depositIfsc: inputValue("settingIfsc").toUpperCase() || "AITX0001234"
         };
-        logAdminAction("APP_SETTINGS_UPDATE", "SETTINGS", "app", { depositEnabled: App.state.settings.depositEnabled, withdrawalEnabled: App.state.settings.withdrawalEnabled, manualTradingEnabled: App.state.settings.manualTradingEnabled, aiTradingEnabled: App.state.settings.aiTradingEnabled, maintenanceMode: App.state.settings.maintenanceMode, maxLeverage: App.state.settings.maxLeverage });
+        logAdminAction("PAYMENT_METHODS_UPDATE", "SETTINGS", "paymentMethods", { upiEnabled: App.state.settings.depositUpiEnabled, bankEnabled: App.state.settings.depositBankEnabled, upiId: App.state.settings.depositUpiId, bankName: App.state.settings.depositBankName });
         App.saveState();
-        App.toast("App settings saved.");
+        App.toast("Payment methods saved.");
         render();
       };
-
       if (file) {
         const reader = new FileReader();
         reader.onload = () => apply(String(reader.result || ""));
