@@ -1282,14 +1282,12 @@
     return JSON.stringify(String(value ?? ""));
   }
 
-  function currentKyc() {
-    const u = user();
-    if (!u) return null;
-    const saved = readJson(userKey("KYC"), null) || {};
+  function normalizeKycRecord(saved = {}) {
+    const u = user() || {};
     const personal = {
-      fullName: saved.personal?.fullName || displayName(),
-      mobile: u.mobile || saved.personal?.mobile || "",
-      email: u.email || saved.personal?.email || "",
+      fullName: saved.personal?.fullName || saved.fullName || displayName(),
+      mobile: u.mobile || saved.personal?.mobile || saved.mobile || "",
+      email: u.email || saved.personal?.email || saved.userEmail || "",
       dob: saved.personal?.dob || "",
       gender: saved.personal?.gender || "",
       city: saved.personal?.city || "",
@@ -1298,7 +1296,7 @@
     };
     const id = {
       type: "Aadhaar Card",
-      number: saved.id?.number || saved.idDetails?.number || ""
+      number: saved.id?.number || saved.idDetails?.number || saved.idNumber || ""
     };
     const uploads = {
       frontName: saved.uploads?.frontName || "",
@@ -1321,17 +1319,33 @@
       selfieType: saved.uploads?.selfieType || ""
     };
     return {
+      id: saved.id || "",
       status: saved.status || "NOT_SUBMITTED",
       personal,
-      id,
+      id: saved.idDetails || id,
       uploads,
       declarationAccepted: !!saved.declarationAccepted,
       finalAccepted: !!saved.finalAccepted,
-      submittedAt: saved.submittedAt || "",
-      approvedAt: saved.approvedAt || "",
-      rejectedAt: saved.rejectedAt || "",
+      submittedAt: saved.submittedAt || saved.createdAt || "",
+      approvedAt: saved.approvedAt || (String(saved.status || "").toUpperCase() === "APPROVED" ? (saved.reviewedAt || "") : ""),
+      rejectedAt: saved.rejectedAt || (String(saved.status || "").toUpperCase() === "REJECTED" ? (saved.reviewedAt || "") : ""),
       rejectReason: saved.rejectReason || ""
     };
+  }
+
+  function currentKyc() {
+    const u = user();
+    if (!u) return null;
+    const local = readJson(userKey("KYC"), null) || {};
+    const stateRow = (App.state.kycRequests || []).find(x => String(x.userId || x.user_id) === String(u.id));
+    const localStatus = String(local.status || "NOT_SUBMITTED").toUpperCase();
+    const stateStatus = String(stateRow?.status || "").toUpperCase();
+
+    // Database-only mode: final admin review state must always win over stale device-local KYC JSON.
+    if (App.databaseOnly && stateRow && ["APPROVED", "REJECTED"].includes(stateStatus)) return normalizeKycRecord(stateRow);
+    if (App.databaseOnly && stateRow && (!local.status || localStatus === "NOT_SUBMITTED")) return normalizeKycRecord(stateRow);
+    if (App.databaseOnly && stateRow && stateStatus === "PENDING" && localStatus === "PENDING") return normalizeKycRecord({ ...local, ...stateRow, personal: stateRow.personal || local.personal, idDetails: stateRow.idDetails || local.idDetails || local.id, uploads: stateRow.uploads || local.uploads });
+    return normalizeKycRecord(local);
   }
 
   function saveKycData(data) {
@@ -1386,6 +1400,8 @@
   }
 
   function paymentMethods() {
+    const u = user();
+    if (App.databaseOnly && u) return (App.state.paymentMethods || []).filter(m => String(m.userId || m.user_id) === String(u.id)).map(m => ({ ...m }));
     return readJson(userKey("PAYMENT_METHODS"), []);
   }
 
@@ -1406,6 +1422,8 @@
   }
 
   function depositRequests() {
+    const u = user();
+    if (App.databaseOnly && u) return (App.state.depositRequests || []).filter(r => String(r.userId || r.user_id) === String(u.id)).map(r => ({ ...r }));
     return readJson(userKey("DEPOSIT_REQUESTS"), []);
   }
 
@@ -1429,12 +1447,26 @@
   }
 
   function withdrawalRequests() {
+    const u = user();
+    if (App.databaseOnly && u) return (App.state.withdrawalRequests || []).filter(r => String(r.userId || r.user_id) === String(u.id)).map(r => ({ ...r }));
     return readJson(userKey("WITHDRAWAL_REQUESTS"), []);
   }
 
   function saveWithdrawalRequests(requests) {
     writeJson(userKey("WITHDRAWAL_REQUESTS"), requests);
     syncWithdrawalRequestsToState(requests);
+  }
+
+  async function forceDbWrite(reason = "user-critical-action") {
+    if (!App.databaseOnly || !window.AITradeXDB?.directWriteChangedTables) return;
+    try { await window.AITradeXDB.directWriteChangedTables({ reason, force: true }); }
+    catch (err) { try { console.warn("Critical database write warning", err); } catch {} }
+  }
+
+  async function refreshUserData(reason = "user-refresh") {
+    if (!App.databaseOnly || !window.AITradeXDB?.pullCoreTables) return;
+    try { await window.AITradeXDB.pullCoreTables(); }
+    catch (err) { try { console.warn(reason, err); } catch {} }
   }
 
   function syncDepositRequestsToState(requests) {
@@ -3835,7 +3867,7 @@
       localStorage.setItem("AITradeX_DEPOSIT_STEP", String(depositStep));
       render();
     },
-    submitDepositRequest() {
+    async submitDepositRequest() {
       const settings = platformSettings();
       const amount = Number(depositDraft.amount || 0);
       const minDeposit = Number(settings.minDeposit || 500);
@@ -3872,6 +3904,7 @@
       });
       saveDepositRequests(requests);
       App.addNotification?.({ audience: "ADMIN", title: "New deposit request", message: `${displayName()} requested ${App.money(amount)} deposit. UTR ${utr}.`, type: "DEPOSIT", linkPage: "deposits", referenceId: requestId });
+      await forceDbWrite("deposit-request-submit");
 
       depositDraft = { amount: "", type: settings.depositUpiEnabled !== false ? "UPI" : "BANK", utr: "" };
       depositStep = 1;
@@ -3940,7 +3973,7 @@
       localStorage.setItem("AITradeX_WITHDRAWAL_STEP", String(withdrawalStep));
       render();
     },
-    submitWithdrawalRequest() {
+    async submitWithdrawalRequest() {
       const settings = platformSettings();
       const amount = Number(withdrawalDraft.amount || 0);
       const minWithdrawal = Number(settings.minWithdrawal || 1000);
@@ -3973,6 +4006,7 @@
       });
       saveWithdrawalRequests(requests);
       App.addNotification?.({ audience: "ADMIN", title: "New withdrawal request", message: `${displayName()} requested ${App.money(amount)} withdrawal.`, type: "WITHDRAWAL", linkPage: "withdrawals", referenceId: requestId });
+      await forceDbWrite("withdrawal-request-submit");
 
       withdrawalDraft = { amount: "", methodId: "" };
       withdrawalStep = 1;
@@ -4106,7 +4140,7 @@
       localStorage.setItem("AITradeX_KYC_STEP", String(kycStep));
       render();
     },
-    submitKyc() {
+    async submitKyc() {
       const kyc = currentKyc();
       kyc.finalAccepted = !!document.getElementById("kycFinalConfirm")?.checked;
       if (!kyc.personal.fullName || !kyc.personal.dob || !kyc.personal.gender || !kyc.personal.mobile || !kyc.personal.email || !kyc.personal.city || !kyc.personal.state || !/^\d{6}$/.test(String(kyc.personal.pincode || ""))) {
@@ -4137,6 +4171,7 @@
       kyc.approvedAt = "";
       saveKycData(kyc);
       App.addNotification?.({ audience: "ADMIN", title: "New KYC request", message: `${displayName()} submitted KYC for verification.`, type: "KYC", linkPage: "kyc", referenceId: `kyc_submit_${user()?.id || "user"}_${kyc.submittedAt}` });
+      await forceDbWrite("kyc-submit");
       App.toast("KYC submitted for verification.");
       render();
     },
@@ -4745,6 +4780,14 @@
       }catch(err){try{console.warn("User session hydrate warning",err);}catch{}}
     }
     render();
+  }
+
+  if (!window.__AITRADEX_USER_DB_REFRESH_TIMER__) {
+    window.__AITRADEX_USER_DB_REFRESH_TIMER__ = setInterval(async () => {
+      if (!App.databaseOnly || !App.session?.userId || App.session?.role !== "user" || !window.AITradeXDB?.pullCoreTables) return;
+      try { await window.AITradeXDB.pullCoreTables(); }
+      catch (err) { try { console.warn("User database auto-refresh warning", err); } catch {} }
+    }, 15000);
   }
 
   bootUserApp();
