@@ -171,3 +171,10 @@ alter table public.referrals add column if not exists raw jsonb default '{}'::js
 
 alter table public.users add column if not exists avatar_url text;
 alter table public.users add column if not exists avatar_path text;
+
+
+-- Phase 5.12.6: Preserve full frontend request payloads for database-only admin views
+alter table public.kyc_requests add column if not exists raw jsonb default '{}'::jsonb;
+alter table public.payment_methods add column if not exists raw jsonb default '{}'::jsonb;
+alter table public.deposit_requests add column if not exists raw jsonb default '{}'::jsonb;
+alter table public.withdrawal_requests add column if not exists raw jsonb default '{}'::jsonb;

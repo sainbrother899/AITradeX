@@ -317,7 +317,8 @@
       ifsc: x.ifsc || "",
       status: x.status || "PENDING",
       rejection_reason: x.rejectReason || x.rejectionReason || x.rejection_reason || "",
-      created_at: dateIso(x.createdAt || x.created_at)
+      created_at: dateIso(x.createdAt || x.created_at),
+      raw: safeClone(x)
     })).filter(x => x.id && x.user_id);
   }
 
@@ -326,13 +327,14 @@
       id: String(x.id),
       user_id: x.userId || x.user_id,
       user_email: x.userEmail || x.user_email || getEmailForUser(x.userId || x.user_id),
-      full_name: x.fullName || x.full_name || x.name || "",
-      mobile: x.mobile || "",
-      id_number: x.idNumber || x.id_number || x.aadhaar || "",
-      address: x.address || "",
+      full_name: x.fullName || x.full_name || x.name || x.personal?.fullName || "",
+      mobile: x.mobile || x.personal?.mobile || "",
+      id_number: x.idNumber || x.id_number || x.aadhaar || x.idDetails?.number || x.id?.number || "",
+      address: x.address || x.personal?.address || "",
       status: x.status || "PENDING",
       reviewed_at: x.reviewedAt ? dateIso(x.reviewedAt) : null,
-      created_at: dateIso(x.createdAt || x.created_at)
+      created_at: dateIso(x.createdAt || x.created_at || x.submittedAt),
+      raw: safeClone(x)
     })).filter(x => x.id && x.user_id);
   }
 
@@ -529,10 +531,10 @@
     };
   }
   function camelLedger(r) { return { id: r.id, userId: r.user_id, accountType: r.account_type || "REAL", type: r.type, amount: Number(r.amount || 0), referenceId: r.reference_id, note: r.note || "", balanceAfter: Number(r.balance_after || 0), createdAt: r.created_at }; }
-  function camelDeposit(r) { return { id: r.id, userId: r.user_id, userEmail: r.user_email, amount: Number(r.amount || 0), type: r.method || "UPI", utr: r.utr || "", status: r.status || "PENDING", balanceApplied: !!r.balance_applied, firstDepositReferralChecked: !!r.first_deposit_referral_checked, adminNote: r.admin_note || "", createdAt: r.created_at }; }
-  function camelWithdrawal(r) { return { id: r.id, userId: r.user_id, userEmail: r.user_email, amount: Number(r.amount || 0), methodId: r.payment_method_id || "", status: r.status || "PENDING", holdApplied: !!r.hold_applied, adminNote: r.admin_note || "", createdAt: r.created_at }; }
-  function camelMethod(r) { return { id: r.id, userId: r.user_id, userEmail: r.user_email, type: r.type || "BANK", holderName: r.holder_name || "", upiId: r.upi_id || "", bankName: r.bank_name || "", accountNumber: r.account_number || "", ifsc: r.ifsc || "", status: r.status || "PENDING", rejectReason: r.rejection_reason || "", createdAt: r.created_at }; }
-  function camelKyc(r) { return { id: r.id, userId: r.user_id, userEmail: r.user_email, fullName: r.full_name || "", mobile: r.mobile || "", idNumber: r.id_number || "", address: r.address || "", status: r.status || "PENDING", reviewedAt: r.reviewed_at || "", createdAt: r.created_at }; }
+  function camelDeposit(r) { return r.raw && typeof r.raw === "object" ? { ...r.raw, id: r.id, userId: r.user_id || r.raw.userId, userEmail: r.user_email || r.raw.userEmail, amount: Number(r.amount || r.raw.amount || 0), type: r.method || r.raw.type || "UPI", utr: r.utr || r.raw.utr || "", status: r.status || r.raw.status || "PENDING", balanceApplied: !!(r.balance_applied || r.raw.balanceApplied), firstDepositReferralChecked: !!(r.first_deposit_referral_checked || r.raw.firstDepositReferralChecked), adminNote: r.admin_note || r.raw.adminNote || "", createdAt: r.created_at || r.raw.createdAt } : { id: r.id, userId: r.user_id, userEmail: r.user_email, amount: Number(r.amount || 0), type: r.method || "UPI", utr: r.utr || "", status: r.status || "PENDING", balanceApplied: !!r.balance_applied, firstDepositReferralChecked: !!r.first_deposit_referral_checked, adminNote: r.admin_note || "", createdAt: r.created_at }; }
+  function camelWithdrawal(r) { return r.raw && typeof r.raw === "object" ? { ...r.raw, id: r.id, userId: r.user_id || r.raw.userId, userEmail: r.user_email || r.raw.userEmail, amount: Number(r.amount || r.raw.amount || 0), methodId: r.payment_method_id || r.raw.methodId || "", status: r.status || r.raw.status || "PENDING", holdApplied: !!(r.hold_applied || r.raw.holdApplied), adminNote: r.admin_note || r.raw.adminNote || "", createdAt: r.created_at || r.raw.createdAt } : { id: r.id, userId: r.user_id, userEmail: r.user_email, amount: Number(r.amount || 0), methodId: r.payment_method_id || "", status: r.status || "PENDING", holdApplied: !!r.hold_applied, adminNote: r.admin_note || "", createdAt: r.created_at }; }
+  function camelMethod(r) { return r.raw && typeof r.raw === "object" ? { ...r.raw, id: r.id, userId: r.user_id || r.raw.userId, userEmail: r.user_email || r.raw.userEmail, type: r.type || r.raw.type || "BANK", holderName: r.holder_name || r.raw.holderName || "", upiId: r.upi_id || r.raw.upiId || "", bankName: r.bank_name || r.raw.bankName || "", accountNumber: r.account_number || r.raw.accountNumber || "", ifsc: r.ifsc || r.raw.ifsc || "", status: r.status || r.raw.status || "PENDING", rejectReason: r.rejection_reason || r.raw.rejectReason || "", createdAt: r.created_at || r.raw.createdAt } : { id: r.id, userId: r.user_id, userEmail: r.user_email, type: r.type || "BANK", holderName: r.holder_name || "", upiId: r.upi_id || "", bankName: r.bank_name || "", accountNumber: r.account_number || "", ifsc: r.ifsc || "", status: r.status || "PENDING", rejectReason: r.rejection_reason || "", createdAt: r.created_at }; }
+  function camelKyc(r) { return r.raw && typeof r.raw === "object" ? { ...r.raw, id: r.id, userId: r.user_id || r.raw.userId, userEmail: r.user_email || r.raw.userEmail, status: r.status || r.raw.status || "PENDING", reviewedAt: r.reviewed_at || r.raw.reviewedAt || "", createdAt: r.created_at || r.raw.createdAt || r.raw.submittedAt } : { id: r.id, userId: r.user_id, userEmail: r.user_email, fullName: r.full_name || "", mobile: r.mobile || "", idNumber: r.id_number || "", address: r.address || "", status: r.status || "PENDING", reviewedAt: r.reviewed_at || "", createdAt: r.created_at }; }
   function camelNotification(r) { return { id: r.id, audience: r.audience || "USER", userId: r.user_id || "", title: r.title || "", message: r.message || "", type: r.type || "INFO", linkPage: r.link_page || "", referenceId: r.reference_id || "", read: !!r.read, createdAt: r.created_at }; }
   function camelAdminAction(r) { return { id: String(r.id), adminUserId: r.admin_user_id || "admin", action: r.action || "ADMIN_ACTION", targetType: r.target_type || "SYSTEM", targetId: r.target_id || "", meta: r.meta || {}, createdAt: r.created_at || "" }; }
   function camelPlan(r) { return r.raw && typeof r.raw === "object" ? r.raw : { id: r.id, name: r.name || "Plan", price: Number(r.price || 0), signals: Number(r.signals || r.trade_limit || 0), aiAccess: r.ai_access || "AI Access", status: r.is_active === false ? "INACTIVE" : "ACTIVE" }; }
@@ -607,52 +609,92 @@
 
   async function pullCoreTables() {
     if (!SUPABASE_READY || !client) throw new Error("Supabase is not configured.");
-    const fetchTable = async (table) => {
-      const { data, error } = await client.from(table).select("*");
-      if (error) throw new Error(`${table}: ${error.message}`);
-      return data || [];
+
+    // Important: loading admin/user screens must not fail because one optional table has an RLS/schema issue.
+    // Users, KYC, deposits and withdrawals are the critical tables. Each table is fetched independently.
+    const tableErrors = [];
+    const fetchTable = async (table, critical = false) => {
+      try {
+        const { data, error } = await client.from(table).select("*");
+        if (error) throw error;
+        return { ok: true, rows: data || [], table };
+      } catch (err) {
+        const message = `${table}: ${err?.message || String(err)}`;
+        tableErrors.push({ table, message, critical });
+        try { console.warn("AITradeX database load warning", message); } catch {}
+        return { ok: false, rows: null, table, error: message };
+      }
     };
-    const [users, methods, kyc, deposits, withdrawals, ledger, trades, batches, adminLogs, notifications, appSettings, plans, subscriptions, referrals, supportTickets] = await Promise.all([
-      fetchTable("users"),
-      fetchTable("payment_methods"),
-      fetchTable("kyc_requests"),
-      fetchTable("deposit_requests"),
-      fetchTable("withdrawal_requests"),
-      fetchTable("wallet_ledger"),
-      fetchTable("trade_orders"),
-      fetchTable("ai_trade_batches"),
-      fetchTable("admin_action_logs"),
-      fetchTable("notifications"),
-      fetchTable("app_settings"),
-      fetchTable("plans"),
-      fetchTable("subscriptions"),
-      fetchTable("referrals"),
-      fetchTable("support_tickets")
+
+    const loaded = {};
+    const entries = await Promise.all([
+      fetchTable("users", true),
+      fetchTable("payment_methods", true),
+      fetchTable("kyc_requests", true),
+      fetchTable("deposit_requests", true),
+      fetchTable("withdrawal_requests", true),
+      fetchTable("wallet_ledger", true),
+      fetchTable("trade_orders", true),
+      fetchTable("ai_trade_batches", false),
+      fetchTable("admin_action_logs", false),
+      fetchTable("notifications", false),
+      fetchTable("app_settings", false),
+      fetchTable("plans", false),
+      fetchTable("subscriptions", false),
+      fetchTable("referrals", false),
+      fetchTable("support_tickets", false)
     ]);
-    const adminLocal = (App.state.users || []).filter(u => u.role === "admin");
-    const pulledUsers = users.map(camelUser);
-    const adminIds = new Set(pulledUsers.filter(u => u.role === "admin").map(u => u.id));
-    App.state.users = [...pulledUsers, ...adminLocal.filter(u => !adminIds.has(u.id))];
-    App.state.paymentMethods = methods.map(camelMethod);
-    App.state.kycRequests = kyc.map(camelKyc);
-    App.state.depositRequests = deposits.map(camelDeposit);
-    App.state.withdrawalRequests = withdrawals.map(camelWithdrawal);
-    App.state.walletLedger = ledger.map(camelLedger);
-    App.state.trades = trades.map(camelTrade).sort((a, b) => Date.parse(b.createdAt || b.openedAt || 0) - Date.parse(a.createdAt || a.openedAt || 0));
-    const pulledBatches = batches.map(camelAiBatch);
-    App.state.aiTradeBatches = pulledBatches.filter(b => String(b.batch_type || b.batchType || '').toUpperCase() === 'INSTANT');
-    App.state.aiLiveBatches = pulledBatches.filter(b => String(b.batch_type || b.batchType || '').toUpperCase() === 'LIVE');
-    App.state.adminActionLogs = adminLogs.map(camelAdminAction).sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0));
-    App.state.notifications = notifications.map(camelNotification);
-    const mainSettings = (appSettings || []).find(x => String(x.id) === "main") || appSettings?.[0];
-    if (mainSettings?.settings && typeof mainSettings.settings === "object") App.state.settings = { ...(App.state.settings || {}), ...mainSettings.settings };
-    if (plans.length) App.state.plans = plans.map(camelPlan);
-    App.state.subscriptions = subscriptions.map(camelSubscription);
-    App.state.referrals = referrals.map(camelReferral);
-    App.state.supportTickets = supportTickets.map(camelSupport);
+    entries.forEach(x => { loaded[x.table] = x; });
+
+    const users = loaded.users?.rows || [];
+    const methods = loaded.payment_methods?.rows || [];
+    const kyc = loaded.kyc_requests?.rows || [];
+    const deposits = loaded.deposit_requests?.rows || [];
+    const withdrawals = loaded.withdrawal_requests?.rows || [];
+    const ledger = loaded.wallet_ledger?.rows || [];
+    const trades = loaded.trade_orders?.rows || [];
+    const batches = loaded.ai_trade_batches?.rows || [];
+    const adminLogs = loaded.admin_action_logs?.rows || [];
+    const notifications = loaded.notifications?.rows || [];
+    const appSettings = loaded.app_settings?.rows || [];
+    const plans = loaded.plans?.rows || [];
+    const subscriptions = loaded.subscriptions?.rows || [];
+    const referrals = loaded.referrals?.rows || [];
+    const supportTickets = loaded.support_tickets?.rows || [];
+
+    if (loaded.users?.ok) {
+      const adminLocal = (App.state.users || []).filter(u => u.role === "admin");
+      const pulledUsers = users.map(camelUser);
+      const adminIds = new Set(pulledUsers.filter(u => u.role === "admin").map(u => u.id));
+      App.state.users = [...pulledUsers, ...adminLocal.filter(u => !adminIds.has(u.id))];
+    }
+    if (loaded.payment_methods?.ok) App.state.paymentMethods = methods.map(camelMethod);
+    if (loaded.kyc_requests?.ok) App.state.kycRequests = kyc.map(camelKyc);
+    if (loaded.deposit_requests?.ok) App.state.depositRequests = deposits.map(camelDeposit);
+    if (loaded.withdrawal_requests?.ok) App.state.withdrawalRequests = withdrawals.map(camelWithdrawal);
+    if (loaded.wallet_ledger?.ok) App.state.walletLedger = ledger.map(camelLedger);
+    if (loaded.trade_orders?.ok) App.state.trades = trades.map(camelTrade).sort((a, b) => Date.parse(b.createdAt || b.openedAt || 0) - Date.parse(a.createdAt || a.openedAt || 0));
+    if (loaded.ai_trade_batches?.ok) {
+      const pulledBatches = batches.map(camelAiBatch);
+      App.state.aiTradeBatches = pulledBatches.filter(b => String(b.batch_type || b.batchType || '').toUpperCase() === 'INSTANT');
+      App.state.aiLiveBatches = pulledBatches.filter(b => String(b.batch_type || b.batchType || '').toUpperCase() === 'LIVE');
+    }
+    if (loaded.admin_action_logs?.ok) App.state.adminActionLogs = adminLogs.map(camelAdminAction).sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0));
+    if (loaded.notifications?.ok) App.state.notifications = notifications.map(camelNotification);
+    if (loaded.app_settings?.ok) {
+      const mainSettings = (appSettings || []).find(x => String(x.id) === "main") || appSettings?.[0];
+      if (mainSettings?.settings && typeof mainSettings.settings === "object") App.state.settings = { ...(App.state.settings || {}), ...mainSettings.settings };
+    }
+    if (loaded.plans?.ok && plans.length) App.state.plans = plans.map(camelPlan);
+    if (loaded.subscriptions?.ok) App.state.subscriptions = subscriptions.map(camelSubscription);
+    if (loaded.referrals?.ok) App.state.referrals = referrals.map(camelReferral);
+    if (loaded.support_tickets?.ok) App.state.supportTickets = supportTickets.map(camelSupport);
+
     App.saveState();
-    const summary = { users: users.length, methods: methods.length, kyc: kyc.length, deposits: deposits.length, withdrawals: withdrawals.length, walletLedger: ledger.length, trades: trades.length, aiBatches: batches.length, adminActionLogs: adminLogs.length, notifications: notifications.length, appSettings: appSettings.length, plans: plans.length, subscriptions: subscriptions.length, referrals: referrals.length, supportTickets: supportTickets.length };
-    dbStatus(`Core + trade tables loaded from Supabase: ${users.length + deposits.length + withdrawals.length + ledger.length + trades.length + batches.length} row(s).`, true);
+    const summary = { users: users.length, methods: methods.length, kyc: kyc.length, deposits: deposits.length, withdrawals: withdrawals.length, walletLedger: ledger.length, trades: trades.length, aiBatches: batches.length, adminActionLogs: adminLogs.length, notifications: notifications.length, appSettings: appSettings.length, plans: plans.length, subscriptions: subscriptions.length, referrals: referrals.length, supportTickets: supportTickets.length, errors: tableErrors };
+    const loadedTotal = users.length + deposits.length + withdrawals.length + kyc.length + ledger.length + trades.length + batches.length;
+    if (tableErrors.length) dbStatus(`Database loaded ${loadedTotal} critical row(s). ${tableErrors.length} optional/table warning(s) found; check policies if a section is empty.`, false);
+    else dbStatus(`Core + trade tables loaded from Supabase: ${loadedTotal} row(s).`, true);
     emitDbLoaded({ type: "pull", summary });
     return summary;
   }
