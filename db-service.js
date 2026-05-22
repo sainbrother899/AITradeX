@@ -85,6 +85,12 @@
       walletLedger: (s.walletLedger || []).length,
       demoLedger: (s.demoLedger || []).length,
       trades: (s.trades || []).length,
+      manualTrades: (s.trades || []).filter(t => String(t.tradeType || '').toUpperCase() === 'MANUAL').length,
+      aiLiveTrades: (s.trades || []).filter(t => String(t.tradeType || '').toUpperCase() === 'AI_LIVE').length,
+      instantAiTrades: (s.trades || []).filter(t => String(t.tradeType || '').toUpperCase() === 'AI_INSTANT').length,
+      pendingOrders: (s.trades || []).filter(t => String(t.status || '').toUpperCase().includes('PENDING')).length,
+      aiTradeBatches: (s.aiTradeBatches || []).length,
+      aiLiveBatches: (s.aiLiveBatches || []).length,
       notifications: (s.notifications || []).length,
       supportTickets: (s.supportTickets || []).length,
       kycRequests: (s.kycRequests || []).length,
@@ -313,6 +319,79 @@
     })).filter(x => x.id);
   }
 
+  function tradeRows() {
+    return (App?.state?.trades || []).map(x => {
+      const status = String(x.status || "OPEN").toUpperCase();
+      const tradeType = String(x.tradeType || x.trade_type || "MANUAL").toUpperCase();
+      const margin = Number(x.marginAmount ?? x.amount ?? x.margin_amount ?? 0);
+      const leverage = Number(x.leverage || 1);
+      const positionSize = Number(x.positionSize ?? x.position_size ?? (margin * leverage));
+      return {
+        id: String(x.id),
+        user_id: x.userId || x.user_id,
+        batch_id: x.batchId || x.batch_id || null,
+        trade_type: tradeType,
+        account_type: x.accountType || x.account_type || "REAL",
+        order_type: x.orderType || x.order_type || "MARKET",
+        market: x.market || "CRYPTO",
+        pair: x.pair || "",
+        side: x.side || "BUY",
+        status,
+        source: x.source || "",
+        entry_price: Number(x.entryPrice || x.entry_price || 0) || null,
+        entry_price_display: x.entryPriceDisplay || x.entry_price_display || "",
+        exit_price: Number(x.exitPrice || x.closePrice || x.exit_price || x.close_price || 0) || null,
+        exit_price_display: x.exitPriceDisplay || x.closePriceDisplay || x.exit_price_display || "",
+        limit_price: Number(x.limitPrice || x.limit_price || 0) || null,
+        limit_price_display: x.limitPriceDisplay || x.limit_price_display || "",
+        leverage,
+        margin_amount: margin,
+        margin_locked: !!x.marginLocked,
+        position_size: positionSize,
+        pnl: Number(x.pnl || 0),
+        settlement_amount: Number(x.settlementAmount || x.settlement_amount || 0),
+        target_type: x.targetType || x.target_type || "",
+        target_percent: Number(x.targetPercent || x.target_percent || 0),
+        close_reason: x.closeReason || x.close_reason || "",
+        closed_by: x.closedBy || x.closed_by || "",
+        note: x.note || "",
+        raw: x,
+        created_at: dateIso(x.createdAt || x.openedAt || x.created_at || x.opened_at),
+        opened_at: x.openedAt || x.opened_at ? dateIso(x.openedAt || x.opened_at) : (x.createdAt || x.created_at ? dateIso(x.createdAt || x.created_at) : null),
+        closed_at: x.closedAt || x.closed_at ? dateIso(x.closedAt || x.closed_at) : null
+      };
+    }).filter(x => x.id && x.user_id);
+  }
+
+  function aiBatchRows() {
+    const instant = (App?.state?.aiTradeBatches || []).map(x => ({ ...x, batchKind: "INSTANT" }));
+    const live = (App?.state?.aiLiveBatches || []).map(x => ({ ...x, batchKind: "LIVE" }));
+    return [...instant, ...live].map(x => ({
+      id: String(x.id),
+      batch_type: x.batchKind || x.batch_type || "INSTANT",
+      market: x.market || "CRYPTO",
+      pair: x.pair || "",
+      side: x.side || "BUY",
+      leverage: Number(x.leverage || 1),
+      status: x.status || (String(x.batchKind || "").toUpperCase() === "LIVE" ? "OPEN" : "CLOSED"),
+      entry_price: Number(x.entryPrice || x.entry_price || 0) || null,
+      entry_price_display: x.entryPriceDisplay || x.entry_price_display || "",
+      target_type: x.targetType || x.target_type || x.resultType || "",
+      target_percent: Number(x.targetPercent || x.target_percent || x.resultPercent || 0),
+      min_balance: Number(x.minBalance || x.min_balance || 0),
+      total_margin: Number(x.totalMargin || x.total_margin || 0),
+      total_exposure: Number(x.totalExposure || x.total_exposure || 0),
+      total_pnl: Number(x.totalPnl || x.total_pnl || 0),
+      applied_count: Number(x.appliedCount || x.applied_count || 0),
+      skipped_count: Number(x.skippedCount || x.skipped_count || 0),
+      skip_reasons: x.skipReasons || x.skip_reasons || {},
+      note: x.note || "",
+      raw: x,
+      created_at: dateIso(x.createdAt || x.created_at),
+      closed_at: x.closedAt || x.closed_at ? dateIso(x.closedAt || x.closed_at) : null
+    })).filter(x => x.id);
+  }
+
   async function syncCoreTables({ silent = false } = {}) {
     if (!SUPABASE_READY || !client) throw new Error("Supabase is not configured.");
     const results = [];
@@ -322,6 +401,8 @@
     results.push(await upsertRows("deposit_requests", depositRows(), "Deposit requests"));
     results.push(await upsertRows("withdrawal_requests", withdrawalRows(), "Withdrawal requests"));
     results.push(await upsertRows("wallet_ledger", walletLedgerRows(), "Wallet ledger"));
+    results.push(await upsertRows("trade_orders", tradeRows(), "Manual/AI trades and orders"));
+    results.push(await upsertRows("ai_trade_batches", aiBatchRows(), "AI trade batches"));
     results.push(await upsertRows("notifications", notificationRows(), "Notifications"));
     const total = results.reduce((s, r) => s + Number(r.count || 0), 0);
     dbStatus(`Core tables synced: ${total} row(s).`, true);
@@ -343,6 +424,71 @@
   function camelKyc(r) { return { id: r.id, userId: r.user_id, userEmail: r.user_email, fullName: r.full_name || "", mobile: r.mobile || "", idNumber: r.id_number || "", address: r.address || "", status: r.status || "PENDING", reviewedAt: r.reviewed_at || "", createdAt: r.created_at }; }
   function camelNotification(r) { return { id: r.id, audience: r.audience || "USER", userId: r.user_id || "", title: r.title || "", message: r.message || "", type: r.type || "INFO", linkPage: r.link_page || "", referenceId: r.reference_id || "", read: !!r.read, createdAt: r.created_at }; }
 
+  function camelTrade(r) {
+    const raw = r.raw && typeof r.raw === "object" ? r.raw : {};
+    return {
+      ...raw,
+      id: r.id,
+      userId: r.user_id,
+      batchId: r.batch_id || raw.batchId || "",
+      tradeType: r.trade_type || raw.tradeType || "MANUAL",
+      accountType: r.account_type || raw.accountType || "REAL",
+      orderType: r.order_type || raw.orderType || "MARKET",
+      market: r.market || raw.market || "CRYPTO",
+      pair: r.pair || raw.pair || "",
+      side: r.side || raw.side || "BUY",
+      status: r.status || raw.status || "OPEN",
+      source: r.source || raw.source || "",
+      entryPrice: Number(r.entry_price || raw.entryPrice || 0),
+      entryPriceDisplay: r.entry_price_display || raw.entryPriceDisplay || "",
+      exitPrice: Number(r.exit_price || raw.exitPrice || 0),
+      exitPriceDisplay: r.exit_price_display || raw.exitPriceDisplay || "",
+      limitPrice: Number(r.limit_price || raw.limitPrice || 0),
+      limitPriceDisplay: r.limit_price_display || raw.limitPriceDisplay || "",
+      leverage: Number(r.leverage || raw.leverage || 1),
+      marginAmount: Number(r.margin_amount || raw.marginAmount || 0),
+      marginLocked: !!r.margin_locked,
+      positionSize: Number(r.position_size || raw.positionSize || 0),
+      pnl: Number(r.pnl || raw.pnl || 0),
+      settlementAmount: Number(r.settlement_amount || raw.settlementAmount || 0),
+      targetType: r.target_type || raw.targetType || "",
+      targetPercent: Number(r.target_percent || raw.targetPercent || 0),
+      closeReason: r.close_reason || raw.closeReason || "",
+      closedBy: r.closed_by || raw.closedBy || "",
+      note: r.note || raw.note || "",
+      createdAt: r.created_at || raw.createdAt || "",
+      openedAt: r.opened_at || raw.openedAt || "",
+      closedAt: r.closed_at || raw.closedAt || ""
+    };
+  }
+
+  function camelAiBatch(r) {
+    const raw = r.raw && typeof r.raw === "object" ? r.raw : {};
+    return {
+      ...raw,
+      id: r.id,
+      market: r.market || raw.market || "CRYPTO",
+      pair: r.pair || raw.pair || "",
+      side: r.side || raw.side || "BUY",
+      leverage: Number(r.leverage || raw.leverage || 1),
+      status: r.status || raw.status || "OPEN",
+      entryPrice: Number(r.entry_price || raw.entryPrice || 0),
+      entryPriceDisplay: r.entry_price_display || raw.entryPriceDisplay || "",
+      targetType: r.target_type || raw.targetType || raw.resultType || "",
+      targetPercent: Number(r.target_percent || raw.targetPercent || raw.resultPercent || 0),
+      minBalance: Number(r.min_balance || raw.minBalance || 0),
+      totalMargin: Number(r.total_margin || raw.totalMargin || 0),
+      totalExposure: Number(r.total_exposure || raw.totalExposure || 0),
+      totalPnl: Number(r.total_pnl || raw.totalPnl || 0),
+      appliedCount: Number(r.applied_count || raw.appliedCount || 0),
+      skippedCount: Number(r.skipped_count || raw.skippedCount || 0),
+      skipReasons: r.skip_reasons || raw.skipReasons || {},
+      note: r.note || raw.note || "",
+      createdAt: r.created_at || raw.createdAt || "",
+      closedAt: r.closed_at || raw.closedAt || ""
+    };
+  }
+
   async function pullCoreTables() {
     if (!SUPABASE_READY || !client) throw new Error("Supabase is not configured.");
     const fetchTable = async (table) => {
@@ -350,8 +496,16 @@
       if (error) throw new Error(`${table}: ${error.message}`);
       return data || [];
     };
-    const [users, methods, kyc, deposits, withdrawals, ledger, notifications] = await Promise.all([
-      fetchTable("users"), fetchTable("payment_methods"), fetchTable("kyc_requests"), fetchTable("deposit_requests"), fetchTable("withdrawal_requests"), fetchTable("wallet_ledger"), fetchTable("notifications")
+    const [users, methods, kyc, deposits, withdrawals, ledger, trades, batches, notifications] = await Promise.all([
+      fetchTable("users"),
+      fetchTable("payment_methods"),
+      fetchTable("kyc_requests"),
+      fetchTable("deposit_requests"),
+      fetchTable("withdrawal_requests"),
+      fetchTable("wallet_ledger"),
+      fetchTable("trade_orders"),
+      fetchTable("ai_trade_batches"),
+      fetchTable("notifications")
     ]);
     const adminLocal = (App.state.users || []).filter(u => u.role === "admin");
     const pulledUsers = users.map(camelUser);
@@ -362,10 +516,14 @@
     App.state.depositRequests = deposits.map(camelDeposit);
     App.state.withdrawalRequests = withdrawals.map(camelWithdrawal);
     App.state.walletLedger = ledger.map(camelLedger);
+    App.state.trades = trades.map(camelTrade).sort((a, b) => Date.parse(b.createdAt || b.openedAt || 0) - Date.parse(a.createdAt || a.openedAt || 0));
+    const pulledBatches = batches.map(camelAiBatch);
+    App.state.aiTradeBatches = pulledBatches.filter(b => String(b.batch_type || b.batchType || '').toUpperCase() === 'INSTANT');
+    App.state.aiLiveBatches = pulledBatches.filter(b => String(b.batch_type || b.batchType || '').toUpperCase() === 'LIVE');
     App.state.notifications = notifications.map(camelNotification);
     App.saveState();
-    dbStatus(`Core tables loaded from Supabase: ${users.length + deposits.length + withdrawals.length + ledger.length} row(s).`, true);
-    return { users: users.length, methods: methods.length, kyc: kyc.length, deposits: deposits.length, withdrawals: withdrawals.length, walletLedger: ledger.length, notifications: notifications.length };
+    dbStatus(`Core tables loaded from Supabase: ${users.length + deposits.length + withdrawals.length + ledger.length + trades.length + batches.length} row(s).`, true);
+    return { users: users.length, methods: methods.length, kyc: kyc.length, deposits: deposits.length, withdrawals: withdrawals.length, walletLedger: ledger.length, trades: trades.length, aiBatches: batches.length, notifications: notifications.length };
   }
 
   let syncTimer = null;

@@ -2389,18 +2389,18 @@
         <div class="section-head">
           <div>
             <h3>Database Sync Center</h3>
-            <span>Supabase backup/restore plus Phase 5.3 row-by-row sync for users, wallet, deposits and withdrawals.</span>
+            <span>Supabase backup/restore plus Phase 5.4 row-by-row sync for users, wallet, deposits, withdrawals, trades, AI positions and orders.</span>
           </div>
           <span class="admin-count-pill ${configured ? "text-profit" : "text-loss"}">${configured ? "Supabase Configured" : "Local Mode"}</span>
         </div>
         <div class="database-status-panel">
           <article>
             <b>Current Mode</b>
-            <p>${configured ? "Supabase URL and anon key are configured. Snapshot backup and core table sync are available." : "Supabase keys are blank. App will continue working with local browser storage until config.js is updated."}</p>
+            <p>${configured ? "Supabase URL and anon key are configured. Snapshot backup and core/trade table sync are available." : "Supabase keys are blank. App will continue working with local browser storage until config.js is updated."}</p>
           </article>
           <article>
             <b>Setup Required</b>
-            <p>Run <code>supabase-schema.sql</code>, then run <code>supabase-storage-policies.sql</code> after creating Storage buckets.</p>
+            <p>Run <code>supabase-schema.sql</code>, then run <code>supabase-storage-policies.sql</code> and <code>supabase-core-sync-policies.sql</code>.</p>
           </article>
           <article>
             <b>Last Core Sync</b>
@@ -2412,14 +2412,15 @@
         </div>
         <div class="database-action-grid">
           <button class="save-profile-btn" onclick="AITradeXAdmin.testDatabase(this)">Test Supabase Connection</button>
-          <button class="save-profile-btn" onclick="AITradeXAdmin.syncCoreDatabase(this)">Sync Core Tables</button>
-          <button class="ghost-action" onclick="AITradeXAdmin.pullCoreDatabase(this)">Load Core Tables</button>
+          <button class="save-profile-btn" onclick="AITradeXAdmin.syncCoreDatabase(this)">Sync Core + Trades</button>
+          <button class="ghost-action" onclick="AITradeXAdmin.pullCoreDatabase(this)">Load Core + Trades</button>
           <button class="save-profile-btn" onclick="AITradeXAdmin.backupDatabase(this)">Backup Local Data to Supabase</button>
           <button class="ghost-action" onclick="AITradeXAdmin.restoreDatabase(this)">Restore Latest Backup</button>
           <button class="ghost-action" onclick="AITradeXAdmin.exportLocalData()">Download Local Backup JSON</button>
           <label class="ghost-action import-backup-label">Import Backup JSON<input type="file" accept="application/json" onchange="AITradeXAdmin.importLocalData(this.files && this.files[0])" hidden/></label>
           <a class="ghost-action" href="supabase-schema.sql" download>Download SQL Schema</a>
           <a class="ghost-action" href="supabase-storage-policies.sql" download>Download Storage Policies</a>
+          <a class="ghost-action" href="supabase-core-sync-policies.sql" download>Download Core Sync Policies</a>
         </div>
         <div id="databaseStatusBox" class="database-result-box">No database action yet.</div>
       </section>
@@ -2428,8 +2429,8 @@
         <div class="database-roadmap-list">
           <article><b>Step 1</b><span>Supabase schema + backup/restore foundation</span><em>Added now</em></article>
           <article><b>Step 2</b><span>Sync users, KYC, bank methods, wallet ledger, deposit and withdrawal rows</span><em>Added now</em></article>
-          <article><b>Step 3</b><span>Move login/auth reads fully to database</span><em>Next</em></article>
-          <article><b>Step 4</b><span>Move trades, AI positions, notifications and admin logs</span><em>Final</em></article>
+          <article><b>Step 3</b><span>Sync manual trades, pending orders, AI live positions and instant AI batches</span><em>Added now</em></article>
+          <article><b>Step 4</b><span>Move login/auth reads fully to database with secure user/admin roles</span><em>Next</em></article>
         </div>
       </section>
     `);

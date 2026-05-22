@@ -74,3 +74,74 @@ create table if not exists public.admin_action_logs (
   meta jsonb default '{}'::jsonb,
   created_at timestamptz default now()
 );
+
+-- Phase 5.4 Trade + AI + Orders Sync
+-- Generic table for manual positions, limit orders, closed manual history, AI live positions and instant AI user entries.
+create table if not exists public.trade_orders (
+  id text primary key,
+  user_id text not null,
+  batch_id text,
+  trade_type text default 'MANUAL',
+  account_type text default 'REAL',
+  order_type text default 'MARKET',
+  market text default 'CRYPTO',
+  pair text,
+  side text,
+  status text default 'OPEN',
+  source text,
+  entry_price numeric,
+  entry_price_display text,
+  exit_price numeric,
+  exit_price_display text,
+  limit_price numeric,
+  limit_price_display text,
+  leverage numeric default 1,
+  margin_amount numeric default 0,
+  margin_locked boolean default false,
+  position_size numeric default 0,
+  pnl numeric default 0,
+  settlement_amount numeric default 0,
+  target_type text,
+  target_percent numeric default 0,
+  close_reason text,
+  closed_by text,
+  note text,
+  raw jsonb default '{}'::jsonb,
+  created_at timestamptz default now(),
+  opened_at timestamptz,
+  closed_at timestamptz
+);
+
+create index if not exists trade_orders_user_id_idx on public.trade_orders(user_id);
+create index if not exists trade_orders_status_idx on public.trade_orders(status);
+create index if not exists trade_orders_trade_type_idx on public.trade_orders(trade_type);
+create index if not exists trade_orders_created_at_idx on public.trade_orders(created_at desc);
+
+-- Admin-created AI batches for instant AI trades and live AI positions.
+create table if not exists public.ai_trade_batches (
+  id text primary key,
+  batch_type text default 'INSTANT',
+  market text default 'CRYPTO',
+  pair text,
+  side text,
+  leverage numeric default 1,
+  status text default 'OPEN',
+  entry_price numeric,
+  entry_price_display text,
+  target_type text,
+  target_percent numeric default 0,
+  min_balance numeric default 0,
+  total_margin numeric default 0,
+  total_exposure numeric default 0,
+  total_pnl numeric default 0,
+  applied_count integer default 0,
+  skipped_count integer default 0,
+  skip_reasons jsonb default '{}'::jsonb,
+  note text,
+  raw jsonb default '{}'::jsonb,
+  created_at timestamptz default now(),
+  closed_at timestamptz
+);
+
+create index if not exists ai_trade_batches_type_idx on public.ai_trade_batches(batch_type);
+create index if not exists ai_trade_batches_created_at_idx on public.ai_trade_batches(created_at desc);

@@ -69,3 +69,10 @@ Phase 5.3 Notes:
 - Auto-sync is debounced after local state changes when Supabase is configured.
 - If Supabase shows row-level security errors for core tables, run supabase-core-sync-policies.sql in SQL Editor for prototype/testing.
 - Before public launch, replace broad anon policies with secure authenticated policies or Edge Functions.
+
+Phase 5.4 Notes:
+- Added Supabase sync for manual trades, pending limit orders, closed manual history, AI live positions and instant AI trade user entries through the trade_orders table.
+- Added Supabase sync for Instant AI and Live AI batch summaries through the ai_trade_batches table.
+- Admin > Database Sync Core + Trades now pushes users, wallet/deposit/withdrawal data and trading/order data together.
+- Run the updated supabase-schema.sql to create trade_orders and ai_trade_batches.
+- Run the updated supabase-core-sync-policies.sql if Supabase shows RLS errors for trade/order sync tables.
