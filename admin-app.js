@@ -2749,7 +2749,7 @@
   }
 
   function render() {
-    if (!App.databaseOnly && App.reloadState) App.reloadState();
+    if (App.reloadState) App.reloadState();
     reconcileAiLiveMarginLocks();
     page = localStorage.getItem("AITradeX_ADMIN_PAGE") || "dashboard";
     const current = adminUser();
@@ -4031,25 +4031,26 @@
     }
   };
 
-  function markAdminBackgroundDbUpdate(detail = {}) {
-    try { document.body.dataset.aitxDbUpdate = detail?.summary ? "Admin data updated" : "Database updated"; } catch {}
-  }
-
-  window.addEventListener("aitradex:db-soft-update", event => {
-    // Clean runtime: background DB/realtime events update App.state only.
-    // Admin pages/forms are not rebuilt automatically, so inputs and modals stay stable.
-    markAdminBackgroundDbUpdate(event.detail || {});
+  window.addEventListener("aitradex:db-loaded", () => {
+    render();
   });
 
   async function bootAdminApp(){
     if(App.databaseOnly && App.session?.userId && window.AITradeXDB?.ready){
       try{
         await window.AITradeXDB.findUserById?.(App.session.userId);
-        await window.AITradeXDB.pullCoreTables?.({ source: "admin-boot", silent: true });
+        try{await window.AITradeXDB.pullCoreTables?.();}catch(err){try{console.warn("Admin app data load warning",err);}catch{}}
       }catch(err){try{console.warn("Admin session hydrate warning",err);}catch{}}
     }
-    try { window.AITradeXDB?.startRealtimeSubscriptions?.(); } catch {}
     render();
+  }
+
+  if (!window.__AITRADEX_ADMIN_DB_REFRESH_TIMER__) {
+    window.__AITRADEX_ADMIN_DB_REFRESH_TIMER__ = setInterval(async () => {
+      if (!App.databaseOnly || !App.session?.userId || App.session?.role !== "admin" || !window.AITradeXDB?.pullCoreTables) return;
+      try { await window.AITradeXDB.pullCoreTables(); }
+      catch (err) { try { console.warn("Admin database auto-refresh warning", err); } catch {} }
+    }, 15000);
   }
 
   bootAdminApp();

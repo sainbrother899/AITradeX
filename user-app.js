@@ -3579,7 +3579,7 @@
   }
 
   function render() {
-    if (!App.databaseOnly && App.reloadState) App.reloadState();
+    if (App.reloadState) App.reloadState();
     reconcileUserAiLiveMarginLocks();
     ensurePairForMarket();
     const u = user();
@@ -4768,29 +4768,26 @@
     }
   });
 
-  function markBackgroundDbUpdate(detail = {}) {
-    try { updateManualLiveBar(); } catch {}
-    try {
-      const text = detail?.summary ? "Live data updated" : "Database updated";
-      document.body.dataset.aitxDbUpdate = text;
-    } catch {}
-  }
-
-  window.addEventListener("aitradex:db-soft-update", event => {
-    // Clean runtime: never rebuild the current page from a background DB event.
-    // User forms, charts, wallet steps and trade inputs stay untouched.
-    markBackgroundDbUpdate(event.detail || {});
+  window.addEventListener("aitradex:db-loaded", () => {
+    render();
   });
 
   async function bootUserApp(){
     if(App.databaseOnly && App.session?.userId && window.AITradeXDB?.ready){
       try{
         await window.AITradeXDB.findUserById?.(App.session.userId);
-        await window.AITradeXDB.pullCoreTables?.({ source: "user-boot", silent: true });
+        try{await window.AITradeXDB.pullCoreTables?.();}catch(err){try{console.warn("User app data load warning",err);}catch{}}
       }catch(err){try{console.warn("User session hydrate warning",err);}catch{}}
     }
-    try { window.AITradeXDB?.startRealtimeSubscriptions?.(); } catch {}
     render();
+  }
+
+  if (!window.__AITRADEX_USER_DB_REFRESH_TIMER__) {
+    window.__AITRADEX_USER_DB_REFRESH_TIMER__ = setInterval(async () => {
+      if (!App.databaseOnly || !App.session?.userId || App.session?.role !== "user" || !window.AITradeXDB?.pullCoreTables) return;
+      try { await window.AITradeXDB.pullCoreTables(); }
+      catch (err) { try { console.warn("User database auto-refresh warning", err); } catch {} }
+    }, 15000);
   }
 
   bootUserApp();
