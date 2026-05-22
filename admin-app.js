@@ -3334,7 +3334,7 @@
       App.toast("Referral settings saved.");
       render();
     },
-    saveTelegramSettings(event) {
+    async saveTelegramSettings(event) {
       event.preventDefault();
       const settings = platformSettings();
       App.state.settings = {
@@ -3347,7 +3347,12 @@
       };
       logAdminAction("TELEGRAM_SETTINGS_UPDATE", "SETTINGS", "telegram", { telegramEnabled: App.state.settings.telegramEnabled, adminAlerts: App.state.settings.telegramAdminAlerts, userMirror: App.state.settings.telegramUserAlerts });
       App.saveState();
-      App.toast("Telegram settings saved.");
+      try {
+        await window.AITradeXDB?.saveAppSettingsNow?.();
+        App.toast("Telegram settings saved to database.");
+      } catch (err) {
+        App.toast(`Telegram settings saved locally, database save failed: ${err.message || err}`);
+      }
       render();
     },
     savePaymentSettings(event) {

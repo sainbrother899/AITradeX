@@ -186,17 +186,26 @@ App.telegramNotificationText=({audience="USER",title="Notification",message="",t
   return lines.join("\n");
 };
 App.telegramAllowedTypes=()=>new Set(["KYC","DEPOSIT","WITHDRAWAL"]);
-App.sendTelegramForNotification=(payload)=>{
-  const t=App.telegramSettings();
+App.sendTelegramForNotification=async(payload)=>{
+  let t=App.telegramSettings();
   const aud=String(payload?.audience||"USER").toUpperCase();
   const type=String(payload?.type||"INFO").toUpperCase();
-  if(!t.enabled)return;
   // Telegram is intentionally limited to KYC, Deposit and Withdrawal alerts only.
   // Other app notifications still stay inside the website notification center.
-  if(!App.telegramAllowedTypes().has(type))return;
-  if(aud==="ADMIN"&&!t.adminAlerts)return;
-  if(aud==="USER"&&!t.userAlerts)return;
-  App.sendTelegramMessage(App.telegramNotificationText(payload));
+  if(!App.telegramAllowedTypes().has(type))return {ok:false,skipped:true,reason:"type_not_allowed"};
+
+  // In database-only mode, user devices may not have the latest admin Telegram settings
+  // in memory yet. Refresh app_settings once before deciding that Telegram is disabled.
+  if((!t.enabled||!t.botToken||!t.chatId)&&window.AITradeXDB?.loadAppSettingsIntoState){
+    try{await window.AITradeXDB.loadAppSettingsIntoState();}catch(err){try{console.warn("Telegram settings refresh warning",err);}catch{}}
+    t=App.telegramSettings();
+  }
+
+  if(!t.enabled)return {ok:false,skipped:true,reason:"telegram_disabled"};
+  if(!t.botToken||!t.chatId)return {ok:false,skipped:true,reason:"telegram_missing_token_or_chat"};
+  if(aud==="ADMIN"&&!t.adminAlerts)return {ok:false,skipped:true,reason:"admin_alerts_disabled"};
+  if(aud==="USER"&&!t.userAlerts)return {ok:false,skipped:true,reason:"user_alerts_disabled"};
+  return App.sendTelegramMessage(App.telegramNotificationText(payload));
 };
 
 App.ensureAdminActionLogs=()=>{if(!Array.isArray(App.state.adminActionLogs))App.state.adminActionLogs=[];return App.state.adminActionLogs;};

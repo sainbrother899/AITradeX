@@ -797,6 +797,27 @@
     return changed;
   }
 
+
+  async function loadAppSettingsIntoState() {
+    if (!SUPABASE_READY || !client) return null;
+    const { data, error } = await client.from("app_settings").select("*").eq("id", "main").maybeSingle();
+    if (error) throw error;
+    if (data?.settings && typeof data.settings === "object") {
+      App.state.settings = { ...(App.state.settings || {}), ...data.settings };
+      return App.state.settings;
+    }
+    return null;
+  }
+
+  async function saveAppSettingsNow() {
+    if (!SUPABASE_READY || !client) return { ok: false, skipped: true, reason: "Supabase not configured" };
+    const row = appSettingsRows()[0];
+    const { error } = await client.from("app_settings").upsert(row, { onConflict: "id" });
+    if (error) throw error;
+    dbStatus("App settings saved to Supabase.", true);
+    return { ok: true };
+  }
+
   async function directWriteChangedTables({ reason = "state-change", force = false } = {}) {
     if (!SUPABASE_READY || !client || !App?.state) return { ok: false, message: "Supabase is not configured." };
     const results = [];
@@ -888,6 +909,8 @@
     importLocalBackup,
     syncCoreTables,
     pullCoreTables,
+    loadAppSettingsIntoState,
+    saveAppSettingsNow,
     findUserByEmail,
     findUserByMobile,
     findUserById,
