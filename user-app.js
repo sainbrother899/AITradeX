@@ -3579,7 +3579,7 @@
   }
 
   function render() {
-    if (App.reloadState) App.reloadState();
+    if (!App.databaseOnly && App.reloadState) App.reloadState();
     reconcileUserAiLiveMarginLocks();
     ensurePairForMarket();
     const u = user();
@@ -4768,37 +4768,30 @@
     }
   });
 
-  function shouldAutoRenderAfterDbLoad(detail = {}) {
-    // Never rebuild pages for realtime/background pulls. Manual button loads and first boot can render once.
-    if (detail?.type === "direct-write") return false;
-    if (String(detail?.source || "").startsWith("realtime:")) return false;
-    if (detail?.source === "boot") return false;
-    const activeTag = String(document.activeElement?.tagName || "").toLowerCase();
-    if (["input", "textarea", "select"].includes(activeTag)) return false;
-    return true;
+  function markBackgroundDbUpdate(detail = {}) {
+    try { updateManualLiveBar(); } catch {}
+    try {
+      const text = detail?.summary ? "Live data updated" : "Database updated";
+      document.body.dataset.aitxDbUpdate = text;
+    } catch {}
   }
 
-  window.addEventListener("aitradex:db-loaded", event => {
-    if (shouldAutoRenderAfterDbLoad(event.detail || {})) render();
-  });
-
-  window.addEventListener("aitradex:db-soft-update", () => {
-    // Database state is updated in memory. Do not rerender current page, forms, chart, or modals.
-    try { updateManualLiveBar(); } catch {}
+  window.addEventListener("aitradex:db-soft-update", event => {
+    // Clean runtime: never rebuild the current page from a background DB event.
+    // User forms, charts, wallet steps and trade inputs stay untouched.
+    markBackgroundDbUpdate(event.detail || {});
   });
 
   async function bootUserApp(){
     if(App.databaseOnly && App.session?.userId && window.AITradeXDB?.ready){
       try{
         await window.AITradeXDB.findUserById?.(App.session.userId);
-        try{await window.AITradeXDB.pullCoreTables?.();}catch(err){try{console.warn("User app data load warning",err);}catch{}}
+        await window.AITradeXDB.pullCoreTables?.({ source: "user-boot", silent: true });
       }catch(err){try{console.warn("User session hydrate warning",err);}catch{}}
     }
+    try { window.AITradeXDB?.startRealtimeSubscriptions?.(); } catch {}
     render();
   }
-
-  // Phase 5.13: polling removed. Supabase Realtime updates the UI only when database rows change.
-  try { window.AITradeXDB?.startRealtimeSubscriptions?.(); } catch {}
 
   bootUserApp();
 })();

@@ -53,3 +53,12 @@ Phase 5.13 note:
 - 5-second database polling was removed.
 - Supabase Realtime is used for user/admin live updates without constant page refresh.
 - Run supabase-realtime-enable.sql once in Supabase SQL Editor if realtime changes do not appear instantly.
+
+
+Phase 5.14 Clean Database Runtime Rebuild
+- Removed hidden background page-render chain from database/realtime events.
+- Removed database service auto boot-pull/render behavior. User/admin apps now control first load cleanly.
+- Supabase Realtime updates App.state in memory and does not rebuild current pages/forms/charts.
+- Manual Database load/sync buttons still work intentionally.
+- localStorage remains only for session/UI preferences in Supabase mode; main data stays database-driven.
+- Changed files: db-service.js, user-app.js, admin-app.js, README.txt.

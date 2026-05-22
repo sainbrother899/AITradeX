@@ -2749,7 +2749,7 @@
   }
 
   function render() {
-    if (App.reloadState) App.reloadState();
+    if (!App.databaseOnly && App.reloadState) App.reloadState();
     reconcileAiLiveMarginLocks();
     page = localStorage.getItem("AITradeX_ADMIN_PAGE") || "dashboard";
     const current = adminUser();
@@ -4031,36 +4031,26 @@
     }
   };
 
-  function shouldAdminRenderAfterDbLoad(detail = {}) {
-    // Do not rerender any admin page for realtime/background pulls; it causes form/page flicker.
-    if (detail?.type === "direct-write") return false;
-    if (String(detail?.source || "").startsWith("realtime:")) return false;
-    if (detail?.source === "boot") return false;
-    const activeTag = String(document.activeElement?.tagName || "").toLowerCase();
-    if (["input", "textarea", "select"].includes(activeTag)) return false;
-    return true;
+  function markAdminBackgroundDbUpdate(detail = {}) {
+    try { document.body.dataset.aitxDbUpdate = detail?.summary ? "Admin data updated" : "Database updated"; } catch {}
   }
 
-  window.addEventListener("aitradex:db-loaded", event => {
-    if (shouldAdminRenderAfterDbLoad(event.detail || {})) render();
-  });
-
-  window.addEventListener("aitradex:db-soft-update", () => {
-    // State is updated in memory. Admin page will not flicker or rebuild automatically.
+  window.addEventListener("aitradex:db-soft-update", event => {
+    // Clean runtime: background DB/realtime events update App.state only.
+    // Admin pages/forms are not rebuilt automatically, so inputs and modals stay stable.
+    markAdminBackgroundDbUpdate(event.detail || {});
   });
 
   async function bootAdminApp(){
     if(App.databaseOnly && App.session?.userId && window.AITradeXDB?.ready){
       try{
         await window.AITradeXDB.findUserById?.(App.session.userId);
-        try{await window.AITradeXDB.pullCoreTables?.();}catch(err){try{console.warn("Admin app data load warning",err);}catch{}}
+        await window.AITradeXDB.pullCoreTables?.({ source: "admin-boot", silent: true });
       }catch(err){try{console.warn("Admin session hydrate warning",err);}catch{}}
     }
+    try { window.AITradeXDB?.startRealtimeSubscriptions?.(); } catch {}
     render();
   }
-
-  // Phase 5.13: polling removed. Supabase Realtime updates admin data only when database rows change.
-  try { window.AITradeXDB?.startRealtimeSubscriptions?.(); } catch {}
 
   bootAdminApp();
 })();

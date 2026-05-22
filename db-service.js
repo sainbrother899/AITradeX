@@ -880,7 +880,9 @@
         errors.push({ table: plan.table, label: plan.label, message: err?.message || String(err) });
       }
     }
-    if (total > 0) emitDbLoaded({ type: "direct-write", reason, total, results, errors });
+    if (total > 0) {
+      try { window.dispatchEvent(new CustomEvent("aitradex:db-soft-update", { detail: { type: "direct-write", reason, total, results, errors } })); } catch {}
+    }
     if (errors.length) {
       dbStatus(`Direct database write partially saved ${total} row(s). ${errors.length} table(s) need policy/schema check.`, false);
       try { console.warn("AITradeX direct write partial errors", errors); } catch {}
@@ -1034,11 +1036,6 @@
     signedUrl
   };
 
-  if (SUPABASE_READY && client && !window.__AITRADEX_DB_BOOT_PULL__) {
-    window.__AITRADEX_DB_BOOT_PULL__ = true;
-    setTimeout(async () => {
-      try { await pullCoreTables({ source: "boot" }); startRealtimeSubscriptions(); }
-      catch (err) { dbStatus(err?.message || "Database boot load failed.", false); emitDbLoaded({ type: "error", message: err?.message || String(err) }); }
-    }, 80);
-  }
+  // Phase 5.14 clean runtime: app entry files control the first database load.
+  // The database service does not auto-render or auto-pull pages by itself.
 })();
