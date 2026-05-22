@@ -1307,13 +1307,13 @@
     return { status: saved.status || "NOT_SUBMITTED", personal, id, uploads, declarationAccepted: !!saved.declarationAccepted, finalAccepted: !!saved.finalAccepted, submittedAt: saved.submittedAt || "", approvedAt: saved.approvedAt || "", rejectedAt: saved.rejectedAt || "", rejectReason: saved.rejectReason || "" };
   }
 
-  function saveKycData(data) {
-    syncKycToState(data);
+  async function saveKycData(data) {
+    return syncKycToState(data);
   }
 
-  function syncKycToState(data) {
+  async function syncKycToState(data) {
     const u = user();
-    if (!u || !App.state.kycRequests) return;
+    if (!u || !App.state.kycRequests) return null;
 
     const existing = App.state.kycRequests.find(x => x.userId === u.id);
     const row = {
@@ -1327,28 +1327,32 @@
       approvedAt: data.approvedAt || "",
       rejectedAt: data.rejectedAt || "",
       rejectReason: data.rejectReason || "",
+      declarationAccepted: !!data.declarationAccepted,
+      finalAccepted: !!data.finalAccepted,
       updatedAt: App.now()
     };
 
+    if (App.isDatabaseMode?.() && window.AITradeXDB?.writeKycRequest) {
+      await window.AITradeXDB.writeKycRequest(row);
+    }
     if (existing) Object.assign(existing, row);
     else App.state.kycRequests.push(row);
-
-    try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeKycRequest) window.AITradeXDB.fire(window.AITradeXDB.writeKycRequest(row), "KYC request write"); } catch {}
     App.saveState();
+    return row;
   }
 
-  function syncPaymentMethodsToState(methods) {
+  async function syncPaymentMethodsToState(methods) {
     const u = user();
-    if (!u || !App.state.paymentMethods) return;
+    if (!u || !App.state.paymentMethods) return [];
 
+    const rows = methods.filter(m => m.type === "BANK").map(m => ({ ...m, userId: u.id, userEmail: u.email, source: "USER_BANK_ACCOUNT" }));
+    if (App.isDatabaseMode?.() && window.AITradeXDB?.writePaymentMethod) {
+      for (const row of rows) await window.AITradeXDB.writePaymentMethod(row);
+    }
     App.state.paymentMethods = App.state.paymentMethods.filter(m => m.userId !== u.id);
-    methods.filter(m => m.type === "BANK").forEach(m => {
-      const row = { ...m, userId: u.id, userEmail: u.email, source: "USER_BANK_ACCOUNT" };
-      App.state.paymentMethods.push(row);
-      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writePaymentMethod) window.AITradeXDB.fire(window.AITradeXDB.writePaymentMethod(row), "payment method write"); } catch {}
-    });
-
+    rows.forEach(row => App.state.paymentMethods.push(row));
     App.saveState();
+    return rows;
   }
 
   function verifiedKycName() {
@@ -1361,8 +1365,8 @@
     return (App.state.paymentMethods || []).filter(m => m.userId === u?.id).map(m => ({ ...m }));
   }
 
-  function savePaymentMethods(methods) {
-    syncPaymentMethodsToState(methods);
+  async function savePaymentMethods(methods) {
+    return syncPaymentMethodsToState(methods);
   }
 
   function paymentCounts() {
@@ -1395,8 +1399,8 @@
     return localDuplicate || stateDuplicate;
   }
 
-  function saveDepositRequests(requests) {
-    syncDepositRequestsToState(requests);
+  async function saveDepositRequests(requests) {
+    return syncDepositRequestsToState(requests);
   }
 
   function withdrawalRequests() {
@@ -1404,34 +1408,36 @@
     return (App.state.withdrawalRequests || []).filter(r => r.userId === u?.id).sort((a,b)=>Date.parse(b.createdAt||0)-Date.parse(a.createdAt||0));
   }
 
-  function saveWithdrawalRequests(requests) {
-    syncWithdrawalRequestsToState(requests);
+  async function saveWithdrawalRequests(requests) {
+    return syncWithdrawalRequestsToState(requests);
   }
 
-  function syncDepositRequestsToState(requests) {
+  async function syncDepositRequestsToState(requests) {
     const u = user();
-    if (!u || !App.state.depositRequests) return;
+    if (!u || !App.state.depositRequests) return [];
 
+    const rows = requests.map(r => ({ ...r, userId: u.id, userEmail: u.email }));
+    if (App.isDatabaseMode?.() && window.AITradeXDB?.writeDepositRequest) {
+      for (const row of rows) await window.AITradeXDB.writeDepositRequest(row);
+    }
     App.state.depositRequests = App.state.depositRequests.filter(r => r.userId !== u.id);
-    requests.forEach(r => {
-      const row = { ...r, userId: u.id, userEmail: u.email };
-      App.state.depositRequests.push(row);
-      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeDepositRequest) window.AITradeXDB.fire(window.AITradeXDB.writeDepositRequest(row), "deposit request write"); } catch {}
-    });
+    rows.forEach(row => App.state.depositRequests.push(row));
     App.saveState();
+    return rows;
   }
 
-  function syncWithdrawalRequestsToState(requests) {
+  async function syncWithdrawalRequestsToState(requests) {
     const u = user();
-    if (!u || !App.state.withdrawalRequests) return;
+    if (!u || !App.state.withdrawalRequests) return [];
 
+    const rows = requests.map(r => ({ ...r, userId: u.id, userEmail: u.email }));
+    if (App.isDatabaseMode?.() && window.AITradeXDB?.writeWithdrawalRequest) {
+      for (const row of rows) await window.AITradeXDB.writeWithdrawalRequest(row);
+    }
     App.state.withdrawalRequests = App.state.withdrawalRequests.filter(r => r.userId !== u.id);
-    requests.forEach(r => {
-      const row = { ...r, userId: u.id, userEmail: u.email };
-      App.state.withdrawalRequests.push(row);
-      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeWithdrawalRequest) window.AITradeXDB.fire(window.AITradeXDB.writeWithdrawalRequest(row), "withdrawal request write"); } catch {}
-    });
+    rows.forEach(row => App.state.withdrawalRequests.push(row));
     App.saveState();
+    return rows;
   }
 
   function pendingDepositAmount() {
@@ -3812,7 +3818,7 @@
       localStorage.setItem("AITradeX_DEPOSIT_STEP", String(depositStep));
       render();
     },
-    submitDepositRequest() {
+    async submitDepositRequest() {
       const settings = platformSettings();
       const amount = Number(depositDraft.amount || 0);
       const minDeposit = Number(settings.minDeposit || 500);
@@ -3847,7 +3853,7 @@
         createdAt: new Date().toISOString(),
         rejectReason: ""
       });
-      saveDepositRequests(requests);
+      await saveDepositRequests(requests);
       App.addNotification?.({ audience: "ADMIN", title: "New deposit request", message: `${displayName()} requested ${App.money(amount)} deposit. UTR ${utr}.`, type: "DEPOSIT", linkPage: "deposits", referenceId: requestId });
 
       depositDraft = { amount: "", type: settings.depositUpiEnabled !== false ? "UPI" : "BANK", utr: "" };
@@ -3917,7 +3923,7 @@
       localStorage.setItem("AITradeX_WITHDRAWAL_STEP", String(withdrawalStep));
       render();
     },
-    submitWithdrawalRequest() {
+    async submitWithdrawalRequest() {
       const settings = platformSettings();
       const amount = Number(withdrawalDraft.amount || 0);
       const minWithdrawal = Number(settings.minWithdrawal || 1000);
@@ -3948,7 +3954,7 @@
         createdAt: new Date().toISOString(),
         rejectReason: ""
       });
-      saveWithdrawalRequests(requests);
+      await saveWithdrawalRequests(requests);
       App.addNotification?.({ audience: "ADMIN", title: "New withdrawal request", message: `${displayName()} requested ${App.money(amount)} withdrawal.`, type: "WITHDRAWAL", linkPage: "withdrawals", referenceId: requestId });
 
       withdrawalDraft = { amount: "", methodId: "" };
@@ -3958,13 +3964,13 @@
       App.toast("Withdrawal request submitted.");
       render();
     },
-    resubmitKyc() {
+    async resubmitKyc() {
       const kyc = currentKyc();
       kyc.status = "NOT_SUBMITTED";
       kyc.rejectReason = "";
       kyc.rejectedAt = "";
       kyc.approvedAt = "";
-      saveKycData(kyc);
+      await saveKycData(kyc);
       kycStep = 1;
       localStorage.setItem("AITradeX_KYC_STEP", "1");
       App.toast("You can resubmit KYC now.");
@@ -4078,12 +4084,12 @@
         }
       }
 
-      saveKycData(kyc);
+      await saveKycData(kyc);
       kycStep = Math.min(4, kycStep + 1);
       localStorage.setItem("AITradeX_KYC_STEP", String(kycStep));
       render();
     },
-    submitKyc() {
+    async submitKyc() {
       const kyc = currentKyc();
       kyc.finalAccepted = !!document.getElementById("kycFinalConfirm")?.checked;
       if (!kyc.personal.fullName || !kyc.personal.dob || !kyc.personal.gender || !kyc.personal.mobile || !kyc.personal.email || !kyc.personal.city || !kyc.personal.state || !/^\d{6}$/.test(String(kyc.personal.pincode || ""))) {
@@ -4112,12 +4118,12 @@
       kyc.rejectReason = "";
       kyc.rejectedAt = "";
       kyc.approvedAt = "";
-      saveKycData(kyc);
+      await saveKycData(kyc);
       App.addNotification?.({ audience: "ADMIN", title: "New KYC request", message: `${displayName()} submitted KYC for verification.`, type: "KYC", linkPage: "kyc", referenceId: `kyc_submit_${user()?.id || "user"}_${kyc.submittedAt}` });
       App.toast("KYC submitted for verification.");
       render();
     },
-    addBankMethod() {
+    async addBankMethod() {
       const kyc = currentKyc();
       if (kyc.status !== "APPROVED") {
         App.toast("KYC approval required.");
@@ -4157,7 +4163,7 @@
         status: "PENDING",
         createdAt: new Date().toISOString()
       });
-      savePaymentMethods(methods);
+      await savePaymentMethods(methods);
       App.toast("Bank account submitted for verification.");
       render();
     },
@@ -4316,7 +4322,7 @@
           createdDate: App.todayKey()
         };
         App.state.trades.unshift(order);
-        try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) window.AITradeXDB.fire(window.AITradeXDB.writeTrade(order), "trade write"); } catch {}
+        try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) await window.AITradeXDB.writeTrade(order); } catch (err) { App.toast(`Trade save failed: ${err.message || err}`); return; }
         App.saveState();
         resetTradeTicketAfterOrder("Limit order placed", `${selectedPair} ${normalizedSide} limit placed at ${order.limitPriceDisplay}.`);
         render();
@@ -4374,7 +4380,7 @@
         createdDate: App.todayKey()
       };
       App.state.trades.unshift(trade);
-        try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) window.AITradeXDB.fire(window.AITradeXDB.writeTrade(trade), "trade write"); } catch {}
+        try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) await window.AITradeXDB.writeTrade(trade); } catch (err) { App.toast(`Trade save failed: ${err.message || err}`); return; }
       App.saveState();
       resetTradeTicketAfterOrder("Market order opened", `${trade.side} ${selectedPair} opened at ${trade.entryPriceDisplay}.`);
       render();

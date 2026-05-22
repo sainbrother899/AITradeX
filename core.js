@@ -215,6 +215,9 @@ App.addAdminAction=({action="ADMIN_ACTION",targetType="SYSTEM",targetId="",meta=
   App.saveState();
   return row;
 };
+
+App.addNotificationAsync=async (payload={})=>{App.ensureNotifications();const row=App.addNotification(payload); if(DB_ONLY&&window.AITradeXDB?.writeNotification&&row){await window.AITradeXDB.writeNotification(row);} return row;};
+App.addAdminActionAsync=async (payload={})=>{App.ensureAdminActionLogs();const row=App.addAdminAction(payload); if(DB_ONLY&&window.AITradeXDB?.writeAdminAction&&row){await window.AITradeXDB.writeAdminAction(row);} return row;};
 App.notificationsFor=({audience="USER",userId=""}={})=>{
   App.ensureNotifications();
   const cleanAudience=String(audience||"USER").toUpperCase();
@@ -511,7 +514,8 @@ App.aiTradesToday=userId=>App.state.trades.filter(t=>t.userId===userId&&["AI_AUT
 App.aiDailyLimit=userId=>{const sub=App.activeSubscription(userId);if(sub){const plan=App.planById(sub.planId)||{};return Number(sub.aiTradeLimit||sub.signals||plan.signals||50)||50}const trial=App.freeTrialInfo(userId);return trial.active?Number(App.state.settings.freeAiTradesPerDay||5):Number(App.state.settings.postTrialFreeAiTradesPerDay||1)};
 App.aiSettings=user=>({enabled:!!user?.aiTradeOn,percent:Number(user?.aiTradePercent||25)});
 App.aiAllowedAmount=user=>{const settings=App.aiSettings(user);if(!settings.enabled)return 0;return Math.max(0,App.realBalance(user.id))*settings.percent/100};
-App.addLedger=({userId,accountType="REAL",type,amount,referenceId,note=""})=>{const list=accountType==="DEMO"?App.state.demoLedger:App.state.walletLedger;if(list.some(x=>x.type===type&&x.referenceId===referenceId))return false;const before=accountType==="DEMO"?App.demoBalance(userId):App.realBalance(userId),after=before+Number(amount||0);if(after<0)throw new Error("Insufficient balance");const row={id:uid("ledger"),userId,accountType,type,amount:Number(amount||0),referenceId,note,balanceAfter:after,createdAt:now()};list.push(row);try{ if(DB_ONLY&&window.AITradeXDB?.writeLedger) window.AITradeXDB.fire(window.AITradeXDB.writeLedger(row), "ledger write"); }catch{}App.saveState();return true};
+App.addLedger=({userId,accountType="REAL",type,amount,referenceId,note=""})=>{const list=accountType==="DEMO"?App.state.demoLedger:App.state.walletLedger;if(list.some(x=>x.type===type&&x.referenceId===referenceId))return false;const before=accountType==="DEMO"?App.demoBalance(userId):App.realBalance(userId),after=before+Number(amount||0);if(after<0)throw new Error("Insufficient balance");const row={id:uid("ledger"),userId,accountType,type,amount:Number(amount||0),referenceId,note,balanceAfter:after,createdAt:now()};list.push(row);if(!DB_ONLY){App.saveState();return true;}return row};
+App.addLedgerAsync=async ({userId,accountType="REAL",type,amount,referenceId,note=""})=>{const list=accountType==="DEMO"?App.state.demoLedger:App.state.walletLedger;if(list.some(x=>x.type===type&&x.referenceId===referenceId))return false;const before=accountType==="DEMO"?App.demoBalance(userId):App.realBalance(userId),after=before+Number(amount||0);if(after<0)throw new Error("Insufficient balance");const row={id:uid("ledger"),userId,accountType,type,amount:Number(amount||0),referenceId,note,balanceAfter:after,createdAt:now()};if(DB_ONLY&&window.AITradeXDB?.writeLedger){await window.AITradeXDB.writeLedger(row);}list.push(row);App.saveState();return row};
 
 App.referralSettings=()=>{
   App.state.settings=App.state.settings||{};

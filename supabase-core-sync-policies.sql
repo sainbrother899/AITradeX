@@ -1,4 +1,5 @@
--- AITradeX Phase 5.17 Strict Action-Based Database Runtime
+-- AITradeX Phase 5.18 Await-Based Direct DB Actions
+-- AITradeX Phase 5.18 Strict Action-Based Database Runtime
 -- Keeps schema/RLS aligned with direct action writes and manual repair sync.
 
 -- AITradeX Phase 5.16.1 Clean Action Database Runtime Policies

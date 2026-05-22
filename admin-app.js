@@ -70,14 +70,15 @@
     };
   }
 
-  function saveKyc(user, kyc) {
-    const existing = (App.state.kycRequests || []).find(x => x.userId === user.id);
+  async function saveKyc(user, kyc) {
+    App.state.kycRequests = App.state.kycRequests || [];
+    const existing = App.state.kycRequests.find(x => x.userId === user.id);
     const row = {
-      id: existing?.id || App.uid("kyc"),
+      id: kyc.id || existing?.id || App.uid("kyc"),
       userId: user.id,
       status: kyc.status,
       personal: kyc.personal,
-      idDetails: kyc.id,
+      idDetails: kyc.idDetails || kyc.id,
       uploads: kyc.uploads,
       submittedAt: kyc.submittedAt || "",
       approvedAt: kyc.approvedAt || "",
@@ -86,11 +87,13 @@
       updatedAt: App.now()
     };
 
+    if (App.isDatabaseMode?.() && window.AITradeXDB?.writeKycRequest) {
+      await window.AITradeXDB.writeKycRequest(row);
+    }
     if (existing) Object.assign(existing, row);
     else App.state.kycRequests.push(row);
-
-    try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeKycRequest) window.AITradeXDB.fire(window.AITradeXDB.writeKycRequest(row), "KYC review write"); } catch {}
     App.saveState();
+    return row;
   }
 
   function paymentMethodsFor(user) {
@@ -99,15 +102,15 @@
       .map(m => ({ ...m }));
   }
 
-  function savePaymentMethods(user, methods) {
+  async function savePaymentMethods(user, methods) {
+    const rows = methods.map(m => ({ ...m, userId: user.id, userEmail: user.email, source: m.source || "ADMIN_PAYMENT_METHOD" }));
+    if (App.isDatabaseMode?.() && window.AITradeXDB?.writePaymentMethod) {
+      for (const row of rows) await window.AITradeXDB.writePaymentMethod(row);
+    }
     App.state.paymentMethods = (App.state.paymentMethods || []).filter(m => m.userId !== user.id);
-    methods.forEach(m => {
-      const row = { ...m, userId: user.id, userEmail: user.email, source: "ADMIN_PAYMENT_METHOD" };
-      App.state.paymentMethods.push(row);
-      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writePaymentMethod) window.AITradeXDB.fire(window.AITradeXDB.writePaymentMethod(row), "payment method review write"); } catch {}
-    });
-
+    rows.forEach(row => App.state.paymentMethods.push(row));
     App.saveState();
+    return rows;
   }
 
 
@@ -117,14 +120,15 @@
       .map(r => ({ ...r }));
   }
 
-  function saveDepositRequests(user, requests) {
+  async function saveDepositRequests(user, requests) {
+    const rows = requests.map(r => ({ ...r, userId: user.id, userEmail: user.email }));
+    if (App.isDatabaseMode?.() && window.AITradeXDB?.writeDepositRequest) {
+      for (const row of rows) await window.AITradeXDB.writeDepositRequest(row);
+    }
     App.state.depositRequests = (App.state.depositRequests || []).filter(r => r.userId !== user.id);
-    requests.forEach(r => {
-      const row = { ...r, userId: user.id, userEmail: user.email };
-      App.state.depositRequests.push(row);
-      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeDepositRequest) window.AITradeXDB.fire(window.AITradeXDB.writeDepositRequest(row), "deposit review write"); } catch {}
-    });
+    rows.forEach(row => App.state.depositRequests.push(row));
     App.saveState();
+    return rows;
   }
 
   function withdrawalRequestsFor(user) {
@@ -133,14 +137,15 @@
       .map(r => ({ ...r }));
   }
 
-  function saveWithdrawalRequests(user, requests) {
+  async function saveWithdrawalRequests(user, requests) {
+    const rows = requests.map(r => ({ ...r, userId: user.id, userEmail: user.email }));
+    if (App.isDatabaseMode?.() && window.AITradeXDB?.writeWithdrawalRequest) {
+      for (const row of rows) await window.AITradeXDB.writeWithdrawalRequest(row);
+    }
     App.state.withdrawalRequests = (App.state.withdrawalRequests || []).filter(r => r.userId !== user.id);
-    requests.forEach(r => {
-      const row = { ...r, userId: user.id, userEmail: user.email };
-      App.state.withdrawalRequests.push(row);
-      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeWithdrawalRequest) window.AITradeXDB.fire(window.AITradeXDB.writeWithdrawalRequest(row), "withdrawal review write"); } catch {}
-    });
+    rows.forEach(row => App.state.withdrawalRequests.push(row));
     App.saveState();
+    return rows;
   }
 
   function allWalletRequests() {
@@ -434,12 +439,12 @@
     return `<div class="admin-date-line"><span>${label}</span><b>${new Date(value).toLocaleString()}</b></div>`;
   }
 
-  function persistSettings(label="settings") {
-    try {
-      if (App.isDatabaseMode?.() && window.AITradeXDB?.writeSettings) {
-        window.AITradeXDB.fire(window.AITradeXDB.writeSettings(App.state.settings || {}), `${label} write`);
-      }
-    } catch {}
+  async function persistSettings(label="settings") {
+    if (App.isDatabaseMode?.() && window.AITradeXDB?.writeSettings) {
+      await window.AITradeXDB.writeSettings(App.state.settings || {});
+    }
+    App.saveState();
+    return true;
   }
 
   function jsArg(value) {
@@ -3207,7 +3212,7 @@
       localStorage.setItem("AITradeX_ADMIN_SUPPORT_STATUS", supportStatusFilter);
       render();
     },
-    saveSupportSettings(event) {
+    async saveSupportSettings(event) {
       event.preventDefault();
       const raw = String(document.getElementById("supportWhatsAppNumber")?.value || "").replace(/\D/g, "");
       if (!raw || raw.length < 10) {
@@ -3216,7 +3221,7 @@
       }
       App.state.settings = { ...(App.state.settings || {}), supportWhatsAppNumber: raw };
       logAdminAction("SUPPORT_SETTINGS_UPDATE", "SETTINGS", "support", { whatsapp: raw });
-      persistSettings("support settings");
+      await persistSettings("support settings");
       App.saveState();
       App.toast("Support settings saved.");
       render();
@@ -3255,7 +3260,7 @@
       App.toast("Ticket closed.");
       render();
     },
-    savePlan(event, planId) {
+    async savePlan(event, planId) {
       event.preventDefault();
       const plan = App.planById(planId);
       if (!plan) {
@@ -3287,12 +3292,12 @@
         };
       }
       logAdminAction("PLAN_SETTINGS_UPDATE", "PLAN", planId, { name: next.name, price: next.price, signals: next.signals, status: next.status });
-      persistSettings("plan settings");
+      await persistSettings("plan settings");
       App.saveState();
       App.toast(`${next.name} plan saved.`);
       render();
     },
-    saveReferralSettings(event) {
+    async saveReferralSettings(event) {
       event.preventDefault();
       App.state.settings = {
         ...(App.state.settings || {}),
@@ -3303,12 +3308,12 @@
         referralSubscriptionEnabled: document.getElementById("referralSubscriptionEnabled")?.value !== "false"
       };
       logAdminAction("REFERRAL_SETTINGS_UPDATE", "SETTINGS", "referrals", { depositPercent: App.state.settings.referralDepositPercent, subscriptionPercent: App.state.settings.referralSubscriptionPercent });
-      persistSettings("referral settings");
+      await persistSettings("referral settings");
       App.saveState();
       App.toast("Referral settings saved.");
       render();
     },
-    saveTelegramSettings(event) {
+    async saveTelegramSettings(event) {
       event.preventDefault();
       const settings = platformSettings();
       App.state.settings = {
@@ -3320,12 +3325,12 @@
         telegramUserAlerts: document.getElementById("settingTelegramUserAlerts")?.value === "true"
       };
       logAdminAction("TELEGRAM_SETTINGS_UPDATE", "SETTINGS", "telegram", { telegramEnabled: App.state.settings.telegramEnabled, adminAlerts: App.state.settings.telegramAdminAlerts, userMirror: App.state.settings.telegramUserAlerts });
-      persistSettings("telegram settings");
+      await persistSettings("telegram settings");
       App.saveState();
       App.toast("Telegram settings saved.");
       render();
     },
-    savePaymentSettings(event) {
+    async savePaymentSettings(event) {
       event.preventDefault();
       const settings = platformSettings();
       App.state.settings = {
@@ -3348,16 +3353,16 @@
         usdtInrRate: Math.max(1, Number(inputValue("settingUsdtInrRate") || 95))
       };
       logAdminAction("APP_SETTINGS_UPDATE", "SETTINGS", "app", { depositEnabled: App.state.settings.depositEnabled, withdrawalEnabled: App.state.settings.withdrawalEnabled, manualTradingEnabled: App.state.settings.manualTradingEnabled, aiTradingEnabled: App.state.settings.aiTradingEnabled, maintenanceMode: App.state.settings.maintenanceMode, maxLeverage: App.state.settings.maxLeverage });
-      persistSettings("app settings");
+      await persistSettings("app settings");
       App.saveState();
       App.toast("App settings saved.");
       render();
     },
-    saveDepositPaymentMethods(event) {
+    async saveDepositPaymentMethods(event) {
       event.preventDefault();
       const settings = platformSettings();
       const file = document.getElementById("settingQrImage")?.files?.[0];
-      const apply = qrImage => {
+      const apply = async qrImage => {
         App.state.settings = {
           ...settings,
           depositUpiId: inputValue("settingUpiId") || "aitradex@upi",
@@ -3370,14 +3375,14 @@
           depositIfsc: inputValue("settingIfsc").toUpperCase() || "AITX0001234"
         };
         logAdminAction("PAYMENT_METHODS_UPDATE", "SETTINGS", "paymentMethods", { upiEnabled: App.state.settings.depositUpiEnabled, bankEnabled: App.state.settings.depositBankEnabled, upiId: App.state.settings.depositUpiId, bankName: App.state.settings.depositBankName });
-        persistSettings("payment methods settings");
+        await persistSettings("payment methods settings");
         App.saveState();
         App.toast("Payment methods saved.");
         render();
       };
       if (file) {
         const reader = new FileReader();
-        reader.onload = () => apply(String(reader.result || ""));
+        reader.onload = () => { apply(String(reader.result || "")).catch(err => App.toast(err.message || "Payment methods save failed.")); };
         reader.onerror = () => App.toast("QR image could not be saved.");
         reader.readAsDataURL(file);
       } else {
@@ -3728,7 +3733,7 @@
       App.toast(closed ? `Closed AI live trade for ${closed} user(s).` : "Unable to close trade.");
       render();
     },
-    approveDeposit(userId, requestId, button) {
+    async approveDeposit(userId, requestId, button) {
       const target = allUsers().find(u => u.id === userId);
       if (!target) return;
       const requests = depositRequestsFor(target);
@@ -3758,7 +3763,14 @@
       try {
         let ledgerAdded = true;
         if (!ledgerExists) {
-          ledgerAdded = App.addLedger({
+          ledgerAdded = App.isDatabaseMode?.() && App.addLedgerAsync ? await App.addLedgerAsync({
+            userId: target.id,
+            accountType: "REAL",
+            type: "DEPOSIT",
+            amount,
+            referenceId: request.id,
+            note: `DEPOSIT_APPROVED · UTR ${request.utr || "-"}`
+          }) : App.addLedger({
             userId: target.id,
             accountType: "REAL",
             type: "DEPOSIT",
@@ -3773,7 +3785,7 @@
         request.rejectReason = "";
         request.balanceApplied = true;
         request.adminNote = duplicate?.total ? `Checked duplicate UTR warning: ${duplicate.total} similar request(s).` : "Approved by admin.";
-        saveDepositRequests(target, requests);
+        await saveDepositRequests(target, requests);
         App.addNotification?.({ audience: "USER", userId: target.id, title: "Deposit approved", message: `${App.money(amount)} deposit approved and credited to your wallet.`, type: "DEPOSIT", linkPage: "wallet", referenceId: `dep_ok_${request.id}` });
         logAdminAction("DEPOSIT_APPROVE", "DEPOSIT", request.id, { userId: target.id, user: displayNameFor(target), amount, utr: request.utr || "", ledgerApplied: !ledgerExists });
         if (ledgerAdded && !ledgerExists) {
@@ -3785,7 +3797,7 @@
       }
       render();
     },
-    rejectDeposit(userId, requestId, button) {
+    async rejectDeposit(userId, requestId, button) {
       const target = allUsers().find(u => u.id === userId);
       if (!target) return;
       const requests = depositRequestsFor(target);
@@ -3805,13 +3817,13 @@
       request.reviewedAt = request.rejectedAt;
       request.balanceApplied = false;
       request.adminNote = request.rejectReason;
-      saveDepositRequests(target, requests);
+      await saveDepositRequests(target, requests);
       App.addNotification?.({ audience: "USER", userId: target.id, title: "Deposit rejected", message: request.rejectReason, type: "DEPOSIT", linkPage: "wallet", referenceId: `dep_no_${request.id}` });
       logAdminAction("DEPOSIT_REJECT", "DEPOSIT", request.id, { userId: target.id, user: displayNameFor(target), amount: request.amount || 0, reason: request.rejectReason });
       App.toast("Deposit rejected.");
       render();
     },
-    approveWithdrawal(userId, requestId, button) {
+    async approveWithdrawal(userId, requestId, button) {
       const target = allUsers().find(u => u.id === userId);
       if (!target) return;
       const requests = withdrawalRequestsFor(target);
@@ -3840,7 +3852,15 @@
 
       try {
         if (!ledgerExists) {
-          App.addLedger({
+          if (App.isDatabaseMode?.() && App.addLedgerAsync) await App.addLedgerAsync({
+            userId: target.id,
+            accountType: "REAL",
+            type: "WITHDRAWAL",
+            amount: -amount,
+            referenceId: request.id,
+            note: "WITHDRAWAL_APPROVED · Admin payout confirmed"
+          });
+          else App.addLedger({
             userId: target.id,
             accountType: "REAL",
             type: "WITHDRAWAL",
@@ -3855,7 +3875,7 @@
         request.rejectReason = "";
         request.balanceApplied = true;
         request.adminNote = "Approved payout by admin.";
-        saveWithdrawalRequests(target, requests);
+        await saveWithdrawalRequests(target, requests);
         App.addNotification?.({ audience: "USER", userId: target.id, title: "Withdrawal approved", message: `${App.money(amount)} withdrawal payout approved.`, type: "WITHDRAWAL", linkPage: "wallet", referenceId: `wd_ok_${request.id}` });
         logAdminAction("WITHDRAWAL_APPROVE", "WITHDRAWAL", request.id, { userId: target.id, user: displayNameFor(target), amount, ledgerApplied: !ledgerExists });
         App.toast(ledgerExists ? "Withdrawal marked approved. Ledger was already applied." : "Withdrawal approved and balance debited.");
@@ -3864,7 +3884,7 @@
       }
       render();
     },
-    rejectWithdrawal(userId, requestId, button) {
+    async rejectWithdrawal(userId, requestId, button) {
       const target = allUsers().find(u => u.id === userId);
       if (!target) return;
       const requests = withdrawalRequestsFor(target);
@@ -3884,13 +3904,13 @@
       request.reviewedAt = request.rejectedAt;
       request.balanceApplied = false;
       request.adminNote = request.rejectReason;
-      saveWithdrawalRequests(target, requests);
+      await saveWithdrawalRequests(target, requests);
       App.addNotification?.({ audience: "USER", userId: target.id, title: "Withdrawal rejected", message: request.rejectReason, type: "WITHDRAWAL", linkPage: "wallet", referenceId: `wd_no_${request.id}` });
       logAdminAction("WITHDRAWAL_REJECT", "WITHDRAWAL", request.id, { userId: target.id, user: displayNameFor(target), amount: request.amount || 0, reason: request.rejectReason });
       App.toast("Withdrawal rejected.");
       render();
     },
-    approveKyc(userId, button) {
+    async approveKyc(userId, button) {
       markButton(button, "Approving...");
       const target = allUsers().find(u => u.id === userId);
       if (!target) return;
@@ -3905,7 +3925,7 @@
       kyc.approvedAt = new Date().toISOString();
       kyc.rejectedAt = "";
       logAdminAction("KYC_APPROVE", "KYC", kyc.id || userId, { userId: target.id, user: displayNameFor(target) });
-      saveKyc(target, kyc);
+      await saveKyc(target, kyc);
       App.addNotification?.({ audience: "USER", userId: target.id, title: "KYC approved", message: "Your KYC verification has been approved.", type: "KYC", linkPage: "kyc", referenceId: `kyc_ok_${kyc.id || userId}` });
       App.toast("KYC approved successfully.");
       render();
@@ -3918,7 +3938,7 @@
       }
       App.toast("Reject panel unavailable.");
     },
-    confirmRejectKyc(userId, button) {
+    async confirmRejectKyc(userId, button) {
       const target = allUsers().find(u => u.id === userId);
       if (!target) return;
       const kyc = kycFor(target);
@@ -3939,12 +3959,12 @@
       kyc.rejectedAt = new Date().toISOString();
       kyc.approvedAt = "";
       logAdminAction("KYC_REJECT", "KYC", kyc.id || userId, { userId: target.id, user: displayNameFor(target), reason: kyc.rejectReason });
-      saveKyc(target, kyc);
+      await saveKyc(target, kyc);
       App.addNotification?.({ audience: "USER", userId: target.id, title: "KYC rejected", message: kyc.rejectReason || "Your KYC verification was rejected.", type: "KYC", linkPage: "kyc", referenceId: `kyc_no_${kyc.id || userId}` });
       App.toast("KYC rejected successfully.");
       render();
     },
-    approvePaymentMethod(userId, methodId, button) {
+    async approvePaymentMethod(userId, methodId, button) {
       markButton(button, "Approving...");
       const target = allUsers().find(u => u.id === userId);
       if (!target) return;
@@ -3961,11 +3981,11 @@
       method.approvedAt = new Date().toISOString();
       method.rejectedAt = "";
       logAdminAction("PAYMENT_METHOD_APPROVE", "PAYMENT_METHOD", method.id, { userId: target.id, user: displayNameFor(target), bankName: method.bankName || "" });
-      savePaymentMethods(target, methods);
+      await savePaymentMethods(target, methods);
       App.toast("Payment method approved successfully.");
       render();
     },
-    rejectPaymentMethod(userId, methodId, button) {
+    async rejectPaymentMethod(userId, methodId, button) {
       const target = allUsers().find(u => u.id === userId);
       if (!target) return;
       const methods = paymentMethodsFor(target);
@@ -3984,11 +4004,11 @@
       method.rejectedAt = new Date().toISOString();
       method.approvedAt = "";
       logAdminAction("PAYMENT_METHOD_REJECT", "PAYMENT_METHOD", method.id, { userId: target.id, user: displayNameFor(target), reason: method.rejectReason });
-      savePaymentMethods(target, methods);
+      await savePaymentMethods(target, methods);
       App.toast("Payment method rejected successfully.");
       render();
     },
-    deletePaymentMethod(userId, methodId, button) {
+    async deletePaymentMethod(userId, methodId, button) {
       const target = allUsers().find(u => u.id === userId);
       if (!target) return;
       const methods = paymentMethodsFor(target);
@@ -4001,7 +4021,7 @@
       markButton(button, "Deleting...");
       const next = methods.filter(m => m.id !== methodId);
       logAdminAction("PAYMENT_METHOD_DELETE", "PAYMENT_METHOD", method.id, { userId: target.id, user: displayNameFor(target), label });
-      savePaymentMethods(target, next);
+      await savePaymentMethods(target, next);
       App.toast("Payment method deleted.");
       render();
     }
