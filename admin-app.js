@@ -3203,10 +3203,11 @@
         return;
       }
       if (!confirm(`Reset password for ${displayNameFor(target)}?`)) return;
-      target.password = next;
-      target.passwordUpdatedAt = App.now();
-      target.passwordUpdatedBy = "admin";
-      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeUser) await window.AITradeXDB.writeUser(target); } catch (err) { App.toast(`Password save failed: ${err.message || err}`); return; }
+      try {
+        if (!window.AITradeXAuth?.setPassword) throw new Error("Secure password service is not loaded.");
+        await window.AITradeXAuth.setPassword(target, next, { updatedBy: "admin" });
+        if (App.isDatabaseMode?.() && window.AITradeXDB?.writeUser) await window.AITradeXDB.writeUser(target);
+      } catch (err) { App.toast(`Password save failed: ${err.message || err}`); return; }
       logAdminAction("PASSWORD_RESET", "USER", userId, { user: displayNameFor(target) });
       App.saveState();
       App.toast("Password reset successfully.");

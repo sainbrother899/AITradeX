@@ -247,7 +247,18 @@ App.markNotificationsRead=({audience="USER",userId=""}={})=>{
   App.saveState();
   return rows.length;
 };
-App.deleteNotification=(id)=>{App.ensureNotifications();const before=App.state.notifications.length;App.state.notifications=App.state.notifications.filter(n=>n.id!==id);if(App.state.notifications.length!==before){App.saveState();return true;}return false;};
+App.deleteNotification=(id)=>{
+  App.ensureNotifications();
+  const cleanId=String(id||"");
+  const before=App.state.notifications.length;
+  App.state.notifications=App.state.notifications.filter(n=>n.id!==cleanId);
+  if(App.state.notifications.length!==before){
+    if(DB_ONLY&&window.AITradeXDB?.deleteNotification){window.AITradeXDB.deleteNotification(cleanId).catch(err=>console.warn("notification delete sync failed",err));}
+    App.saveState();
+    return true;
+  }
+  return false;
+};
 App.logoHtml=(variant="full",className="")=>{
   const mode=String(variant||"full").toLowerCase();
   const cls=esc(className||"");

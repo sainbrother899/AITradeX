@@ -1,4 +1,5 @@
--- AITradeX Phase 5.22 Clean Persistence Fix
+-- AITradeX Phase 5.23 Final Clean Audit Fix
+-- Includes notification delete compatibility and hashed password runtime support.
 -- AITradeX Phase 5.19 Strict DB-First Critical Runtime
 -- Keeps schema/RLS aligned with DB-first critical writes and emergency-only manual repair sync.
 
@@ -237,13 +238,13 @@ create index if not exists wallet_ledger_user_id_idx on public.wallet_ledger(use
 create index if not exists notifications_user_id_idx on public.notifications(user_id);
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','5.22','mode','action-database'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','5.23','mode','action-database'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.22','mode','action-database'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.23','mode','action-database'),
     updated_at = now();
 
 
--- Phase 5.22: Clean persistence fix columns/indexes.
+-- Phase 5.23: Clean persistence fix columns/indexes.
 alter table public.users add column if not exists last_login_at timestamptz;
 alter table public.users add column if not exists updated_at timestamptz default now();
 alter table public.payment_methods add column if not exists raw jsonb default '{}'::jsonb;
@@ -254,7 +255,20 @@ create index if not exists admin_action_logs_created_at_idx on public.admin_acti
 create index if not exists notifications_created_at_idx on public.notifications(created_at desc);
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','5.22','mode','action-database-clean-persistence'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','5.23','mode','action-database-clean-persistence'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.22','mode','action-database-clean-persistence'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.23','mode','action-database-clean-persistence'),
+    updated_at = now();
+
+
+-- Phase 5.23: Final clean audit fix.
+-- New passwords are stored in password_hash as sha256$salt$hash by the frontend runtime.
+-- Existing plain password_hash values are migrated after the next successful login/reset.
+alter table public.users add column if not exists password_hash text;
+alter table public.notifications add column if not exists raw jsonb default '{}'::jsonb;
+
+insert into public.app_settings(id, settings, updated_at)
+values ('main', jsonb_build_object('databaseRuntimeVersion','5.23','mode','final-clean-audit-fix','passwordStorage','salted-sha256-runtime'), now())
+on conflict (id) do update
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.23','mode','final-clean-audit-fix','passwordStorage','salted-sha256-runtime'),
     updated_at = now();

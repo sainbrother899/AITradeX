@@ -4676,12 +4676,16 @@
       const current = document.getElementById("securityCurrentPassword")?.value || "";
       const next = document.getElementById("securityNewPassword")?.value || "";
       const confirm = document.getElementById("securityConfirmPassword")?.value || "";
-      if (u.password !== current) return App.toast("Current password is incorrect.");
+      if (!window.AITradeXAuth?.verifyPassword) return App.toast("Secure password service is not loaded.");
+      const verification = await window.AITradeXAuth.verifyPassword(u, current);
+      if (!verification.ok) return App.toast("Current password is incorrect.");
       if (String(next).length < 4) return App.toast("New password must be at least 4 characters.");
       if (next !== confirm) return App.toast("New password confirmation does not match.");
-      u.password = next;
-      u.passwordUpdatedAt = App.now();
-      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeUser) await window.AITradeXDB.writeUser(u); } catch (err) { App.toast(`Password save failed: ${err.message || err}`); return; }
+      try {
+        if (!window.AITradeXAuth?.setPassword) throw new Error("Secure password service is not loaded.");
+        await window.AITradeXAuth.setPassword(u, next, { updatedBy: "user" });
+        if (App.isDatabaseMode?.() && window.AITradeXDB?.writeUser) await window.AITradeXDB.writeUser(u);
+      } catch (err) { App.toast(`Password save failed: ${err.message || err}`); return; }
       await App.addNotificationAsync?.({ audience: "USER", userId: u.id, title: "Password updated", message: "Your account password was changed successfully.", type: "SECURITY", linkPage: "security", referenceId: `password_${Date.now()}` });
       App.saveState();
       App.toast("Password updated successfully.");

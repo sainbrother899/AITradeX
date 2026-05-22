@@ -19,3 +19,13 @@ Important: This is still a frontend/anon-key prototype. For public launch, migra
 Phase 5.21 audit cleanup:
 - Added DB persistence for plans, subscriptions, referrals, support tickets, user status/password changes and AI ON/OFF settings.
 - Run supabase-schema.sql and supabase-core-sync-policies.sql in Supabase before using this build in database mode.
+
+
+Phase 5.23 Final Clean Audit Fix:
+- Notification delete now deletes the matching Supabase notifications row in database mode.
+- Password storage now uses client-side salted SHA-256 hash format instead of saving new plain text passwords. Legacy plain passwords are accepted once and migrated after successful login.
+- Admin password reset and user change-password flows now write hashed passwords.
+- Database service verified with only one writeDepositRequest implementation and API export cleaned.
+- Cache version bumped to phase523finalcleanaudit.
+
+Security note: this is safer for testing than plain-text passwords, but real public launch with user funds still needs proper backend authentication, server-side authorization, and strict RLS/Edge Functions.
