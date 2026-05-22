@@ -690,6 +690,84 @@
     return user;
   }
 
+  const DIRECT_TABLE_PLANS = [
+    { table: "users", label: "Users", rows: userRows },
+    { table: "payment_methods", label: "Bank/payment methods", rows: paymentMethodRows },
+    { table: "kyc_requests", label: "KYC requests", rows: kycRows },
+    { table: "deposit_requests", label: "Deposit requests", rows: depositRows },
+    { table: "withdrawal_requests", label: "Withdrawal requests", rows: withdrawalRows },
+    { table: "wallet_ledger", label: "Wallet ledger", rows: walletLedgerRows },
+    { table: "trade_orders", label: "Manual/AI trades and orders", rows: tradeRows },
+    { table: "ai_trade_batches", label: "AI trade batches", rows: aiBatchRows },
+    { table: "admin_action_logs", label: "Admin action logs", rows: adminActionRows },
+    { table: "notifications", label: "Notifications", rows: notificationRows },
+    { table: "app_settings", label: "App settings", rows: appSettingsRows },
+    { table: "plans", label: "Plans", rows: planRows },
+    { table: "subscriptions", label: "Subscriptions", rows: subscriptionRows },
+    { table: "referrals", label: "Referrals", rows: referralRows },
+    { table: "support_tickets", label: "Support tickets", rows: supportRows }
+  ];
+
+  const directFingerprints = new Map();
+  function rowFingerprint(row) {
+    try { return JSON.stringify(row || {}); } catch { return String(Date.now()); }
+  }
+  function changedRowsFor(table, rows) {
+    const changed = [];
+    (rows || []).forEach(row => {
+      if (!row || row.id === undefined || row.id === null) return;
+      const key = `${table}:${String(row.id)}`;
+      const fp = rowFingerprint(row);
+      if (directFingerprints.get(key) !== fp) {
+        directFingerprints.set(key, fp);
+        changed.push(row);
+      }
+    });
+    return changed;
+  }
+
+  async function directWriteChangedTables({ reason = "state-change", force = false } = {}) {
+    if (!SUPABASE_READY || !client || !App?.state) return { ok: false, message: "Supabase is not configured." };
+    const results = [];
+    let total = 0;
+    for (const plan of DIRECT_TABLE_PLANS) {
+      const rows = plan.rows();
+      const changed = force ? rows : changedRowsFor(plan.table, rows);
+      if (!changed.length) continue;
+      const result = await upsertRows(plan.table, changed, plan.label);
+      results.push(result);
+      total += changed.length;
+    }
+    if (total > 0) {
+      dbStatus(`Direct database write saved ${total} changed row(s).`, true);
+      emitDbLoaded({ type: "direct-write", reason, total, results });
+    }
+    return { ok: true, total, results };
+  }
+
+  let directWriteTimer = null;
+  let directWriting = false;
+  let directWriteQueued = false;
+  function scheduleDirectWrite(reason = "state-change") {
+    if (!SUPABASE_READY || !client || !App?.state) return;
+    clearTimeout(directWriteTimer);
+    directWriteTimer = setTimeout(async () => {
+      if (directWriting) { directWriteQueued = true; return; }
+      directWriting = true;
+      try {
+        do {
+          directWriteQueued = false;
+          await directWriteChangedTables({ reason });
+        } while (directWriteQueued);
+      } catch (err) {
+        dbStatus(err?.message || "Direct database write failed.", false);
+        try { console.error("AITradeX direct database write failed", err); } catch {}
+      } finally {
+        directWriting = false;
+      }
+    }, 120);
+  }
+
   let syncTimer = null;
   let syncing = false;
   function scheduleCoreSync() {
@@ -699,15 +777,16 @@
       if (syncing) return;
       syncing = true;
       try { await syncCoreTables({ silent: true }); }
-      catch (err) { dbStatus(err?.message || "Database sync failed.", false); }
+      catch (err) { dbStatus(err?.message || "Database fallback sync failed.", false); }
       finally { syncing = false; }
-    }, 1200);
+    }, 15000);
   }
 
   if (App && !App.__dbSyncWrapped) {
     const originalSaveState = App.saveState;
     App.saveState = function () {
       const result = originalSaveState.apply(App, arguments);
+      scheduleDirectWrite("App.saveState");
       scheduleCoreSync();
       return result;
     };
@@ -731,6 +810,8 @@
     findUserByEmail,
     findUserByMobile,
     upsertUserRecord,
+    directWriteChangedTables,
+    scheduleDirectWrite,
     lastSyncStatus,
     uploadUserFile,
     signedUrl

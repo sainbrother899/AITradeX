@@ -2593,22 +2593,22 @@
         <div class="section-head">
           <div>
             <h3>Database Sync Center</h3>
-            <span>Supabase backup/restore plus Phase 5.4 row-by-row sync for users, wallet, deposits, withdrawals, trades, AI positions and orders.</span>
+            <span>Supabase database-only mode with Phase 5.12 direct writes for deposits, withdrawals, wallet ledger, trades, AI positions and orders.</span>
           </div>
           <span class="admin-count-pill ${configured ? "text-profit" : "text-loss"}">${configured ? "Database Mode" : "Database Missing"}</span>
         </div>
         <div class="database-status-panel">
           <article>
             <b>Current Mode</b>
-            <p>${configured ? "Supabase URL and anon key are configured. Snapshot backup and core/trade table sync are available." : "Supabase keys are blank. App will continue working with local browser storage until config.js is updated."}</p>
+            <p>${configured ? "Supabase URL and anon key are configured. Critical actions now write directly to Supabase tables; manual sync remains as a repair/backup tool." : "Supabase keys are blank. Add config.js keys to enable database-only mode."}</p>
           </article>
           <article>
             <b>Setup Required</b>
             <p>Run <code>supabase-schema.sql</code>, then run <code>supabase-storage-policies.sql</code> and <code>supabase-core-sync-policies.sql</code>.</p>
           </article>
           <article>
-            <b>Last Core Sync</b>
-            <p class="${lastSync?.ok === false ? "text-loss" : ""}">${lastSync ? `${esc(lastSync.message || "Sync done")} · ${esc(new Date(lastSync.at).toLocaleString("en-IN"))}` : "No row-by-row sync yet."}</p>
+            <b>Last DB Write / Sync</b>
+            <p class="${lastSync?.ok === false ? "text-loss" : ""}">${lastSync ? `${esc(lastSync.message || "Sync done")} · ${esc(new Date(lastSync.at).toLocaleString("en-IN"))}` : "No database write/sync yet."}</p>
           </article>
         </div>
         <div class="review-grid compact-review database-count-grid">
@@ -2616,12 +2616,12 @@
         </div>
         <div class="database-status-panel security-status-panel">
           <article><b>Security Notice</b><p class="text-loss">Testing policies are open for prototype mode. Public launch requires Supabase Auth roles or Edge Functions.</p></article>
-          <article><b>Admin Action Logs</b><p>${(App.state.adminActionLogs || []).length} local audit row(s) ready for Supabase sync.</p></article>
+          <article><b>Direct Write</b><p>Deposit, withdrawal, wallet ledger, KYC, bank, manual trades, AI trades and notifications auto-save to Supabase after each important action.</p></article>
           <article><b>Last Backup</b><p>${lastSync ? esc(new Date(lastSync.at).toLocaleString("en-IN")) : "No sync yet."}</p></article>
         </div>
         <div class="database-action-grid">
           <button class="save-profile-btn" onclick="AITradeXAdmin.testDatabase(this)">Test Supabase Connection</button>
-          <button class="save-profile-btn" onclick="AITradeXAdmin.syncCoreDatabase(this)">Sync Core + Trades</button>
+          <button class="save-profile-btn" onclick="AITradeXAdmin.syncCoreDatabase(this)">Force Full Sync / Repair</button>
           <button class="ghost-action" onclick="AITradeXAdmin.pullCoreDatabase(this)">Load Core + Trades</button>
           <button class="save-profile-btn" onclick="AITradeXAdmin.backupDatabase(this)">Backup Database Snapshot</button>
           <button class="ghost-action" onclick="AITradeXAdmin.restoreDatabase(this)">Restore Latest Backup</button>
