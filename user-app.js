@@ -4787,7 +4787,7 @@
       if (!App.databaseOnly || !App.session?.userId || App.session?.role !== "user" || !window.AITradeXDB?.pullCoreTables) return;
       try { await window.AITradeXDB.pullCoreTables(); }
       catch (err) { try { console.warn("User database auto-refresh warning", err); } catch {} }
-    }, 15000);
+    }, 5000);
   }
 
   bootUserApp();

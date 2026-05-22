@@ -4050,7 +4050,7 @@
       if (!App.databaseOnly || !App.session?.userId || App.session?.role !== "admin" || !window.AITradeXDB?.pullCoreTables) return;
       try { await window.AITradeXDB.pullCoreTables(); }
       catch (err) { try { console.warn("Admin database auto-refresh warning", err); } catch {} }
-    }, 15000);
+    }, 5000);
   }
 
   bootAdminApp();

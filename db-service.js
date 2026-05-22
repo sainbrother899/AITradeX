@@ -921,7 +921,7 @@
       try { await syncCoreTables({ silent: true }); }
       catch (err) { dbStatus(err?.message || "Database fallback sync failed.", false); }
       finally { syncing = false; }
-    }, 15000);
+    }, 5000);
   }
 
   if (App && !App.__dbSyncWrapped) {
