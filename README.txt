@@ -38,3 +38,20 @@ Phase 4.91 update:
 - Added premium read-only USDT-INR rate chip on user Trade page.
 - Added premium read-only USDT-INR rate chip on user Wallet hero.
 - Rate is controlled from Admin Payment Settings and defaults to ₹95 per USDT.
+
+Phase 5.0 Database Foundation
+-----------------------------
+This build adds Supabase-ready database foundation without breaking the existing frontend/local-storage flow.
+
+Setup:
+1. Create a Supabase project.
+2. Open Supabase SQL Editor and run supabase-schema.sql.
+3. In config.js, fill SUPABASE_URL and SUPABASE_ANON_KEY.
+4. Open Admin > Database.
+5. Click Test Supabase Connection.
+6. Click Backup Local Data to Supabase to save the current app state.
+
+Important:
+- This phase adds database backup/restore foundation first.
+- The app still works in local mode if Supabase keys are blank.
+- Full row-by-row migration for auth, wallet, trades and notifications should be done in next phases.

@@ -7421,3 +7421,23 @@ textarea::placeholder{
 @media (max-width: 720px) {
   .method-toggle-grid { grid-template-columns: 1fr; }
 }
+
+/* Phase 5.0 database foundation */
+.database-control-card,.database-roadmap-card{overflow:hidden}
+.database-status-panel{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:16px 0}
+.database-status-panel article{border:1px solid rgba(255,255,255,.1);background:rgba(7,15,31,.72);border-radius:20px;padding:16px;box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+.database-status-panel b{display:block;color:#f8fbff;margin-bottom:7px;font-size:14px}
+.database-status-panel p{margin:0;color:rgba(221,231,255,.72);font-size:12px;line-height:1.55}
+.database-status-panel code{color:#8fffe8;background:rgba(21,229,211,.08);border:1px solid rgba(21,229,211,.16);border-radius:8px;padding:1px 6px}
+.database-count-grid{margin-top:14px}
+.database-count-grid article span{text-transform:capitalize}
+.database-action-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:16px;align-items:stretch}
+.database-action-grid button,.database-action-grid a,.import-backup-label{display:flex!important;align-items:center;justify-content:center;text-align:center;text-decoration:none;min-height:44px;cursor:pointer}
+.database-result-box{margin-top:14px;border:1px solid rgba(21,229,211,.16);background:rgba(21,229,211,.07);border-radius:16px;padding:12px 14px;color:#dffefb;font-size:13px;line-height:1.45}
+.database-roadmap-list{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:14px}
+.database-roadmap-list article{border:1px solid rgba(255,255,255,.1);background:linear-gradient(180deg,rgba(20,32,56,.9),rgba(9,15,30,.9));border-radius:18px;padding:14px;min-height:118px}
+.database-roadmap-list b{display:block;color:#15e5d3;margin-bottom:7px}
+.database-roadmap-list span{display:block;color:#f7fbff;font-weight:800;font-size:13px;line-height:1.35}
+.database-roadmap-list em{display:inline-flex;margin-top:10px;font-style:normal;color:rgba(221,231,255,.68);font-size:11px;border:1px solid rgba(255,255,255,.1);border-radius:999px;padding:5px 9px}
+@media(max-width:900px){.database-status-panel,.database-action-grid{grid-template-columns:1fr}.database-roadmap-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.database-roadmap-list{grid-template-columns:1fr}}

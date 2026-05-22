@@ -9,3 +9,68 @@ create table if not exists public.ai_trades (id text primary key,user_id text,us
 create table if not exists public.referrals (id text primary key,referrer_user_id text,referred_user_id text,status text default 'REGISTERED',commission_paid boolean default false,commission_amount numeric default 0,created_at timestamptz default now());
 create table if not exists public.plans (id text primary key,name text,price numeric,signals integer,ai_access text,trade_limit numeric,is_active boolean default true);
 create table if not exists public.subscriptions (id text primary key,user_id text,plan_id text,plan_name text,amount numeric,status text default 'PENDING',starts_at timestamptz,expires_at timestamptz,created_at timestamptz default now());
+
+
+-- Phase 5.0 Database Foundation
+-- This snapshot table lets the current frontend app safely backup/restore all platform state while the full row-by-row backend migration is done in phases.
+create table if not exists public.app_state_snapshots (
+  id bigserial primary key,
+  app_version text default 'AITradeX',
+  saved_by text,
+  note text,
+  counts jsonb default '{}'::jsonb,
+  state jsonb not null,
+  saved_at timestamptz default now()
+);
+
+create index if not exists app_state_snapshots_saved_at_idx on public.app_state_snapshots(saved_at desc);
+
+-- Extra future-ready columns. These are safe if they already exist.
+alter table public.users add column if not exists password_hash text;
+alter table public.users add column if not exists ai_trade_on boolean default false;
+alter table public.users add column if not exists ai_trade_percent numeric default 25;
+alter table public.users add column if not exists free_trial_started_at timestamptz;
+alter table public.deposit_requests add column if not exists proof_image text;
+alter table public.deposit_requests add column if not exists admin_note text;
+alter table public.withdrawal_requests add column if not exists admin_note text;
+alter table public.ai_trades add column if not exists trade_type text;
+alter table public.ai_trades add column if not exists entry_price numeric;
+alter table public.ai_trades add column if not exists close_price numeric;
+alter table public.ai_trades add column if not exists target_pnl numeric;
+alter table public.ai_trades add column if not exists closed_by text;
+
+create table if not exists public.notifications (
+  id text primary key,
+  audience text default 'USER',
+  user_id text,
+  title text,
+  message text,
+  type text default 'INFO',
+  link_page text,
+  reference_id text,
+  read boolean default false,
+  created_at timestamptz default now()
+);
+
+create table if not exists public.support_tickets (
+  id text primary key,
+  user_id text,
+  user_email text,
+  subject text,
+  category text,
+  message text,
+  status text default 'OPEN',
+  replies jsonb default '[]'::jsonb,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create table if not exists public.admin_action_logs (
+  id bigserial primary key,
+  admin_user_id text,
+  action text not null,
+  target_type text,
+  target_id text,
+  meta jsonb default '{}'::jsonb,
+  created_at timestamptz default now()
+);

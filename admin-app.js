@@ -552,7 +552,8 @@
               navButton("plans", "⭐", "Plans", "AI limits"),
               navButton("referrals", "🎁", "Referrals", "Rewards"),
               navButton("support", "🎧", "Support Tickets", "Inbox"),
-              navButton("settings", "⚙️", "Payment Settings", "UPI/bank")
+              navButton("settings", "⚙️", "Payment Settings", "UPI/bank"),
+              navButton("database", "🗄️", "Database", "Supabase sync")
             ])}
           </nav>
           <button class="logout-btn admin-pro-logout" onclick="AITradeXAdmin.logout()">🚪 Logout</button>
@@ -593,7 +594,8 @@
       plans: "Subscription Plans",
       referrals: "Referrals",
       support: "Support Tickets",
-      settings: "Payment Settings"
+      settings: "Payment Settings",
+      database: "Database"
     };
     return titles[page] || "Dashboard";
   }
@@ -2364,6 +2366,56 @@
     `);
   }
 
+
+  function databasePage() {
+    const DB = window.AITradeXDB;
+    const configured = !!DB?.ready;
+    const counts = DB?.countsFromState ? DB.countsFromState(App.state) : {};
+    const countRows = Object.entries(counts).map(([key, value]) => `<article><span>${esc(key.replace(/([A-Z])/g, " $1"))}</span><b>${Number(value || 0).toLocaleString("en-IN")}</b></article>`).join("");
+    shell(`
+      <section class="premium-card database-control-card">
+        <div class="section-head">
+          <div>
+            <h3>Database Foundation</h3>
+            <span>Connect Supabase, backup local app data, restore latest backup and prepare the project for full database migration.</span>
+          </div>
+          <span class="admin-count-pill ${configured ? "text-profit" : "text-loss"}">${configured ? "Supabase Configured" : "Local Mode"}</span>
+        </div>
+        <div class="database-status-panel">
+          <article>
+            <b>Current Mode</b>
+            <p>${configured ? "Supabase URL and anon key are configured. You can test and sync backups." : "Supabase keys are blank. App will continue working with local browser storage until config.js is updated."}</p>
+          </article>
+          <article>
+            <b>Setup Required</b>
+            <p>Run <code>supabase-schema.sql</code> in Supabase SQL Editor, then add your project URL and anon key in <code>config.js</code>.</p>
+          </article>
+        </div>
+        <div class="review-grid compact-review database-count-grid">
+          ${countRows}
+        </div>
+        <div class="database-action-grid">
+          <button class="save-profile-btn" onclick="AITradeXAdmin.testDatabase(this)">Test Supabase Connection</button>
+          <button class="save-profile-btn" onclick="AITradeXAdmin.backupDatabase(this)">Backup Local Data to Supabase</button>
+          <button class="ghost-action" onclick="AITradeXAdmin.restoreDatabase(this)">Restore Latest Backup</button>
+          <button class="ghost-action" onclick="AITradeXAdmin.exportLocalData()">Download Local Backup JSON</button>
+          <label class="ghost-action import-backup-label">Import Backup JSON<input type="file" accept="application/json" onchange="AITradeXAdmin.importLocalData(this.files && this.files[0])" hidden/></label>
+          <a class="ghost-action" href="supabase-schema.sql" download>Download SQL Schema</a>
+        </div>
+        <div id="databaseStatusBox" class="database-result-box">No database action yet.</div>
+      </section>
+      <section class="premium-card database-roadmap-card">
+        <div class="section-head"><div><h3>Migration Roadmap</h3><span>Safe sequence so current UI does not break.</span></div></div>
+        <div class="database-roadmap-list">
+          <article><b>Step 1</b><span>Supabase schema + backup/restore foundation</span><em>Added now</em></article>
+          <article><b>Step 2</b><span>Move user auth and profiles to database</span><em>Next</em></article>
+          <article><b>Step 3</b><span>Move wallet ledger, deposit and withdrawal requests</span><em>After auth</em></article>
+          <article><b>Step 4</b><span>Move trades, AI positions, notifications and admin logs</span><em>Final</em></article>
+        </div>
+      </section>
+    `);
+  }
+
   function markButton(button, text) {
     if (!button) return;
     button.disabled = true;
@@ -2393,6 +2445,7 @@
     if (page === "referrals") return referralsPage();
     if (page === "support") return supportPage();
     if (page === "settings") return settingsPage();
+    if (page === "database") return databasePage();
     return dashboardPage();
   }
 
@@ -2462,6 +2515,65 @@
         localStorage.setItem("AITradeX_ADMIN_WITHDRAWAL_HISTORY_PAGE", String(withdrawalHistoryPage));
       }
       render();
+    },
+    async testDatabase(button) {
+      const box = document.getElementById("databaseStatusBox");
+      try {
+        markButton(button, "Testing...");
+        const result = await window.AITradeXDB.testConnection();
+        if (box) box.textContent = result.message;
+        App.toast(result.ok ? "Database connected." : "Database not connected.");
+      } catch (err) {
+        if (box) box.textContent = err.message || "Database test failed.";
+        App.toast(err.message || "Database test failed.");
+      } finally {
+        if (button) { button.disabled = false; button.textContent = button.dataset.oldText || "Test Supabase Connection"; }
+      }
+    },
+    async backupDatabase(button) {
+      const box = document.getElementById("databaseStatusBox");
+      try {
+        markButton(button, "Backing up...");
+        const admin = adminUser();
+        const row = await window.AITradeXDB.backupFullState({ savedBy: admin?.email || admin?.id || "admin", note: "Manual backup from admin database page" });
+        if (box) box.textContent = `Backup saved to Supabase. Snapshot #${row.id} · ${row.saved_at || ""}`;
+        App.toast("Database backup saved.");
+      } catch (err) {
+        if (box) box.textContent = err.message || "Backup failed.";
+        App.toast(err.message || "Backup failed.");
+      } finally {
+        if (button) { button.disabled = false; button.textContent = button.dataset.oldText || "Backup Local Data to Supabase"; }
+      }
+    },
+    async restoreDatabase(button) {
+      const ok = confirm("Restore the latest Supabase backup? This will replace current local browser data on this device.");
+      if (!ok) return;
+      const box = document.getElementById("databaseStatusBox");
+      try {
+        markButton(button, "Restoring...");
+        const snap = await window.AITradeXDB.restoreLatestSnapshot();
+        if (box) box.textContent = `Restored snapshot #${snap.id} from ${snap.saved_at || "database"}.`;
+        App.toast("Database backup restored.");
+        render();
+      } catch (err) {
+        if (box) box.textContent = err.message || "Restore failed.";
+        App.toast(err.message || "Restore failed.");
+      } finally {
+        if (button) { button.disabled = false; button.textContent = button.dataset.oldText || "Restore Latest Backup"; }
+      }
+    },
+    exportLocalData() {
+      window.AITradeXDB.downloadLocalBackup();
+      App.toast("Local backup download started.");
+    },
+    async importLocalData(file) {
+      try {
+        const counts = await window.AITradeXDB.importLocalBackup(file);
+        App.toast(`Backup imported. Users: ${counts.users || 0}`);
+        render();
+      } catch (err) {
+        App.toast(err.message || "Import failed.");
+      }
     },
     confirmFinanceAction(action, userId, requestId, userName, amountText, button) {
       const actionTitle = String(action || "").includes("approve") ? "Approve" : "Reject";
