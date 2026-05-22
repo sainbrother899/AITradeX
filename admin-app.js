@@ -4031,7 +4031,8 @@
     }
   };
 
-  window.addEventListener("aitradex:db-loaded", () => {
+  window.addEventListener("aitradex:db-loaded", event => {
+    if ((event.detail || {}).type === "direct-write") return;
     render();
   });
 
@@ -4045,13 +4046,8 @@
     render();
   }
 
-  if (!window.__AITRADEX_ADMIN_DB_REFRESH_TIMER__) {
-    window.__AITRADEX_ADMIN_DB_REFRESH_TIMER__ = setInterval(async () => {
-      if (!App.databaseOnly || !App.session?.userId || App.session?.role !== "admin" || !window.AITradeXDB?.pullCoreTables) return;
-      try { await window.AITradeXDB.pullCoreTables(); }
-      catch (err) { try { console.warn("Admin database auto-refresh warning", err); } catch {} }
-    }, 5000);
-  }
+  // Phase 5.13: polling removed. Supabase Realtime updates admin data only when database rows change.
+  try { window.AITradeXDB?.startRealtimeSubscriptions?.(); } catch {}
 
   bootAdminApp();
 })();

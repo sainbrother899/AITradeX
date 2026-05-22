@@ -4768,8 +4768,15 @@
     }
   });
 
-  window.addEventListener("aitradex:db-loaded", () => {
-    render();
+  function shouldAutoRenderAfterDbLoad(detail = {}) {
+    // No timer-based page refresh. Render only after real database changes or manual loads;
+    // never rebuild the active trade ticket/chart during background database updates.
+    if (detail?.type === "direct-write") return false;
+    return page !== "trade";
+  }
+
+  window.addEventListener("aitradex:db-loaded", event => {
+    if (shouldAutoRenderAfterDbLoad(event.detail || {})) render();
   });
 
   async function bootUserApp(){
@@ -4782,13 +4789,8 @@
     render();
   }
 
-  if (!window.__AITRADEX_USER_DB_REFRESH_TIMER__) {
-    window.__AITRADEX_USER_DB_REFRESH_TIMER__ = setInterval(async () => {
-      if (!App.databaseOnly || !App.session?.userId || App.session?.role !== "user" || !window.AITradeXDB?.pullCoreTables) return;
-      try { await window.AITradeXDB.pullCoreTables(); }
-      catch (err) { try { console.warn("User database auto-refresh warning", err); } catch {} }
-    }, 5000);
-  }
+  // Phase 5.13: polling removed. Supabase Realtime updates the UI only when database rows change.
+  try { window.AITradeXDB?.startRealtimeSubscriptions?.(); } catch {}
 
   bootUserApp();
 })();

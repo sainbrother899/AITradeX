@@ -48,3 +48,8 @@ Phase 5.12.1 Signup Duplicate Recovery Fix
 - Retry with the same email/password will log into the existing account instead of creating a duplicate.
 - Auto direct-write is paused during the critical signup insert to avoid race-condition duplicate errors.
 - User rows are de-duplicated before bulk repair/sync.
+
+Phase 5.13 note:
+- 5-second database polling was removed.
+- Supabase Realtime is used for user/admin live updates without constant page refresh.
+- Run supabase-realtime-enable.sql once in Supabase SQL Editor if realtime changes do not appear instantly.
