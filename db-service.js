@@ -607,7 +607,7 @@
     };
   }
 
-  async function pullCoreTables() {
+  async function pullCoreTables({ source = "manual", silent = false } = {}) {
     if (!SUPABASE_READY || !client) throw new Error("Supabase is not configured.");
 
     // Important: loading admin/user screens must not fail because one optional table has an RLS/schema issue.
@@ -690,12 +690,15 @@
     if (loaded.referrals?.ok) App.state.referrals = referrals.map(camelReferral);
     if (loaded.support_tickets?.ok) App.state.supportTickets = supportTickets.map(camelSupport);
 
-    App.saveState();
-    const summary = { users: users.length, methods: methods.length, kyc: kyc.length, deposits: deposits.length, withdrawals: withdrawals.length, walletLedger: ledger.length, trades: trades.length, aiBatches: batches.length, adminActionLogs: adminLogs.length, notifications: notifications.length, appSettings: appSettings.length, plans: plans.length, subscriptions: subscriptions.length, referrals: referrals.length, supportTickets: supportTickets.length, errors: tableErrors };
+    const previousSuspendDbAutoWrite = !!App.__suspendDbAutoWrite;
+    App.__suspendDbAutoWrite = true;
+    try { App.saveState(); } finally { App.__suspendDbAutoWrite = previousSuspendDbAutoWrite; }
+    const summary = { users: users.length, methods: methods.length, kyc: kyc.length, deposits: deposits.length, withdrawals: withdrawals.length, walletLedger: ledger.length, trades: trades.length, aiBatches: batches.length, adminActionLogs: adminLogs.length, notifications: notifications.length, appSettings: appSettings.length, plans: plans.length, subscriptions: subscriptions.length, referrals: referrals.length, supportTickets: supportTickets.length, errors: tableErrors, source };
     const loadedTotal = users.length + deposits.length + withdrawals.length + kyc.length + ledger.length + trades.length + batches.length;
     if (tableErrors.length) dbStatus(`Database loaded ${loadedTotal} critical row(s). ${tableErrors.length} optional/table warning(s) found; check policies if a section is empty.`, false);
     else dbStatus(`Core + trade tables loaded from Supabase: ${loadedTotal} row(s).`, true);
-    emitDbLoaded({ type: "pull", summary });
+    if (!silent) emitDbLoaded({ type: "pull", source, summary });
+    else { try { window.dispatchEvent(new CustomEvent("aitradex:db-soft-update", { detail: { type: "pull", source, summary } })); } catch {} }
     return summary;
   }
 
@@ -877,7 +880,9 @@
         errors.push({ table: plan.table, label: plan.label, message: err?.message || String(err) });
       }
     }
-    if (total > 0) emitDbLoaded({ type: "direct-write", reason, total, results, errors });
+    if (total > 0) {
+      try { window.dispatchEvent(new CustomEvent("aitradex:db-soft-update", { detail: { type: "direct-write", reason, total, results, errors } })); } catch {}
+    }
     if (errors.length) {
       dbStatus(`Direct database write partially saved ${total} row(s). ${errors.length} table(s) need policy/schema check.`, false);
       try { console.warn("AITradeX direct write partial errors", errors); } catch {}
@@ -913,15 +918,9 @@
   let syncTimer = null;
   let syncing = false;
   function scheduleCoreSync() {
-    if (!SUPABASE_READY || !client || !App?.state) return;
-    clearTimeout(syncTimer);
-    syncTimer = setTimeout(async () => {
-      if (syncing) return;
-      syncing = true;
-      try { await syncCoreTables({ silent: true }); }
-      catch (err) { dbStatus(err?.message || "Database fallback sync failed.", false); }
-      finally { syncing = false; }
-    }, 15000);
+    // Phase 5.13: no polling/fallback timer. Critical actions use direct writes,
+    // and cross-device updates come from Supabase Realtime subscriptions.
+    return;
   }
 
   if (App && !App.__dbSyncWrapped) {
@@ -935,6 +934,76 @@
       return result;
     };
     App.__dbSyncWrapped = true;
+  }
+
+
+
+  const REALTIME_TABLES = [
+    "users",
+    "payment_methods",
+    "kyc_requests",
+    "deposit_requests",
+    "withdrawal_requests",
+    "wallet_ledger",
+    "trade_orders",
+    "ai_trade_batches",
+    "admin_action_logs",
+    "notifications",
+    "app_settings",
+    "plans",
+    "subscriptions",
+    "referrals",
+    "support_tickets"
+  ];
+  let realtimeChannel = null;
+  let realtimePullTimer = null;
+  let realtimePulling = false;
+  let realtimeQueued = false;
+  function scheduleRealtimePull(reason = "realtime-change") {
+    if (!SUPABASE_READY || !client || !App?.state) return;
+    clearTimeout(realtimePullTimer);
+    realtimePullTimer = setTimeout(async () => {
+      if (realtimePulling) { realtimeQueued = true; return; }
+      realtimePulling = true;
+      try {
+        do {
+          realtimeQueued = false;
+          await pullCoreTables({ source: reason, silent: true });
+        } while (realtimeQueued);
+      } catch (err) {
+        dbStatus(err?.message || "Realtime database refresh failed.", false);
+        try { console.warn("AITradeX realtime refresh warning", err); } catch {}
+      } finally {
+        realtimePulling = false;
+      }
+    }, 350);
+  }
+
+  function startRealtimeSubscriptions() {
+    if (!SUPABASE_READY || !client) return { ok: false, reason: "Supabase not ready" };
+    if (realtimeChannel) return { ok: true, reused: true };
+    try {
+      realtimeChannel = client.channel("aitradex-db-realtime-v1");
+      REALTIME_TABLES.forEach(table => {
+        realtimeChannel.on(
+          "postgres_changes",
+          { event: "*", schema: "public", table },
+          payload => {
+            try { window.dispatchEvent(new CustomEvent("aitradex:db-change", { detail: { table, payload } })); } catch {}
+            scheduleRealtimePull(`realtime:${table}`);
+          }
+        );
+      });
+      realtimeChannel.subscribe(status => {
+        if (status === "SUBSCRIBED") dbStatus("Supabase realtime connected. No page polling active.", true);
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") dbStatus("Supabase realtime connection issue. Check realtime SQL/publication.", false);
+      });
+      return { ok: true };
+    } catch (err) {
+      dbStatus(err?.message || "Unable to start realtime subscriptions.", false);
+      try { console.warn("AITradeX realtime setup warning", err); } catch {}
+      return { ok: false, error: err?.message || String(err) };
+    }
   }
 
   window.AITradeXDB = {
@@ -959,17 +1028,14 @@
     upsertUserRecord,
     createUserAccount,
     directWriteChangedTables,
+    startRealtimeSubscriptions,
+    scheduleRealtimePull,
     scheduleDirectWrite,
     lastSyncStatus,
     uploadUserFile,
     signedUrl
   };
 
-  if (SUPABASE_READY && client && !window.__AITRADEX_DB_BOOT_PULL__) {
-    window.__AITRADEX_DB_BOOT_PULL__ = true;
-    setTimeout(async () => {
-      try { await pullCoreTables(); }
-      catch (err) { dbStatus(err?.message || "Database boot load failed.", false); emitDbLoaded({ type: "error", message: err?.message || String(err) }); }
-    }, 80);
-  }
+  // Phase 5.14 clean runtime: app entry files control the first database load.
+  // The database service does not auto-render or auto-pull pages by itself.
 })();
