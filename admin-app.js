@@ -2382,24 +2382,29 @@
     const DB = window.AITradeXDB;
     const configured = !!DB?.ready;
     const counts = DB?.countsFromState ? DB.countsFromState(App.state) : {};
+    const lastSync = DB?.lastSyncStatus ? DB.lastSyncStatus() : null;
     const countRows = Object.entries(counts).map(([key, value]) => `<article><span>${esc(key.replace(/([A-Z])/g, " $1"))}</span><b>${Number(value || 0).toLocaleString("en-IN")}</b></article>`).join("");
     shell(`
       <section class="premium-card database-control-card">
         <div class="section-head">
           <div>
-            <h3>Database Foundation</h3>
-            <span>Connect Supabase, backup local app data, restore latest backup and prepare the project for full database migration.</span>
+            <h3>Database Sync Center</h3>
+            <span>Supabase backup/restore plus Phase 5.3 row-by-row sync for users, wallet, deposits and withdrawals.</span>
           </div>
           <span class="admin-count-pill ${configured ? "text-profit" : "text-loss"}">${configured ? "Supabase Configured" : "Local Mode"}</span>
         </div>
         <div class="database-status-panel">
           <article>
             <b>Current Mode</b>
-            <p>${configured ? "Supabase URL and anon key are configured. You can test and sync backups." : "Supabase keys are blank. App will continue working with local browser storage until config.js is updated."}</p>
+            <p>${configured ? "Supabase URL and anon key are configured. Snapshot backup and core table sync are available." : "Supabase keys are blank. App will continue working with local browser storage until config.js is updated."}</p>
           </article>
           <article>
             <b>Setup Required</b>
             <p>Run <code>supabase-schema.sql</code>, then run <code>supabase-storage-policies.sql</code> after creating Storage buckets.</p>
+          </article>
+          <article>
+            <b>Last Core Sync</b>
+            <p class="${lastSync?.ok === false ? "text-loss" : ""}">${lastSync ? `${esc(lastSync.message || "Sync done")} · ${esc(new Date(lastSync.at).toLocaleString("en-IN"))}` : "No row-by-row sync yet."}</p>
           </article>
         </div>
         <div class="review-grid compact-review database-count-grid">
@@ -2407,6 +2412,8 @@
         </div>
         <div class="database-action-grid">
           <button class="save-profile-btn" onclick="AITradeXAdmin.testDatabase(this)">Test Supabase Connection</button>
+          <button class="save-profile-btn" onclick="AITradeXAdmin.syncCoreDatabase(this)">Sync Core Tables</button>
+          <button class="ghost-action" onclick="AITradeXAdmin.pullCoreDatabase(this)">Load Core Tables</button>
           <button class="save-profile-btn" onclick="AITradeXAdmin.backupDatabase(this)">Backup Local Data to Supabase</button>
           <button class="ghost-action" onclick="AITradeXAdmin.restoreDatabase(this)">Restore Latest Backup</button>
           <button class="ghost-action" onclick="AITradeXAdmin.exportLocalData()">Download Local Backup JSON</button>
@@ -2420,8 +2427,8 @@
         <div class="section-head"><div><h3>Migration Roadmap</h3><span>Safe sequence so current UI does not break.</span></div></div>
         <div class="database-roadmap-list">
           <article><b>Step 1</b><span>Supabase schema + backup/restore foundation</span><em>Added now</em></article>
-          <article><b>Step 2</b><span>Move user auth and profiles to database</span><em>Next</em></article>
-          <article><b>Step 3</b><span>Move wallet ledger, deposit and withdrawal requests</span><em>After auth</em></article>
+          <article><b>Step 2</b><span>Sync users, KYC, bank methods, wallet ledger, deposit and withdrawal rows</span><em>Added now</em></article>
+          <article><b>Step 3</b><span>Move login/auth reads fully to database</span><em>Next</em></article>
           <article><b>Step 4</b><span>Move trades, AI positions, notifications and admin logs</span><em>Final</em></article>
         </div>
       </section>
@@ -2540,6 +2547,38 @@
         App.toast(err.message || "Database test failed.");
       } finally {
         if (button) { button.disabled = false; button.textContent = button.dataset.oldText || "Test Supabase Connection"; }
+      }
+    },
+    async syncCoreDatabase(button) {
+      const box = document.getElementById("databaseStatusBox");
+      try {
+        markButton(button, "Syncing...");
+        const result = await window.AITradeXDB.syncCoreTables({ silent: true });
+        if (box) box.textContent = `Core tables synced to Supabase. ${result.total || 0} row(s) upserted.`;
+        App.toast("Core tables synced.");
+        render();
+      } catch (err) {
+        if (box) box.textContent = err.message || "Core sync failed.";
+        App.toast(err.message || "Core sync failed.");
+      } finally {
+        if (button) { button.disabled = false; button.textContent = button.dataset.oldText || "Sync Core Tables"; }
+      }
+    },
+    async pullCoreDatabase(button) {
+      const ok = confirm("Load core rows from Supabase into this browser? This replaces local users, wallet ledger, deposits, withdrawals, KYC, bank methods and notifications on this device.");
+      if (!ok) return;
+      const box = document.getElementById("databaseStatusBox");
+      try {
+        markButton(button, "Loading...");
+        const result = await window.AITradeXDB.pullCoreTables();
+        if (box) box.textContent = `Core tables loaded. Users: ${result.users || 0}, deposits: ${result.deposits || 0}, withdrawals: ${result.withdrawals || 0}, ledger: ${result.walletLedger || 0}.`;
+        App.toast("Core tables loaded from Supabase.");
+        render();
+      } catch (err) {
+        if (box) box.textContent = err.message || "Load core tables failed.";
+        App.toast(err.message || "Load core tables failed.");
+      } finally {
+        if (button) { button.disabled = false; button.textContent = button.dataset.oldText || "Load Core Tables"; }
       }
     },
     async backupDatabase(button) {

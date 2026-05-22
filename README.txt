@@ -62,3 +62,10 @@ For KYC/avatar Supabase Storage uploads, run supabase-storage-policies.sql in Su
 - user-avatars
 - support-attachments
 These policies are for testing/client mode only. Lock them down before public launch.
+
+Phase 5.3 Notes:
+- Added row-by-row Supabase core sync for users, KYC, bank methods, deposit requests, withdrawal requests, wallet ledger and notifications.
+- Admin > Database now has Sync Core Tables and Load Core Tables buttons.
+- Auto-sync is debounced after local state changes when Supabase is configured.
+- If Supabase shows row-level security errors for core tables, run supabase-core-sync-policies.sql in SQL Editor for prototype/testing.
+- Before public launch, replace broad anon policies with secure authenticated policies or Edge Functions.

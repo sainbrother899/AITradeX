@@ -173,6 +173,225 @@
     });
   }
 
+
+
+  function dateIso(value) {
+    if (!value) return new Date().toISOString();
+    const ms = Date.parse(value);
+    return Number.isFinite(ms) ? new Date(ms).toISOString() : new Date().toISOString();
+  }
+
+  function getEmailForUser(userId) {
+    const u = (App?.state?.users || []).find(x => x.id === userId);
+    return u?.email || "";
+  }
+
+  function dbStatus(message, ok = true) {
+    const row = { ok, message, at: new Date().toISOString() };
+    try { localStorage.setItem("AITradeX_DB_LAST_SYNC", JSON.stringify(row)); } catch {}
+    return row;
+  }
+
+  function lastSyncStatus() {
+    try { return JSON.parse(localStorage.getItem("AITradeX_DB_LAST_SYNC") || "null"); } catch { return null; }
+  }
+
+  async function upsertRows(table, rows, label = table) {
+    if (!rows.length) return { table, label, count: 0, skipped: true };
+    const { error } = await client.from(table).upsert(rows, { onConflict: "id" });
+    if (error) throw new Error(`${label}: ${error.message}`);
+    return { table, label, count: rows.length, skipped: false };
+  }
+
+  function userRows() {
+    return (App?.state?.users || []).map(u => ({
+      id: String(u.id),
+      name: u.name || "",
+      email: String(u.email || "").toLowerCase(),
+      mobile: u.mobile || "",
+      role: u.role || "user",
+      status: u.status || "ACTIVE",
+      referral_code: u.referralCode || u.referral_code || "",
+      referred_by: u.referredBy || u.referred_by || null,
+      password_hash: u.password || u.password_hash || null,
+      ai_trade_on: !!u.aiTradeOn,
+      ai_trade_percent: Number(u.aiTradePercent || 25),
+      free_trial_started_at: u.freeTrialStartedAt ? dateIso(u.freeTrialStartedAt) : null,
+      created_at: dateIso(u.createdAt || u.created_at)
+    }));
+  }
+
+  function walletLedgerRows() {
+    return (App?.state?.walletLedger || []).map(x => ({
+      id: String(x.id),
+      user_id: x.userId || x.user_id,
+      account_type: x.accountType || x.account_type || "REAL",
+      type: x.type || "WALLET",
+      amount: Number(x.amount || 0),
+      reference_id: String(x.referenceId || x.reference_id || x.id),
+      note: x.note || "",
+      balance_after: Number(x.balanceAfter || x.balance_after || 0),
+      created_at: dateIso(x.createdAt || x.created_at)
+    })).filter(x => x.id && x.user_id);
+  }
+
+  function depositRows() {
+    return (App?.state?.depositRequests || []).map(x => ({
+      id: String(x.id),
+      user_id: x.userId || x.user_id,
+      user_email: x.userEmail || x.user_email || getEmailForUser(x.userId || x.user_id),
+      amount: Number(x.amount || 0),
+      method: x.type || x.method || "UPI",
+      utr: String(x.utr || ""),
+      status: x.status || "PENDING",
+      balance_applied: !!(x.balanceApplied || x.balance_applied),
+      first_deposit_referral_checked: !!(x.firstDepositReferralChecked || x.first_deposit_referral_checked),
+      proof_image: x.proofImage || x.proof_image || null,
+      admin_note: x.adminNote || x.rejectReason || x.admin_note || "",
+      created_at: dateIso(x.createdAt || x.created_at)
+    })).filter(x => x.id && x.user_id);
+  }
+
+  function withdrawalRows() {
+    return (App?.state?.withdrawalRequests || []).map(x => ({
+      id: String(x.id),
+      user_id: x.userId || x.user_id,
+      user_email: x.userEmail || x.user_email || getEmailForUser(x.userId || x.user_id),
+      amount: Number(x.amount || 0),
+      payment_method_id: x.methodId || x.paymentMethodId || x.payment_method_id || "",
+      status: x.status || "PENDING",
+      hold_applied: x.holdApplied !== false,
+      admin_note: x.adminNote || x.rejectReason || x.admin_note || "",
+      created_at: dateIso(x.createdAt || x.created_at)
+    })).filter(x => x.id && x.user_id);
+  }
+
+  function paymentMethodRows() {
+    return (App?.state?.paymentMethods || []).map(x => ({
+      id: String(x.id),
+      user_id: x.userId || x.user_id,
+      user_email: x.userEmail || x.user_email || getEmailForUser(x.userId || x.user_id),
+      type: x.type || "BANK",
+      holder_name: x.holderName || x.holder_name || "",
+      upi_id: x.upiId || x.upi_id || "",
+      bank_name: x.bankName || x.bank_name || "",
+      account_number: x.accountNumber || x.account_number || "",
+      ifsc: x.ifsc || "",
+      status: x.status || "PENDING",
+      rejection_reason: x.rejectReason || x.rejectionReason || x.rejection_reason || "",
+      created_at: dateIso(x.createdAt || x.created_at)
+    })).filter(x => x.id && x.user_id);
+  }
+
+  function kycRows() {
+    return (App?.state?.kycRequests || []).map(x => ({
+      id: String(x.id),
+      user_id: x.userId || x.user_id,
+      user_email: x.userEmail || x.user_email || getEmailForUser(x.userId || x.user_id),
+      full_name: x.fullName || x.full_name || x.name || "",
+      mobile: x.mobile || "",
+      id_number: x.idNumber || x.id_number || x.aadhaar || "",
+      address: x.address || "",
+      status: x.status || "PENDING",
+      reviewed_at: x.reviewedAt ? dateIso(x.reviewedAt) : null,
+      created_at: dateIso(x.createdAt || x.created_at)
+    })).filter(x => x.id && x.user_id);
+  }
+
+  function notificationRows() {
+    return (App?.state?.notifications || []).map(x => ({
+      id: String(x.id),
+      audience: x.audience || "USER",
+      user_id: x.userId || x.user_id || null,
+      title: x.title || "",
+      message: x.message || "",
+      type: x.type || "INFO",
+      link_page: x.linkPage || x.link_page || "",
+      reference_id: x.referenceId || x.reference_id || "",
+      read: !!x.read,
+      created_at: dateIso(x.createdAt || x.created_at)
+    })).filter(x => x.id);
+  }
+
+  async function syncCoreTables({ silent = false } = {}) {
+    if (!SUPABASE_READY || !client) throw new Error("Supabase is not configured.");
+    const results = [];
+    results.push(await upsertRows("users", userRows(), "Users"));
+    results.push(await upsertRows("payment_methods", paymentMethodRows(), "Bank/payment methods"));
+    results.push(await upsertRows("kyc_requests", kycRows(), "KYC requests"));
+    results.push(await upsertRows("deposit_requests", depositRows(), "Deposit requests"));
+    results.push(await upsertRows("withdrawal_requests", withdrawalRows(), "Withdrawal requests"));
+    results.push(await upsertRows("wallet_ledger", walletLedgerRows(), "Wallet ledger"));
+    results.push(await upsertRows("notifications", notificationRows(), "Notifications"));
+    const total = results.reduce((s, r) => s + Number(r.count || 0), 0);
+    dbStatus(`Core tables synced: ${total} row(s).`, true);
+    if (!silent && App?.toast) App.toast("Core database sync completed.");
+    return { ok: true, total, results, syncedAt: new Date().toISOString() };
+  }
+
+  function camelUser(r) {
+    return {
+      id: r.id, name: r.name || "", email: r.email || "", mobile: r.mobile || "", role: r.role || "user", status: r.status || "ACTIVE",
+      referralCode: r.referral_code || "", referredBy: r.referred_by || null, password: r.password_hash || "",
+      aiTradeOn: !!r.ai_trade_on, aiTradePercent: Number(r.ai_trade_percent || 25), freeTrialStartedAt: r.free_trial_started_at || "", createdAt: r.created_at || ""
+    };
+  }
+  function camelLedger(r) { return { id: r.id, userId: r.user_id, accountType: r.account_type || "REAL", type: r.type, amount: Number(r.amount || 0), referenceId: r.reference_id, note: r.note || "", balanceAfter: Number(r.balance_after || 0), createdAt: r.created_at }; }
+  function camelDeposit(r) { return { id: r.id, userId: r.user_id, userEmail: r.user_email, amount: Number(r.amount || 0), type: r.method || "UPI", utr: r.utr || "", status: r.status || "PENDING", balanceApplied: !!r.balance_applied, firstDepositReferralChecked: !!r.first_deposit_referral_checked, adminNote: r.admin_note || "", createdAt: r.created_at }; }
+  function camelWithdrawal(r) { return { id: r.id, userId: r.user_id, userEmail: r.user_email, amount: Number(r.amount || 0), methodId: r.payment_method_id || "", status: r.status || "PENDING", holdApplied: !!r.hold_applied, adminNote: r.admin_note || "", createdAt: r.created_at }; }
+  function camelMethod(r) { return { id: r.id, userId: r.user_id, userEmail: r.user_email, type: r.type || "BANK", holderName: r.holder_name || "", upiId: r.upi_id || "", bankName: r.bank_name || "", accountNumber: r.account_number || "", ifsc: r.ifsc || "", status: r.status || "PENDING", rejectReason: r.rejection_reason || "", createdAt: r.created_at }; }
+  function camelKyc(r) { return { id: r.id, userId: r.user_id, userEmail: r.user_email, fullName: r.full_name || "", mobile: r.mobile || "", idNumber: r.id_number || "", address: r.address || "", status: r.status || "PENDING", reviewedAt: r.reviewed_at || "", createdAt: r.created_at }; }
+  function camelNotification(r) { return { id: r.id, audience: r.audience || "USER", userId: r.user_id || "", title: r.title || "", message: r.message || "", type: r.type || "INFO", linkPage: r.link_page || "", referenceId: r.reference_id || "", read: !!r.read, createdAt: r.created_at }; }
+
+  async function pullCoreTables() {
+    if (!SUPABASE_READY || !client) throw new Error("Supabase is not configured.");
+    const fetchTable = async (table) => {
+      const { data, error } = await client.from(table).select("*");
+      if (error) throw new Error(`${table}: ${error.message}`);
+      return data || [];
+    };
+    const [users, methods, kyc, deposits, withdrawals, ledger, notifications] = await Promise.all([
+      fetchTable("users"), fetchTable("payment_methods"), fetchTable("kyc_requests"), fetchTable("deposit_requests"), fetchTable("withdrawal_requests"), fetchTable("wallet_ledger"), fetchTable("notifications")
+    ]);
+    const adminLocal = (App.state.users || []).filter(u => u.role === "admin");
+    const pulledUsers = users.map(camelUser);
+    const adminIds = new Set(pulledUsers.filter(u => u.role === "admin").map(u => u.id));
+    App.state.users = [...pulledUsers, ...adminLocal.filter(u => !adminIds.has(u.id))];
+    App.state.paymentMethods = methods.map(camelMethod);
+    App.state.kycRequests = kyc.map(camelKyc);
+    App.state.depositRequests = deposits.map(camelDeposit);
+    App.state.withdrawalRequests = withdrawals.map(camelWithdrawal);
+    App.state.walletLedger = ledger.map(camelLedger);
+    App.state.notifications = notifications.map(camelNotification);
+    App.saveState();
+    dbStatus(`Core tables loaded from Supabase: ${users.length + deposits.length + withdrawals.length + ledger.length} row(s).`, true);
+    return { users: users.length, methods: methods.length, kyc: kyc.length, deposits: deposits.length, withdrawals: withdrawals.length, walletLedger: ledger.length, notifications: notifications.length };
+  }
+
+  let syncTimer = null;
+  let syncing = false;
+  function scheduleCoreSync() {
+    if (!SUPABASE_READY || !client || !App?.state) return;
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(async () => {
+      if (syncing) return;
+      syncing = true;
+      try { await syncCoreTables({ silent: true }); }
+      catch (err) { dbStatus(err?.message || "Database sync failed.", false); }
+      finally { syncing = false; }
+    }, 1200);
+  }
+
+  if (App && !App.__dbSyncWrapped) {
+    const originalSaveState = App.saveState;
+    App.saveState = function () {
+      const result = originalSaveState.apply(App, arguments);
+      scheduleCoreSync();
+      return result;
+    };
+    App.__dbSyncWrapped = true;
+  }
+
   window.AITradeXDB = {
     ready: SUPABASE_READY,
     client,
@@ -185,6 +404,9 @@
     restoreLatestSnapshot,
     downloadLocalBackup,
     importLocalBackup,
+    syncCoreTables,
+    pullCoreTables,
+    lastSyncStatus,
     uploadUserFile,
     signedUrl
   };
