@@ -1,4 +1,4 @@
--- AITradeX Phase 5.19 Final Critical Actions Cleanup
+-- AITradeX Phase 5.22 Clean Persistence Fix
 -- AITradeX Phase 5.19 Strict DB-First Critical Runtime
 -- Keeps schema/RLS aligned with DB-first critical writes and emergency-only manual repair sync.
 
@@ -237,7 +237,24 @@ create index if not exists wallet_ledger_user_id_idx on public.wallet_ledger(use
 create index if not exists notifications_user_id_idx on public.notifications(user_id);
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','5.16.1','mode','action-database'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','5.22','mode','action-database'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.16.1','mode','action-database'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.22','mode','action-database'),
+    updated_at = now();
+
+
+-- Phase 5.22: Clean persistence fix columns/indexes.
+alter table public.users add column if not exists last_login_at timestamptz;
+alter table public.users add column if not exists updated_at timestamptz default now();
+alter table public.payment_methods add column if not exists raw jsonb default '{}'::jsonb;
+alter table public.notifications add column if not exists raw jsonb default '{}'::jsonb;
+alter table public.admin_action_logs add column if not exists raw jsonb default '{}'::jsonb;
+create index if not exists payment_methods_user_id_idx on public.payment_methods(user_id);
+create index if not exists admin_action_logs_created_at_idx on public.admin_action_logs(created_at desc);
+create index if not exists notifications_created_at_idx on public.notifications(created_at desc);
+
+insert into public.app_settings(id, settings, updated_at)
+values ('main', jsonb_build_object('databaseRuntimeVersion','5.22','mode','action-database-clean-persistence'), now())
+on conflict (id) do update
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.22','mode','action-database-clean-persistence'),
     updated_at = now();

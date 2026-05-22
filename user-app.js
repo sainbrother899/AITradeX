@@ -189,6 +189,9 @@
         position.balanceBefore = Number(before.toFixed(2));
         position.balanceAfterOpen = Number(App.realBalance(u.id).toFixed(2));
         position.marginLockedAt = position.marginLockedAt || new Date().toISOString();
+        if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) {
+          window.AITradeXDB.writeTrade(position).catch(err => console.warn("AI live margin lock DB sync failed", err));
+        }
         fixed += 1;
       } catch (error) {
         position.marginLockError = error.message || "AI amount lock failed";
@@ -484,6 +487,9 @@
     order.triggeredAt = new Date().toISOString();
     order.orderTriggered = true;
     order.pnl = 0;
+    if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) {
+      window.AITradeXDB.writeTrade(order).catch(err => console.warn("limit order trigger DB sync failed", err));
+    }
     return true;
   }
 

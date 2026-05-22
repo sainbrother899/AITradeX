@@ -1567,6 +1567,9 @@
     if (!Number.isFinite(margin) || margin <= 0) return false;
     if (aiLiveMarginLockExists(position)) {
       position.marginLocked = true;
+      if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) {
+        window.AITradeXDB.writeTrade(position).catch(err => console.warn("AI live margin status DB sync failed", err));
+      }
       return true;
     }
     const before = balanceBeforeOverride === null ? App.realBalance(position.userId) : Number(balanceBeforeOverride || 0);
@@ -1583,6 +1586,9 @@
     position.balanceBefore = Number(before.toFixed(2));
     position.balanceAfterOpen = Number(App.realBalance(position.userId).toFixed(2));
     position.marginLockedAt = position.marginLockedAt || new Date().toISOString();
+    if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) {
+      window.AITradeXDB.writeTrade(position).catch(err => console.warn("AI live margin lock DB sync failed", err));
+    }
     return true;
   }
 
@@ -4056,7 +4062,13 @@
       markButton(button, "Deleting...");
       const next = methods.filter(m => m.id !== methodId);
       await logAdminActionAsync("PAYMENT_METHOD_DELETE", "PAYMENT_METHOD", method.id, { userId: target.id, user: displayNameFor(target), label });
-      await savePaymentMethods(target, next);
+      if (App.isDatabaseMode?.() && window.AITradeXDB?.deletePaymentMethod) {
+        await window.AITradeXDB.deletePaymentMethod(method.id);
+        App.state.paymentMethods = (App.state.paymentMethods || []).filter(m => m.id !== method.id);
+        App.saveState();
+      } else {
+        await savePaymentMethods(target, next);
+      }
       App.toast("Payment method deleted.");
       render();
     }

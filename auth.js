@@ -67,7 +67,7 @@
       throw new Error(left?`Invalid user login details. ${left} attempt(s) left before temporary lock.`:"Invalid user login details. Login temporarily locked.");
     }
     const status=String(u.status||"ACTIVE").toUpperCase(); if(status==="BLOCKED") throw new Error("Your account is blocked."); if(status==="SUSPENDED") throw new Error("Your account is suspended. Please contact support.");
-    clearUserLock(email); u.lastLoginAt=App.now(); App.setSession(u.id,"user"); if(isDb()) await DB.loadAll(); App.saveState(); return u;
+    clearUserLock(email); u.lastLoginAt=new Date().toISOString(); if(isDb()&&DB.writeUser) await DB.writeUser(u); App.setSession(u.id,"user"); if(isDb()) await DB.loadAll(); App.saveState(); return u;
   }
   async function loginControl({email,password}){
     email=normEmail(email); guardAdminLock(email);
@@ -78,7 +78,7 @@
       const row=registerAdminFailure(email); const left=Math.max(0,5-Number(row.attempts||0));
       throw new Error(left?`Invalid control center login. ${left} attempt(s) left before temporary lock.`:"Invalid control center login. Admin login temporarily locked.");
     }
-    clearAdminLock(email); App.setSession(u.id,"admin"); if(isDb()) await DB.loadAll(); App.addAdminAction?.({action:"ADMIN_LOGIN",targetType:"ADMIN",targetId:u.id,meta:{email}}); return u;
+    clearAdminLock(email); u.lastLoginAt=new Date().toISOString(); if(isDb()&&DB.writeUser) await DB.writeUser(u); App.setSession(u.id,"admin"); if(isDb()) await DB.loadAll(); App.addAdminAction?.({action:"ADMIN_LOGIN",targetType:"ADMIN",targetId:u.id,meta:{email}}); return u;
   }
   window.AITradeXAuth={registerUser,loginUser,loginControl,loginAdmin:loginControl};
 })();

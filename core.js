@@ -133,6 +133,8 @@ App.addNotification=(payload={})=>{
   if(referenceId&&App.state.notifications.some(n=>n.id===id))return false;
   const row={id,audience:cleanAudience,userId:payload.userId||"",title:String(payload.title||"Notification"),message:String(payload.message||""),type,linkPage:String(payload.linkPage||""),referenceId,read:false,createdAt:now()};
   App.state.notifications.unshift(row);
+  if(DB_ONLY&&window.AITradeXDB?.writeNotification){window.AITradeXDB.writeNotification(row).catch(err=>console.warn("notification write failed",err));}
+  if(App.sendTelegramForNotification){App.sendTelegramForNotification(row).catch(err=>console.warn("telegram notification failed",err));}
   App.saveState();
   return row;
 };
@@ -216,6 +218,7 @@ App.addAdminAction=(payload={})=>{
   const admin=App.currentUser?.()||{};
   const row={id:uid("adminlog"),adminUserId:admin.id||App.session?.userId||"admin",adminName:admin.name||admin.email||"Admin",action:String(payload.action||"ADMIN_ACTION").toUpperCase(),targetType:String(payload.targetType||"SYSTEM").toUpperCase(),targetId:String(payload.targetId||""),meta:payload.meta&&typeof payload.meta==="object"?payload.meta:{note:String(payload.meta||"")},createdAt:new Date().toISOString()};
   App.state.adminActionLogs.unshift(row);
+  if(DB_ONLY&&window.AITradeXDB?.writeAdminAction){window.AITradeXDB.writeAdminAction(row).catch(err=>console.warn("admin action write failed",err));}
   App.saveState();
   return row;
 };
@@ -237,7 +240,10 @@ App.notificationsFor=({audience="USER",userId=""}={})=>{
 App.unreadNotificationCount=({audience="USER",userId=""}={})=>App.notificationsFor({audience,userId}).filter(n=>!n.read).length;
 App.markNotificationsRead=({audience="USER",userId=""}={})=>{
   const rows=App.notificationsFor({audience,userId});
-  rows.forEach(n=>n.read=true);
+  rows.forEach(n=>{
+    n.read=true;
+    if(DB_ONLY&&window.AITradeXDB?.writeNotification){window.AITradeXDB.writeNotification(n).catch(err=>console.warn("notification read sync failed",err));}
+  });
   App.saveState();
   return rows.length;
 };
