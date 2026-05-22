@@ -89,6 +89,7 @@
     if (existing) Object.assign(existing, row);
     else App.state.kycRequests.push(row);
 
+    try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeKycRequest) window.AITradeXDB.fire(window.AITradeXDB.writeKycRequest(row), "KYC review write"); } catch {}
     App.saveState();
   }
 
@@ -101,11 +102,9 @@
   function savePaymentMethods(user, methods) {
     App.state.paymentMethods = (App.state.paymentMethods || []).filter(m => m.userId !== user.id);
     methods.forEach(m => {
-      App.state.paymentMethods.push({
-        ...m,
-        userId: user.id,
-        source: "ADMIN_PAYMENT_METHOD"
-      });
+      const row = { ...m, userId: user.id, userEmail: user.email, source: "ADMIN_PAYMENT_METHOD" };
+      App.state.paymentMethods.push(row);
+      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writePaymentMethod) window.AITradeXDB.fire(window.AITradeXDB.writePaymentMethod(row), "payment method review write"); } catch {}
     });
 
     App.saveState();
@@ -120,7 +119,11 @@
 
   function saveDepositRequests(user, requests) {
     App.state.depositRequests = (App.state.depositRequests || []).filter(r => r.userId !== user.id);
-    requests.forEach(r => App.state.depositRequests.push({ ...r, userId: user.id, userEmail: user.email }));
+    requests.forEach(r => {
+      const row = { ...r, userId: user.id, userEmail: user.email };
+      App.state.depositRequests.push(row);
+      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeDepositRequest) window.AITradeXDB.fire(window.AITradeXDB.writeDepositRequest(row), "deposit review write"); } catch {}
+    });
     App.saveState();
   }
 
@@ -132,7 +135,11 @@
 
   function saveWithdrawalRequests(user, requests) {
     App.state.withdrawalRequests = (App.state.withdrawalRequests || []).filter(r => r.userId !== user.id);
-    requests.forEach(r => App.state.withdrawalRequests.push({ ...r, userId: user.id, userEmail: user.email }));
+    requests.forEach(r => {
+      const row = { ...r, userId: user.id, userEmail: user.email };
+      App.state.withdrawalRequests.push(row);
+      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeWithdrawalRequest) window.AITradeXDB.fire(window.AITradeXDB.writeWithdrawalRequest(row), "withdrawal review write"); } catch {}
+    });
     App.saveState();
   }
 
@@ -2782,6 +2789,7 @@
     } else {
       App.saveState();
     }
+    try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) window.AITradeXDB.fire(window.AITradeXDB.writeTrade(position), "AI admin close write"); } catch {}
     App.addNotification?.({ audience: "USER", userId: position.userId, title: "AI live position closed", message: `${position.pair} ${position.side} closed. P/L ${position.pnl >= 0 ? "+" : ""}${App.money(position.pnl)}. Settlement ${App.money(position.settlementAmount)}.`, type: "AI", linkPage: "orders", referenceId: `ai_close_${position.id}` });
     App.addNotification?.({ audience: "ADMIN", title: "AI live trade closed", message: `${position.pair} ${position.side} closed for user ${position.userId}. P/L ${position.pnl >= 0 ? "+" : ""}${App.money(position.pnl)}.`, type: "AI", linkPage: "liveAi", referenceId: `admin_ai_close_${position.id}` });
     return true;
@@ -3502,6 +3510,7 @@
         };
 
         App.state.trades.unshift(trade);
+        try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) window.AITradeXDB.fire(window.AITradeXDB.writeTrade(trade), "trade write"); } catch {}
         if (trade.pnl !== 0) {
           App.addLedger({
             userId: target.id,
@@ -3647,6 +3656,7 @@
           return;
         }
         App.state.trades.unshift(position);
+        try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) window.AITradeXDB.fire(window.AITradeXDB.writeTrade(position), "trade write"); } catch {}
         App.addNotification?.({ audience: "USER", userId: target.id, title: "AI live position opened", message: `${pair} ${side} opened with ${App.money(position.marginAmount)} AI amount at ${leverage}x.`, type: "AI", linkPage: "orders", referenceId: `live_open_${position.id}` });
         appliedCount += 1;
         totalMargin += margin;

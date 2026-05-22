@@ -131,6 +131,7 @@ App.addNotification=({audience="USER",userId="",title="Notification",message="",
   if(referenceId&&App.state.notifications.some(n=>n.id===id))return false;
   const row={id,audience:cleanAudience,userId:userId||"",title:String(title||"Notification"),message:String(message||""),type:String(type||"INFO").toUpperCase(),linkPage:String(linkPage||""),referenceId:referenceId||"",read:false,createdAt:now()};
   App.state.notifications.unshift(row);
+  try{ if(DB_ONLY&&window.AITradeXDB?.writeNotification) window.AITradeXDB.fire(window.AITradeXDB.writeNotification(row), "notification write"); }catch{}
   App.saveState();
   App.sendTelegramForNotification?.(row);
   return true;
@@ -210,6 +211,7 @@ App.addAdminAction=({action="ADMIN_ACTION",targetType="SYSTEM",targetId="",meta=
     createdAt:new Date().toISOString()
   };
   App.state.adminActionLogs.unshift(row);
+  try{ if(DB_ONLY&&window.AITradeXDB?.writeAdminAction) window.AITradeXDB.fire(window.AITradeXDB.writeAdminAction(row), "admin action write"); }catch{}
   App.saveState();
   return row;
 };
@@ -429,7 +431,8 @@ App.startCryptoLiveTicker=(pairs,onEach)=>{
 App.isDatabaseMode=()=>DB_ONLY;
 App.saveState=()=>{
   if(DB_ONLY){
-    try{ if(window.AITradeXDB&&typeof window.AITradeXDB.scheduleFullSync==="function") window.AITradeXDB.scheduleFullSync(); }catch{}
+    // Database-only runtime: business rows are written by action-specific DB methods.
+    // Do not full-sync the whole app state from every UI action.
     return true;
   }
   try{localStorage.setItem(SK,JSON.stringify(App.state));return true;}catch{return false;}
@@ -508,7 +511,7 @@ App.aiTradesToday=userId=>App.state.trades.filter(t=>t.userId===userId&&["AI_AUT
 App.aiDailyLimit=userId=>{const sub=App.activeSubscription(userId);if(sub){const plan=App.planById(sub.planId)||{};return Number(sub.aiTradeLimit||sub.signals||plan.signals||50)||50}const trial=App.freeTrialInfo(userId);return trial.active?Number(App.state.settings.freeAiTradesPerDay||5):Number(App.state.settings.postTrialFreeAiTradesPerDay||1)};
 App.aiSettings=user=>({enabled:!!user?.aiTradeOn,percent:Number(user?.aiTradePercent||25)});
 App.aiAllowedAmount=user=>{const settings=App.aiSettings(user);if(!settings.enabled)return 0;return Math.max(0,App.realBalance(user.id))*settings.percent/100};
-App.addLedger=({userId,accountType="REAL",type,amount,referenceId,note=""})=>{const list=accountType==="DEMO"?App.state.demoLedger:App.state.walletLedger;if(list.some(x=>x.type===type&&x.referenceId===referenceId))return false;const before=accountType==="DEMO"?App.demoBalance(userId):App.realBalance(userId),after=before+Number(amount||0);if(after<0)throw new Error("Insufficient balance");list.push({id:uid("ledger"),userId,accountType,type,amount:Number(amount||0),referenceId,note,balanceAfter:after,createdAt:now()});App.saveState();return true};
+App.addLedger=({userId,accountType="REAL",type,amount,referenceId,note=""})=>{const list=accountType==="DEMO"?App.state.demoLedger:App.state.walletLedger;if(list.some(x=>x.type===type&&x.referenceId===referenceId))return false;const before=accountType==="DEMO"?App.demoBalance(userId):App.realBalance(userId),after=before+Number(amount||0);if(after<0)throw new Error("Insufficient balance");const row={id:uid("ledger"),userId,accountType,type,amount:Number(amount||0),referenceId,note,balanceAfter:after,createdAt:now()};list.push(row);try{ if(DB_ONLY&&window.AITradeXDB?.writeLedger) window.AITradeXDB.fire(window.AITradeXDB.writeLedger(row), "ledger write"); }catch{}App.saveState();return true};
 
 App.referralSettings=()=>{
   App.state.settings=App.state.settings||{};

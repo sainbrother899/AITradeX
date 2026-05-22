@@ -347,6 +347,7 @@
     } else {
       App.saveState();
     }
+    try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) window.AITradeXDB.fire(window.AITradeXDB.writeTrade(position), "AI position close write"); } catch {}
     return true;
   }
 
@@ -444,6 +445,7 @@
     } else {
       App.saveState();
     }
+    try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) window.AITradeXDB.fire(window.AITradeXDB.writeTrade(position), "manual position close write"); } catch {}
     return true;
   }
 
@@ -1331,6 +1333,7 @@
     if (existing) Object.assign(existing, row);
     else App.state.kycRequests.push(row);
 
+    try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeKycRequest) window.AITradeXDB.fire(window.AITradeXDB.writeKycRequest(row), "KYC request write"); } catch {}
     App.saveState();
   }
 
@@ -1340,11 +1343,9 @@
 
     App.state.paymentMethods = App.state.paymentMethods.filter(m => m.userId !== u.id);
     methods.filter(m => m.type === "BANK").forEach(m => {
-      App.state.paymentMethods.push({
-        ...m,
-        userId: u.id,
-        source: "USER_BANK_ACCOUNT"
-      });
+      const row = { ...m, userId: u.id, userEmail: u.email, source: "USER_BANK_ACCOUNT" };
+      App.state.paymentMethods.push(row);
+      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writePaymentMethod) window.AITradeXDB.fire(window.AITradeXDB.writePaymentMethod(row), "payment method write"); } catch {}
     });
 
     App.saveState();
@@ -1412,7 +1413,11 @@
     if (!u || !App.state.depositRequests) return;
 
     App.state.depositRequests = App.state.depositRequests.filter(r => r.userId !== u.id);
-    requests.forEach(r => App.state.depositRequests.push({ ...r, userId: u.id, userEmail: u.email }));
+    requests.forEach(r => {
+      const row = { ...r, userId: u.id, userEmail: u.email };
+      App.state.depositRequests.push(row);
+      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeDepositRequest) window.AITradeXDB.fire(window.AITradeXDB.writeDepositRequest(row), "deposit request write"); } catch {}
+    });
     App.saveState();
   }
 
@@ -1421,7 +1426,11 @@
     if (!u || !App.state.withdrawalRequests) return;
 
     App.state.withdrawalRequests = App.state.withdrawalRequests.filter(r => r.userId !== u.id);
-    requests.forEach(r => App.state.withdrawalRequests.push({ ...r, userId: u.id, userEmail: u.email }));
+    requests.forEach(r => {
+      const row = { ...r, userId: u.id, userEmail: u.email };
+      App.state.withdrawalRequests.push(row);
+      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeWithdrawalRequest) window.AITradeXDB.fire(window.AITradeXDB.writeWithdrawalRequest(row), "withdrawal request write"); } catch {}
+    });
     App.saveState();
   }
 
@@ -4307,6 +4316,7 @@
           createdDate: App.todayKey()
         };
         App.state.trades.unshift(order);
+        try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) window.AITradeXDB.fire(window.AITradeXDB.writeTrade(order), "trade write"); } catch {}
         App.saveState();
         resetTradeTicketAfterOrder("Limit order placed", `${selectedPair} ${normalizedSide} limit placed at ${order.limitPriceDisplay}.`);
         render();
@@ -4364,6 +4374,7 @@
         createdDate: App.todayKey()
       };
       App.state.trades.unshift(trade);
+        try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) window.AITradeXDB.fire(window.AITradeXDB.writeTrade(trade), "trade write"); } catch {}
       App.saveState();
       resetTradeTicketAfterOrder("Market order opened", `${trade.side} ${selectedPair} opened at ${trade.entryPriceDisplay}.`);
       render();
