@@ -1231,6 +1231,8 @@
       minWithdrawal: 1000,
       depositUpiId: "aitradex@upi",
       depositQrImage: "",
+      depositUpiEnabled: true,
+      depositBankEnabled: true,
       depositBankName: "AITradeX Bank",
       depositAccountName: "AITradeX Private Wallet",
       depositAccountNumber: "123456789012",
@@ -2286,6 +2288,17 @@
       accountNumber: settings.depositAccountNumber || "123456789012",
       ifsc: settings.depositIfsc || "AITX0001234"
     };
+    const upiDepositEnabled = settings.depositUpiEnabled !== false;
+    const bankDepositEnabled = settings.depositBankEnabled !== false;
+    const enabledDepositTypes = [
+      ...(upiDepositEnabled ? ["UPI"] : []),
+      ...(bankDepositEnabled ? ["BANK"] : [])
+    ];
+    if (!enabledDepositTypes.includes(depositDraft.type)) {
+      depositDraft.type = enabledDepositTypes[0] || "UPI";
+      localStorage.setItem("AITradeX_DEPOSIT_DRAFT", JSON.stringify(depositDraft));
+    }
+    const depositMethodsAvailable = enabledDepositTypes.length > 0;
     const activePanel = ["DEPOSIT", "WITHDRAWAL", "HISTORY"].includes(walletMode) ? walletMode : "DEPOSIT";
     const requestRows = [...deposits.map(r => ({ ...r, kind: "Deposit" })), ...withdrawals.map(r => ({ ...r, kind: "Withdrawal" }))]
       .sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0));
@@ -2316,26 +2329,32 @@
           <b class="wallet-mini-badge">${depositDraft.type || "UPI"}</b>
         </div>
 
-        ${depositStep === 1 ? `
+        ${!depositMethodsAvailable ? `
+          <div class="kyc-required-box deposit-disabled-box">
+            Deposit methods are temporarily disabled by admin. Please try again later or contact support.
+          </div>
+        ` : ""}
+
+        ${depositMethodsAvailable && depositStep === 1 ? `
           <div class="wallet-two-col">
             <label>Deposit Amount
               <input id="depositAmountInput" type="number" min="${minDeposit}" value="${App.escapeHtml(depositDraft.amount)}" placeholder="Minimum ${App.money(minDeposit)}"/>
             </label>
             <div class="wallet-method-choice compact-method-choice premium-method-pills">
-              <button class="${depositDraft.type === "UPI" ? "active" : ""}" onclick="AITradeXUser.setDepositType('UPI')">
+              ${upiDepositEnabled ? `<button class="${depositDraft.type === "UPI" ? "active" : ""}" onclick="AITradeXUser.setDepositType('UPI')">
                 <b>UPI / QR</b>
                 <span>Fast UPI payment</span>
-              </button>
-              <button class="${depositDraft.type === "BANK" ? "active" : ""}" onclick="AITradeXUser.setDepositType('BANK')">
+              </button>` : ""}
+              ${bankDepositEnabled ? `<button class="${depositDraft.type === "BANK" ? "active" : ""}" onclick="AITradeXUser.setDepositType('BANK')">
                 <b>Bank Transfer</b>
                 <span>NEFT / IMPS</span>
-              </button>
+              </button>` : ""}
             </div>
           </div>
           <div class="profile-note">Enter amount and choose how you want to pay. Payment details open on next step.</div>
         ` : ""}
 
-        ${depositStep === 2 ? `
+        ${depositMethodsAvailable && depositStep === 2 ? `
           ${depositDraft.type === "UPI" ? `
             <div class="upi-pay-card wallet-upi-premium">
               <div class="qr-large-box">
@@ -2364,7 +2383,7 @@
           <div class="profile-note">Only a unique 12 digit UTR is accepted. Duplicate UTR will be blocked.</div>
         ` : ""}
 
-        ${depositStep === 3 ? `
+        ${depositMethodsAvailable && depositStep === 3 ? `
           <div class="review-grid compact-review premium-review-strip">
             <article><span>Amount</span><b>${App.money(depositDraft.amount || 0)}</b></article>
             <article><span>Method</span><b>${depositDraft.type}</b></article>
@@ -2373,10 +2392,10 @@
           </div>
         ` : ""}
 
-        <div class="wizard-actions wallet-actions-row">
+        ${depositMethodsAvailable ? `<div class="wizard-actions wallet-actions-row">
           <button class="btn ghost" onclick="AITradeXUser.prevDepositStep()" ${depositStep === 1 ? "disabled" : ""}>Back</button>
           ${depositStep < 3 ? `<button class="btn" onclick="AITradeXUser.nextDepositStep()">Next</button>` : `<button class="btn" onclick="AITradeXUser.submitDepositRequest()">Submit Deposit</button>`}
-        </div>
+        </div>` : `<div class="wizard-actions wallet-actions-row"><button class="btn ghost" onclick="AITradeXUser.go('support')">Contact Support</button></div>`}
       </section>
     `;
 
@@ -3623,12 +3642,28 @@
       render();
     },
     setDepositType(type) {
-      depositDraft.type = type === "BANK" ? "BANK" : "UPI";
+      const settings = platformSettings();
+      const nextType = type === "BANK" ? "BANK" : "UPI";
+      if (nextType === "UPI" && settings.depositUpiEnabled === false) {
+        App.toast("UPI / QR deposit is currently disabled.");
+        return;
+      }
+      if (nextType === "BANK" && settings.depositBankEnabled === false) {
+        App.toast("Bank transfer deposit is currently disabled.");
+        return;
+      }
+      depositDraft.type = nextType;
       localStorage.setItem("AITradeX_DEPOSIT_DRAFT", JSON.stringify(depositDraft));
       render();
     },
     nextDepositStep() {
-      const minDeposit = Number(platformSettings().minDeposit || 500);
+      const settings = platformSettings();
+      const minDeposit = Number(settings.minDeposit || 500);
+      const depositType = depositDraft.type === "BANK" ? "BANK" : "UPI";
+      if ((depositType === "UPI" && settings.depositUpiEnabled === false) || (depositType === "BANK" && settings.depositBankEnabled === false)) {
+        App.toast("Selected deposit method is currently disabled.");
+        return;
+      }
 
       if (depositStep === 1) {
         const amount = Number(document.getElementById("depositAmountInput")?.value || 0);
@@ -3663,9 +3698,15 @@
       render();
     },
     submitDepositRequest() {
+      const settings = platformSettings();
       const amount = Number(depositDraft.amount || 0);
-      const minDeposit = Number(platformSettings().minDeposit || 500);
+      const minDeposit = Number(settings.minDeposit || 500);
+      const depositType = depositDraft.type === "BANK" ? "BANK" : "UPI";
       const utr = normalizeUtr(depositDraft.utr);
+      if ((depositType === "UPI" && settings.depositUpiEnabled === false) || (depositType === "BANK" && settings.depositBankEnabled === false)) {
+        App.toast("Selected deposit method is currently disabled.");
+        return;
+      }
       if (!amount || amount < minDeposit || !/^\d{12}$/.test(utr)) {
         App.toast("Complete deposit details with exactly 12 digit UTR.");
         return;
@@ -3689,7 +3730,7 @@
       saveDepositRequests(requests);
       App.addNotification?.({ audience: "ADMIN", title: "New deposit request", message: `${displayName()} requested ${App.money(amount)} deposit. UTR ${utr}.`, type: "DEPOSIT", linkPage: "deposits", referenceId: requestId });
 
-      depositDraft = { amount: "", type: "UPI", utr: "" };
+      depositDraft = { amount: "", type: settings.depositUpiEnabled !== false ? "UPI" : "BANK", utr: "" };
       depositStep = 1;
       localStorage.setItem("AITradeX_DEPOSIT_DRAFT", JSON.stringify(depositDraft));
       localStorage.setItem("AITradeX_DEPOSIT_STEP", "1");

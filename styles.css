@@ -7390,3 +7390,34 @@ textarea::placeholder{
   .usdt-rate-chip{font-size:11px;padding:7px 10px;}
   .usdt-rate-chip i{width:18px;height:18px;}
 }
+
+/* Phase 4.92 deposit method enable/disable polish */
+.method-toggle-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.method-toggle-grid label {
+  background: rgba(15, 23, 42, 0.52);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  border-radius: 18px;
+  padding: 12px;
+}
+.method-toggle-grid select {
+  margin-top: 8px;
+}
+.method-toggle-grid small {
+  display: block;
+  margin-top: 7px;
+  color: rgba(203, 213, 225, 0.72);
+  font-size: 11px;
+}
+.deposit-disabled-box {
+  border-color: rgba(245, 158, 11, 0.32);
+  background: rgba(245, 158, 11, 0.09);
+}
+.text-profit { color: #22c55e !important; }
+.text-loss { color: #ef4444 !important; }
+@media (max-width: 720px) {
+  .method-toggle-grid { grid-template-columns: 1fr; }
+}

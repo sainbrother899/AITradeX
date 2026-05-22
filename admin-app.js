@@ -355,6 +355,8 @@
       platformName: "AITradeX",
       depositUpiId: "aitradex@upi",
       depositQrImage: "",
+      depositUpiEnabled: true,
+      depositBankEnabled: true,
       depositBankName: "AITradeX Bank",
       depositAccountName: "AITradeX Private Wallet",
       depositAccountNumber: "123456789012",
@@ -2272,8 +2274,26 @@
 
         <div class="admin-grid-two payment-settings-grid">
           <form class="payment-form-card form-grid" onsubmit="AITradeXAdmin.savePaymentSettings(event)">
-            <p>UPI / QR DETAILS</p>
+            <p>DEPOSIT METHOD ACCESS</p>
             <h2>Deposit Payment Setup</h2>
+            <div class="method-toggle-grid">
+              <label>UPI / QR Method
+                <select id="settingUpiEnabled">
+                  <option value="true" ${settings.depositUpiEnabled !== false ? "selected" : ""}>Enabled</option>
+                  <option value="false" ${settings.depositUpiEnabled === false ? "selected" : ""}>Disabled</option>
+                </select>
+                <small>Disable this if UPI/QR is unavailable.</small>
+              </label>
+              <label>Bank Transfer Method
+                <select id="settingBankEnabled">
+                  <option value="true" ${settings.depositBankEnabled !== false ? "selected" : ""}>Enabled</option>
+                  <option value="false" ${settings.depositBankEnabled === false ? "selected" : ""}>Disabled</option>
+                </select>
+                <small>Disable this if bank transfer is unavailable.</small>
+              </label>
+            </div>
+
+            <p>UPI / QR DETAILS</p>
             <label>UPI ID
               <input id="settingUpiId" value="${esc(settings.depositUpiId)}" placeholder="aitradex@upi" required/>
             </label>
@@ -2332,6 +2352,8 @@
               <div class="copy-row"><b>IFSC Code</b><span>${esc(settings.depositIfsc)}</span><button type="button">Copy</button></div>
             </div>
             <div class="review-grid compact-review">
+              <article><span>UPI / QR</span><b class="${settings.depositUpiEnabled !== false ? "text-profit" : "text-loss"}">${settings.depositUpiEnabled !== false ? "Enabled" : "Disabled"}</b></article>
+              <article><span>Bank Transfer</span><b class="${settings.depositBankEnabled !== false ? "text-profit" : "text-loss"}">${settings.depositBankEnabled !== false ? "Enabled" : "Disabled"}</b></article>
               <article><span>Minimum Deposit</span><b>${App.money(settings.minDeposit)}</b></article>
               <article><span>Minimum Withdrawal</span><b>${App.money(settings.minWithdrawal)}</b></article>
               <article><span>USDT-INR Rate</span><b>₹${Number(settings.usdtInrRate || 95).toLocaleString("en-IN")}</b></article>
@@ -2790,6 +2812,8 @@
           ...settings,
           depositUpiId: inputValue("settingUpiId") || "aitradex@upi",
           depositQrImage: qrImage ?? (settings.depositQrImage || ""),
+          depositUpiEnabled: document.getElementById("settingUpiEnabled")?.value !== "false",
+          depositBankEnabled: document.getElementById("settingBankEnabled")?.value !== "false",
           depositBankName: inputValue("settingBankName") || "AITradeX Bank",
           depositAccountName: inputValue("settingAccountName") || "AITradeX Private Wallet",
           depositAccountNumber: inputValue("settingAccountNumber") || "123456789012",
