@@ -9,7 +9,7 @@
 -- Safe to run multiple times. It does not delete old data.
 
 create table if not exists public.users (id text primary key,name text,email text unique,mobile text,role text default 'user',status text default 'ACTIVE',referral_code text,referred_by text,created_at timestamptz default now());
-create table if not exists public.wallet_ledger (id text primary key,user_id text not null,account_type text default 'REAL',type text not null,amount numeric not null,reference_id text not null,note text,balance_after numeric,created_at timestamptz default now(),unique(type,reference_id));
+create table if not exists public.wallet_ledger (id text primary key,user_id text not null,account_type text default 'REAL',type text not null,amount numeric not null,reference_id text not null,note text,balance_after numeric,created_at timestamptz default now(),unique(user_id,account_type,type,reference_id));
 create table if not exists public.kyc_requests (id text primary key,user_id text,user_email text,full_name text,mobile text,id_number text,address text,status text default 'PENDING',reviewed_at timestamptz,created_at timestamptz default now());
 create table if not exists public.payment_methods (id text primary key,user_id text,user_email text,type text,holder_name text,upi_id text,bank_name text,account_number text,ifsc text,status text default 'PENDING',rejection_reason text,created_at timestamptz default now());
 create table if not exists public.deposit_requests (id text primary key,user_id text,user_email text,amount numeric,method text,utr text unique,status text default 'PENDING',balance_applied boolean default false,first_deposit_referral_checked boolean default false,created_at timestamptz default now());
@@ -272,3 +272,24 @@ values ('main', jsonb_build_object('databaseRuntimeVersion','5.23','mode','final
 on conflict (id) do update
 set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.23','mode','final-clean-audit-fix','passwordStorage','salted-sha256-runtime'),
     updated_at = now();
+
+
+-- Phase 5.25: default control admin + safer ledger uniqueness
+alter table public.wallet_ledger drop constraint if exists wallet_ledger_type_reference_id_key;
+alter table public.wallet_ledger drop constraint if exists wallet_ledger_user_id_account_type_type_reference_id_key;
+alter table public.wallet_ledger add constraint wallet_ledger_user_id_account_type_type_reference_id_key unique(user_id, account_type, type, reference_id);
+
+insert into public.users (id, name, email, mobile, role, status, referral_code, password_hash, ai_trade_on, ai_trade_percent, created_at, updated_at)
+values ('control_root', 'AITradeX Control', 'control@aitradex.com', '', 'admin', 'ACTIVE', 'CONTROL', 'sha256$control_root$4777731d2f274363db7e3be6b9f78af08f0210a102cf2b137445d4daf9b13c02', false, 0, now(), now())
+on conflict (id) do update set
+  name=excluded.name,
+  email=excluded.email,
+  role=excluded.role,
+  status=excluded.status,
+  referral_code=excluded.referral_code,
+  password_hash=coalesce(public.users.password_hash, excluded.password_hash),
+  updated_at=now();
+
+
+-- Phase 5.25 security note:
+-- This schema is suitable for controlled testing. For real public money/users, move admin/funds/trading actions to a private backend/service-role API and tighten RLS policies per role.

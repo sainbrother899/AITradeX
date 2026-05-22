@@ -562,7 +562,7 @@ App.referralByReferredUser=userId=>{
   return App.state.referrals.find(r=>r.referredUserId===userId)||null;
 };
 App.referralBonusAlreadyCredited=(referral,type)=>!!(referral&&referral.bonuses&&referral.bonuses[type]&&referral.bonuses[type].credited);
-App.creditReferralBonus=({referredUserId,eventType,amount,referenceId,sourceLabel})=>{
+App.creditReferralBonusAsync=async ({referredUserId,eventType,amount,referenceId,sourceLabel})=>{
   const settings=App.referralSettings();
   const referral=App.referralByReferredUser(referredUserId);
   const baseAmount=Number(amount||0);
@@ -577,15 +577,20 @@ App.creditReferralBonus=({referredUserId,eventType,amount,referenceId,sourceLabe
   if(!bonus||bonus<=0)return {credited:false,reason:"Bonus percent is zero"};
   const ledgerRef=`ref_${key}_${referral.id}_${referenceId||Date.now()}`;
   try{
-    const added=App.addLedger({userId:referral.referrerUserId,accountType:"REAL",type:key==="subscription"?"REFERRAL_SUBSCRIPTION_BONUS":"REFERRAL_DEPOSIT_BONUS",amount:bonus,referenceId:ledgerRef,note:`Referral ${key} bonus · ${percent}% of ${money(baseAmount)}${sourceLabel?` · ${sourceLabel}`:""}`});
+    const added=App.addLedgerAsync?await App.addLedgerAsync({userId:referral.referrerUserId,accountType:"REAL",type:key==="subscription"?"REFERRAL_SUBSCRIPTION_BONUS":"REFERRAL_DEPOSIT_BONUS",amount:bonus,referenceId:ledgerRef,note:`Referral ${key} bonus · ${percent}% of ${money(baseAmount)}${sourceLabel?` · ${sourceLabel}`:""}`}):App.addLedger({userId:referral.referrerUserId,accountType:"REAL",type:key==="subscription"?"REFERRAL_SUBSCRIPTION_BONUS":"REFERRAL_DEPOSIT_BONUS",amount:bonus,referenceId:ledgerRef,note:`Referral ${key} bonus · ${percent}% of ${money(baseAmount)}${sourceLabel?` · ${sourceLabel}`:""}`});
     if(!referral.bonuses)referral.bonuses={};
     referral.bonuses[key]={credited:true,amount:bonus,percent,baseAmount,referenceId,ledgerReferenceId:ledgerRef,creditedAt:new Date().toISOString(),eventType:key.toUpperCase()};
     referral.status=referral.bonuses.deposit?.credited&&referral.bonuses.subscription?.credited?"BONUSES_CREDITED":key==="deposit"?"DEPOSIT_BONUS_CREDITED":"SUBSCRIPTION_BONUS_CREDITED";
     referral.updatedAt=new Date().toISOString();
-    if(DB_ONLY&&window.AITradeXDB?.writeReferral){window.AITradeXDB.writeReferral(referral).catch(err=>console.warn("referral write failed",err));}
+    if(DB_ONLY&&window.AITradeXDB?.writeReferral) await window.AITradeXDB.writeReferral(referral);
     App.saveState();
     return {credited:!!added,amount:bonus,percent,referral};
   }catch(err){return {credited:false,reason:err.message||"Unable to credit referral bonus"};}
+};
+App.creditReferralBonus=(payload)=>{
+  const task=App.creditReferralBonusAsync(payload);
+  task.catch(err=>console.warn("referral bonus failed",err));
+  return {credited:false,pending:true};
 };
 App.referralStats=userId=>{
   const rows=(App.state.referrals||[]).filter(r=>r.referrerUserId===userId);

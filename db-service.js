@@ -174,7 +174,7 @@
   async function writeAdminAction(row){ assertReady(); const clean=rowAdminLog(row); const {error}=await client.from("admin_action_logs").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
   async function deletePaymentMethod(id){ assertReady(); const cleanId=text(id); if(!cleanId) throw new Error("Payment method ID missing."); const {error}=await client.from("payment_methods").delete().eq("id",cleanId); if(error) throw error; return {ok:true,id:cleanId}; }
   async function deleteNotification(id){ assertReady(); const cleanId=text(id); if(!cleanId) throw new Error("Notification ID missing."); const {error}=await client.from("notifications").delete().eq("id",cleanId); if(error) throw error; return {ok:true,id:cleanId}; }
-  async function writeSettings(settings){ assertReady(); const row={id:"main",settings:{...clone(settings||App.state.settings||{}),databaseRuntimeVersion:"5.23",updatedBy:"admin"},updated_at:new Date().toISOString()}; const {error}=await client.from("app_settings").upsert(row,{onConflict:"id"}); if(error) throw error; return row; }
+  async function writeSettings(settings){ assertReady(); const row={id:"main",settings:{...clone(settings||App.state.settings||{}),databaseRuntimeVersion:"5.25",updatedBy:"admin"},updated_at:new Date().toISOString()}; const {error}=await client.from("app_settings").upsert(row,{onConflict:"id"}); if(error) throw error; return row; }
   function fire(promise,label){ if(!ready) return; Promise.resolve(promise).catch(err=>{ console.warn(`[AITradeX DB] ${label||"write"} failed:`, err?.message||err); status(`${label||"DB write"} failed: ${err?.message||err}`, false); }); }
 
   async function uploadUserFile({bucket,folder="uploads",label="file",file,userId}){

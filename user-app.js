@@ -313,8 +313,9 @@
     return Math.max(0, Number(position.positionSize || 0) * Number(position.targetPercent || 0) / 100);
   }
 
-  function settleAiLivePosition(position, reason = "TARGET_HIT") {
+  async function settleAiLivePosition(position, reason = "TARGET_HIT") {
     if (!position || String(position.status || "").toUpperCase() !== "OPEN") return false;
+    const original = { ...position };
     const current = positionCurrentPrice(position);
     let pnl = aiPositionPnl(position);
     const balanceBefore = App.realBalance(position.userId);
@@ -336,37 +337,51 @@
     position.settlementAmount = Number(settlementAmount.toFixed(2));
     position.balanceAfter = Number((balanceBefore + position.settlementAmount).toFixed(2));
     position.source = "AI_LIVE_AUTO_CLOSE";
-    if (position.settlementAmount !== 0) {
-      App.addLedger({
-        userId: position.userId,
-        accountType: "REAL",
-        type: position.marginLocked ? "AI_LIVE_SETTLEMENT" : (position.pnl >= 0 ? "AI_LIVE_PROFIT" : "AI_LIVE_LOSS"),
-        amount: position.settlementAmount,
-        referenceId: position.id,
-        note: position.marginLocked
-          ? `${position.pair} AI live ${position.side} closed · AI amount ${App.money(margin)} · P/L ${position.pnl >= 0 ? "+" : ""}${App.money(position.pnl)}`
-          : `${position.pair} AI live ${position.side} closed · ${reason}`
-      });
-    } else {
+    let settlementAdded = false;
+    try {
+      if (position.settlementAmount !== 0) {
+        const row = App.addLedgerAsync ? await App.addLedgerAsync({
+          userId: position.userId,
+          accountType: "REAL",
+          type: position.marginLocked ? "AI_LIVE_SETTLEMENT" : (position.pnl >= 0 ? "AI_LIVE_PROFIT" : "AI_LIVE_LOSS"),
+          amount: position.settlementAmount,
+          referenceId: position.id,
+          note: position.marginLocked ? `${position.pair} AI live ${position.side} closed · AI amount ${App.money(margin)} · P/L ${position.pnl >= 0 ? "+" : ""}${App.money(position.pnl)}` : `${position.pair} AI live ${position.side} closed · ${reason}`
+        }) : App.addLedger({
+          userId: position.userId,
+          accountType: "REAL",
+          type: position.marginLocked ? "AI_LIVE_SETTLEMENT" : (position.pnl >= 0 ? "AI_LIVE_PROFIT" : "AI_LIVE_LOSS"),
+          amount: position.settlementAmount,
+          referenceId: position.id,
+          note: position.marginLocked ? `${position.pair} AI live ${position.side} closed · AI amount ${App.money(margin)} · P/L ${position.pnl >= 0 ? "+" : ""}${App.money(position.pnl)}` : `${position.pair} AI live ${position.side} closed · ${reason}`
+        });
+        settlementAdded = !!row;
+      }
+      if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) await window.AITradeXDB.writeTrade(position);
       App.saveState();
+      return true;
+    } catch (err) {
+      if (settlementAdded && position.settlementAmount) {
+        try { await (App.addLedgerAsync ? App.addLedgerAsync({ userId: position.userId, accountType: "REAL", type: "AI_LIVE_SETTLEMENT_ROLLBACK", amount: -position.settlementAmount, referenceId: `${position.id}_close_rollback`, note: "Rollback: AI live close save failed" }) : App.addLedger({ userId: position.userId, accountType: "REAL", type: "AI_LIVE_SETTLEMENT_ROLLBACK", amount: -position.settlementAmount, referenceId: `${position.id}_close_rollback`, note: "Rollback: AI live close save failed" })); } catch {}
+      }
+      Object.assign(position, original);
+      throw err;
     }
-    try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) window.AITradeXDB.writeTrade(position).catch(err=>console.warn("AI position close write failed", err)); } catch {}
-    return true;
   }
 
-  function autoCloseAiLivePositions() {
+  async function autoCloseAiLivePositions() {
     const positions = aiOpenPositions();
     if (!positions.length) return 0;
     let closed = 0;
-    positions.forEach(position => {
+    for (const position of positions) {
       const pnl = aiPositionPnl(position);
       const target = aiPositionTargetAmount(position);
       const targetType = String(position.targetType || "PROFIT").toUpperCase();
       const hit = target > 0 && (targetType === "LOSS" ? pnl <= -target : pnl >= target);
       if (hit) {
-        if (settleAiLivePosition(position, "TARGET_HIT")) closed += 1;
+        try { if (await settleAiLivePosition(position, "TARGET_HIT")) closed += 1; } catch (err) { console.warn("AI live auto close failed", err); }
       }
-    });
+    }
     if (closed) {
       App.toast(`${closed} AI live ${closed === 1 ? "position" : "positions"} closed automatically.`);
       setTimeout(() => render(), 0);
@@ -414,9 +429,10 @@
     return position.accountType === "DEMO" ? App.demoBalance(u.id) : App.realBalance(u.id);
   }
 
-  function settleManualPosition(position, reason = "USER_CLOSE") {
+  async function settleManualPosition(position, reason = "USER_CLOSE") {
     const u = user();
     if (!u || !position || position.status !== "OPEN") return false;
+    const original = { ...position };
     const current = positionCurrentPrice(position);
     let pnl = manualPositionPnl(position);
     const margin = Math.max(0, Number(position.marginAmount || 0));
@@ -434,36 +450,50 @@
     position.settlementAmount = settlementAmount;
     position.closeReason = reason;
     position.status = "CLOSED";
-    if (settlementAmount !== 0) {
-      App.addLedger({
-        userId: u.id,
-        accountType: position.accountType || accountMode,
-        type: position.marginLocked ? "MANUAL_TRADE_SETTLEMENT" : (pnl >= 0 ? "MANUAL_TRADE_PROFIT" : "MANUAL_TRADE_LOSS"),
-        amount: settlementAmount,
-        referenceId: position.id,
-        note: position.marginLocked
-          ? `${position.pair} manual ${position.side} closed · margin ${App.money(margin)} · P/L ${pnl >= 0 ? "+" : ""}${App.money(pnl)}`
-          : `${position.pair} manual ${position.side} closed`
-      });
-    } else {
+    let settlementAdded = false;
+    try {
+      if (settlementAmount !== 0) {
+        const row = App.addLedgerAsync ? await App.addLedgerAsync({
+          userId: u.id,
+          accountType: position.accountType || accountMode,
+          type: position.marginLocked ? "MANUAL_TRADE_SETTLEMENT" : (pnl >= 0 ? "MANUAL_TRADE_PROFIT" : "MANUAL_TRADE_LOSS"),
+          amount: settlementAmount,
+          referenceId: position.id,
+          note: position.marginLocked ? `${position.pair} manual ${position.side} closed · margin ${App.money(margin)} · P/L ${pnl >= 0 ? "+" : ""}${App.money(pnl)}` : `${position.pair} manual ${position.side} closed`
+        }) : App.addLedger({
+          userId: u.id,
+          accountType: position.accountType || accountMode,
+          type: position.marginLocked ? "MANUAL_TRADE_SETTLEMENT" : (pnl >= 0 ? "MANUAL_TRADE_PROFIT" : "MANUAL_TRADE_LOSS"),
+          amount: settlementAmount,
+          referenceId: position.id,
+          note: position.marginLocked ? `${position.pair} manual ${position.side} closed · margin ${App.money(margin)} · P/L ${pnl >= 0 ? "+" : ""}${App.money(pnl)}` : `${position.pair} manual ${position.side} closed`
+        });
+        settlementAdded = !!row;
+      }
+      if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) await window.AITradeXDB.writeTrade(position);
       App.saveState();
+      return true;
+    } catch (err) {
+      if (settlementAdded && settlementAmount) {
+        try { await (App.addLedgerAsync ? App.addLedgerAsync({ userId: u.id, accountType: position.accountType || accountMode, type: "MANUAL_TRADE_SETTLEMENT_ROLLBACK", amount: -settlementAmount, referenceId: `${position.id}_close_rollback`, note: "Rollback: manual close save failed" }) : App.addLedger({ userId: u.id, accountType: position.accountType || accountMode, type: "MANUAL_TRADE_SETTLEMENT_ROLLBACK", amount: -settlementAmount, referenceId: `${position.id}_close_rollback`, note: "Rollback: manual close save failed" })); } catch {}
+      }
+      Object.assign(position, original);
+      throw err;
     }
-    try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) window.AITradeXDB.writeTrade(position).catch(err=>console.warn("manual position close write failed", err)); } catch {}
-    return true;
   }
 
-  function autoCloseRiskPositions() {
+  async function autoCloseRiskPositions() {
     if (manualRiskCloseLock) return 0;
     manualRiskCloseLock = true;
     let closed = 0;
     try {
-      manualOpenPositions().forEach(position => {
+      for (const position of manualOpenPositions()) {
         const rawPnl = manualPositionRawPnl(position);
         const maxLoss = manualPositionMaxLoss(position);
         if (rawPnl < 0 && maxLoss > 0 && Math.abs(rawPnl) >= maxLoss) {
-          if (settleManualPosition(position, "AUTO_RISK_CLOSE")) closed += 1;
+          try { if (await settleManualPosition(position, "AUTO_RISK_CLOSE")) closed += 1; } catch (err) { console.warn("manual auto close failed", err); }
         }
-      });
+      }
     } finally {
       manualRiskCloseLock = false;
     }
@@ -474,7 +504,7 @@
     return closed;
   }
 
-  function openPositionFromPendingOrder(order, currentPrice, currentDisplay) {
+  async function openPositionFromPendingOrder(order, currentPrice, currentDisplay) {
     if (!order || !["PENDING", "LIMIT_PENDING"].includes(String(order.status || "").toUpperCase())) return false;
     const price = Number(currentPrice || 0);
     if (!Number.isFinite(price) || price <= 0) return false;
@@ -488,25 +518,25 @@
     order.orderTriggered = true;
     order.pnl = 0;
     if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) {
-      window.AITradeXDB.writeTrade(order).catch(err => console.warn("limit order trigger DB sync failed", err));
+      await window.AITradeXDB.writeTrade(order);
     }
     return true;
   }
 
-  function checkPendingLimitOrders() {
+  async function checkPendingLimitOrders() {
     const pending = pendingManualOrders();
     if (!pending.length) return 0;
     let triggered = 0;
-    pending.forEach(order => {
+    for (const order of pending) {
       const current = positionCurrentPrice({ pair: order.pair, entryPrice: order.limitPrice });
       const limit = Number(order.limitPrice || 0);
-      if (!current || !limit) return;
+      if (!current || !limit) continue;
       const side = String(order.side || "BUY").toUpperCase() === "SELL" ? "SELL" : "BUY";
       const shouldTrigger = side === "BUY" ? current <= limit : current >= limit;
-      if (!shouldTrigger) return;
+      if (!shouldTrigger) continue;
       const display = positionCurrentDisplay({ pair: order.pair, entryPrice: current });
-      if (openPositionFromPendingOrder(order, current, display)) triggered += 1;
-    });
+      try { if (await openPositionFromPendingOrder(order, current, display)) triggered += 1; } catch (err) { console.warn("limit order trigger DB sync failed", err); }
+    }
     if (triggered) {
       App.saveState();
       App.toast(`${triggered} limit ${triggered === 1 ? "order" : "orders"} triggered.`);
@@ -604,8 +634,8 @@
   }
 
   function updateManualLiveViews() {
-    if (checkPendingLimitOrders()) return;
-    if (autoCloseRiskPositions()) return;
+    Promise.resolve(checkPendingLimitOrders()).then(triggered => { if (triggered) render(); });
+    Promise.resolve(autoCloseRiskPositions()).then(closed => { if (closed) render(); });
     const positions = manualOpenPositions();
     const pnl = positions.reduce((sum, position) => sum + manualPositionPnl(position), 0);
     const label = pnl >= 0 ? "Profit" : "Loss";
@@ -677,7 +707,7 @@
   function updateManualLiveBar() {
     updateManualLiveViews();
     updateAiLiveViews();
-    autoCloseAiLivePositions();
+    Promise.resolve(autoCloseAiLivePositions()).then(closed => { if (closed) render(); });
   }
 
   function updateTradeAmountPreviewDom() {
@@ -4424,7 +4454,7 @@
     showAiManagedNotice() {
       App.toast("AI auto trades are managed by AI and cannot be closed manually.");
     },
-    closeManualLivePositions() {
+    async closeManualLivePositions() {
       const positions = manualOpenPositions();
       if (!positions.length) {
         App.toast("No manual position is active.");
@@ -4432,7 +4462,7 @@
       }
       if (positions.length === 1) {
         try {
-          settleManualPosition(positions[0], "USER_CLOSE");
+          await settleManualPosition(positions[0], "USER_CLOSE");
           App.toast("Manual position closed.");
           render();
         } catch (error) {
@@ -4447,7 +4477,7 @@
       manualCloseSelectorOpen = false;
       render();
     },
-    closeManualPositionById(positionId) {
+    async closeManualPositionById(positionId) {
       const target = manualOpenPositions().find(position => position.id === positionId);
       if (!target) {
         App.toast("Position not found.");
@@ -4456,7 +4486,7 @@
         return;
       }
       try {
-        settleManualPosition(target, "USER_CLOSE");
+        await settleManualPosition(target, "USER_CLOSE");
         manualCloseSelectorOpen = false;
         App.toast("Manual position closed.");
         render();
@@ -4464,7 +4494,7 @@
         App.toast(error.message || "Position close failed.");
       }
     },
-    cancelPendingOrder(orderId) {
+    async cancelPendingOrder(orderId) {
       const target = pendingManualOrders().find(order => order.id === orderId);
       if (!target) {
         App.toast("Pending order not found.");
@@ -4472,21 +4502,40 @@
         return;
       }
       const margin = Math.max(0, Number(target.marginAmount || 0));
-      if (target.marginLocked && margin > 0) {
-        App.addLedger({
-          userId: user().id,
-          accountType: target.accountType || accountMode,
-          type: "MANUAL_LIMIT_MARGIN_RELEASE",
-          amount: margin,
-          referenceId: target.id,
-          note: `${target.pair} manual ${target.side} limit order cancelled · margin released`
-        });
-        target.marginReleased = true;
+      const previous = { ...target };
+      let releaseAdded = false;
+      try {
+        if (target.marginLocked && margin > 0) {
+          const row = App.addLedgerAsync ? await App.addLedgerAsync({
+            userId: user().id,
+            accountType: target.accountType || accountMode,
+            type: "MANUAL_LIMIT_MARGIN_RELEASE",
+            amount: margin,
+            referenceId: target.id,
+            note: `${target.pair} manual ${target.side} limit order cancelled · margin released`
+          }) : App.addLedger({
+            userId: user().id,
+            accountType: target.accountType || accountMode,
+            type: "MANUAL_LIMIT_MARGIN_RELEASE",
+            amount: margin,
+            referenceId: target.id,
+            note: `${target.pair} manual ${target.side} limit order cancelled · margin released`
+          });
+          releaseAdded = !!row;
+          target.marginReleased = true;
+        }
+        target.status = "CANCELLED";
+        target.cancelledAt = new Date().toISOString();
+        if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) await window.AITradeXDB.writeTrade(target);
+        App.saveState();
+        App.toast("Pending limit order cancelled.");
+      } catch (err) {
+        if (releaseAdded && margin > 0) {
+          try { await (App.addLedgerAsync ? App.addLedgerAsync({ userId: user().id, accountType: target.accountType || accountMode, type: "MANUAL_LIMIT_CANCEL_ROLLBACK", amount: -margin, referenceId: `${target.id}_cancel_rollback`, note: "Rollback: limit cancel save failed" }) : App.addLedger({ userId: user().id, accountType: target.accountType || accountMode, type: "MANUAL_LIMIT_CANCEL_ROLLBACK", amount: -margin, referenceId: `${target.id}_cancel_rollback`, note: "Rollback: limit cancel save failed" })); } catch {}
+        }
+        Object.assign(target, previous);
+        App.toast(err.message || "Unable to cancel pending order.");
       }
-      target.status = "CANCELLED";
-      target.cancelledAt = new Date().toISOString();
-      App.saveState();
-      App.toast("Pending limit order cancelled.");
       render();
     },
     async buyPlan(planId) {
@@ -4569,7 +4618,8 @@
           }
         }
         App.saveState();
-        App.creditReferralBonus?.({ referredUserId: u.id, eventType: "SUBSCRIPTION", amount: price, referenceId: subId, sourceLabel: plan.name });
+        const referralResult = await (App.creditReferralBonusAsync ? App.creditReferralBonusAsync({ referredUserId: u.id, eventType: "SUBSCRIPTION", amount: price, referenceId: subId, sourceLabel: plan.name }) : Promise.resolve(App.creditReferralBonus?.({ referredUserId: u.id, eventType: "SUBSCRIPTION", amount: price, referenceId: subId, sourceLabel: plan.name })));
+        if (referralResult?.credited) console.info("Referral subscription bonus credited", referralResult);
         App.toast(`${plan.name} activated successfully.`);
         render();
       } catch (error) {

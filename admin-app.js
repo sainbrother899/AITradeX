@@ -3527,6 +3527,33 @@
       let totalMargin = 0;
       let totalExposure = 0;
       let totalPnl = 0;
+      const instantBatchStartedAt = new Date().toISOString();
+      const instantBatchDraft = {
+        id: batchId,
+        batchType: "INSTANT",
+        market,
+        pair,
+        side,
+        entryPrice: Number(priceRow.price || 0),
+        entryPriceDisplay: priceRow.display || String(priceRow.price || ""),
+        priceSource: priceRow.source || "Live API",
+        priceSourceType: priceRow.sourceType || "LIVE_API",
+        priceLockedAt: priceRow.fetchedAt || instantBatchStartedAt,
+        leverage,
+        resultType,
+        resultPercent,
+        minBalance,
+        note,
+        status: "PROCESSING",
+        appliedCount: 0,
+        skippedCount: 0,
+        totalMargin: 0,
+        totalExposure: 0,
+        totalPnl: 0,
+        createdAt: instantBatchStartedAt
+      };
+      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeAiBatch) await window.AITradeXDB.writeAiBatch(instantBatchDraft); }
+      catch (err) { App.toast(`AI batch init save failed: ${err.message || err}`); return; }
 
       for (const target of report.eligible) {
         const balanceBefore = App.realBalance(target.id);
@@ -3534,7 +3561,7 @@
         if (!margin || margin < Number(settings.minAiTrade || 100)) {
           report.skipped.push({ userId: target.id, reason: "No AI trade pool available" });
           report.reasons.noPool += 1;
-          return;
+          continue;
         }
 
         const exposure = margin * leverage;
@@ -3632,7 +3659,9 @@
         skippedCount: report.skipped.length,
         skipReasons: report.reasons,
         totalPnl: Number(totalPnl.toFixed(2)),
-        createdAt: new Date().toISOString()
+        status: "COMPLETED",
+        createdAt: instantBatchStartedAt,
+        completedAt: new Date().toISOString()
       };
       try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeAiBatch) await window.AITradeXDB.writeAiBatch(instantBatch); }
       catch (err) { App.toast(`AI batch save failed: ${err.message || err}`); return; }
@@ -3694,13 +3723,37 @@
       let totalMargin = 0;
       let totalExposure = 0;
       const openedAt = new Date().toISOString();
+      const liveBatchDraft = {
+        id: batchId,
+        batchType: "LIVE",
+        market,
+        pair,
+        side,
+        entryPrice,
+        entryPriceDisplay: priceRow?.display || String(entryPrice),
+        priceSource: priceRow?.source || "Live Market",
+        leverage,
+        targetType,
+        targetPercent,
+        minBalance,
+        note,
+        appliedCount: 0,
+        skippedCount: 0,
+        totalMargin: 0,
+        totalExposure: 0,
+        status: "OPENING",
+        createdAt: openedAt
+      };
+      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeAiBatch) await window.AITradeXDB.writeAiBatch(liveBatchDraft); }
+      catch (err) { App.toast(`AI live batch init save failed: ${err.message || err}`); return; }
+
       for (const target of report.eligible) {
         const balanceBefore = App.realBalance(target.id);
         const margin = Math.min(balanceBefore, App.aiAllowedAmount(target), Number(settings.maxAiTrade || 250000));
         if (!margin || margin < Number(settings.minAiTrade || 100)) {
           report.skipped.push({ userId: target.id, reason: "No AI trade pool available" });
           report.reasons.noPool += 1;
-          return;
+          continue;
         }
         const exposure = margin * leverage;
         const positionId = App.uid("ai_live");
@@ -3834,45 +3887,20 @@
       const requests = depositRequestsFor(target);
       const request = requests.find(r => r.id === requestId);
       if (!request) return;
-      if (String(request.status || "").toUpperCase() !== "PENDING") {
-        App.toast("Deposit action already completed.");
-        render();
-        return;
-      }
+      if (String(request.status || "").toUpperCase() !== "PENDING") { App.toast("Deposit action already completed."); render(); return; }
       const amount = Number(request.amount || 0);
-      if (!amount || amount <= 0) {
-        App.toast("Invalid deposit amount.");
-        render();
-        return;
-      }
+      if (!amount || amount <= 0) { App.toast("Invalid deposit amount."); render(); return; }
       const duplicate = depositUtrDuplicateInfo(request);
-      if (duplicate?.approved) {
-        App.toast("Duplicate approved UTR found. Approval blocked for safety.");
-        render();
-        return;
-      }
+      if (duplicate?.approved) { App.toast("Duplicate approved UTR found. Approval blocked for safety."); render(); return; }
       const ledgerExists = App.hasLedgerEntry?.({ accountType: "REAL", type: "DEPOSIT", referenceId: request.id, userId: target.id });
       if (!ledgerExists && !confirm(`Approve ${App.money(amount)} deposit for ${displayNameFor(target)}? Wallet will be credited once.`)) return;
       markButton(button, "Approving...");
-
+      const previous = { ...request };
+      let ledgerApplied = false;
       try {
-        let ledgerAdded = true;
         if (!ledgerExists) {
-          ledgerAdded = App.isDatabaseMode?.() && App.addLedgerAsync ? await App.addLedgerAsync({
-            userId: target.id,
-            accountType: "REAL",
-            type: "DEPOSIT",
-            amount,
-            referenceId: request.id,
-            note: `DEPOSIT_APPROVED · UTR ${request.utr || "-"}`
-          }) : App.addLedger({
-            userId: target.id,
-            accountType: "REAL",
-            type: "DEPOSIT",
-            amount,
-            referenceId: request.id,
-            note: `DEPOSIT_APPROVED · UTR ${request.utr || "-"}`
-          });
+          const row = App.isDatabaseMode?.() && App.addLedgerAsync ? await App.addLedgerAsync({ userId: target.id, accountType: "REAL", type: "DEPOSIT", amount, referenceId: request.id, note: `DEPOSIT_APPROVED · UTR ${request.utr || "-"}` }) : App.addLedger({ userId: target.id, accountType: "REAL", type: "DEPOSIT", amount, referenceId: request.id, note: `DEPOSIT_APPROVED · UTR ${request.utr || "-"}` });
+          ledgerApplied = !!row;
         }
         request.status = "APPROVED";
         request.approvedAt = new Date().toISOString();
@@ -3883,11 +3911,16 @@
         await saveDepositRequests(target, requests);
         await App.addNotificationAsync?.({ audience: "USER", userId: target.id, title: "Deposit approved", message: `${App.money(amount)} deposit approved and credited to your wallet.`, type: "DEPOSIT", linkPage: "wallet", referenceId: `dep_ok_${request.id}` });
         await logAdminActionAsync("DEPOSIT_APPROVE", "DEPOSIT", request.id, { userId: target.id, user: displayNameFor(target), amount, utr: request.utr || "", ledgerApplied: !ledgerExists });
-        if (ledgerAdded && !ledgerExists) {
-          App.creditReferralBonus?.({ referredUserId: target.id, eventType: "DEPOSIT", amount, referenceId: request.id, sourceLabel: `Deposit UTR ${request.utr || "-"}` });
+        if (ledgerApplied && !ledgerExists) {
+          const referralResult = await (App.creditReferralBonusAsync ? App.creditReferralBonusAsync({ referredUserId: target.id, eventType: "DEPOSIT", amount, referenceId: request.id, sourceLabel: `Deposit UTR ${request.utr || "-"}` }) : Promise.resolve(App.creditReferralBonus?.({ referredUserId: target.id, eventType: "DEPOSIT", amount, referenceId: request.id, sourceLabel: `Deposit UTR ${request.utr || "-"}` })));
+          if (referralResult?.credited) await logAdminActionAsync("REFERRAL_DEPOSIT_BONUS", "REFERRAL", request.id, { referredUserId: target.id, amount: referralResult.amount });
         }
         App.toast(ledgerExists ? "Deposit marked approved. Ledger was already applied." : "Deposit approved and balance credited.");
       } catch (err) {
+        Object.assign(request, previous);
+        if (ledgerApplied && !ledgerExists) {
+          try { await (App.addLedgerAsync ? App.addLedgerAsync({ userId: target.id, accountType: "REAL", type: "DEPOSIT_APPROVAL_ROLLBACK", amount: -amount, referenceId: `${request.id}_rollback`, note: "Rollback: deposit request save/notification failed" }) : App.addLedger({ userId: target.id, accountType: "REAL", type: "DEPOSIT_APPROVAL_ROLLBACK", amount: -amount, referenceId: `${request.id}_rollback`, note: "Rollback: deposit request save/notification failed" })); } catch {}
+        }
         App.toast(err.message || "Unable to approve deposit.");
       }
       render();
@@ -3898,24 +3931,21 @@
       const requests = depositRequestsFor(target);
       const request = requests.find(r => r.id === requestId);
       if (!request) return;
-      if (String(request.status || "").toUpperCase() !== "PENDING") {
-        App.toast("Deposit action already completed.");
-        render();
-        return;
-      }
-      const reason = prompt("Reject reason:", "Payment proof / UTR could not be verified.");
+      if (String(request.status || "").toUpperCase() !== "PENDING") { App.toast("Deposit action already completed."); render(); return; }
+      const reason = prompt("Reason for rejecting this deposit request?", "Invalid/unclear payment proof");
       if (reason === null) return;
       markButton(button, "Rejecting...");
-      request.status = "REJECTED";
-      request.rejectReason = reason || "Deposit rejected by admin.";
-      request.rejectedAt = new Date().toISOString();
-      request.reviewedAt = request.rejectedAt;
-      request.balanceApplied = false;
-      request.adminNote = request.rejectReason;
-      await saveDepositRequests(target, requests);
-      await App.addNotificationAsync?.({ audience: "USER", userId: target.id, title: "Deposit rejected", message: request.rejectReason, type: "DEPOSIT", linkPage: "wallet", referenceId: `dep_no_${request.id}` });
-      await logAdminActionAsync("DEPOSIT_REJECT", "DEPOSIT", request.id, { userId: target.id, user: displayNameFor(target), amount: request.amount || 0, reason: request.rejectReason });
-      App.toast("Deposit rejected.");
+      try {
+        request.status = "REJECTED";
+        request.rejectedAt = new Date().toISOString();
+        request.reviewedAt = request.rejectedAt;
+        request.rejectReason = reason || "Rejected by admin.";
+        request.adminNote = request.rejectReason;
+        await saveDepositRequests(target, requests);
+        await App.addNotificationAsync?.({ audience: "USER", userId: target.id, title: "Deposit rejected", message: `Deposit request ${App.money(request.amount || 0)} was rejected. ${request.rejectReason}`, type: "DEPOSIT", linkPage: "wallet", referenceId: `dep_rej_${request.id}` });
+        await logAdminActionAsync("DEPOSIT_REJECT", "DEPOSIT", request.id, { userId: target.id, user: displayNameFor(target), amount: Number(request.amount || 0), reason: request.rejectReason });
+        App.toast("Deposit request rejected.");
+      } catch (err) { App.toast(err.message || "Unable to reject deposit."); }
       render();
     },
     async approveWithdrawal(userId, requestId, button) {
@@ -3924,45 +3954,19 @@
       const requests = withdrawalRequestsFor(target);
       const request = requests.find(r => r.id === requestId);
       if (!request) return;
-      if (String(request.status || "").toUpperCase() !== "PENDING") {
-        App.toast("Withdrawal action already completed.");
-        render();
-        return;
-      }
-
+      if (String(request.status || "").toUpperCase() !== "PENDING") { App.toast("Withdrawal action already completed."); render(); return; }
       const amount = Number(request.amount || 0);
-      if (!amount || amount <= 0) {
-        App.toast("Invalid withdrawal amount.");
-        render();
-        return;
-      }
+      if (!amount || amount <= 0) { App.toast("Invalid withdrawal amount."); render(); return; }
       const ledgerExists = App.hasLedgerEntry?.({ accountType: "REAL", type: "WITHDRAWAL", referenceId: request.id, userId: target.id });
-      if (!ledgerExists && App.realBalance(target.id) < amount) {
-        App.toast("Insufficient real balance for withdrawal.");
-        render();
-        return;
-      }
+      if (!ledgerExists && App.realBalance(target.id) < amount) { App.toast("Insufficient real balance for withdrawal."); render(); return; }
       if (!ledgerExists && !confirm(`Approve ${App.money(amount)} withdrawal for ${displayNameFor(target)}? Wallet will be debited once.`)) return;
       markButton(button, "Approving...");
-
+      const previous = { ...request };
+      let ledgerApplied = false;
       try {
         if (!ledgerExists) {
-          if (App.isDatabaseMode?.() && App.addLedgerAsync) await App.addLedgerAsync({
-            userId: target.id,
-            accountType: "REAL",
-            type: "WITHDRAWAL",
-            amount: -amount,
-            referenceId: request.id,
-            note: "WITHDRAWAL_APPROVED · Admin payout confirmed"
-          });
-          else App.addLedger({
-            userId: target.id,
-            accountType: "REAL",
-            type: "WITHDRAWAL",
-            amount: -amount,
-            referenceId: request.id,
-            note: "WITHDRAWAL_APPROVED · Admin payout confirmed"
-          });
+          const row = App.isDatabaseMode?.() && App.addLedgerAsync ? await App.addLedgerAsync({ userId: target.id, accountType: "REAL", type: "WITHDRAWAL", amount: -amount, referenceId: request.id, note: "WITHDRAWAL_APPROVED · Admin payout confirmed" }) : App.addLedger({ userId: target.id, accountType: "REAL", type: "WITHDRAWAL", amount: -amount, referenceId: request.id, note: "WITHDRAWAL_APPROVED · Admin payout confirmed" });
+          ledgerApplied = !!row;
         }
         request.status = "APPROVED";
         request.approvedAt = new Date().toISOString();
@@ -3975,6 +3979,10 @@
         await logAdminActionAsync("WITHDRAWAL_APPROVE", "WITHDRAWAL", request.id, { userId: target.id, user: displayNameFor(target), amount, ledgerApplied: !ledgerExists });
         App.toast(ledgerExists ? "Withdrawal marked approved. Ledger was already applied." : "Withdrawal approved and balance debited.");
       } catch (err) {
+        Object.assign(request, previous);
+        if (ledgerApplied && !ledgerExists) {
+          try { await (App.addLedgerAsync ? App.addLedgerAsync({ userId: target.id, accountType: "REAL", type: "WITHDRAWAL_APPROVAL_ROLLBACK", amount, referenceId: `${request.id}_rollback`, note: "Rollback: withdrawal request save/notification failed" }) : App.addLedger({ userId: target.id, accountType: "REAL", type: "WITHDRAWAL_APPROVAL_ROLLBACK", amount, referenceId: `${request.id}_rollback`, note: "Rollback: withdrawal request save/notification failed" })); } catch {}
+        }
         App.toast(err.message || "Unable to approve withdrawal.");
       }
       render();
