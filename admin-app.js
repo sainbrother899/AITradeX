@@ -47,39 +47,58 @@
     return localStorage.getItem(`AITradeX_DISPLAY_NAME_${user.id}`) || user.name || "User";
   }
 
-  function normalizeKycForAdmin(user, row = {}) {
+  function kycFor(user) {
+    const local = readJson(userKey(user.id, "KYC"), null);
+    if (local) return local;
+
+    const stateRow = (App.state.kycRequests || []).find(x => x.userId === user.id);
+    if (stateRow) {
+      return {
+        status: stateRow.status || "NOT_SUBMITTED",
+        personal: stateRow.personal || {
+          fullName: displayNameFor(user),
+          mobile: user.mobile || "",
+          email: user.email || "",
+          dob: ""
+        },
+        id: stateRow.idDetails || stateRow.id || {
+          type: "PAN Card",
+          number: ""
+        },
+        uploads: stateRow.uploads || {
+          frontName: "",
+          backName: "",
+          selfieName: ""
+        },
+        submittedAt: stateRow.submittedAt || "",
+        approvedAt: stateRow.approvedAt || "",
+        rejectedAt: stateRow.rejectedAt || "",
+        rejectReason: stateRow.rejectReason || ""
+      };
+    }
+
     return {
-      id: row.id || "",
-      status: row.status || "NOT_SUBMITTED",
-      personal: row.personal || {
-        fullName: row.fullName || displayNameFor(user),
-        mobile: row.mobile || user.mobile || "",
-        email: row.userEmail || user.email || "",
+      status: "NOT_SUBMITTED",
+      personal: {
+        fullName: displayNameFor(user),
+        mobile: user.mobile || "",
+        email: user.email || "",
         dob: ""
       },
-      id: row.idDetails || row.id || {
-        type: "Aadhaar Card",
-        number: row.idNumber || ""
+      id: {
+        type: "PAN Card",
+        number: ""
       },
-      uploads: row.uploads || {
+      uploads: {
         frontName: "",
         backName: "",
         selfieName: ""
       },
-      submittedAt: row.submittedAt || row.createdAt || "",
-      approvedAt: row.approvedAt || (String(row.status || "").toUpperCase() === "APPROVED" ? (row.reviewedAt || "") : ""),
-      rejectedAt: row.rejectedAt || (String(row.status || "").toUpperCase() === "REJECTED" ? (row.reviewedAt || "") : ""),
-      rejectReason: row.rejectReason || ""
+      submittedAt: "",
+      approvedAt: "",
+      rejectedAt: "",
+      rejectReason: ""
     };
-  }
-
-  function kycFor(user) {
-    const stateRow = (App.state.kycRequests || []).find(x => String(x.userId || x.user_id) === String(user.id));
-    if (App.databaseOnly && stateRow) return normalizeKycForAdmin(user, stateRow);
-    const local = readJson(userKey(user.id, "KYC"), null);
-    if (local) return normalizeKycForAdmin(user, local);
-    if (stateRow) return normalizeKycForAdmin(user, stateRow);
-    return normalizeKycForAdmin(user, {});
   }
 
   function saveKyc(user, kyc) {
@@ -107,19 +126,18 @@
   }
 
   function paymentMethodsFor(user) {
-    const stateRows = (App.state.paymentMethods || [])
-      .filter(m => String(m.userId || m.user_id) === String(user.id))
-      .map(m => ({ ...m }));
-    if (App.databaseOnly) return stateRows;
     const local = readJson(userKey(user.id, "PAYMENT_METHODS"), []);
     if (local.length) return local;
-    return stateRows;
+
+    return (App.state.paymentMethods || [])
+      .filter(m => m.userId === user.id)
+      .map(m => ({ ...m }));
   }
 
   function savePaymentMethods(user, methods) {
     writeJson(userKey(user.id, "PAYMENT_METHODS"), methods);
 
-    App.state.paymentMethods = (App.state.paymentMethods || []).filter(m => String(m.userId || m.user_id) !== String(user.id));
+    App.state.paymentMethods = (App.state.paymentMethods || []).filter(m => m.userId !== user.id);
     methods.forEach(m => {
       App.state.paymentMethods.push({
         ...m,
@@ -133,43 +151,33 @@
 
 
   function depositRequestsFor(user) {
-    const stateRows = (App.state.depositRequests || [])
-      .filter(r => String(r.userId || r.user_id) === String(user.id))
-      .map(r => ({ ...r }));
-    if (App.databaseOnly) return stateRows;
     const local = readJson(userKey(user.id, "DEPOSIT_REQUESTS"), []);
     if (local.length) return local;
-    return stateRows;
+    return (App.state.depositRequests || [])
+      .filter(r => r.userId === user.id)
+      .map(r => ({ ...r }));
   }
 
   function saveDepositRequests(user, requests) {
     writeJson(userKey(user.id, "DEPOSIT_REQUESTS"), requests);
-    App.state.depositRequests = (App.state.depositRequests || []).filter(r => String(r.userId || r.user_id) !== String(user.id));
+    App.state.depositRequests = (App.state.depositRequests || []).filter(r => r.userId !== user.id);
     requests.forEach(r => App.state.depositRequests.push({ ...r, userId: user.id, userEmail: user.email }));
     App.saveState();
   }
 
   function withdrawalRequestsFor(user) {
-    const stateRows = (App.state.withdrawalRequests || [])
-      .filter(r => String(r.userId || r.user_id) === String(user.id))
-      .map(r => ({ ...r }));
-    if (App.databaseOnly) return stateRows;
     const local = readJson(userKey(user.id, "WITHDRAWAL_REQUESTS"), []);
     if (local.length) return local;
-    return stateRows;
+    return (App.state.withdrawalRequests || [])
+      .filter(r => r.userId === user.id)
+      .map(r => ({ ...r }));
   }
 
   function saveWithdrawalRequests(user, requests) {
     writeJson(userKey(user.id, "WITHDRAWAL_REQUESTS"), requests);
-    App.state.withdrawalRequests = (App.state.withdrawalRequests || []).filter(r => String(r.userId || r.user_id) !== String(user.id));
+    App.state.withdrawalRequests = (App.state.withdrawalRequests || []).filter(r => r.userId !== user.id);
     requests.forEach(r => App.state.withdrawalRequests.push({ ...r, userId: user.id, userEmail: user.email }));
     App.saveState();
-  }
-
-  async function forceDbWrite(reason = "admin-critical-action") {
-    if (!App.databaseOnly || !window.AITradeXDB?.directWriteChangedTables) return;
-    try { await window.AITradeXDB.directWriteChangedTables({ reason, force: true }); }
-    catch (err) { try { console.warn("Admin critical database write warning", err); } catch {} }
   }
 
   function allWalletRequests() {
@@ -3746,7 +3754,7 @@
       App.toast(closed ? `Closed AI live trade for ${closed} user(s).` : "Unable to close trade.");
       render();
     },
-    async approveDeposit(userId, requestId, button) {
+    approveDeposit(userId, requestId, button) {
       const target = allUsers().find(u => u.id === userId);
       if (!target) return;
       const requests = depositRequestsFor(target);
@@ -3797,14 +3805,13 @@
         if (ledgerAdded && !ledgerExists) {
           App.creditReferralBonus?.({ referredUserId: target.id, eventType: "DEPOSIT", amount, referenceId: request.id, sourceLabel: `Deposit UTR ${request.utr || "-"}` });
         }
-        await forceDbWrite("deposit-approve");
         App.toast(ledgerExists ? "Deposit marked approved. Ledger was already applied." : "Deposit approved and balance credited.");
       } catch (err) {
         App.toast(err.message || "Unable to approve deposit.");
       }
       render();
     },
-    async rejectDeposit(userId, requestId, button) {
+    rejectDeposit(userId, requestId, button) {
       const target = allUsers().find(u => u.id === userId);
       if (!target) return;
       const requests = depositRequestsFor(target);
@@ -3827,11 +3834,10 @@
       saveDepositRequests(target, requests);
       App.addNotification?.({ audience: "USER", userId: target.id, title: "Deposit rejected", message: request.rejectReason, type: "DEPOSIT", linkPage: "wallet", referenceId: `dep_no_${request.id}` });
       logAdminAction("DEPOSIT_REJECT", "DEPOSIT", request.id, { userId: target.id, user: displayNameFor(target), amount: request.amount || 0, reason: request.rejectReason });
-      await forceDbWrite("deposit-reject");
       App.toast("Deposit rejected.");
       render();
     },
-    async approveWithdrawal(userId, requestId, button) {
+    approveWithdrawal(userId, requestId, button) {
       const target = allUsers().find(u => u.id === userId);
       if (!target) return;
       const requests = withdrawalRequestsFor(target);
@@ -3878,14 +3884,13 @@
         saveWithdrawalRequests(target, requests);
         App.addNotification?.({ audience: "USER", userId: target.id, title: "Withdrawal approved", message: `${App.money(amount)} withdrawal payout approved.`, type: "WITHDRAWAL", linkPage: "wallet", referenceId: `wd_ok_${request.id}` });
         logAdminAction("WITHDRAWAL_APPROVE", "WITHDRAWAL", request.id, { userId: target.id, user: displayNameFor(target), amount, ledgerApplied: !ledgerExists });
-        await forceDbWrite("withdrawal-approve");
         App.toast(ledgerExists ? "Withdrawal marked approved. Ledger was already applied." : "Withdrawal approved and balance debited.");
       } catch (err) {
         App.toast(err.message || "Unable to approve withdrawal.");
       }
       render();
     },
-    async rejectWithdrawal(userId, requestId, button) {
+    rejectWithdrawal(userId, requestId, button) {
       const target = allUsers().find(u => u.id === userId);
       if (!target) return;
       const requests = withdrawalRequestsFor(target);
@@ -3908,11 +3913,10 @@
       saveWithdrawalRequests(target, requests);
       App.addNotification?.({ audience: "USER", userId: target.id, title: "Withdrawal rejected", message: request.rejectReason, type: "WITHDRAWAL", linkPage: "wallet", referenceId: `wd_no_${request.id}` });
       logAdminAction("WITHDRAWAL_REJECT", "WITHDRAWAL", request.id, { userId: target.id, user: displayNameFor(target), amount: request.amount || 0, reason: request.rejectReason });
-      await forceDbWrite("withdrawal-reject");
       App.toast("Withdrawal rejected.");
       render();
     },
-    async approveKyc(userId, button) {
+    approveKyc(userId, button) {
       markButton(button, "Approving...");
       const target = allUsers().find(u => u.id === userId);
       if (!target) return;
@@ -3929,7 +3933,6 @@
       logAdminAction("KYC_APPROVE", "KYC", kyc.id || userId, { userId: target.id, user: displayNameFor(target) });
       saveKyc(target, kyc);
       App.addNotification?.({ audience: "USER", userId: target.id, title: "KYC approved", message: "Your KYC verification has been approved.", type: "KYC", linkPage: "kyc", referenceId: `kyc_ok_${kyc.id || userId}` });
-      await forceDbWrite("kyc-approve");
       App.toast("KYC approved successfully.");
       render();
     },
@@ -3941,7 +3944,7 @@
       }
       App.toast("Reject panel unavailable.");
     },
-    async confirmRejectKyc(userId, button) {
+    confirmRejectKyc(userId, button) {
       const target = allUsers().find(u => u.id === userId);
       if (!target) return;
       const kyc = kycFor(target);
@@ -3964,7 +3967,6 @@
       logAdminAction("KYC_REJECT", "KYC", kyc.id || userId, { userId: target.id, user: displayNameFor(target), reason: kyc.rejectReason });
       saveKyc(target, kyc);
       App.addNotification?.({ audience: "USER", userId: target.id, title: "KYC rejected", message: kyc.rejectReason || "Your KYC verification was rejected.", type: "KYC", linkPage: "kyc", referenceId: `kyc_no_${kyc.id || userId}` });
-      await forceDbWrite("kyc-reject");
       App.toast("KYC rejected successfully.");
       render();
     },
@@ -4043,14 +4045,6 @@
       }catch(err){try{console.warn("Admin session hydrate warning",err);}catch{}}
     }
     render();
-  }
-
-  if (!window.__AITRADEX_ADMIN_DB_REFRESH_TIMER__) {
-    window.__AITRADEX_ADMIN_DB_REFRESH_TIMER__ = setInterval(async () => {
-      if (!App.databaseOnly || !App.session?.userId || App.session?.role !== "admin" || !window.AITradeXDB?.pullCoreTables) return;
-      try { await window.AITradeXDB.pullCoreTables(); }
-      catch (err) { try { console.warn("Admin database auto-refresh warning", err); } catch {} }
-    }, 15000);
   }
 
   bootAdminApp();
