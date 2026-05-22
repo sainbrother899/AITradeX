@@ -1,4 +1,8 @@
--- AITradeX Clean Schema
+-- AITradeX Phase 5.16.1 Clean Action Database Runtime Schema
+-- Updated: 2026-05-23
+-- Purpose: Keep Supabase schema aligned with the action-based database runtime.
+-- Safe to run multiple times. It does not delete old data.
+
 create table if not exists public.users (id text primary key,name text,email text unique,mobile text,role text default 'user',status text default 'ACTIVE',referral_code text,referred_by text,created_at timestamptz default now());
 create table if not exists public.wallet_ledger (id text primary key,user_id text not null,account_type text default 'REAL',type text not null,amount numeric not null,reference_id text not null,note text,balance_after numeric,created_at timestamptz default now(),unique(type,reference_id));
 create table if not exists public.kyc_requests (id text primary key,user_id text,user_email text,full_name text,mobile text,id_number text,address text,status text default 'PENDING',reviewed_at timestamptz,created_at timestamptz default now());
@@ -198,3 +202,35 @@ begin
     end;
   end loop;
 end $$;
+
+
+-- Phase 5.16.1: Action-based database runtime compatibility
+-- These columns make direct KYC/deposit/withdrawal/admin updates safe across old projects.
+alter table public.users add column if not exists last_login_at timestamptz;
+alter table public.users add column if not exists updated_at timestamptz default now();
+alter table public.kyc_requests add column if not exists admin_note text;
+alter table public.kyc_requests add column if not exists reviewed_by text;
+alter table public.payment_methods add column if not exists reviewed_at timestamptz;
+alter table public.payment_methods add column if not exists reviewed_by text;
+alter table public.deposit_requests add column if not exists reviewed_at timestamptz;
+alter table public.deposit_requests add column if not exists reviewed_by text;
+alter table public.withdrawal_requests add column if not exists reviewed_at timestamptz;
+alter table public.withdrawal_requests add column if not exists reviewed_by text;
+alter table public.withdrawal_requests add column if not exists rejection_reason text;
+alter table public.wallet_ledger add column if not exists raw jsonb default '{}'::jsonb;
+alter table public.notifications add column if not exists raw jsonb default '{}'::jsonb;
+alter table public.admin_action_logs add column if not exists raw jsonb default '{}'::jsonb;
+
+create index if not exists users_email_idx on public.users(email);
+create index if not exists users_mobile_idx on public.users(mobile);
+create index if not exists kyc_requests_user_id_idx on public.kyc_requests(user_id);
+create index if not exists deposit_requests_user_id_idx on public.deposit_requests(user_id);
+create index if not exists withdrawal_requests_user_id_idx on public.withdrawal_requests(user_id);
+create index if not exists wallet_ledger_user_id_idx on public.wallet_ledger(user_id);
+create index if not exists notifications_user_id_idx on public.notifications(user_id);
+
+insert into public.app_settings(id, settings, updated_at)
+values ('main', jsonb_build_object('databaseRuntimeVersion','5.16.1','mode','action-database'), now())
+on conflict (id) do update
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.16.1','mode','action-database'),
+    updated_at = now();

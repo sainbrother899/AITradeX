@@ -26,3 +26,10 @@ What localStorage is NOT used for in database mode:
 Important:
 - Run supabase-schema.sql and supabase-core-sync-policies.sql if your Supabase project is missing columns/policies.
 - Use Admin > Database > Load only when you intentionally want to reload data from Supabase.
+
+
+PHASE 5.16.1 NOTE
+- SQL files were deliberately updated in this package so GitHub/file diff clearly shows database runtime alignment.
+- supabase-schema.sql now includes a Phase 5.16.1 section for action-based runtime compatibility.
+- supabase-core-sync-policies.sql now includes a Phase 5.16.1 section covering every table used by the clean runtime.
+- No patch.js/fix.js/old.js files are included.

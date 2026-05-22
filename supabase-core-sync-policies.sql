@@ -1,5 +1,7 @@
--- AITradeX Phase 5.3 Core Sync Policies
--- Use these only for prototype/testing with anon key. Before public launch, replace with authenticated admin/user policies or Edge Functions.
+-- AITradeX Phase 5.16.1 Clean Action Database Runtime Policies
+-- Updated: 2026-05-23
+-- Prototype/testing policy set. Keep RLS ON; these policies allow the current frontend anon-key prototype to read/write.
+-- Before public launch, replace with Supabase Auth + strict user/admin policies or Edge Functions.
 
 alter table public.users enable row level security;
 alter table public.wallet_ledger enable row level security;
@@ -55,3 +57,26 @@ create policy "Allow anon delete ai trade batches" on public.ai_trade_batches fo
 alter table public.app_settings enable row level security;
 drop policy if exists "Allow anon all app_settings" on public.app_settings;
 create policy "Allow anon all app_settings" on public.app_settings for all to anon using (true) with check (true);
+
+
+-- Phase 5.16.1: Ensure every table used by clean runtime has testing RLS policies.
+do $$
+declare
+  tbl text;
+begin
+  foreach tbl in array array[
+    'users','wallet_ledger','deposit_requests','withdrawal_requests','payment_methods','kyc_requests',
+    'notifications','admin_action_logs','trade_orders','ai_trade_batches','app_settings','plans','subscriptions',
+    'referrals','support_tickets','app_state_snapshots'
+  ]
+  loop
+    begin
+      execute format('alter table public.%I enable row level security', tbl);
+      execute format('drop policy if exists "AITradeX anon all %s" on public.%I', tbl, tbl);
+      execute format('create policy "AITradeX anon all %s" on public.%I for all to anon using (true) with check (true)', tbl, tbl);
+    exception
+      when undefined_table then raise notice 'Policy skipped, table missing: %', tbl;
+      when others then raise notice 'Policy setup skipped for %. Reason: %', tbl, sqlerrm;
+    end;
+  end loop;
+end $$;
