@@ -325,6 +325,27 @@ App.usdtInrRate=usdtInrRate;
 App.cryptoInrDisplay=cryptoInrDisplay;
 App.cryptoRawToInr=value=>cryptoUsdValue(value)*usdtInrRate();
 App.cryptoInrToRaw=value=>{const rate=usdtInrRate();const n=Number(value||0);return rate>0?n/rate:n;};
+App.cryptoRawUnitCeiling=pair=>{
+  const {base}=baseQuote(pair);
+  const map={BTC:200000,ETH:20000,BNB:5000,SOL:3000,AVAX:1000,LINK:1000,XRP:1000,DOGE:1000,ADA:1000,TRX:1000};
+  return map[base]||1000;
+};
+App.tradeRawPrice=(pair,value,{display="",reference=0}={})=>{
+  let n=Number(value||0);
+  if(!Number.isFinite(n)||n<=0)return 0;
+  if(!isCryptoPair(pair))return n;
+  const text=String(display||"");
+  const ref=Number(reference||0);
+  const looksInr=text.includes("₹")||/INR/i.test(text);
+  if(looksInr)return App.cryptoInrToRaw(n);
+  if(ref>0){
+    const ratio=n/ref;
+    if(ratio>20)return App.cryptoInrToRaw(n);
+  }
+  if(n>App.cryptoRawUnitCeiling(pair))return App.cryptoInrToRaw(n);
+  return n;
+};
+App.tradePriceDisplay=(pair,value)=>App.priceDisplayFor?App.priceDisplayFor(pair,App.tradeRawPrice(pair,value)):String(value||"--");
 App.displayPairLabel=pair=>isCryptoPair(pair)?cryptoPairLabel(pair):normPair(pair);
 App.priceDisplayFor=(pair,value)=>isCryptoPair(pair)?cryptoInrDisplay(value):fmtPrice(value,isMetalPair(pair)?"METAL":isForexPair(pair)?"FOREX":"");
 App.pairLiveView=item=>{

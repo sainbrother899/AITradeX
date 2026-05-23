@@ -946,6 +946,49 @@ on conflict (id) do update
 set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.4','mode','phase6-ai-backend-settlement','aiLiveBackend','rpc-secure-function'),
     updated_at = now();
 
+
+-- Phase 6.5.5: Manual price unit cleanup.
+-- All manual trade prices are stored and settled in raw quote units (USDT/USD/etc.).
+-- INR is display-only. This helper guards old/new rows from INR-vs-raw mismatches.
+create or replace function public.aitradex_trade_raw_price(
+  p_pair text,
+  p_price numeric,
+  p_display text default ''
+)
+returns numeric
+language plpgsql
+stable
+set search_path = public
+as $$
+declare
+  n numeric := coalesce(p_price,0);
+  rate numeric := 95;
+  base_symbol text := upper(split_part(coalesce(p_pair,''), '/', 1));
+  ceiling numeric := 1000;
+  s jsonb;
+begin
+  if n <= 0 then
+    return 0;
+  end if;
+  if upper(coalesce(p_pair,'')) not like '%/USDT' then
+    return n;
+  end if;
+  select settings into s from public.app_settings where id='main';
+  rate := greatest(coalesce((s->>'usdtInrRate')::numeric, 95), 1);
+  ceiling := case base_symbol
+    when 'BTC' then 200000
+    when 'ETH' then 20000
+    when 'BNB' then 5000
+    when 'SOL' then 3000
+    else 1000
+  end;
+  if position('₹' in coalesce(p_display,'')) > 0 or upper(coalesce(p_display,'')) like '%INR%' or n > ceiling then
+    return round((n / rate)::numeric, 8);
+  end if;
+  return n;
+end;
+$$;
+
 -- Phase 6.5.1: Limit order validation fix.
 -- Limit orders are pending-only: BUY limit must be below current price; SELL limit must be above current price.
 -- Triggered limit orders fill at the user's limit price, not at the current market price.
@@ -983,6 +1026,8 @@ declare
   v_margin numeric := greatest(coalesce(p_margin,0),0);
   v_leverage numeric := greatest(coalesce(p_leverage,1),1);
   v_position_size numeric := 0;
+  v_entry_price numeric := 0;
+  v_limit_price numeric := 0;
   v_ledger_type text;
   v_ledger_id text;
   v_now timestamptz := now();
@@ -996,15 +1041,22 @@ begin
   if v_margin <= 0 then
     raise exception 'Manual trade margin must be greater than zero.';
   end if;
+  v_entry_price := public.aitradex_trade_raw_price(p_pair, coalesce(p_entry_price,0), p_entry_price_display);
+  v_limit_price := public.aitradex_trade_raw_price(p_pair, coalesce(p_limit_price,0), p_limit_price_display);
+
   if v_order = 'LIMIT' then
-    if coalesce(p_limit_price,0) <= 0 then
+    if v_limit_price <= 0 then
       raise exception 'Valid limit price is required.';
     end if;
-    if coalesce(p_entry_price,0) > 0 and v_side = 'BUY' and p_limit_price >= p_entry_price then
+    if v_entry_price > 0 and v_side = 'BUY' and v_limit_price >= v_entry_price then
       raise exception 'BUY limit price must be below current price. Use Market order for instant buy.';
     end if;
-    if coalesce(p_entry_price,0) > 0 and v_side = 'SELL' and p_limit_price <= p_entry_price then
+    if v_entry_price > 0 and v_side = 'SELL' and v_limit_price <= v_entry_price then
       raise exception 'SELL limit price must be above current price. Use Market order for instant sell.';
+    end if;
+  else
+    if v_entry_price <= 0 then
+      raise exception 'Valid market entry price is required.';
     end if;
   end if;
 
@@ -1052,10 +1104,10 @@ begin
     note,raw,created_at,opened_at
   ) values (
     p_trade_id,p_user_id,null,v_trade_type,v_account,v_order,p_market,p_pair,v_side,v_status,'USER_MANUAL_BACKEND',
-    case when v_order = 'LIMIT' then coalesce(p_entry_price,0) else p_entry_price end,
-    coalesce(p_entry_price_display,''),
-    case when v_order = 'LIMIT' then p_limit_price else 0 end,
-    case when v_order = 'LIMIT' then coalesce(p_limit_price_display,'') else '' end,
+    v_entry_price,
+    coalesce(nullif(p_entry_price_display,''), v_entry_price::text),
+    case when v_order = 'LIMIT' then v_limit_price else 0 end,
+    case when v_order = 'LIMIT' then coalesce(nullif(p_limit_price_display,''), v_limit_price::text) else '' end,
     v_leverage,v_margin,true,v_position_size,0,0,
     'Manual trade opened through backend settlement function',
     jsonb_build_object('secureManualOpen', true, 'priceSource', p_price_source, 'createdBy', p_user_id, 'openedAt', v_now),
@@ -1113,7 +1165,15 @@ begin
     raise exception 'Valid exit price is required.';
   end if;
 
-  entry_price := coalesce(nullif(pos.entry_price,0), v_exit_price);
+  entry_price := public.aitradex_trade_raw_price(pos.pair, coalesce(nullif(pos.entry_price,0), v_exit_price), coalesce(pos.entry_price_display,''));
+  v_exit_price := public.aitradex_trade_raw_price(pos.pair, v_exit_price, p_exit_price_display);
+  if entry_price > 0 and v_exit_price > 0 then
+    if v_exit_price / entry_price > 20 then
+      v_exit_price := public.aitradex_trade_raw_price(pos.pair, v_exit_price, '₹');
+    elsif entry_price / v_exit_price > 20 then
+      entry_price := public.aitradex_trade_raw_price(pos.pair, entry_price, '₹');
+    end if;
+  end if;
   margin := greatest(coalesce(pos.margin_amount,0),0);
   leverage_value := greatest(coalesce(pos.leverage,1),1);
   exposure := greatest(margin * leverage_value, coalesce(pos.position_size,0), 0);
@@ -1225,7 +1285,7 @@ grant execute on function public.aitradex_close_manual_trade(text,text,numeric,t
 grant execute on function public.aitradex_cancel_manual_limit(text,text) to anon, authenticated;
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','6.5.1','mode','phase6-limit-order-validation-fix','manualTradeBackend','rpc-secure-function','limitOrderValidation','pending-only-limit-fill'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.5.5','mode','phase6-manual-price-unit-cleanup','manualTradeBackend','rpc-secure-function','limitOrderValidation','pending-only-limit-fill','manualPriceUnit','raw-storage-display-only-inr'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.5.1','mode','phase6-limit-order-validation-fix','manualTradeBackend','rpc-secure-function','limitOrderValidation','pending-only-limit-fill'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.5.5','mode','phase6-manual-price-unit-cleanup','manualTradeBackend','rpc-secure-function','limitOrderValidation','pending-only-limit-fill','manualPriceUnit','raw-storage-display-only-inr'),
     updated_at = now();

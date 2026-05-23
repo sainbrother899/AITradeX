@@ -3031,7 +3031,8 @@
             closed = Number(result.closed || result.closedCount || positions.length || 0);
             if (window.AITradeXDB?.loadAll) await window.AITradeXDB.loadAll();
           } catch (error) {
-            console.warn("AI live backend auto-close failed; falling back to browser settlement", batchId, error?.message || error);
+            console.warn("AI live backend auto-close failed; browser fallback disabled for backend mode", batchId, error?.message || error);
+            continue;
           }
         }
         if (!closed) {
