@@ -1,4 +1,4 @@
--- AITradeX Phase 5.2 Storage Policies
+-- AITradeX Phase 5.28 Storage Policies
 -- Run this after creating buckets: kyc-documents, user-avatars, support-attachments.
 -- Testing/client mode policy: allows the current browser app to upload and preview files with the anon key.
 -- Before public launch, replace this with authenticated user/admin-only policies or Edge Functions.

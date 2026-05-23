@@ -1,4 +1,4 @@
--- AITradeX Phase 5.26 Final Deep Consistency Fix
+-- AITradeX Phase 5.28 RLS Safety Pack + Final Deep Consistency
 -- Includes notification delete compatibility and hashed password runtime support.
 -- AITradeX Phase 5.19 Strict DB-First Critical Runtime
 -- Keeps schema/RLS aligned with DB-first critical writes and emergency-only manual repair sync.
@@ -238,13 +238,13 @@ create index if not exists wallet_ledger_user_id_idx on public.wallet_ledger(use
 create index if not exists notifications_user_id_idx on public.notifications(user_id);
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','5.26','mode','action-database'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','5.27','mode','action-database'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.26','mode','action-database'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.27','mode','action-database'),
     updated_at = now();
 
 
--- Phase 5.26: Clean persistence compatibility columns/indexes.
+-- Phase 5.28: Clean persistence compatibility columns/indexes.
 alter table public.users add column if not exists last_login_at timestamptz;
 alter table public.users add column if not exists updated_at timestamptz default now();
 alter table public.payment_methods add column if not exists raw jsonb default '{}'::jsonb;
@@ -255,26 +255,26 @@ create index if not exists admin_action_logs_created_at_idx on public.admin_acti
 create index if not exists notifications_created_at_idx on public.notifications(created_at desc);
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','5.26','mode','action-database-clean-persistence'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','5.27','mode','action-database-clean-persistence'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.26','mode','action-database-clean-persistence'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.27','mode','action-database-clean-persistence'),
     updated_at = now();
 
 
--- Phase 5.26: Final clean audit compatibility.
+-- Phase 5.28: Final clean audit compatibility.
 -- New passwords are stored in password_hash as sha256$salt$hash by the frontend runtime.
 -- Existing plain password_hash values are migrated after the next successful login/reset.
 alter table public.users add column if not exists password_hash text;
 alter table public.notifications add column if not exists raw jsonb default '{}'::jsonb;
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','5.26','mode','final-clean-audit-fix','passwordStorage','salted-sha256-runtime'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','5.27','mode','final-clean-audit-fix','passwordStorage','salted-sha256-runtime'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.26','mode','final-clean-audit-fix','passwordStorage','salted-sha256-runtime'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.27','mode','final-clean-audit-fix','passwordStorage','salted-sha256-runtime'),
     updated_at = now();
 
 
--- Phase 5.26: default control admin + safer ledger uniqueness
+-- Phase 5.28: default control admin + safer ledger uniqueness
 alter table public.wallet_ledger drop constraint if exists wallet_ledger_type_reference_id_key;
 alter table public.wallet_ledger drop constraint if exists wallet_ledger_user_id_account_type_type_reference_id_key;
 alter table public.wallet_ledger add constraint wallet_ledger_user_id_account_type_type_reference_id_key unique(user_id, account_type, type, reference_id);
@@ -291,13 +291,46 @@ on conflict (id) do update set
   updated_at=now();
 
 
--- Phase 5.26 security note:
+-- Phase 5.28 security note:
 -- This schema is suitable for controlled testing. For real public money/users, move admin/funds/trading actions to a private backend/service-role API and tighten RLS policies per role.
 
 
--- Phase 5.26: final deep consistency marker
+-- Phase 5.28: final deep consistency marker
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','5.26','mode','final-deep-consistency-fix','passwordStorage','salted-sha256-runtime'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','5.27','mode','final-deep-consistency-fix','passwordStorage','salted-sha256-runtime'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.26','mode','final-deep-consistency-fix','passwordStorage','salted-sha256-runtime'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.27','mode','final-deep-consistency-fix','passwordStorage','salted-sha256-runtime'),
+    updated_at = now();
+
+
+-- Phase 5.28: TESTING RLS POLICIES FOR CURRENT FRONTEND-ONLY BUILD
+-- These policies keep RLS enabled while allowing the current anon-key frontend prototype to function.
+-- They are NOT sufficient for real public money/users because custom frontend login is not available to PostgreSQL RLS.
+-- For real launch, move writes to backend/Edge Functions or Supabase Auth and then adapt supabase-production-rls-template.sql.
+do $$
+declare
+  tbl text;
+begin
+  foreach tbl in array array[
+    'users','wallet_ledger','deposit_requests','withdrawal_requests','payment_methods','kyc_requests',
+    'notifications','admin_action_logs','trade_orders','ai_trade_batches','app_settings','plans','subscriptions',
+    'referrals','support_tickets','app_state_snapshots'
+  ]
+  loop
+    begin
+      execute format('alter table public.%I enable row level security', tbl);
+      execute format('drop policy if exists "AITradeX testing anon all %s" on public.%I', tbl, tbl);
+      execute format('drop policy if exists "AITradeX anon all %s" on public.%I', tbl, tbl);
+      execute format('create policy "AITradeX testing anon all %s" on public.%I for all to anon using (true) with check (true)', tbl, tbl);
+    exception
+      when undefined_table then raise notice 'Testing RLS policy skipped, table missing: %', tbl;
+      when others then raise notice 'Testing RLS policy setup skipped for %. Reason: %', tbl, sqlerrm;
+    end;
+  end loop;
+end $$;
+
+insert into public.app_settings(id, settings, updated_at)
+values ('main', jsonb_build_object('databaseRuntimeVersion','5.27','mode','rls-safety-pack','rlsMode','testing-frontend-compatible'), now())
+on conflict (id) do update
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.27','mode','rls-safety-pack','rlsMode','testing-frontend-compatible'),
     updated_at = now();

@@ -4162,7 +4162,7 @@
       kyc.rejectedAt = "";
       kyc.approvedAt = "";
       await saveKycData(kyc);
-      await App.addNotificationAsync?.({ audience: "ADMIN", title: "New KYC request", message: `${displayName()} submitted KYC for verification.`, type: "KYC", linkPage: "kyc", referenceId: `kyc_submit_${user()?.id || "user"}_${kyc.submittedAt}` });
+      await App.notifyAsync?.({ audience: "ADMIN", title: "New KYC request", message: `${displayName()} submitted KYC for verification.`, type: "KYC", linkPage: "kyc", referenceId: `kyc_submit_${user()?.id || "user"}_${kyc.submittedAt}` });
       App.toast("KYC submitted for verification.");
       render();
     },
@@ -4195,8 +4195,9 @@
         return;
       }
 
-      methods.unshift({
-        id: `PM-${Date.now()}`,
+      const methodId = `PM-${Date.now()}`;
+      const bankMethod = {
+        id: methodId,
         type: "BANK",
         holderName: verifiedKycName(),
         bankName,
@@ -4205,8 +4206,10 @@
         accountType,
         status: "PENDING",
         createdAt: new Date().toISOString()
-      });
+      };
+      methods.unshift(bankMethod);
       await savePaymentMethods(methods);
+      await App.notifyAsync?.({ audience: "ADMIN", title: "New bank account request", message: `${displayName()} submitted ${bankName} bank account ending ${String(accountNumber).slice(-4)} for verification.`, type: "PAYMENT_METHOD", linkPage: "payments", referenceId: `pm_submit_${user()?.id || "user"}_${methodId}` });
       App.toast("Bank account submitted for verification.");
       render();
     },

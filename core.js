@@ -198,18 +198,33 @@ App.telegramNotificationText=({audience="USER",title="Notification",message="",t
   ].filter(Boolean);
   return lines.join("\n");
 };
-App.telegramAllowedTypes=()=>new Set(["KYC","DEPOSIT","WITHDRAWAL"]);
+App.telegramAllowedTypes=()=>new Set(["KYC","DEPOSIT","WITHDRAWAL","PAYMENT_METHOD"]);
 App.sendTelegramForNotification=async (payload)=>{
   const t=App.telegramSettings();
   const aud=String(payload?.audience||"USER").toUpperCase();
   const type=String(payload?.type||"INFO").toUpperCase();
   if(!t.enabled)return;
-  // Telegram is intentionally limited to KYC, Deposit and Withdrawal alerts only.
+  // Telegram is intentionally limited to KYC, Deposit, Withdrawal and Payment Method alerts only.
   // Other app notifications still stay inside the website notification center.
   if(!App.telegramAllowedTypes().has(type))return;
   if(aud==="ADMIN"&&!t.adminAlerts)return;
   if(aud==="USER"&&!t.userAlerts)return;
   await App.sendTelegramMessage(App.telegramNotificationText(payload));
+};
+
+App.notifyAsync=async (payload={}, { required=false } = {})=>{
+  if(!App.addNotificationAsync){
+    const row=App.addNotification?.(payload);
+    if(required && !row) throw new Error("Notification could not be created.");
+    return row;
+  }
+  try{
+    return await App.addNotificationAsync(payload);
+  }catch(err){
+    console.warn("Notification/Telegram side alert failed", err?.message||err);
+    if(required) throw err;
+    return false;
+  }
 };
 
 App.ensureAdminActionLogs=()=>{if(!Array.isArray(App.state.adminActionLogs))App.state.adminActionLogs=[];return App.state.adminActionLogs;};

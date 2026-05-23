@@ -553,7 +553,7 @@
               navButton("plans", "⭐", "Plans", "AI limits"),
               navButton("referrals", "🎁", "Referrals", "Rewards"),
               navButton("support", "🎧", "Support Tickets", "Inbox"),
-              navButton("telegram", "📨", "Telegram Alerts", "KYC/deposit/payout"),
+              navButton("telegram", "📨", "Telegram Alerts", "KYC/payment/finance"),
               navButton("settings", "⚙️", "App Settings", "Payments/trading"),
               navButton("database", "🗄️", "Database", "Supabase sync"),
               navButton("security", "🔐", "Security", "Admin lock"),
@@ -2510,8 +2510,8 @@
     shell(`
       <section class="panel-card payment-settings-panel telegram-settings-page">
         <div class="section-head">
-          <div><h3>Telegram Alerts</h3><span>Configure Telegram only for KYC, deposit and withdrawal alerts.</span></div>
-          <span class="admin-count-pill">KYC + Finance only</span>
+          <div><h3>Telegram Alerts</h3><span>Configure clear Telegram alerts for KYC, payment method, deposit and withdrawal events.</span></div>
+          <span class="admin-count-pill">KYC + Payment + Finance</span>
         </div>
         <div class="admin-grid-two payment-settings-grid">
           <form class="payment-form-card form-grid" onsubmit="AITradeXAdmin.saveTelegramSettings(event)">
@@ -2529,7 +2529,7 @@
                   <option value="true" ${settings.telegramAdminAlerts !== false ? "selected" : ""}>Enabled</option>
                   <option value="false" ${settings.telegramAdminAlerts === false ? "selected" : ""}>Disabled</option>
                 </select>
-                <small>New KYC, deposit and withdrawal requests.</small>
+                <small>New KYC, bank/payment method, deposit and withdrawal requests.</small>
               </label>
               <label>User Alerts Mirror
                 <select id="settingTelegramUserAlerts">
@@ -2555,7 +2555,7 @@
 
           <section class="payment-form-card payment-settings-preview">
             <p>ALERT SCOPE</p>
-            <h2>Only KYC, Deposit & Withdrawal</h2>
+            <h2>KYC, Bank Account, Deposit & Withdrawal</h2>
             <div class="review-grid compact-review">
               <article><span>Telegram Bot</span><b class="${settings.telegramEnabled === true ? "text-profit" : "text-loss"}">${settings.telegramEnabled === true ? "Enabled" : "Disabled"}</b></article>
               <article><span>Admin Alerts</span><b class="${settings.telegramAdminAlerts !== false ? "text-profit" : "text-loss"}">${settings.telegramAdminAlerts !== false ? "Enabled" : "Disabled"}</b></article>
@@ -2563,7 +2563,7 @@
               <article><span>Bot Token</span><b>${settings.telegramBotToken ? "Saved" : "Missing"}</b></article>
               <article><span>Chat ID</span><b>${settings.telegramChatId ? esc(settings.telegramChatId) : "Missing"}</b></article>
             </div>
-            <div class="duplicate-warning-box telegram-scope-note">Telegram will not send signup, support, AI trade, wallet-adjustment, plan or security alerts. It is limited to KYC, deposit and withdrawal only.</div>
+            <div class="duplicate-warning-box telegram-scope-note">Telegram alert rules are clear: Admin Alerts send new KYC, new bank account, new deposit and new withdrawal requests. User Mirror sends KYC/bank/deposit/withdraw approve-reject messages. Signup, support, AI trade, wallet-adjustment, plan and security alerts stay inside the website only.</div>
           </section>
         </div>
       </section>
@@ -2593,7 +2593,7 @@
           </article>
           <article>
             <b>Setup Required</b>
-            <p>Run <code>supabase-schema.sql</code>, then run <code>supabase-storage-policies.sql</code> and <code>supabase-core-sync-policies.sql</code>.</p>
+            <p>Run <code>supabase-schema.sql</code>, then run <code>supabase-storage-policies.sql</code> and <code>supabase-core-sync-policies.sql</code> for testing RLS. For production review, use <code>supabase-production-rls-template.sql</code> only after backend/Auth migration..</p>
           </article>
           <article>
             <b>Last Core Sync</b>
@@ -2619,7 +2619,8 @@
           <label class="ghost-action import-backup-label">Import Backup JSON<input type="file" accept="application/json" onchange="AITradeXAdmin.importLocalData(this.files && this.files[0])" hidden/></label>
           <a class="ghost-action" href="supabase-schema.sql" download>Download SQL Schema</a>
           <a class="ghost-action" href="supabase-storage-policies.sql" download>Download Storage Policies</a>
-          <a class="ghost-action" href="supabase-core-sync-policies.sql" download>Download Core Sync Policies</a>
+          <a class="ghost-action" href="supabase-core-sync-policies.sql" download>Download Testing RLS Policies</a>
+          <a class="ghost-action" href="supabase-production-rls-template.sql" download>Download Production RLS Template</a>
         </div>
         <div id="databaseStatusBox" class="database-result-box">No database action yet.</div>
       </section>
@@ -2721,7 +2722,7 @@
           <span class="admin-count-pill">${logs.length} logs</span>
         </div>
         <div class="database-status-panel security-status-panel">
-          <article><b>Security Mode</b><p class="text-loss">Prototype RLS mode is active. Before public launch, move admin actions behind Supabase Auth / Edge Functions.</p></article>
+          <article><b>Security Mode</b><p class="text-loss">Testing RLS mode is active for this frontend-only build. Public launch needs backend / Supabase Auth / Edge Functions before strict production RLS.</p></article>
           <article><b>Today Actions</b><p>${todayCount} admin action(s) recorded today.</p></article>
           <article><b>Sensitive Actions</b><p>${sensitive} wallet, finance, KYC, AI, plan or user-control actions tracked.</p></article>
           <article><b>Latest Action</b><p>${last ? `${esc(last.action)} · ${new Date(last.createdAt).toLocaleString("en-IN")}` : "No action recorded yet."}</p></article>
@@ -4053,7 +4054,7 @@
       kyc.rejectedAt = "";
       await logAdminActionAsync("KYC_APPROVE", "KYC", kyc.id || userId, { userId: target.id, user: displayNameFor(target) });
       await saveKyc(target, kyc);
-      await App.addNotificationAsync?.({ audience: "USER", userId: target.id, title: "KYC approved", message: "Your KYC verification has been approved.", type: "KYC", linkPage: "kyc", referenceId: `kyc_ok_${kyc.id || userId}` });
+      await App.notifyAsync?.({ audience: "USER", userId: target.id, title: "KYC approved", message: "Your KYC verification has been approved.", type: "KYC", linkPage: "kyc", referenceId: `kyc_ok_${kyc.id || userId}` });
       App.toast("KYC approved successfully.");
       render();
     },
@@ -4087,7 +4088,7 @@
       kyc.approvedAt = "";
       await logAdminActionAsync("KYC_REJECT", "KYC", kyc.id || userId, { userId: target.id, user: displayNameFor(target), reason: kyc.rejectReason });
       await saveKyc(target, kyc);
-      await App.addNotificationAsync?.({ audience: "USER", userId: target.id, title: "KYC rejected", message: kyc.rejectReason || "Your KYC verification was rejected.", type: "KYC", linkPage: "kyc", referenceId: `kyc_no_${kyc.id || userId}` });
+      await App.notifyAsync?.({ audience: "USER", userId: target.id, title: "KYC rejected", message: kyc.rejectReason || "Your KYC verification was rejected.", type: "KYC", linkPage: "kyc", referenceId: `kyc_no_${kyc.id || userId}` });
       App.toast("KYC rejected successfully.");
       render();
     },
@@ -4109,6 +4110,7 @@
       method.rejectedAt = "";
       await logAdminActionAsync("PAYMENT_METHOD_APPROVE", "PAYMENT_METHOD", method.id, { userId: target.id, user: displayNameFor(target), bankName: method.bankName || "" });
       await savePaymentMethods(target, methods);
+      await App.notifyAsync?.({ audience: "USER", userId: target.id, title: "Bank account approved", message: `${method.bankName || "Bank account"} ending ${String(method.accountNumber || "").slice(-4) || "-"} has been approved for withdrawals.`, type: "PAYMENT_METHOD", linkPage: "payments", referenceId: `pm_ok_${method.id}` });
       App.toast("Payment method approved successfully.");
       render();
     },
@@ -4132,6 +4134,7 @@
       method.approvedAt = "";
       await logAdminActionAsync("PAYMENT_METHOD_REJECT", "PAYMENT_METHOD", method.id, { userId: target.id, user: displayNameFor(target), reason: method.rejectReason });
       await savePaymentMethods(target, methods);
+      await App.notifyAsync?.({ audience: "USER", userId: target.id, title: "Bank account rejected", message: method.rejectReason || "Your bank account verification was rejected.", type: "PAYMENT_METHOD", linkPage: "payments", referenceId: `pm_no_${method.id}` });
       App.toast("Payment method rejected successfully.");
       render();
     },

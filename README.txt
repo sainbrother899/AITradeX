@@ -1,33 +1,38 @@
-AITradeX Phase 5.26 - Final Admin/User Logic Fix
+AITradeX Phase 5.28 - RLS Safety Pack + Final Deep Consistency
 
 What changed in this build:
-- Default Supabase admin seed/fallback added for control@aitradex.com / admin123.
-- Admin login logging is no longer duplicated.
-- Deposit approval and withdrawal approval now use safer awaited DB flows with rollback ledger entries if a later save fails.
-- Manual position close now awaits DB trade save and rolls back settlement ledger on save failure.
-- Pending limit order cancel now awaits DB trade save and rolls back margin release on save failure.
-- User-side AI live auto close now awaits DB trade save and rolls back settlement ledger on save failure.
-- Admin Instant AI and Live AI no longer stop the whole batch when one eligible user has too-small margin.
-- Referral bonus now has an awaited async DB flow.
-- Wallet ledger SQL uniqueness now matches app logic: user + account type + type + reference ID.
-- Cache version bumped to phase526deepconsistency.
-- Database runtime version bumped to 5.25.
+- Phase/runtime/cache labels aligned to 5.27.
+- Added a clear Supabase RLS safety pack.
+- supabase-schema.sql now includes the required TESTING RLS setup so the current frontend-only app keeps working after running schema.
+- Added supabase-production-rls-template.sql for future real public launch hardening.
+- Admin setup/security text updated so it does not pretend the current frontend-only app is production-secure.
+- Previous Phase 5.26 consistency fixes are preserved:
+  - Safer admin/user DB persistence flows.
+  - REAL/DEMO wallet split.
+  - Default admin seed for control@aitradex.com / admin123.
+  - Password hash runtime support.
+  - AI trade/batch consistency improvements.
 
-Before upload/deploy:
-1. Run the updated supabase-schema.sql in Supabase SQL Editor.
-2. Upload/deploy this ZIP.
-3. Hard refresh browser with Ctrl + Shift + R.
+Very important RLS note:
+The current app uses custom frontend login with the Supabase anon key. Because of that, strict per-user/per-admin RLS cannot be fully secure with SQL alone. If strict anon-blocking RLS is applied now, the current website will stop reading/writing data.
 
-Testing note:
-This build is cleaner for functional testing. For real public funds/users, build a secure backend/service-role API and strict RLS before launch.
+For current testing:
+1. Run supabase-schema.sql.
+2. Run supabase-storage-policies.sql if you use uploads.
+3. Deploy/upload the ZIP.
+4. Hard refresh with Ctrl + Shift + R.
+
+For real public money/users:
+- Do NOT rely on frontend-only admin/funds/trade actions.
+- Move admin, wallet, trade, approval and referral writes to a backend / Supabase Edge Functions with service-role key kept private.
+- Switch login to Supabase Auth or server-issued verified sessions.
+- Then apply/adapt supabase-production-rls-template.sql.
+
+This build is suitable for functional testing and controlled review. It is not a final public real-money security architecture.
 
 
-Phase5.26 Deep Consistency Fix:
-- SQL/runtime/cache version aligned to 5.26.
-- Added trade/batch rollback helpers for safer AI consistency.
-- Instant AI trade rollback deletes the saved trade if ledger save fails.
-- AI live/instant batch final-save failures are marked locally for admin review instead of silently disappearing.
-- AI live margin reconcile DB writes are awaited; no background fire-and-forget trade status sync remains in reconcile helpers.
-- Removed duplicate live AI checks/fields found during the final audit.
-
-Security note: this package is suitable for functional testing only. Public real-money launch still requires a secure backend/service-role API and strict Supabase RLS.
+Phase 5.28 Telegram Coverage Fix:
+- Telegram scope is now clear: KYC, Bank/Payment Method, Deposit and Withdrawal.
+- Admin Alerts: new KYC, new bank account, new deposit, new withdrawal.
+- User Mirror: KYC/bank/deposit/withdraw approve-reject messages.
+- Notification/Telegram side-alert failures do not roll back saved KYC or payment-method data.
