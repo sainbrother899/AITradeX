@@ -1521,18 +1521,7 @@
   }
 
   function availableRealBalance() {
-    const withdrawable = App.withdrawableRealBalance ? App.withdrawableRealBalance(user().id) : realBalance();
-    return Math.max(0, withdrawable - pendingWithdrawalAmount());
-  }
-
-  function bonusLockSummary() {
-    const rows = App.depositBonusProgress ? App.depositBonusProgress(user().id) : [];
-    const locked = rows.filter(x => !x.unlocked);
-    const totalLocked = locked.reduce((sum, x) => sum + Number(x.lockedAmount || 0), 0);
-    const totalBonus = rows.reduce((sum, x) => sum + Number(x.bonusAmount || 0), 0);
-    const required = locked.reduce((sum, x) => sum + Number(x.requiredTurnover || 0), 0);
-    const completed = locked.reduce((sum, x) => sum + Math.min(Number(x.completedTurnover || 0), Number(x.requiredTurnover || 0)), 0);
-    return { rows, locked, totalLocked, totalBonus, required, completed };
+    return Math.max(0, realBalance() - pendingWithdrawalAmount());
   }
 
   function methodLabel(method) {
@@ -2403,7 +2392,6 @@
     const minWithdrawal = Number(settings.minWithdrawal || 1000);
     const maxWithdrawal = Number(settings.maxWithdrawal || 500000);
     const selectedWithdrawalMethod = approvedMethods.find(m => m.id === withdrawalDraft.methodId) || approvedMethods[0] || null;
-    const bonusLock = bonusLockSummary();
     const platformUpi = settings.depositUpiId || "aitradex@upi";
     const bankDetails = {
       accountName: settings.depositAccountName || "AITradeX Private Wallet",
@@ -2477,7 +2465,6 @@
             </div>
           </div>
           <div class="profile-note">Enter amount and choose how you want to pay. Payment details open on next step.</div>
-          <div class="profile-note">Deposit bonus: first deposit ${Number(settings.depositFirstBonusPercent ?? 10)}% bonus, every deposit ${Number(settings.depositEveryBonusPercent ?? 5)}% bonus. Bonus withdrawal unlock requires ${Number(settings.depositBonusTurnoverMultiplier ?? 10)}x bonus turnover.</div>
         ` : ""}
 
         ${depositMethodsAvailable && depositStep === 2 ? `
@@ -2549,7 +2536,7 @@
             <label>Withdrawal Amount
               <input id="withdrawalAmountInput" type="number" min="${minWithdrawal}" max="${maxWithdrawal}" value="${App.escapeHtml(withdrawalDraft.amount)}" placeholder="${App.money(minWithdrawal)} - ${App.money(maxWithdrawal)}"/>
             </label>
-            <div class="profile-note">Withdrawable balance: ${App.money(availableRealBalance())}. ${bonusLock.totalLocked > 0 ? `Bonus lock active: ${App.money(bonusLock.totalLocked)} locked until turnover is complete.` : `No active bonus withdrawal lock.`}</div>
+            <div class="profile-note">Available balance: ${App.money(availableRealBalance())}. Pending withdrawals are not included in available balance.</div>
           ` : ""}
           ${withdrawalStep === 2 ? `
             <div class="approved-method-list premium-approved-list compact-bank-picker">
@@ -2636,13 +2623,12 @@
           <div>
             <p>REAL WALLET</p>
             <h1>${App.money(availableRealBalance())}</h1>
-            <span>Withdrawable balance · ${statusPill(kyc.status)}</span>
+            <span>Available balance · ${statusPill(kyc.status)}</span>
             ${usdtRateChip("wallet-rate-chip")}
           </div>
           <div class="wallet-hero-stats">
             <article><span>Pending Deposit</span><b>${App.money(pendingDepositAmount())}</b></article>
             <article><span>Pending Withdrawal</span><b>${App.money(pendingWithdrawalAmount())}</b></article>
-            <article><span>Bonus Lock</span><b>${App.money(bonusLock.totalLocked)}</b><small>${bonusLock.required ? `${App.money(bonusLock.completed)} / ${App.money(bonusLock.required)} turnover` : "No active lock"}</small></article>
           </div>
         </div>
       </section>

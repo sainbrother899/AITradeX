@@ -2462,38 +2462,6 @@
               <input id="settingMaxWithdrawal" type="number" min="1" value="${Number(settings.maxWithdrawal || 500000)}" required/>
             </label>
 
-            <p>DEPOSIT BONUS & WITHDRAWAL LOCK</p>
-            <label>Deposit Bonus
-              <select id="settingDepositBonusEnabled">
-                <option value="true" ${settings.depositBonusEnabled !== false ? "selected" : ""}>Enabled</option>
-                <option value="false" ${settings.depositBonusEnabled === false ? "selected" : ""}>Disabled</option>
-              </select>
-              <small>Credits bonus only after admin approves a deposit.</small>
-            </label>
-            <label>First Deposit Bonus %
-              <input id="settingDepositFirstBonusPercent" type="number" min="0" step="0.01" value="${Number(settings.depositFirstBonusPercent ?? 10)}" required/>
-            </label>
-            <label>First Deposit Bonus Cap
-              <input id="settingDepositFirstBonusCap" type="number" min="0" step="1" value="${Number(settings.depositFirstBonusCap ?? 1000)}" required/>
-            </label>
-            <label>Every Deposit Bonus %
-              <input id="settingDepositEveryBonusPercent" type="number" min="0" step="0.01" value="${Number(settings.depositEveryBonusPercent ?? 5)}" required/>
-            </label>
-            <label>Every Deposit Bonus Cap
-              <input id="settingDepositEveryBonusCap" type="number" min="0" step="1" value="${Number(settings.depositEveryBonusCap ?? 500)}" required/>
-            </label>
-            <label>Bonus Turnover Multiplier
-              <input id="settingDepositBonusTurnoverMultiplier" type="number" min="0" step="0.1" value="${Number(settings.depositBonusTurnoverMultiplier ?? 10)}" required/>
-              <small>10x means ₹500 bonus needs ₹5,000 closed trade turnover.</small>
-            </label>
-            <label>Bonus Withdrawal Lock
-              <select id="settingDepositBonusLockEnabled">
-                <option value="true" ${settings.depositBonusLockEnabled !== false ? "selected" : ""}>Enabled</option>
-                <option value="false" ${settings.depositBonusLockEnabled === false ? "selected" : ""}>Disabled</option>
-              </select>
-              <small>Locks deposit principal + bonus until bonus turnover is complete.</small>
-            </label>
-
             <p>TRADING LIMITS</p>
             <label>Minimum Manual Trade
               <input id="settingMinManualTrade" type="number" min="1" value="${Number(settings.minManualTrade || 100)}" required/>
@@ -2534,10 +2502,6 @@
               <article><span>AI Trading</span><b class="${settings.aiTradingEnabled !== false ? "text-profit" : "text-loss"}">${settings.aiTradingEnabled !== false ? "Enabled" : "Disabled"}</b></article>
               <article><span>Deposit Range</span><b>${App.money(settings.minDeposit)} - ${App.money(settings.maxDeposit)}</b></article>
               <article><span>Withdrawal Range</span><b>${App.money(settings.minWithdrawal)} - ${App.money(settings.maxWithdrawal)}</b></article>
-              <article><span>Deposit Bonus</span><b class="${settings.depositBonusEnabled !== false ? "text-profit" : "text-loss"}">${settings.depositBonusEnabled !== false ? "ON" : "OFF"}</b></article>
-              <article><span>First Bonus</span><b>${Number(settings.depositFirstBonusPercent ?? 10)}% · cap ${App.money(settings.depositFirstBonusCap ?? 1000)}</b></article>
-              <article><span>Every Bonus</span><b>${Number(settings.depositEveryBonusPercent ?? 5)}% · cap ${App.money(settings.depositEveryBonusCap ?? 500)}</b></article>
-              <article><span>Bonus Turnover</span><b>${Number(settings.depositBonusTurnoverMultiplier ?? 10)}x bonus</b></article>
               <article><span>Manual Trade Range</span><b>${App.money(settings.minManualTrade || 100)} - ${App.money(settings.maxManualTrade || 250000)}</b></article>
               <article><span>AI Trade Range</span><b>${App.money(settings.minAiTrade || 100)} - ${App.money(settings.maxAiTrade || 250000)}</b></article>
               <article><span>Max Leverage</span><b>${Number(settings.maxLeverage || 2000)}x</b></article>
@@ -3671,13 +3635,6 @@
         maxDeposit: Math.max(1, Number(inputValue("settingMaxDeposit") || 1000000)),
         minWithdrawal: Math.max(1, Number(inputValue("settingMinWithdrawal") || 1000)),
         maxWithdrawal: Math.max(1, Number(inputValue("settingMaxWithdrawal") || 500000)),
-        depositBonusEnabled: document.getElementById("settingDepositBonusEnabled")?.value !== "false",
-        depositFirstBonusPercent: Math.max(0, Number(inputValue("settingDepositFirstBonusPercent") || 10)),
-        depositFirstBonusCap: Math.max(0, Number(inputValue("settingDepositFirstBonusCap") || 1000)),
-        depositEveryBonusPercent: Math.max(0, Number(inputValue("settingDepositEveryBonusPercent") || 5)),
-        depositEveryBonusCap: Math.max(0, Number(inputValue("settingDepositEveryBonusCap") || 500)),
-        depositBonusTurnoverMultiplier: Math.max(0, Number(inputValue("settingDepositBonusTurnoverMultiplier") || 10)),
-        depositBonusLockEnabled: document.getElementById("settingDepositBonusLockEnabled")?.value !== "false",
         minManualTrade: Math.max(1, Number(inputValue("settingMinManualTrade") || 100)),
         maxManualTrade: Math.max(1, Number(inputValue("settingMaxManualTrade") || 250000)),
         minAiTrade: Math.max(1, Number(inputValue("settingMinAiTrade") || 100)),
@@ -3686,7 +3643,7 @@
         maxOpenPositionsPerUser: Math.max(1, Number(inputValue("settingMaxOpenPositions") || 10)),
         usdtInrRate: Math.max(1, Number(inputValue("settingUsdtInrRate") || 95))
       };
-      logAdminAction("APP_SETTINGS_UPDATE", "SETTINGS", "app", { depositEnabled: App.state.settings.depositEnabled, withdrawalEnabled: App.state.settings.withdrawalEnabled, manualTradingEnabled: App.state.settings.manualTradingEnabled, aiTradingEnabled: App.state.settings.aiTradingEnabled, maintenanceMode: App.state.settings.maintenanceMode, maxLeverage: App.state.settings.maxLeverage, depositBonusEnabled: App.state.settings.depositBonusEnabled, depositBonusTurnoverMultiplier: App.state.settings.depositBonusTurnoverMultiplier });
+      logAdminAction("APP_SETTINGS_UPDATE", "SETTINGS", "app", { depositEnabled: App.state.settings.depositEnabled, withdrawalEnabled: App.state.settings.withdrawalEnabled, manualTradingEnabled: App.state.settings.manualTradingEnabled, aiTradingEnabled: App.state.settings.aiTradingEnabled, maintenanceMode: App.state.settings.maintenanceMode, maxLeverage: App.state.settings.maxLeverage });
       await persistSettings("app settings");
       App.saveState();
       App.toast("App settings saved.");
@@ -4211,20 +4168,13 @@
         request.balanceApplied = true;
         request.adminNote = duplicate?.total ? `Checked duplicate UTR warning: ${duplicate.total} similar request(s).` : "Approved by admin.";
         await saveDepositRequests(target, requests);
-        let depositBonusResult = null;
-        if (ledgerApplied && !ledgerExists && App.applyDepositBonusAsync) {
-          depositBonusResult = await App.applyDepositBonusAsync({ userId: target.id, depositRequest: request, amount });
-          if (depositBonusResult?.credited) {
-            await logAdminActionAsync("DEPOSIT_BONUS_CREDIT", "DEPOSIT_BONUS", request.id, { userId: target.id, amount: depositBonusResult.amount, percent: depositBonusResult.percent, requiredTurnover: depositBonusResult.requiredTurnover });
-          }
-        }
-        await App.addNotificationAsync?.({ audience: "USER", userId: target.id, title: "Deposit approved", message: `${App.money(amount)} deposit approved${depositBonusResult?.credited ? ` with ${App.money(depositBonusResult.amount)} bonus` : ""}.`, type: "DEPOSIT", linkPage: "wallet", referenceId: `dep_ok_${request.id}` });
-        await logAdminActionAsync("DEPOSIT_APPROVE", "DEPOSIT", request.id, { userId: target.id, user: displayNameFor(target), amount, utr: request.utr || "", ledgerApplied: !ledgerExists, depositBonus: depositBonusResult?.credited ? depositBonusResult.amount : 0 });
+        await App.addNotificationAsync?.({ audience: "USER", userId: target.id, title: "Deposit approved", message: `${App.money(amount)} deposit approved and credited to your wallet.`, type: "DEPOSIT", linkPage: "wallet", referenceId: `dep_ok_${request.id}` });
+        await logAdminActionAsync("DEPOSIT_APPROVE", "DEPOSIT", request.id, { userId: target.id, user: displayNameFor(target), amount, utr: request.utr || "", ledgerApplied: !ledgerExists });
         if (ledgerApplied && !ledgerExists) {
           const referralResult = await (App.creditReferralBonusAsync ? App.creditReferralBonusAsync({ referredUserId: target.id, eventType: "DEPOSIT", amount, referenceId: request.id, sourceLabel: `Deposit UTR ${request.utr || "-"}` }) : Promise.resolve(App.creditReferralBonus?.({ referredUserId: target.id, eventType: "DEPOSIT", amount, referenceId: request.id, sourceLabel: `Deposit UTR ${request.utr || "-"}` })));
           if (referralResult?.credited) await logAdminActionAsync("REFERRAL_DEPOSIT_BONUS", "REFERRAL", request.id, { referredUserId: target.id, amount: referralResult.amount });
         }
-        App.toast(ledgerExists ? "Deposit marked approved. Ledger was already applied." : `Deposit approved${depositBonusResult?.credited ? ` + bonus ${App.money(depositBonusResult.amount)}` : ""}.`);
+        App.toast(ledgerExists ? "Deposit marked approved. Ledger was already applied." : "Deposit approved and balance credited.");
       } catch (err) {
         Object.assign(request, previous);
         if (ledgerApplied && !ledgerExists) {
@@ -4267,7 +4217,7 @@
       const amount = Number(request.amount || 0);
       if (!amount || amount <= 0) { App.toast("Invalid withdrawal amount."); render(); return; }
       const ledgerExists = App.hasLedgerEntry?.({ accountType: "REAL", type: "WITHDRAWAL", referenceId: request.id, userId: target.id });
-      if (!ledgerExists && (App.withdrawableRealBalance ? App.withdrawableRealBalance(target.id) : App.realBalance(target.id)) < amount) { App.toast("Withdrawal blocked: bonus turnover lock or insufficient withdrawable balance."); render(); return; }
+      if (!ledgerExists && App.realBalance(target.id) < amount) { App.toast("Insufficient real balance for withdrawal."); render(); return; }
       if (!ledgerExists && !confirm(`Approve ${App.money(amount)} withdrawal for ${displayNameFor(target)}? Wallet will be debited once.`)) return;
       markButton(button, "Approving...");
       const previous = { ...request };
