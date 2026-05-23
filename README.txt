@@ -41,3 +41,11 @@ Next recommended Phase6 steps:
 
 Real-money warning:
 This build is safer than the previous frontend-only baseline because deposit and withdrawal approvals are now database-controlled, but it is still not a final public real-money launch build. Public real-money launch requires secure backend Edge Functions, strict RLS, payment/KYC compliance, legal review and full audit policies.
+
+
+Phase 6.4 AI Backend Settlement Fix:
+- AI Live admin/manual close now uses Supabase RPC aitradex_close_ai_live_batch in database mode.
+- Admin close uses a fresh live exit price before settlement.
+- P/L and settlement are calculated database-side for every open position in the batch.
+- Same batch closes together and user history/wallet ledger reload from database after close.
+- Run updated supabase-schema.sql before deploy.

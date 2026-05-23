@@ -1725,6 +1725,32 @@
     return cached || last || null;
   }
 
+  async function aiLiveFreshExitPriceRow(position) {
+    if (!position) return null;
+    try {
+      if (App.getFreshLivePairPrice) {
+        const fresh = await App.getFreshLivePairPrice(position.pair);
+        if (fresh && Number(fresh.price || 0) > 0) return fresh;
+      }
+      if (App.getLivePairPrice) {
+        const live = await App.getLivePairPrice(position.pair);
+        if (live && Number(live.price || 0) > 0) return live;
+      }
+    } catch (err) {
+      console.warn("AI live fresh exit price unavailable; using cached price", err?.message || err);
+    }
+    return aiLiveExitPriceRow(position) || { price: Number(position.entryPrice || 0), display: position.entryPriceDisplay || String(position.entryPrice || "-"), source: "Entry fallback" };
+  }
+
+  function aiLiveBackendAdminPayload() {
+    const admin = adminUser() || {};
+    return {
+      adminUserId: admin.id || "control_root",
+      adminEmail: admin.email || "",
+      adminName: displayNameFor(admin) || "Admin"
+    };
+  }
+
   function aiLiveRawPnl(position, forcedPriceRow = null) {
     const entry = Number(position?.entryPrice || 0);
     const row = forcedPriceRow || aiLiveExitPriceRow(position);
@@ -2992,20 +3018,40 @@
         if (!trigger) continue;
 
         let closed = 0;
-        for (const position of positions) {
+        if (App.isDatabaseMode?.() && window.AITradeXDB?.closeAiLiveBatchSecure) {
           try {
-            if (await settleAiLivePositionByAdmin(position, trigger.reason, priceRow)) closed += 1;
+            const result = await window.AITradeXDB.closeAiLiveBatchSecure({
+              batchId,
+              reason: trigger.reason || "AUTO_BATCH_CLOSE",
+              exitPrice: Number(priceRow?.price || positions[0]?.entryPrice || 0),
+              exitPriceDisplay: priceRow?.display || String(priceRow?.price || positions[0]?.entryPrice || "-"),
+              exitPriceSource: priceRow?.source || "Auto close watcher",
+              ...aiLiveBackendAdminPayload()
+            });
+            closed = Number(result.closed || result.closedCount || positions.length || 0);
+            if (window.AITradeXDB?.loadAll) await window.AITradeXDB.loadAll();
           } catch (error) {
-            console.warn("AI live auto-close failed", position.id, error?.message || error);
+            console.warn("AI live backend auto-close failed; falling back to browser settlement", batchId, error?.message || error);
+          }
+        }
+        if (!closed) {
+          for (const position of positions) {
+            try {
+              if (await settleAiLivePositionByAdmin(position, trigger.reason, priceRow)) closed += 1;
+            } catch (error) {
+              console.warn("AI live auto-close failed", position.id, error?.message || error);
+            }
+          }
+          if (closed) {
+            try { await markAiLiveBatchClosed(batchId, trigger.reason, closed, positions.length, priceRow, trigger); }
+            catch (err) { console.warn("AI live auto-close batch save failed", err?.message || err); }
+            await (typeof logAdminActionAsync === "function"
+              ? logAdminActionAsync("AI_LIVE_AUTO_CLOSE", "AI_BATCH", batchId, { closed, totalPositions: positions.length, reason: trigger.reason, trigger: trigger.label, price: priceRow?.display || priceRow?.price || "" })
+              : logAdminAction("AI_LIVE_AUTO_CLOSE", "AI_BATCH", batchId, { closed, totalPositions: positions.length, reason: trigger.reason, trigger: trigger.label, price: priceRow?.display || priceRow?.price || "" }));
           }
         }
         if (closed) {
           closedTotal += closed;
-          try { await markAiLiveBatchClosed(batchId, trigger.reason, closed, positions.length, priceRow, trigger); }
-          catch (err) { console.warn("AI live auto-close batch save failed", err?.message || err); }
-          await (typeof logAdminActionAsync === "function"
-            ? logAdminActionAsync("AI_LIVE_AUTO_CLOSE", "AI_BATCH", batchId, { closed, totalPositions: positions.length, reason: trigger.reason, trigger: trigger.label, price: priceRow?.display || priceRow?.price || "" })
-            : logAdminAction("AI_LIVE_AUTO_CLOSE", "AI_BATCH", batchId, { closed, totalPositions: positions.length, reason: trigger.reason, trigger: trigger.label, price: priceRow?.display || priceRow?.price || "" }));
         }
       }
     } finally {
@@ -4143,8 +4189,28 @@
       }
       if (!confirm(`Close this AI live trade for ${positions.length} user(s)? Current profit/loss will be settled in real wallet.`)) return;
       markButton(button, "Closing...");
+      const batchExitRow = await aiLiveFreshExitPriceRow(positions[0]);
+      if (App.isDatabaseMode?.() && window.AITradeXDB?.closeAiLiveBatchSecure) {
+        try {
+          const result = await window.AITradeXDB.closeAiLiveBatchSecure({
+            batchId,
+            reason: "ADMIN_BATCH_CLOSE",
+            exitPrice: Number(batchExitRow?.price || positions[0]?.entryPrice || 0),
+            exitPriceDisplay: batchExitRow?.display || String(batchExitRow?.price || positions[0]?.entryPrice || "-"),
+            exitPriceSource: batchExitRow?.source || "Admin manual close",
+            ...aiLiveBackendAdminPayload()
+          });
+          if (window.AITradeXDB?.loadAll) await window.AITradeXDB.loadAll();
+          App.toast(`Closed AI live trade for ${Number(result.closed || result.closedCount || positions.length || 0)} user(s).`);
+          render();
+          return;
+        } catch (err) {
+          App.toast(`AI live backend close failed: ${err.message || err}`);
+          if (button) { button.disabled = false; button.textContent = button.dataset.oldText || "Close Trade"; }
+          return;
+        }
+      }
       let closed = 0;
-      const batchExitRow = aiLiveExitPriceRow(positions[0]);
       for (const position of positions) {
         try { if (await settleAiLivePositionByAdmin(position, "ADMIN_BATCH_CLOSE", batchExitRow)) closed += 1; } catch (error) { console.warn("AI live close failed", error); }
       }
