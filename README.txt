@@ -38,7 +38,7 @@ Deploy order:
 5. Test: manual market order open, manual close, P/L settlement, pending limit order cancel, wallet ledger and reload persistence.
 
 Current cache version:
-- phase653selllimitunitfix
+- phase654sellmarketunitfix
 
 Default admin for testing:
 - control@aitradex.com

@@ -286,12 +286,39 @@
     };
   }
 
+  function normalizeManualPositionPriceRow(position, row) {
+    if (!position || !row) return row || null;
+    let price = Number(row.price || 0);
+    if (!Number.isFinite(price) || price <= 0) return null;
+    const pair = position.pair || row.pair || selectedPair;
+    const reference = Number(position.entryPrice || position.currentPriceAtOrder || position.limitPrice || 0);
+
+    // Manual P/L must compare the live price and entry price in the same unit.
+    // Crypto cards display INR, while stored entry prices are usually raw USDT.
+    // If one side is INR and the other is raw, SELL market orders can instantly
+    // look like a full-loss position and auto-close when the user changes page.
+    if (App.isCryptoPair?.(pair) && Number.isFinite(reference) && reference > 0) {
+      const ratio = price / reference;
+      if (ratio > 20 && App.cryptoInrToRaw) {
+        const converted = Number(App.cryptoInrToRaw(price) || 0);
+        if (Number.isFinite(converted) && converted > 0) price = converted;
+      } else if (ratio > 0 && ratio < 0.05 && App.cryptoRawToInr) {
+        const converted = Number(App.cryptoRawToInr(price) || 0);
+        if (Number.isFinite(converted) && converted > 0) price = converted;
+      }
+    }
+
+    if (!Number.isFinite(price) || price <= 0) return null;
+    return { ...row, price };
+  }
+
   function positionPriceRow(position) {
     const visible = visiblePairCardPrice(position.pair);
-    if (visible) return visible;
+    if (visible) return normalizeManualPositionPriceRow(position, visible);
     const fresh = App.getCachedPairPrice ? App.getCachedPairPrice(position.pair) : null;
+    if (fresh) return normalizeManualPositionPriceRow(position, fresh);
     const last = App.getLastPairPrice ? App.getLastPairPrice(position.pair) : null;
-    return fresh || last || null;
+    return last ? normalizeManualPositionPriceRow(position, last) : null;
   }
 
   function positionCurrentPrice(position) {
