@@ -238,9 +238,9 @@ create index if not exists wallet_ledger_user_id_idx on public.wallet_ledger(use
 create index if not exists notifications_user_id_idx on public.notifications(user_id);
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','6.2','mode','action-database'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.2.1','mode','action-database'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.2','mode','action-database'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.2.1','mode','action-database'),
     updated_at = now();
 
 
@@ -255,9 +255,9 @@ create index if not exists admin_action_logs_created_at_idx on public.admin_acti
 create index if not exists notifications_created_at_idx on public.notifications(created_at desc);
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','6.2','mode','action-database-clean-persistence'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.2.1','mode','action-database-clean-persistence'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.2','mode','action-database-clean-persistence'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.2.1','mode','action-database-clean-persistence'),
     updated_at = now();
 
 
@@ -268,9 +268,9 @@ alter table public.users add column if not exists password_hash text;
 alter table public.notifications add column if not exists raw jsonb default '{}'::jsonb;
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','6.2','mode','final-clean-audit-fix','passwordStorage','salted-sha256-runtime'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.2.1','mode','final-clean-audit-fix','passwordStorage','salted-sha256-runtime'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.2','mode','final-clean-audit-fix','passwordStorage','salted-sha256-runtime'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.2.1','mode','final-clean-audit-fix','passwordStorage','salted-sha256-runtime'),
     updated_at = now();
 
 
@@ -297,9 +297,9 @@ on conflict (id) do update set
 
 -- Phase 5.29: final deep consistency marker
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','6.2','mode','final-deep-consistency-fix','passwordStorage','salted-sha256-runtime'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.2.1','mode','final-deep-consistency-fix','passwordStorage','salted-sha256-runtime'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.2','mode','final-deep-consistency-fix','passwordStorage','salted-sha256-runtime'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.2.1','mode','final-deep-consistency-fix','passwordStorage','salted-sha256-runtime'),
     updated_at = now();
 
 
@@ -330,21 +330,21 @@ begin
 end $$;
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','6.2','mode','rls-safety-pack','rlsMode','testing-frontend-compatible'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.2.1','mode','rls-safety-pack','rlsMode','testing-frontend-compatible'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.2','mode','rls-safety-pack','rlsMode','testing-frontend-compatible'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.2.1','mode','rls-safety-pack','rlsMode','testing-frontend-compatible'),
     updated_at = now();
 
 
 -- Phase 5.34: Live Sync Lite marker.
 insert into public.app_settings (id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','6.2','mode','live-sync-lite','liveSync','supabase-realtime-silent-ui'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.2.1','mode','live-sync-lite','liveSync','supabase-realtime-silent-ui'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.2','mode','live-sync-lite','liveSync','supabase-realtime-silent-ui'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.2.1','mode','live-sync-lite','liveSync','supabase-realtime-silent-ui'),
     updated_at = now();
 
 
--- Phase 6.2 Deposit Backend Security + Secure Auth Foundation (safe, non-breaking)
+-- Phase 6.2.1 Deposit Backend Security SQL Grant Fix + Secure Auth Foundation (safe, non-breaking)
 -- These columns/tables prepare the project for Supabase Auth + backend Edge Functions without breaking the current Phase5 UI.
 alter table public.users add column if not exists auth_user_id uuid unique;
 alter table public.users add column if not exists password_updated_at timestamptz;
@@ -379,12 +379,12 @@ create index if not exists admin_roles_user_id_idx on public.admin_roles(user_id
 create index if not exists backend_action_queue_status_idx on public.backend_action_queue(status, created_at desc);
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','6.2','mode','phase6-secure-auth-foundation','authMode','legacy-testing'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.2.1','mode','phase6-secure-auth-foundation','authMode','legacy-testing'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.2','mode','phase6-secure-auth-foundation','authMode','legacy-testing'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.2.1','mode','phase6-secure-auth-foundation','authMode','legacy-testing'),
     updated_at = now();
 
--- Phase 6.2 Deposit Backend Security
+-- Phase 6.2.1 Deposit Backend Security SQL Grant Fix
 -- Centralizes deposit approve/reject in PostgreSQL RPC functions.
 -- This is a safe migration step before full Edge Function/service-role migration.
 
@@ -559,10 +559,10 @@ $$;
 
 grant execute on function public.aitradex_validate_admin(text) to anon, authenticated;
 grant execute on function public.aitradex_approve_deposit(text,text,text,text) to anon, authenticated;
-grant execute on function public.aitradex_reject_deposit(text,text,text,text) to anon, authenticated;
+grant execute on function public.aitradex_reject_deposit(text,text,text,text,text) to anon, authenticated;
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','6.2','mode','phase6-deposit-backend-security','depositBackend','rpc-secure-function'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.2.1','mode','phase6-deposit-backend-security','depositBackend','rpc-secure-function'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.2','mode','phase6-deposit-backend-security','depositBackend','rpc-secure-function'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.2.1','mode','phase6-deposit-backend-security','depositBackend','rpc-secure-function'),
     updated_at = now();

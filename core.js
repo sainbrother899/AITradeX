@@ -359,6 +359,28 @@ App.getLivePairPrice=async(pair,manualPrice)=>{
   const row=await fetchForexPrice(clean);
   liveCache[clean]=row;saveLiveCache();return row;
 };
+App.getFreshLivePairPrice=async(pair,manualPrice)=>{
+  const clean=normPair(pair);
+  const manual=Number(manualPrice||0);
+  if(isCryptoPair(clean)){
+    const row=await fetchCryptoPrice(clean);
+    liveCache[clean]=row;saveLiveCache();return row;
+  }
+  if(isForexPair(clean)){
+    try{const row=await fetchChartFeedPrice(clean);liveCache[clean]=row;saveLiveCache();return row;}catch(error){
+      if(isMetalPair(clean)){
+        if(manual&&manual>0){const row={ok:true,pair:clean,price:manual,display:fmtPrice(manual,"METAL"),change:"Manual",mood:"up",source:"Manual Rate",sourceType:"MANUAL",fetchedAt:new Date().toISOString(),fetchedMs:Date.now()};liveCache[clean]=row;saveLiveCache();return row;}
+        throw new Error(`${clean} chart feed unavailable. Add manual fallback price.`);
+      }
+      const row=await fetchForexPrice(clean);
+      row.source="ExchangeRate-API Fallback";
+      row.sourceType="LIVE_API_FALLBACK";
+      liveCache[clean]=row;saveLiveCache();return row;
+    }
+  }
+  const row=await fetchForexPrice(clean);
+  liveCache[clean]=row;saveLiveCache();return row;
+};
 App.refreshLivePrices=async(pairs,onEach)=>{
   const unique=[...new Set((pairs||[]).map(x=>typeof x==="string"?x:x?.pair).filter(Boolean).map(normPair))];
   const out=[];

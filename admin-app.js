@@ -2969,16 +2969,26 @@
         if (!positions.length) continue;
         checkedBatches += 1;
         let priceRow = null;
-        try {
-          priceRow = App.getLivePairPrice ? await App.getLivePairPrice(positions[0].pair) : null;
-        } catch (err) {
-          priceRow = aiLiveExitPriceRow(positions[0]);
-          if (!priceRow) {
-            console.warn("AI live auto-close price unavailable", batchId, err?.message || err);
-            continue;
-          }
+        let trigger = null;
+        const cachedRow = aiLiveExitPriceRow(positions[0]);
+        if (cachedRow) {
+          trigger = aiLiveAutoCloseTriggerForBatch(positions, cachedRow);
+          if (trigger) priceRow = cachedRow;
         }
-        const trigger = aiLiveAutoCloseTriggerForBatch(positions, priceRow);
+        if (!trigger) {
+          try {
+            priceRow = App.getFreshLivePairPrice
+              ? await App.getFreshLivePairPrice(positions[0].pair)
+              : (App.getLivePairPrice ? await App.getLivePairPrice(positions[0].pair) : null);
+          } catch (err) {
+            priceRow = cachedRow || null;
+            if (!priceRow) {
+              console.warn("AI live auto-close price unavailable", batchId, err?.message || err);
+              continue;
+            }
+          }
+          trigger = aiLiveAutoCloseTriggerForBatch(positions, priceRow);
+        }
         if (!trigger) continue;
 
         let closed = 0;
@@ -3017,7 +3027,7 @@
       if (App.session?.userId && Auth?.isAdmin?.()) {
         runAiLiveBatchAutoClose({ silent: true }).catch(err => console.warn("AI live auto-close watcher failed", err?.message || err));
       }
-    }, 30000);
+    }, 5000);
   }
 
   async function settleAiLivePositionByAdmin(position, reason = "ADMIN_CLOSE", forcedPriceRow = null) {
