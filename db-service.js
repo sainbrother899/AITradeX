@@ -21,6 +21,8 @@
   }
   function lastSyncStatus(){ try{return JSON.parse(localStorage.getItem("AITradeX_DB_LAST_SYNC")||"null");}catch{return null;} }
   function assertReady(){ if(!ready || !client) throw new Error("Supabase is not configured."); }
+  function pauseLocalLiveSync(ms=1800){ try{ window.AITradeX?.pauseLiveSync?.(ms); }catch{} }
+  const REALTIME_TABLES=["users","payment_methods","kyc_requests","deposit_requests","withdrawal_requests","wallet_ledger","trade_orders","ai_trade_batches","admin_action_logs","notifications","app_settings","plans","subscriptions","referrals","support_tickets"];
   async function safeSelect(table, query="*"){
     try{ const {data,error}=await client.from(table).select(query); if(error) throw error; return data||[]; }
     catch(err){ console.warn(`[AITradeX DB] ${table} load skipped:`, err?.message||err); return []; }
@@ -30,12 +32,14 @@
   }
   async function upsert(table, rows, options={}){
     if(!ready || !client || !rows || !rows.length) return {table,count:0};
+    pauseLocalLiveSync();
     const {error}=await client.from(table).upsert(rows, options.onConflict ? {onConflict:options.onConflict} : undefined);
     if(error) throw new Error(`${table}: ${error.message}`);
     return {table,count:rows.length};
   }
   async function removeMissing(table, ids){
     if(!ready || !client) return {table,deleted:0};
+    pauseLocalLiveSync();
     const keep = new Set((ids||[]).filter(Boolean).map(String));
     const {data,error}=await client.from(table).select("id");
     if(error) throw new Error(`${table} stale-row scan: ${error.message}`);
@@ -84,8 +88,8 @@
     const {data,error}=await client.from("users").select("*").or(filter).limit(1);
     if(error) throw error; return data?.[0]?stateUser(data[0]):null;
   }
-  async function createUser(user){ assertReady(); const row=rowUser(user); const {error}=await client.from("users").insert(row); if(error) throw error; return user; }
-  async function updateUser(user){ assertReady(); await upsert("users", [rowUser(user)], {onConflict:"id"}); return user; }
+  async function createUser(user){ assertReady(); pauseLocalLiveSync(); const row=rowUser(user); const {error}=await client.from("users").insert(row); if(error) throw error; return user; }
+  async function updateUser(user){ assertReady(); pauseLocalLiveSync(); await upsert("users", [rowUser(user)], {onConflict:"id"}); return user; }
   async function loadAll(){
     assertReady();
     if(loading) return loading;
@@ -158,25 +162,25 @@
     const json=await res.json().catch(()=>({})); if(!res.ok||json.ok===false) throw new Error(json.description||"Telegram send failed"); return json;
   }
 
-  async function writeUser(row){ assertReady(); const clean=rowUser(row); const {error}=await client.from("users").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
-  async function writeKycRequest(row){ assertReady(); const clean=rowKyc(row); const {error}=await client.from("kyc_requests").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
-  async function writePaymentMethod(row){ assertReady(); const clean=rowMethod(row); const {error}=await client.from("payment_methods").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
-  async function writeDepositRequest(row){ assertReady(); const clean=rowDeposit(row); const {error}=await client.from("deposit_requests").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
-  async function writeWithdrawalRequest(row){ assertReady(); const clean=rowWithdrawal(row); const {error}=await client.from("withdrawal_requests").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
-  async function writeLedger(row){ assertReady(); const clean=rowLedger(row); const {error}=await client.from("wallet_ledger").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
-  async function writeTrade(row){ assertReady(); const clean=rowTrade(row); const {error}=await client.from("trade_orders").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
-  async function deleteTrade(id){ assertReady(); const clean=text(id); if(!clean) return false; const {error}=await client.from("trade_orders").delete().eq("id", clean); if(error) throw error; return true; }
-  async function writeAiBatch(row){ assertReady(); const clean=rowBatch(row); const {error}=await client.from("ai_trade_batches").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
-  async function deleteAiBatch(id){ assertReady(); const clean=text(id); if(!clean) return false; const {error}=await client.from("ai_trade_batches").delete().eq("id", clean); if(error) throw error; return true; }
-  async function writePlan(row){ assertReady(); const clean=rowPlan(row); const {error}=await client.from("plans").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
-  async function writeSubscription(row){ assertReady(); const clean=rowSubscription(row); const {error}=await client.from("subscriptions").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
-  async function writeReferral(row){ assertReady(); const clean=rowReferral(row); const {error}=await client.from("referrals").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
-  async function writeSupportTicket(row){ assertReady(); const clean=rowSupportTicket(row); const {error}=await client.from("support_tickets").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
-  async function writeNotification(row){ assertReady(); const clean=rowNotification(row); const {error}=await client.from("notifications").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
-  async function writeAdminAction(row){ assertReady(); const clean=rowAdminLog(row); const {error}=await client.from("admin_action_logs").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
-  async function deletePaymentMethod(id){ assertReady(); const cleanId=text(id); if(!cleanId) throw new Error("Payment method ID missing."); const {error}=await client.from("payment_methods").delete().eq("id",cleanId); if(error) throw error; return {ok:true,id:cleanId}; }
-  async function deleteNotification(id){ assertReady(); const cleanId=text(id); if(!cleanId) throw new Error("Notification ID missing."); const {error}=await client.from("notifications").delete().eq("id",cleanId); if(error) throw error; return {ok:true,id:cleanId}; }
-  async function writeSettings(settings){ assertReady(); const row={id:"main",settings:{...clone(settings||App.state.settings||{}),databaseRuntimeVersion:"5.31",updatedBy:"admin"},updated_at:new Date().toISOString()}; const {error}=await client.from("app_settings").upsert(row,{onConflict:"id"}); if(error) throw error; return row; }
+  async function writeUser(row){ assertReady(); pauseLocalLiveSync(); const clean=rowUser(row); const {error}=await client.from("users").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
+  async function writeKycRequest(row){ assertReady(); pauseLocalLiveSync(); const clean=rowKyc(row); const {error}=await client.from("kyc_requests").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
+  async function writePaymentMethod(row){ assertReady(); pauseLocalLiveSync(); const clean=rowMethod(row); const {error}=await client.from("payment_methods").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
+  async function writeDepositRequest(row){ assertReady(); pauseLocalLiveSync(); const clean=rowDeposit(row); const {error}=await client.from("deposit_requests").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
+  async function writeWithdrawalRequest(row){ assertReady(); pauseLocalLiveSync(); const clean=rowWithdrawal(row); const {error}=await client.from("withdrawal_requests").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
+  async function writeLedger(row){ assertReady(); pauseLocalLiveSync(); const clean=rowLedger(row); const {error}=await client.from("wallet_ledger").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
+  async function writeTrade(row){ assertReady(); pauseLocalLiveSync(); const clean=rowTrade(row); const {error}=await client.from("trade_orders").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
+  async function deleteTrade(id){ assertReady(); pauseLocalLiveSync(); const clean=text(id); if(!clean) return false; const {error}=await client.from("trade_orders").delete().eq("id", clean); if(error) throw error; return true; }
+  async function writeAiBatch(row){ assertReady(); pauseLocalLiveSync(); const clean=rowBatch(row); const {error}=await client.from("ai_trade_batches").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
+  async function deleteAiBatch(id){ assertReady(); pauseLocalLiveSync(); const clean=text(id); if(!clean) return false; const {error}=await client.from("ai_trade_batches").delete().eq("id", clean); if(error) throw error; return true; }
+  async function writePlan(row){ assertReady(); pauseLocalLiveSync(); const clean=rowPlan(row); const {error}=await client.from("plans").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
+  async function writeSubscription(row){ assertReady(); pauseLocalLiveSync(); const clean=rowSubscription(row); const {error}=await client.from("subscriptions").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
+  async function writeReferral(row){ assertReady(); pauseLocalLiveSync(); const clean=rowReferral(row); const {error}=await client.from("referrals").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
+  async function writeSupportTicket(row){ assertReady(); pauseLocalLiveSync(); const clean=rowSupportTicket(row); const {error}=await client.from("support_tickets").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
+  async function writeNotification(row){ assertReady(); pauseLocalLiveSync(); const clean=rowNotification(row); const {error}=await client.from("notifications").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
+  async function writeAdminAction(row){ assertReady(); pauseLocalLiveSync(); const clean=rowAdminLog(row); const {error}=await client.from("admin_action_logs").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
+  async function deletePaymentMethod(id){ assertReady(); pauseLocalLiveSync(); const cleanId=text(id); if(!cleanId) throw new Error("Payment method ID missing."); const {error}=await client.from("payment_methods").delete().eq("id",cleanId); if(error) throw error; return {ok:true,id:cleanId}; }
+  async function deleteNotification(id){ assertReady(); pauseLocalLiveSync(); const cleanId=text(id); if(!cleanId) throw new Error("Notification ID missing."); const {error}=await client.from("notifications").delete().eq("id",cleanId); if(error) throw error; return {ok:true,id:cleanId}; }
+  async function writeSettings(settings){ assertReady(); pauseLocalLiveSync(); const row={id:"main",settings:{...clone(settings||App.state.settings||{}),databaseRuntimeVersion:"5.34",updatedBy:"admin"},updated_at:new Date().toISOString()}; const {error}=await client.from("app_settings").upsert(row,{onConflict:"id"}); if(error) throw error; return row; }
   function fire(promise,label){ if(!ready) return; Promise.resolve(promise).catch(err=>{ console.warn(`[AITradeX DB] ${label||"write"} failed:`, err?.message||err); status(`${label||"DB write"} failed: ${err?.message||err}`, false); }); }
 
   async function uploadUserFile({bucket,folder="uploads",label="file",file,userId}){
@@ -200,6 +204,23 @@
   function downloadLocalBackup(){ const blob=new Blob([JSON.stringify({app:"AITradeX",exportedAt:new Date().toISOString(),state:clone(App.state)},null,2)],{type:"application/json"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`aitradex-backup-${new Date().toISOString().slice(0,10)}.json`; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},400); }
   function importLocalBackup(file){ return new Promise((resolve,reject)=>{ const r=new FileReader(); r.onload=async()=>{ try{ const json=JSON.parse(String(r.result||"{}")); App.state=json.state||json; await fullSync(); resolve(true); }catch(e){reject(e);} }; r.onerror=()=>reject(new Error("Unable to read backup file.")); r.readAsText(file); }); }
 
-  const api={ready,client,loadAll,pullCoreTables:loadAll,syncCoreTables:fullSync,fullSync,scheduleFullSync,testConnection,findUser,createUser,updateUser,writeUser,writeKycRequest,writePaymentMethod,writeDepositRequest,writeWithdrawalRequest,writeLedger,writeTrade,deleteTrade,writeAiBatch,deleteAiBatch,writePlan,writeSubscription,writeReferral,writeSupportTicket,writeNotification,writeAdminAction,deletePaymentMethod,deleteNotification,writeSettings,uploadUserFile,fire,lastSyncStatus,sendTelegramMessage,backupFullState,latestSnapshot,restoreLatestSnapshot,downloadLocalBackup,importLocalBackup};
+  function subscribeRealtimeChanges(onChange, opts={}){
+    if(!ready || !client?.channel) return {unsubscribe(){},status:"unavailable"};
+    const name=`aitradex_live_sync_${opts.role||"app"}_${Date.now()}`;
+    const channel=client.channel(name);
+    REALTIME_TABLES.forEach(table=>{
+      channel.on("postgres_changes",{event:"*",schema:"public",table},payload=>{
+        try{ if(typeof onChange==="function") onChange({table,payload,at:new Date().toISOString()}); }
+        catch(err){ console.warn("Live Sync event handler failed",err?.message||err); }
+      });
+    });
+    channel.subscribe(statusText=>{
+      if(statusText==="SUBSCRIBED") console.info("AITradeX Live Sync listening", opts.role||"app");
+      if(["CHANNEL_ERROR","TIMED_OUT","CLOSED"].includes(statusText)) console.warn("AITradeX Live Sync channel status", statusText);
+    });
+    return {channel,status:"subscribed",unsubscribe(){ try{return client.removeChannel(channel);}catch{return null;} }};
+  }
+
+  const api={ready,client,loadAll,pullCoreTables:loadAll,syncCoreTables:fullSync,fullSync,scheduleFullSync,testConnection,findUser,createUser,updateUser,writeUser,writeKycRequest,writePaymentMethod,writeDepositRequest,writeWithdrawalRequest,writeLedger,writeTrade,deleteTrade,writeAiBatch,deleteAiBatch,writePlan,writeSubscription,writeReferral,writeSupportTicket,writeNotification,writeAdminAction,deletePaymentMethod,deleteNotification,writeSettings,uploadUserFile,fire,lastSyncStatus,sendTelegramMessage,backupFullState,latestSnapshot,restoreLatestSnapshot,downloadLocalBackup,importLocalBackup,subscribeRealtimeChanges};
   window.AITradeXDB=api; window.AppDB=api;
 })();

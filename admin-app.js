@@ -4404,6 +4404,10 @@
       }
     }catch(err){ console.warn("AITradeX admin boot DB load skipped", err?.message||err); }
     render();
+    try{
+      App.registerLiveSyncRenderer?.(()=>render(), "admin");
+      App.startLiveSync?.({role:"admin"});
+    }catch(err){ console.warn("Admin Live Sync Lite start skipped", err?.message||err); }
     startAiLiveBatchAutoCloseWatcher();
     runAiLiveBatchAutoClose({ silent: true }).catch(err => console.warn("AI live initial auto-close check failed", err?.message || err));
   }

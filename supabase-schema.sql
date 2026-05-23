@@ -188,7 +188,7 @@ alter table public.payment_methods add column if not exists raw jsonb default '{
 alter table public.deposit_requests add column if not exists raw jsonb default '{}'::jsonb;
 alter table public.withdrawal_requests add column if not exists raw jsonb default '{}'::jsonb;
 
--- Phase 5.13: optional realtime publication support.
+-- Phase 5.34: Live Sync Lite realtime publication support.
 -- Safe to run multiple times; duplicate publication entries are ignored.
 do $$
 declare
@@ -238,9 +238,9 @@ create index if not exists wallet_ledger_user_id_idx on public.wallet_ledger(use
 create index if not exists notifications_user_id_idx on public.notifications(user_id);
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','5.27','mode','action-database'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','5.34','mode','action-database'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.27','mode','action-database'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.34','mode','action-database'),
     updated_at = now();
 
 
@@ -255,9 +255,9 @@ create index if not exists admin_action_logs_created_at_idx on public.admin_acti
 create index if not exists notifications_created_at_idx on public.notifications(created_at desc);
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','5.27','mode','action-database-clean-persistence'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','5.34','mode','action-database-clean-persistence'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.27','mode','action-database-clean-persistence'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.34','mode','action-database-clean-persistence'),
     updated_at = now();
 
 
@@ -268,9 +268,9 @@ alter table public.users add column if not exists password_hash text;
 alter table public.notifications add column if not exists raw jsonb default '{}'::jsonb;
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','5.27','mode','final-clean-audit-fix','passwordStorage','salted-sha256-runtime'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','5.34','mode','final-clean-audit-fix','passwordStorage','salted-sha256-runtime'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.27','mode','final-clean-audit-fix','passwordStorage','salted-sha256-runtime'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.34','mode','final-clean-audit-fix','passwordStorage','salted-sha256-runtime'),
     updated_at = now();
 
 
@@ -297,9 +297,9 @@ on conflict (id) do update set
 
 -- Phase 5.29: final deep consistency marker
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','5.27','mode','final-deep-consistency-fix','passwordStorage','salted-sha256-runtime'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','5.34','mode','final-deep-consistency-fix','passwordStorage','salted-sha256-runtime'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.27','mode','final-deep-consistency-fix','passwordStorage','salted-sha256-runtime'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.34','mode','final-deep-consistency-fix','passwordStorage','salted-sha256-runtime'),
     updated_at = now();
 
 
@@ -330,7 +330,15 @@ begin
 end $$;
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','5.27','mode','rls-safety-pack','rlsMode','testing-frontend-compatible'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','5.34','mode','rls-safety-pack','rlsMode','testing-frontend-compatible'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.27','mode','rls-safety-pack','rlsMode','testing-frontend-compatible'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.34','mode','rls-safety-pack','rlsMode','testing-frontend-compatible'),
+    updated_at = now();
+
+
+-- Phase 5.34: Live Sync Lite marker.
+insert into public.app_settings (id, settings, updated_at)
+values ('main', jsonb_build_object('databaseRuntimeVersion','5.34','mode','live-sync-lite','liveSync','supabase-realtime-silent-ui'), now())
+on conflict (id) do update
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.34','mode','live-sync-lite','liveSync','supabase-realtime-silent-ui'),
     updated_at = now();

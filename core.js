@@ -475,6 +475,49 @@ App.startCryptoLiveTicker=(pairs,onEach)=>{
 };
 
 App.isDatabaseMode=()=>DB_ONLY;
+
+// Phase 5.34 Live Sync Lite: realtime database events update app state silently.
+// This never reloads the browser page. It waits while the user is typing or a local write is in progress.
+App.liveSync={enabled:localStorage.getItem("AITradeX_LIVE_SYNC")!=="off",started:false,role:"",timer:null,retryTimer:null,busyUntil:0,lastAt:0,lastReason:"",channel:null,status:"idle"};
+App.pauseLiveSync=(ms=1800)=>{App.liveSync.busyUntil=Math.max(Number(App.liveSync.busyUntil||0),Date.now()+Number(ms||1800));};
+App.isUserEditing=()=>{const el=document.activeElement;if(!el)return false;const tag=String(el.tagName||"").toLowerCase();return !!(el.isContentEditable||["input","textarea","select"].includes(tag));};
+App.registerLiveSyncRenderer=(fn,label="app")=>{if(typeof fn==="function"){App.liveSync.render=fn;App.liveSync.label=label;}return App.liveSync;};
+App.requestLiveSync=(reason="database_change")=>{
+  const ls=App.liveSync||{};
+  if(!ls.enabled||!DB_ONLY||!window.AITradeXDB?.loadAll)return false;
+  clearTimeout(ls.timer);
+  ls.timer=setTimeout(async()=>{
+    if(Date.now()<Number(ls.busyUntil||0)||App.isUserEditing()){
+      clearTimeout(ls.retryTimer);
+      ls.retryTimer=setTimeout(()=>App.requestLiveSync(reason),1800);
+      return;
+    }
+    if(ls.syncing)return;
+    ls.syncing=true;ls.status="syncing";ls.lastReason=reason;
+    const scrollY=window.scrollY;
+    try{
+      await window.AITradeXDB.loadAll();
+      ls.lastAt=Date.now();ls.status="synced";
+      if(typeof ls.render==="function")ls.render({liveSync:true,reason});
+      try{window.scrollTo({top:scrollY,left:0,behavior:"instant"});}catch{try{window.scrollTo(0,scrollY);}catch{}}
+    }catch(err){ls.status="error";console.warn("Live Sync Lite load skipped",err?.message||err);}
+    finally{ls.syncing=false;}
+  },900);
+  return true;
+};
+App.startLiveSync=(opts={})=>{
+  const ls=App.liveSync||{};
+  if(ls.started||!ls.enabled||!DB_ONLY||!window.AITradeXDB?.subscribeRealtimeChanges)return false;
+  ls.started=true;ls.role=opts.role||"app";
+  try{
+    ls.channel=window.AITradeXDB.subscribeRealtimeChanges((event)=>{
+      const table=event?.table||event?.payload?.table||"database";
+      App.requestLiveSync(`realtime:${table}`);
+    },{role:ls.role});
+    ls.status="listening";
+    return true;
+  }catch(err){ls.status="error";console.warn("Live Sync Lite start failed",err?.message||err);return false;}
+};
 App.saveState=()=>{
   if(DB_ONLY){
     // Database-only runtime: business rows are written by action-specific DB methods.

@@ -1,32 +1,57 @@
-AITradeX Phase 5.33 - AI Batch Auto Risk Close Fix
+AITradeX Phase 5.34 - Live Sync Lite
 
+This build keeps Phase 5.33 AI batch auto-risk-close fixes and adds Live Sync Lite for admin/user panels.
 
-This build keeps previous fixes and corrects AI Live batch settlement behavior.
+What is new:
+- Supabase Realtime listener added for core tables.
+- Admin and user panels update silently when database rows change.
+- No browser page refresh, no location.reload(), no blinking full-page reload.
+- Active typing/form fields are protected: live sync waits while the user/admin is editing an input, textarea, select, or contenteditable area.
+- Local write protection added: when this tab is saving an action, live sync pauses briefly so the current action is not overwritten mid-save.
+- If Supabase Realtime fails, the app continues working normally with the existing manual/render flow.
 
-Key fixes:
-- User-side AI Live auto-close is disabled, so one user's browser cannot close only that user's position while other same-batch positions remain open.
-- AI Live batch close now uses a common batch exit price row for all positions in that batch.
-- AI Live P/L uses safe exposure from margin × leverage instead of trusting a stale/corrupted stored positionSize.
-- AI Live profit settlement is capped to the configured target percent. Example: ₹7,500 margin × 100x × 5% = ₹37,500 profit, not a BTC price-sized wallet credit.
-- Admin batch close settles all currently open positions in the selected batch together.
-- Cache version: phase533aibatchriskclose.
+Live sync covers:
+- users
+- wallet_ledger
+- trade_orders
+- ai_trade_batches
+- kyc_requests
+- deposit_requests
+- withdrawal_requests
+- payment_methods
+- support_tickets
+- notifications
+- subscriptions
+- referrals
+- plans
+- app_settings
+- admin_action_logs
+
+Previous AI fixes retained:
+- User-side AI Live auto-close remains disabled.
+- AI Live batch close is handled from admin/global batch watcher.
+- Same batch positions close together when profit target, loss target, or margin-risk threshold is hit.
+- AI Live P/L settlement remains margin × leverage based and capped safely.
+
+Cache version:
+- phase534livesynclite
 
 Deploy order:
-1. Run supabase-schema.sql if you have not already applied the latest schema.
+1. Run supabase-schema.sql so realtime publication/table compatibility is applied.
 2. Run supabase-storage-policies.sql only if using file uploads/KYC uploads.
 3. Upload/deploy this ZIP.
 4. Hard refresh browser with Ctrl + Shift + R.
 
+Testing checklist:
+- Keep admin panel open in one browser tab.
+- Keep user panel open in another browser/device.
+- Submit KYC/deposit/withdrawal/payment method from user side and confirm admin side updates without page refresh.
+- Approve/reject from admin side and confirm user side status/wallet/notification updates without page refresh.
+- Open/close AI Live batch from admin side and confirm user side global bar/orders update without page refresh.
+
+Emergency off switch:
+- In browser console, run: localStorage.setItem('AITradeX_LIVE_SYNC','off')
+- Then hard refresh. To enable again: localStorage.removeItem('AITradeX_LIVE_SYNC') and hard refresh.
+
 Important:
-If a previous AI Live close already credited a wrong huge amount, correct that wallet with an admin debit/reversal after deploying this fix. New closes should use the safe formula.
-
-Note:
 This is still a frontend-only testing build. Public real-money launch needs Phase 6 backend/Auth/strict RLS migration.
-
-
-Phase 5.33 update:
-- Added admin/global batch-level auto close watcher for AI Live positions.
-- Same AI batch positions now close together when profit target, loss target, or margin-risk threshold is hit.
-- User panel still only displays AI Live P/L; it does not individually close batch positions.
-- AI Live loss is capped to locked AI amount/margin and settlement remains margin/leverage based.
-- Cache version: phase533aibatchriskclose.

@@ -4885,6 +4885,10 @@
       }
     }catch(err){ console.warn("AITradeX user boot DB load skipped", err?.message||err); }
     render();
+    try{
+      App.registerLiveSyncRenderer?.(()=>render(), "user");
+      App.startLiveSync?.({role:"user"});
+    }catch(err){ console.warn("User Live Sync Lite start skipped", err?.message||err); }
   }
 
   bootUserApp();
