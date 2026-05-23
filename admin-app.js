@@ -1506,10 +1506,63 @@
     return report;
   }
 
+  function aiLiveEligibilityReport(minBalance = 0) {
+    const report = {
+      eligible: [],
+      skipped: [],
+      reasons: {
+        inactive: 0,
+        aiOff: 0,
+        maxOpen: 0,
+        lowBalance: 0,
+        noPool: 0
+      }
+    };
+    const maxOpen = Math.max(1, Number(platformSettings()?.maxOpenPositionsPerUser || App.state.settings?.maxOpenPositionsPerUser || 10));
+
+    allUsers().forEach(u => {
+      const status = userStatus(u);
+      const balance = App.realBalance(u.id);
+      const allowedPool = App.aiAllowedAmount(u);
+      const openLiveCount = aiLivePositions().filter(pos => pos.userId === u.id).length;
+
+      if (status !== "ACTIVE") {
+        report.skipped.push({ userId: u.id, reason: "Inactive / suspended / blocked" });
+        report.reasons.inactive += 1;
+        return;
+      }
+      if (!u.aiTradeOn) {
+        report.skipped.push({ userId: u.id, reason: "AI Live Trading OFF" });
+        report.reasons.aiOff += 1;
+        return;
+      }
+      if (openLiveCount >= maxOpen) {
+        report.skipped.push({ userId: u.id, reason: "Maximum open live positions reached" });
+        report.reasons.maxOpen += 1;
+        return;
+      }
+      if (balance < minBalance) {
+        report.skipped.push({ userId: u.id, reason: "Below minimum real balance" });
+        report.reasons.lowBalance += 1;
+        return;
+      }
+      if (allowedPool <= 0) {
+        report.skipped.push({ userId: u.id, reason: "No live position pool available" });
+        report.reasons.noPool += 1;
+        return;
+      }
+
+      report.eligible.push(u);
+    });
+
+    return report;
+  }
+
   function skipReasonLine(reasons = {}) {
     const rows = [
       ["AI OFF", reasons.aiOff],
       ["Limit done", reasons.limit],
+      ["Max live open", reasons.maxOpen],
       ["Low balance", reasons.lowBalance],
       ["Inactive", reasons.inactive],
       ["No pool", reasons.noPool]
@@ -1523,13 +1576,14 @@
     return Math.max(0, Number(limit || 0) - Number(used || 0));
   }
 
-  function aiValidationOverviewHtml(report) {
+  function aiValidationOverviewHtml(report, mode = "instant") {
     const users = (report?.eligible || []).slice(0, 8);
     const skipped = report?.skipped || [];
+    const isLive = mode === "live";
     return `
-      <section class="panel-card ai-validation-panel">
+      <section class="panel-card ai-validation-panel ${isLive ? "live-only" : "instant-only"}">
         <div class="section-head">
-          <div><h3>Eligible AI Users</h3><span>Shows users who can receive the next AI trade: active, AI ON, wallet available, and limit remaining.</span></div>
+          <div><h3>${isLive ? "Eligible Live Position Users" : "Eligible Instant AI Users"}</h3><span>${isLive ? "Live Position uses open-position limit, wallet pool and AI ON only. Instant result history is not included here." : "Instant AI uses daily AI trade limit, wallet pool and AI ON. Live positions are not included here."}</span></div>
           <span class="admin-count-pill">${users.length} shown · ${skipped.length} skipped</span>
         </div>
         <div class="admin-list">
@@ -1545,8 +1599,8 @@
                   <div><b>${esc(displayNameFor(target))}</b><span>${esc(plan.name || "Free")} · AI ${target.aiTradeOn ? "ON" : "OFF"} · ${Number(target.aiTradePercent || 25)}% allocation</span></div>
                   <div class="admin-user-stats"><span>Wallet</span><b>${App.money(balance)}</b></div>
                   <div class="admin-user-stats"><span>AI Pool</span><b>${App.money(pool)}</b></div>
-                  <div class="admin-user-stats"><span>Remaining</span><b>${aiRemainingForUser(target.id)}/${limit}</b></div>
-                  <div class="admin-user-stats"><span>Used</span><b>${used}</b></div>
+                  <div class="admin-user-stats"><span>${isLive ? "Open Live" : "Remaining"}</span><b>${isLive ? aiLivePositions().filter(pos => pos.userId === target.id).length : `${aiRemainingForUser(target.id)}/${limit}`}</b></div>
+                  <div class="admin-user-stats"><span>${isLive ? "Mode" : "Used"}</span><b>${isLive ? "LIVE" : used}</b></div>
                 </div>
               </article>`;
           }).join("") : `<div class="empty-state">No eligible AI users found. Check user status, AI ON, wallet balance and plan limit.</div>`}
@@ -1796,7 +1850,7 @@
   }
 
   function aiLivePreviewStats(leverage = 1, minBalance = 0) {
-    const report = aiEligibilityReport(Math.max(0, Number(minBalance || 0)));
+    const report = aiLiveEligibilityReport(Math.max(0, Number(minBalance || 0)));
     const lev = normalizeAdminLeverage(leverage || 1);
     let totalMargin = 0;
     let totalExposure = 0;
@@ -1959,6 +2013,20 @@
       </section>`;
   }
 
+  function aiModeSeparationNotice(activeMode) {
+    const instantActive = activeMode === "instant";
+    return `
+      <section class="panel-card ai-separation-notice ${instantActive ? "instant-mode" : "live-mode"}">
+        <div class="section-head">
+          <div>
+            <h3>${instantActive ? "Instant AI Trade = immediate result" : "Live Position Trade = running position"}</h3>
+            <span>${instantActive ? "This section creates closed AI_AUTO entries and credits/debits wallet P/L immediately. It never opens live positions." : "This section creates AI_LIVE open positions, locks wallet amount on open, and settles only when admin/target closes the position."}</span>
+          </div>
+          <span class="admin-count-pill">${instantActive ? "INSTANT ONLY" : "LIVE ONLY"}</span>
+        </div>
+      </section>`;
+  }
+
   function instantAiPage() {
     const settings = App.state.settings || {};
     const initialStats = aiPreviewStats(2, 1, 0, "PROFIT");
@@ -1978,7 +2046,9 @@
 
       ${aiTradeModeBars("instant")}
 
-      ${aiValidationOverviewHtml(previewReport)}
+      ${aiModeSeparationNotice("instant")}
+
+      ${aiValidationOverviewHtml(previewReport, "instant")}
 
       <section class="panel-card ai-desk-panel instant-ai-control-panel">
         <div class="section-head ai-desk-head">
@@ -2083,24 +2153,27 @@
 
   function liveAiPage() {
     const settings = App.state.settings || {};
-    const initialStats = aiPreviewStats(2, 1, 0, "PROFIT");
-    const previewReport = initialStats.report;
+    const liveStats = aiLivePreviewStats(1, 0);
+    const previewReport = liveStats.report;
     const aiOnCount = allUsers().filter(u => u.aiTradeOn && userStatus(u) === "ACTIVE").length;
     const eligibleNow = previewReport.eligible.length;
+    const maxOpenPerUser = Number(platformSettings()?.maxOpenPositionsPerUser || App.state.settings?.maxOpenPositionsPerUser || 10);
 
     shell(`
       <section class="metrics-grid">
         ${metric("🤖", "AI ON Users", aiOnCount)}
-        ${metric("✅", "Valid Now", eligibleNow)}
-        ${metric("⏭️", "Skipped Now", previewReport.skipped.length)}
-        ${metric("🎁", "Free AI / Day", Number(settings.freeAiTradesPerDay || 5))}
+        ${metric("✅", "Live Eligible", eligibleNow)}
+        ${metric("⏭️", "Live Skipped", previewReport.skipped.length)}
+        ${metric("📌", "Max Open/User", maxOpenPerUser)}
       </section>
 
       ${aiTradeModeBars("live")}
 
+      ${aiModeSeparationNotice("live")}
+
       ${aiLiveRunningHtml()}
 
-      ${aiValidationOverviewHtml(previewReport)}
+      ${aiValidationOverviewHtml(previewReport, "live")}
 
       <section class="panel-card ai-desk-panel ai-live-open-panel">
         <div class="section-head ai-desk-head">
@@ -3749,7 +3822,7 @@
         usdtInrRate: Math.max(1, Number(inputValue("settingUsdtInrRate") || 95)),
         phase6AuthMode: settings.phase6AuthMode || "legacy-testing",
         phase6BackendMode: settings.phase6BackendMode || "deposit-withdrawal-ai-manual-kyc-payment-subscription-wallet-rpc-rls-ready",
-        phase6Build: "6.9.3-final-ui-polish-pack"
+        phase6Build: "6.9.4-separated-ai-trade-pack"
       };
       logAdminAction("APP_SETTINGS_UPDATE", "SETTINGS", "app", { depositEnabled: App.state.settings.depositEnabled, withdrawalEnabled: App.state.settings.withdrawalEnabled, manualTradingEnabled: App.state.settings.manualTradingEnabled, aiTradingEnabled: App.state.settings.aiTradingEnabled, maintenanceMode: App.state.settings.maintenanceMode, maxLeverage: App.state.settings.maxLeverage });
       await persistSettings("app settings");
@@ -3877,7 +3950,7 @@
       }
 
       const batchId = App.uid("ai_batch");
-      const report = aiEligibilityReport(minBalance);
+      const report = aiLiveEligibilityReport(minBalance);
       let appliedCount = 0;
       let totalMargin = 0;
       let totalExposure = 0;
@@ -4051,7 +4124,7 @@
       setText("aiLivePreviewExposure", App.money(stats.totalExposure));
       setText("aiLivePreviewTarget", `${targetType === "LOSS" ? "Loss" : "Profit"} ${targetPercent}%`);
       setText("aiLivePreviewDuration", "Target/Admin");
-      setText("aiLivePreviewLimitCheck", stats.report.reasons.limit ? `${stats.report.reasons.limit} blocked` : "Passed");
+      setText("aiLivePreviewLimitCheck", stats.report.reasons.maxOpen ? `${stats.report.reasons.maxOpen} max-open blocked` : "Passed");
       setText("aiLivePreviewWalletCheck", (stats.report.reasons.lowBalance || stats.report.reasons.noPool) ? "Needs review" : "Passed");
     },
     async openLiveAiPosition(event) {
@@ -4083,7 +4156,7 @@
         return;
       }
       const batchId = App.uid("ai_live_batch");
-      const report = aiEligibilityReport(minBalance);
+      const report = aiLiveEligibilityReport(minBalance);
       let appliedCount = 0;
       let totalMargin = 0;
       let totalExposure = 0;
