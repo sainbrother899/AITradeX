@@ -527,13 +527,31 @@
     return closed;
   }
 
+  function limitOrderDirectionError(side, limitPrice, currentPrice) {
+    const normalizedSide = String(side || "BUY").toUpperCase() === "SELL" ? "SELL" : "BUY";
+    const limit = Number(limitPrice || 0);
+    const current = Number(currentPrice || 0);
+    if (!Number.isFinite(limit) || limit <= 0 || !Number.isFinite(current) || current <= 0) return "";
+    if (normalizedSide === "BUY" && limit >= current) {
+      return `BUY limit price must be below current price (${formatPairPrice(selectedPair, current)}). Use Market order for instant buy.`;
+    }
+    if (normalizedSide === "SELL" && limit <= current) {
+      return `SELL limit price must be above current price (${formatPairPrice(selectedPair, current)}). Use Market order for instant sell.`;
+    }
+    return "";
+  }
+
   async function openPositionFromPendingOrder(order, currentPrice, currentDisplay) {
     if (!order || !["PENDING", "LIMIT_PENDING"].includes(String(order.status || "").toUpperCase())) return false;
-    const price = Number(currentPrice || 0);
-    if (!Number.isFinite(price) || price <= 0) return false;
+    const current = Number(currentPrice || 0);
+    if (!Number.isFinite(current) || current <= 0) return false;
+    const fillPrice = Number(order.limitPrice || current);
+    if (!Number.isFinite(fillPrice) || fillPrice <= 0) return false;
     order.status = "OPEN";
-    order.entryPrice = price;
-    order.entryPriceDisplay = currentDisplay || formatPairPrice(order.pair, price);
+    order.entryPrice = fillPrice;
+    order.entryPriceDisplay = order.limitPriceDisplay || formatPairPrice(order.pair, fillPrice);
+    order.triggerPrice = current;
+    order.triggerPriceDisplay = currentDisplay || formatPairPrice(order.pair, current);
     order.priceSource = (App.getCachedPairPrice && App.getCachedPairPrice(order.pair)?.source) || order.priceSource || "Live price cache";
     order.priceSourceType = (App.getCachedPairPrice && App.getCachedPairPrice(order.pair)?.sourceType) || order.priceSourceType || "LIVE_PRICE";
     order.priceLockedAt = new Date().toISOString();
@@ -4381,6 +4399,8 @@
             limitDisplay = formatPairPrice(selectedPair, limitPrice);
             entryPrice = Number(marketNow?.price || pair.rawPrice || 0);
             entryDisplay = marketNow?.display || pair.price || "--";
+            const directionError = limitOrderDirectionError(normalizedSide, limitPrice, entryPrice);
+            if (directionError) { App.toast(directionError); return; }
           } else {
             let lockedPrice = visiblePairCardPrice(selectedPair);
             if (!lockedPrice) {
@@ -4431,6 +4451,9 @@
           App.toast("Enter valid limit price.");
           return;
         }
+        const currentForLimit = Number(marketNow?.price || pair.rawPrice || 0);
+        const directionError = limitOrderDirectionError(normalizedSide, limitPrice, currentForLimit);
+        if (directionError) { App.toast(directionError); return; }
         let limitLedgerRow = null;
         try {
           limitLedgerRow = App.isDatabaseMode?.() && App.addLedgerAsync ? await App.addLedgerAsync({

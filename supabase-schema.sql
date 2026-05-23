@@ -946,6 +946,9 @@ on conflict (id) do update
 set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.4','mode','phase6-ai-backend-settlement','aiLiveBackend','rpc-secure-function'),
     updated_at = now();
 
+-- Phase 6.5.1: Limit order validation fix.
+-- Limit orders are pending-only: BUY limit must be below current price; SELL limit must be above current price.
+-- Triggered limit orders fill at the user's limit price, not at the current market price.
 -- Phase 6.5: Manual trade backend settlement.
 -- Moves manual market/limit open, manual close settlement, and limit cancel margin release into controlled database-side actions.
 create or replace function public.aitradex_open_manual_trade(
@@ -992,6 +995,17 @@ begin
   end if;
   if v_margin <= 0 then
     raise exception 'Manual trade margin must be greater than zero.';
+  end if;
+  if v_order = 'LIMIT' then
+    if coalesce(p_limit_price,0) <= 0 then
+      raise exception 'Valid limit price is required.';
+    end if;
+    if coalesce(p_entry_price,0) > 0 and v_side = 'BUY' and p_limit_price >= p_entry_price then
+      raise exception 'BUY limit price must be below current price. Use Market order for instant buy.';
+    end if;
+    if coalesce(p_entry_price,0) > 0 and v_side = 'SELL' and p_limit_price <= p_entry_price then
+      raise exception 'SELL limit price must be above current price. Use Market order for instant sell.';
+    end if;
   end if;
 
   select * into v_user from public.users where id = p_user_id for update;
@@ -1211,7 +1225,7 @@ grant execute on function public.aitradex_close_manual_trade(text,text,numeric,t
 grant execute on function public.aitradex_cancel_manual_limit(text,text) to anon, authenticated;
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','6.5','mode','phase6-manual-trade-backend-settlement','manualTradeBackend','rpc-secure-function'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.5.1','mode','phase6-limit-order-validation-fix','manualTradeBackend','rpc-secure-function','limitOrderValidation','pending-only-limit-fill'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.5','mode','phase6-manual-trade-backend-settlement','manualTradeBackend','rpc-secure-function'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.5.1','mode','phase6-limit-order-validation-fix','manualTradeBackend','rpc-secure-function','limitOrderValidation','pending-only-limit-fill'),
     updated_at = now();

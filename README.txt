@@ -1,4 +1,4 @@
-AITradeX Phase 6.5 - Manual Trade Backend Settlement
+AITradeX Phase 6.5.1 - Limit Order Validation Fix
 
 Base used:
 - AITradeX Phase6.4 AI Backend Settlement Fix
@@ -30,7 +30,7 @@ Deploy order:
 5. Test: manual market order open, manual close, P/L settlement, pending limit order cancel, wallet ledger and reload persistence.
 
 Current cache version:
-- phase65manualbackendsettlement
+- phase651limitordervalidation
 
 Default admin for testing:
 - control@aitradex.com
@@ -44,3 +44,10 @@ Next recommended Phase6 steps:
 
 Real-money warning:
 This build is safer than the previous frontend-only baseline because deposit, withdrawal, AI Live settlement and manual trade settlement are now database-controlled in Supabase mode. Public real-money launch still requires secure backend Edge Functions, strict RLS, payment/KYC compliance, legal review and full audit policies.
+
+
+Phase 6.5.1 limit-order fix:
+- BUY limit must be below current price.
+- SELL limit must be above current price.
+- Marketable limit orders are blocked with a clear message.
+- Triggered limit orders fill at the set limit price, not the current market price.
