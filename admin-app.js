@@ -3421,36 +3421,58 @@
       App.toast(`User status changed to ${nextStatus}.`);
       render();
     },
-    adjustUserWallet(event, userId) {
+    async adjustUserWallet(event, userId) {
       event.preventDefault();
       const target = allUsers().find(u => u.id === userId);
       if (!target) return;
       const amount = Math.max(0, Number(document.getElementById(`walletAmount_${userId}`)?.value || 0));
       const action = String(document.getElementById(`walletAction_${userId}`)?.value || "ADD").toUpperCase();
       const note = String(document.getElementById(`walletNote_${userId}`)?.value || "").trim();
+      const button = event.submitter;
       if (!amount) {
         App.toast("Enter wallet amount.");
+        return;
+      }
+      if (!["ADD", "DEDUCT"].includes(action)) {
+        App.toast("Invalid wallet action.");
         return;
       }
       const signed = action === "DEDUCT" ? -amount : amount;
       const label = action === "DEDUCT" ? "deduct" : "add";
       if (!confirm(`Confirm ${label} ${App.money(amount)} for ${displayNameFor(target)}?`)) return;
+      markButton(button, "Updating...");
       try {
         const referenceId = App.uid("admin_wallet");
-        App.addLedger({
-          userId,
-          accountType: "REAL",
-          type: action === "DEDUCT" ? "ADMIN_WALLET_DEBIT" : "ADMIN_WALLET_CREDIT",
-          amount: signed,
-          referenceId,
-          note: note || `Admin wallet ${action.toLowerCase()}`
-        });
-        App.addNotification?.({ audience: "USER", userId, title: action === "DEDUCT" ? "Wallet debited by admin" : "Wallet credited by admin", message: `${App.money(amount)} ${action === "DEDUCT" ? "deducted from" : "added to"} your real wallet.${note ? ` Note: ${note}` : ""}`, type: "WALLET", linkPage: "wallet", referenceId });
-        logAdminAction(action === "DEDUCT" ? "WALLET_DEBIT" : "WALLET_CREDIT", "USER", userId, { user: displayNameFor(target), amount, note, referenceId });
+        if (App.isDatabaseMode?.() && window.AITradeXDB?.adjustWalletSecure) {
+          const admin = adminUser() || {};
+          await window.AITradeXDB.adjustWalletSecure({
+            userId,
+            action,
+            amount,
+            note: note || `Admin wallet ${action.toLowerCase()}`,
+            referenceId,
+            adminUserId: admin.id || "control_root",
+            adminEmail: admin.email || "",
+            adminName: displayNameFor(admin) || "Admin"
+          });
+          await window.AITradeXDB.loadAll?.();
+        } else {
+          App.addLedger({
+            userId,
+            accountType: "REAL",
+            type: action === "DEDUCT" ? "ADMIN_WALLET_DEBIT" : "ADMIN_WALLET_CREDIT",
+            amount: signed,
+            referenceId,
+            note: note || `Admin wallet ${action.toLowerCase()}`
+          });
+          App.addNotification?.({ audience: "USER", userId, title: action === "DEDUCT" ? "Wallet debited by admin" : "Wallet credited by admin", message: `${App.money(amount)} ${action === "DEDUCT" ? "deducted from" : "added to"} your real wallet.${note ? ` Note: ${note}` : ""}`, type: "WALLET", linkPage: "wallet", referenceId });
+          logAdminAction(action === "DEDUCT" ? "WALLET_DEBIT" : "WALLET_CREDIT", "USER", userId, { user: displayNameFor(target), amount, note, referenceId });
+        }
         App.toast(`Wallet ${action === "DEDUCT" ? "deducted" : "credited"} successfully.`);
         render();
       } catch (error) {
         App.toast(error.message || "Wallet update failed.");
+        render();
       }
     },
     async changeUserPlan(event, userId) {

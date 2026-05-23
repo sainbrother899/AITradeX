@@ -1577,9 +1577,9 @@ grant execute on function public.aitradex_close_manual_trade(text,text,numeric,t
 grant execute on function public.aitradex_cancel_manual_limit(text,text) to anon, authenticated;
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','6.7','mode','phase6-subscription-backend','manualTradeBackend','rpc-secure-function','kycBackend','rpc-secure-function','paymentMethodBackend','rpc-secure-function','manualPriceUnit','raw-storage-display-only-inr-fixed'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.8','mode','phase6-subscription-backend','manualTradeBackend','rpc-secure-function','kycBackend','rpc-secure-function','paymentMethodBackend','rpc-secure-function','manualPriceUnit','raw-storage-display-only-inr-fixed'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.7','mode','phase6-subscription-backend','manualTradeBackend','rpc-secure-function','kycBackend','rpc-secure-function','paymentMethodBackend','rpc-secure-function','manualPriceUnit','raw-storage-display-only-inr-fixed'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.8','mode','phase6-subscription-backend','manualTradeBackend','rpc-secure-function','kycBackend','rpc-secure-function','paymentMethodBackend','rpc-secure-function','manualPriceUnit','raw-storage-display-only-inr-fixed'),
     updated_at = now();
 
 
@@ -1758,8 +1758,102 @@ grant execute on function public.aitradex_purchase_plan(text,text,text,text) to 
 grant execute on function public.aitradex_change_user_plan(text,text,text,text,text) to anon, authenticated;
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','6.7','mode','phase6-subscription-backend','subscriptionBackend','rpc-secure-function'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.8','mode','phase6-subscription-backend','subscriptionBackend','rpc-secure-function'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.7','mode','phase6-subscription-backend','subscriptionBackend','rpc-secure-function'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.8','mode','phase6-subscription-backend','subscriptionBackend','rpc-secure-function'),
     updated_at = now();
 
+
+
+-- Phase 6.8: Admin Wallet Adjustment + Telegram backend audit foundation.
+create table if not exists public.telegram_alert_logs (
+  id text primary key,
+  status text not null default 'PENDING',
+  source text,
+  message text,
+  error text,
+  result jsonb not null default '{}'::jsonb,
+  created_at timestamptz default now(),
+  processed_at timestamptz
+);
+create index if not exists telegram_alert_logs_created_at_idx on public.telegram_alert_logs(created_at desc);
+create index if not exists telegram_alert_logs_status_idx on public.telegram_alert_logs(status, created_at desc);
+
+create or replace function public.aitradex_admin_wallet_adjust(
+  p_user_id text,
+  p_action text,
+  p_amount numeric,
+  p_note text default '',
+  p_reference_id text default '',
+  p_admin_user_id text default 'control_root',
+  p_admin_email text default '',
+  p_admin_name text default 'Admin'
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user public.users%rowtype;
+  v_action text := upper(coalesce(p_action,'ADD'));
+  v_amount numeric := abs(coalesce(p_amount,0));
+  v_signed numeric;
+  v_balance numeric := 0;
+  v_after numeric := 0;
+  v_ref text := coalesce(nullif(trim(p_reference_id),''),'admin_wallet_' || md5(random()::text || clock_timestamp()::text));
+  v_type text;
+  v_note text;
+  v_now timestamptz := now();
+begin
+  if not public.aitradex_validate_admin(p_admin_user_id) then
+    raise exception 'Admin permission required for wallet adjustment.';
+  end if;
+  if v_action not in ('ADD','DEDUCT') then
+    raise exception 'Invalid wallet action.';
+  end if;
+  if v_amount <= 0 then
+    raise exception 'Wallet amount must be greater than zero.';
+  end if;
+  select * into v_user from public.users where id=p_user_id for update;
+  if not found then raise exception 'User not found.'; end if;
+  select coalesce(sum(amount),0) into v_balance from public.wallet_ledger where user_id=p_user_id and upper(coalesce(account_type,'REAL'))='REAL';
+  v_signed := case when v_action='DEDUCT' then -v_amount else v_amount end;
+  v_after := v_balance + v_signed;
+  if v_after < 0 then raise exception 'Insufficient user real wallet balance.'; end if;
+  v_type := case when v_action='DEDUCT' then 'ADMIN_WALLET_DEBIT' else 'ADMIN_WALLET_CREDIT' end;
+  v_note := coalesce(nullif(trim(p_note),''),'Admin wallet ' || lower(v_action));
+
+  if exists(select 1 from public.wallet_ledger where user_id=p_user_id and account_type='REAL' and type=v_type and reference_id=v_ref) then
+    return jsonb_build_object('ok', true, 'alreadyCompleted', true, 'referenceId', v_ref, 'balanceAfter', v_balance);
+  end if;
+
+  insert into public.wallet_ledger(id,user_id,account_type,type,amount,reference_id,note,balance_after,created_at,raw)
+  values ('ledger_' || v_ref,p_user_id,'REAL',v_type,v_signed,v_ref,v_note,v_after,v_now,jsonb_build_object('secureAdminWalletAdjust',true,'action',v_action,'adminUserId',p_admin_user_id,'adminEmail',p_admin_email,'adminName',p_admin_name))
+  on conflict on constraint wallet_ledger_user_id_account_type_type_reference_id_key do nothing;
+
+  insert into public.notifications(id,audience,user_id,title,message,type,link_page,reference_id,read,created_at,raw)
+  values ('notif_wallet_' || v_ref,'USER',p_user_id,case when v_action='DEDUCT' then 'Wallet debited by admin' else 'Wallet credited by admin' end,
+          v_amount::text || case when v_action='DEDUCT' then ' deducted from' else ' added to' end || ' your real wallet.' || case when length(v_note)>0 then ' Note: ' || v_note else '' end,
+          'WALLET','wallet',v_ref,false,v_now,jsonb_build_object('secureAdminWalletAdjust',true,'action',v_action))
+  on conflict (id) do update set message=excluded.message, raw=excluded.raw, created_at=excluded.created_at;
+
+  insert into public.admin_action_logs(id,admin_user_id,action,target_type,target_id,meta,created_at)
+  values ('adminlog_wallet_' || v_ref,p_admin_user_id,case when v_action='DEDUCT' then 'WALLET_DEBIT_SECURE' else 'WALLET_CREDIT_SECURE' end,'USER',p_user_id,jsonb_build_object('amount',v_amount,'signedAmount',v_signed,'balanceBefore',v_balance,'balanceAfter',v_after,'note',v_note,'adminEmail',p_admin_email,'adminName',p_admin_name),v_now)
+  on conflict (id) do update set meta=excluded.meta, created_at=excluded.created_at;
+
+  insert into public.backend_action_queue(id, action_type, status, requested_by, target_user_id, payload, result, created_at, processed_at)
+  values ('backend_wallet_' || v_ref,'ADMIN_WALLET_ADJUST','COMPLETED',p_admin_user_id,p_user_id,jsonb_build_object('action',v_action,'amount',v_amount,'note',v_note),jsonb_build_object('balanceAfter',v_after,'ledgerType',v_type),v_now,v_now)
+  on conflict (id) do update set status='COMPLETED', result=excluded.result, processed_at=now();
+
+  return jsonb_build_object('ok', true, 'userId', p_user_id, 'action', v_action, 'amount', v_amount, 'signedAmount', v_signed, 'referenceId', v_ref, 'balanceAfter', v_after);
+end;
+$$;
+
+grant execute on function public.aitradex_admin_wallet_adjust(text,text,numeric,text,text,text,text,text) to anon, authenticated;
+
+insert into public.app_settings(id, settings, updated_at)
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.8','mode','phase6-wallet-telegram-backend','adminWalletBackend','rpc-secure-function','telegramBackend','edge-template-plus-db-audit'), now())
+on conflict (id) do update
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.8','mode','phase6-wallet-telegram-backend','adminWalletBackend','rpc-secure-function','telegramBackend','edge-template-plus-db-audit'),
+    updated_at = now();

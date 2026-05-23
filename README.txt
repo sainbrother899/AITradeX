@@ -30,3 +30,11 @@ Phase 6.7 notes:
 - Admin plan change now uses backend RPC aitradex_change_user_plan in Supabase mode.
 - Existing UI/design is unchanged.
 - Run the updated supabase-schema.sql before deploy because new RPC functions are added.
+
+
+Phase6.8 update:
+- Admin wallet add/deduct now uses backend RPC: aitradex_admin_wallet_adjust.
+- Wallet adjustment creates ledger, user notification, admin log and backend action queue in one database-side action.
+- Telegram sending now records audit logs in telegram_alert_logs.
+- Optional Supabase Edge Function template added for production-safe Telegram token handling.
+- Run updated supabase-schema.sql before deployment.

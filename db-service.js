@@ -156,10 +156,43 @@
     return {disabled:true, reason:"Action-based database runtime"};
   }
   async function testConnection(){ if(!ready) return {ok:false,message:"Supabase is not configured."}; try{ const {error}=await client.from("users").select("id",{head:true,count:"exact"}); if(error) throw error; return {ok:true,message:"Supabase connected."}; }catch(err){ return {ok:false,message:err?.message||"Supabase connection failed."}; } }
+  async function recordTelegramAlertSecure({status="PENDING",message="",error="",result=null,source="frontend"}={}){
+    if(!ready) return {ok:false,skipped:true};
+    try{
+      const id=`tg_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+      const row={id,status:String(status||"PENDING"),source:String(source||"frontend"),message:String(message||"").slice(0,3900),error:String(error||""),result:result||{},created_at:new Date().toISOString(),processed_at:["SENT","FAILED","SKIPPED"].includes(String(status||"").toUpperCase())?new Date().toISOString():null};
+      const {error:dbErr}=await client.from("telegram_alert_logs").insert(row);
+      if(dbErr) throw dbErr;
+      return {ok:true,id};
+    }catch(err){ console.warn("Telegram audit log failed", err?.message||err); return {ok:false,error:String(err?.message||err)}; }
+  }
+
   async function sendTelegramMessage(textHtml){
-    const st=App?.state?.settings||{}; if(!st.telegramEnabled||!st.telegramBotToken||!st.telegramChatId) return {ok:false,skipped:true};
-    const res=await fetch(`https://api.telegram.org/bot${st.telegramBotToken}/sendMessage`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chat_id:st.telegramChatId,text:textHtml,parse_mode:"HTML",disable_web_page_preview:true})});
-    const json=await res.json().catch(()=>({})); if(!res.ok||json.ok===false) throw new Error(json.description||"Telegram send failed"); return json;
+    const st=App?.state?.settings||{};
+    const cfg=window.AITRADEX_CONFIG||{};
+    const text=String(textHtml||"").slice(0,3900);
+    if(!st.telegramEnabled) { await recordTelegramAlertSecure({status:"SKIPPED",message:text,error:"Telegram disabled"}); return {ok:false,skipped:true}; }
+    if(!st.telegramChatId) { await recordTelegramAlertSecure({status:"SKIPPED",message:text,error:"Telegram chat ID missing"}); return {ok:false,reason:"Telegram chat ID missing"}; }
+    try{
+      const edgeUrl=String(st.telegramEdgeFunctionUrl||cfg.TELEGRAM_EDGE_FUNCTION_URL||"").trim();
+      let json={};
+      if(edgeUrl){
+        const res=await fetch(edgeUrl,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chat_id:st.telegramChatId,text,parse_mode:"HTML",disable_web_page_preview:true})});
+        json=await res.json().catch(()=>({}));
+        if(!res.ok||json.ok===false) throw new Error(json.description||json.error||`Telegram edge HTTP ${res.status}`);
+        await recordTelegramAlertSecure({status:"SENT",message:text,result:json,source:"edge-function"});
+        return {ok:true,data:json,source:"edge-function"};
+      }
+      if(!st.telegramBotToken) { await recordTelegramAlertSecure({status:"SKIPPED",message:text,error:"Telegram bot token missing"}); return {ok:false,reason:"Telegram bot token missing"}; }
+      const res=await fetch(`https://api.telegram.org/bot${st.telegramBotToken}/sendMessage`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chat_id:st.telegramChatId,text,parse_mode:"HTML",disable_web_page_preview:true})});
+      json=await res.json().catch(()=>({}));
+      if(!res.ok||json.ok===false) throw new Error(json.description||"Telegram send failed");
+      await recordTelegramAlertSecure({status:"SENT",message:text,result:json,source:"frontend-fallback"});
+      return {ok:true,data:json,source:"frontend-fallback"};
+    }catch(err){
+      await recordTelegramAlertSecure({status:"FAILED",message:text,error:String(err?.message||err)});
+      throw err;
+    }
   }
 
   async function getAuthSession(){ assertReady(); if(!client.auth) return {session:null,user:null}; const {data,error}=await client.auth.getSession(); if(error) throw error; return {session:data?.session||null,user:data?.session?.user||null}; }
@@ -184,6 +217,7 @@
   async function cancelManualLimitSecure({tradeId,userId}={}){ assertReady(); pauseLocalLiveSync(); const {data,error}=await client.rpc("aitradex_cancel_manual_limit",{p_trade_id:text(tradeId),p_user_id:text(userId)}); if(error) throw error; return data||{}; }
   async function purchasePlanSecure({subscriptionId,userId,planId,source="USER_PURCHASE"}={}){ assertReady(); pauseLocalLiveSync(); const {data,error}=await client.rpc("aitradex_purchase_plan",{p_subscription_id:text(subscriptionId),p_user_id:text(userId),p_plan_id:text(planId),p_source:text(source)}); if(error) throw error; return data||{}; }
   async function changeUserPlanSecure({userId,planId,adminUserId="control_root",adminEmail="",adminName="Admin"}={}){ assertReady(); pauseLocalLiveSync(); const {data,error}=await client.rpc("aitradex_change_user_plan",{p_user_id:text(userId),p_plan_id:text(planId),p_admin_user_id:text(adminUserId),p_admin_email:text(adminEmail),p_admin_name:text(adminName)}); if(error) throw error; return data||{}; }
+  async function adjustWalletSecure({userId,action="ADD",amount=0,note="",referenceId="",adminUserId="control_root",adminEmail="",adminName="Admin"}={}){ assertReady(); pauseLocalLiveSync(); const {data,error}=await client.rpc("aitradex_admin_wallet_adjust",{p_user_id:text(userId),p_action:text(action),p_amount:num(amount),p_note:text(note),p_reference_id:text(referenceId),p_admin_user_id:text(adminUserId),p_admin_email:text(adminEmail),p_admin_name:text(adminName)}); if(error) throw error; return data||{}; }
   async function writeWithdrawalRequest(row){ assertReady(); pauseLocalLiveSync(); const clean=rowWithdrawal(row); const {error}=await client.from("withdrawal_requests").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
   async function writeLedger(row){ assertReady(); pauseLocalLiveSync(); const clean=rowLedger(row); const {error}=await client.from("wallet_ledger").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
   async function writeTrade(row){ assertReady(); pauseLocalLiveSync(); const clean=rowTrade(row); const {error}=await client.from("trade_orders").upsert(clean,{onConflict:"id"}); if(error) throw error; return clean; }
@@ -239,6 +273,6 @@
     return {channel,status:"subscribed",unsubscribe(){ try{return client.removeChannel(channel);}catch{return null;} }};
   }
 
-  const api={ready,client,loadAll,pullCoreTables:loadAll,syncCoreTables:fullSync,fullSync,scheduleFullSync,testConnection,getAuthSession,signOutAuthSession,linkAuthUserToAppUser,findUser,createUser,updateUser,writeUser,writeKycRequest,writePaymentMethod,writeDepositRequest,approveDepositSecure,rejectDepositSecure,approveWithdrawalSecure,rejectWithdrawalSecure,approveKycSecure,rejectKycSecure,approvePaymentMethodSecure,rejectPaymentMethodSecure,closeAiLiveBatchSecure,openManualTradeSecure,closeManualTradeSecure,cancelManualLimitSecure,purchasePlanSecure,changeUserPlanSecure,writeWithdrawalRequest,writeLedger,writeTrade,deleteTrade,writeAiBatch,deleteAiBatch,writePlan,writeSubscription,writeReferral,writeSupportTicket,writeNotification,writeAdminAction,deletePaymentMethod,deleteNotification,writeSettings,uploadUserFile,fire,lastSyncStatus,sendTelegramMessage,backupFullState,latestSnapshot,restoreLatestSnapshot,downloadLocalBackup,importLocalBackup,subscribeRealtimeChanges};
+  const api={ready,client,loadAll,pullCoreTables:loadAll,syncCoreTables:fullSync,fullSync,scheduleFullSync,testConnection,getAuthSession,signOutAuthSession,linkAuthUserToAppUser,findUser,createUser,updateUser,writeUser,writeKycRequest,writePaymentMethod,writeDepositRequest,approveDepositSecure,rejectDepositSecure,approveWithdrawalSecure,rejectWithdrawalSecure,approveKycSecure,rejectKycSecure,approvePaymentMethodSecure,rejectPaymentMethodSecure,closeAiLiveBatchSecure,openManualTradeSecure,closeManualTradeSecure,cancelManualLimitSecure,purchasePlanSecure,changeUserPlanSecure,adjustWalletSecure,recordTelegramAlertSecure,writeWithdrawalRequest,writeLedger,writeTrade,deleteTrade,writeAiBatch,deleteAiBatch,writePlan,writeSubscription,writeReferral,writeSupportTicket,writeNotification,writeAdminAction,deletePaymentMethod,deleteNotification,writeSettings,uploadUserFile,fire,lastSyncStatus,sendTelegramMessage,backupFullState,latestSnapshot,restoreLatestSnapshot,downloadLocalBackup,importLocalBackup,subscribeRealtimeChanges};
   window.AITradeXDB=api; window.AppDB=api;
 })();
