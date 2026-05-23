@@ -945,3 +945,273 @@ values ('main', jsonb_build_object('databaseRuntimeVersion','6.4','mode','phase6
 on conflict (id) do update
 set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.4','mode','phase6-ai-backend-settlement','aiLiveBackend','rpc-secure-function'),
     updated_at = now();
+
+-- Phase 6.5: Manual trade backend settlement.
+-- Moves manual market/limit open, manual close settlement, and limit cancel margin release into controlled database-side actions.
+create or replace function public.aitradex_open_manual_trade(
+  p_trade_id text,
+  p_user_id text,
+  p_account_type text default 'REAL',
+  p_order_type text default 'MARKET',
+  p_market text default 'CRYPTO',
+  p_pair text default '',
+  p_side text default 'BUY',
+  p_margin numeric default 0,
+  p_leverage numeric default 1,
+  p_entry_price numeric default 0,
+  p_entry_price_display text default '',
+  p_limit_price numeric default 0,
+  p_limit_price_display text default '',
+  p_price_source text default 'Live price cache'
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user public.users%rowtype;
+  v_balance numeric := 0;
+  v_account text := upper(coalesce(nullif(trim(p_account_type),''),'REAL'));
+  v_order text := upper(coalesce(nullif(trim(p_order_type),''),'MARKET'));
+  v_side text := case when upper(coalesce(p_side,'BUY')) = 'SELL' then 'SELL' else 'BUY' end;
+  v_status text;
+  v_trade_type text := 'MANUAL';
+  v_margin numeric := greatest(coalesce(p_margin,0),0);
+  v_leverage numeric := greatest(coalesce(p_leverage,1),1);
+  v_position_size numeric := 0;
+  v_ledger_type text;
+  v_ledger_id text;
+  v_now timestamptz := now();
+begin
+  if coalesce(trim(p_trade_id),'') = '' then
+    raise exception 'Trade ID is required.';
+  end if;
+  if coalesce(trim(p_user_id),'') = '' then
+    raise exception 'User ID is required.';
+  end if;
+  if v_margin <= 0 then
+    raise exception 'Manual trade margin must be greater than zero.';
+  end if;
+
+  select * into v_user from public.users where id = p_user_id for update;
+  if not found then
+    raise exception 'User not found.';
+  end if;
+  if upper(coalesce(v_user.status,'ACTIVE')) not in ('ACTIVE','VERIFIED') then
+    raise exception 'User account is not active.';
+  end if;
+  if exists (select 1 from public.trade_orders where id = p_trade_id) then
+    raise exception 'This trade already exists.';
+  end if;
+
+  select coalesce(sum(amount),0) into v_balance
+  from public.wallet_ledger
+  where user_id = p_user_id and upper(coalesce(account_type,'REAL')) = v_account;
+
+  if v_balance < v_margin then
+    raise exception 'Insufficient % balance for this manual trade.', v_account;
+  end if;
+
+  v_status := case when v_order = 'LIMIT' then 'LIMIT_PENDING' else 'OPEN' end;
+  v_ledger_type := case when v_order = 'LIMIT' then 'MANUAL_LIMIT_MARGIN_LOCK' else 'MANUAL_TRADE_MARGIN_LOCK' end;
+  v_position_size := round((v_margin * v_leverage)::numeric, 2);
+  v_ledger_id := 'ledger_manual_lock_' || p_trade_id;
+
+  insert into public.wallet_ledger(id, user_id, account_type, type, amount, reference_id, note, balance_after, created_at, raw)
+  values (
+    v_ledger_id,
+    p_user_id,
+    v_account,
+    v_ledger_type,
+    -v_margin,
+    p_trade_id,
+    coalesce(p_pair,'Manual') || ' manual ' || v_side || ' ' || lower(v_order) || ' margin locked by backend',
+    null,
+    v_now,
+    jsonb_build_object('secureManualOpen', true, 'orderType', v_order, 'margin', v_margin, 'leverage', v_leverage, 'positionSize', v_position_size)
+  );
+
+  insert into public.trade_orders(
+    id,user_id,batch_id,trade_type,account_type,order_type,market,pair,side,status,source,
+    entry_price,entry_price_display,limit_price,limit_price_display,leverage,margin_amount,margin_locked,position_size,pnl,settlement_amount,
+    note,raw,created_at,opened_at
+  ) values (
+    p_trade_id,p_user_id,null,v_trade_type,v_account,v_order,p_market,p_pair,v_side,v_status,'USER_MANUAL_BACKEND',
+    case when v_order = 'LIMIT' then coalesce(p_entry_price,0) else p_entry_price end,
+    coalesce(p_entry_price_display,''),
+    case when v_order = 'LIMIT' then p_limit_price else 0 end,
+    case when v_order = 'LIMIT' then coalesce(p_limit_price_display,'') else '' end,
+    v_leverage,v_margin,true,v_position_size,0,0,
+    'Manual trade opened through backend settlement function',
+    jsonb_build_object('secureManualOpen', true, 'priceSource', p_price_source, 'createdBy', p_user_id, 'openedAt', v_now),
+    v_now,
+    case when v_order = 'LIMIT' then null else v_now end
+  );
+
+  return jsonb_build_object('ok', true, 'tradeId', p_trade_id, 'status', v_status, 'margin', v_margin, 'leverage', v_leverage, 'positionSize', v_position_size);
+end;
+$$;
+
+create or replace function public.aitradex_close_manual_trade(
+  p_trade_id text,
+  p_user_id text,
+  p_exit_price numeric default 0,
+  p_exit_price_display text default '',
+  p_exit_price_source text default 'Live price cache',
+  p_reason text default 'USER_CLOSE'
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  pos public.trade_orders%rowtype;
+  entry_price numeric;
+  v_exit_price numeric := coalesce(p_exit_price,0);
+  margin numeric;
+  leverage_value numeric;
+  exposure numeric;
+  direction numeric;
+  raw_pnl numeric;
+  final_pnl numeric;
+  settlement numeric;
+  v_account text;
+  v_ledger_id text;
+  v_reason text := coalesce(nullif(trim(p_reason),''),'USER_CLOSE');
+  v_now timestamptz := now();
+begin
+  select * into pos from public.trade_orders where id = p_trade_id for update;
+  if not found then
+    raise exception 'Manual position not found.';
+  end if;
+  if pos.user_id <> p_user_id then
+    raise exception 'Manual position does not belong to this user.';
+  end if;
+  if upper(coalesce(pos.trade_type,'')) <> 'MANUAL' then
+    raise exception 'Only manual positions can be closed here.';
+  end if;
+  if upper(coalesce(pos.status,'')) <> 'OPEN' then
+    return jsonb_build_object('ok', true, 'tradeId', p_trade_id, 'status', pos.status, 'message', 'Position is not open.');
+  end if;
+  if v_exit_price <= 0 then
+    raise exception 'Valid exit price is required.';
+  end if;
+
+  entry_price := coalesce(nullif(pos.entry_price,0), v_exit_price);
+  margin := greatest(coalesce(pos.margin_amount,0),0);
+  leverage_value := greatest(coalesce(pos.leverage,1),1);
+  exposure := greatest(margin * leverage_value, coalesce(pos.position_size,0), 0);
+  direction := case when upper(coalesce(pos.side,'BUY')) = 'SELL' then -1 else 1 end;
+
+  if entry_price > 0 and v_exit_price > 0 and exposure > 0 then
+    raw_pnl := exposure * ((v_exit_price - entry_price) / entry_price) * direction;
+  else
+    raw_pnl := 0;
+  end if;
+
+  final_pnl := round(greatest(raw_pnl, -margin)::numeric, 2);
+  if coalesce(pos.margin_locked,false) then
+    settlement := greatest(0, margin + final_pnl);
+  else
+    settlement := final_pnl;
+  end if;
+  settlement := round(settlement::numeric, 2);
+  v_account := upper(coalesce(pos.account_type,'REAL'));
+  v_ledger_id := 'ledger_manual_settle_' || p_trade_id;
+
+  insert into public.wallet_ledger(id,user_id,account_type,type,amount,reference_id,note,balance_after,created_at,raw)
+  values (
+    v_ledger_id,
+    pos.user_id,
+    v_account,
+    'MANUAL_TRADE_SETTLEMENT',
+    settlement,
+    pos.id,
+    coalesce(pos.pair,'Manual') || ' manual ' || coalesce(pos.side,'') || ' closed by backend · margin ' || margin::text || ' · P/L ' || final_pnl::text,
+    null,
+    v_now,
+    jsonb_build_object('secureManualClose', true, 'reason', v_reason, 'entryPrice', entry_price, 'exitPrice', v_exit_price, 'rawPnl', round(raw_pnl::numeric,2), 'pnl', final_pnl, 'settlement', settlement)
+  )
+  on conflict on constraint wallet_ledger_user_id_account_type_type_reference_id_key do nothing;
+
+  update public.trade_orders
+  set status='CLOSED',
+      exit_price=v_exit_price,
+      exit_price_display=coalesce(nullif(p_exit_price_display,''), v_exit_price::text),
+      pnl=final_pnl,
+      settlement_amount=settlement,
+      close_reason=v_reason,
+      closed_by=p_user_id,
+      source='USER_MANUAL_CLOSE_BACKEND',
+      closed_at=v_now,
+      raw=coalesce(raw,'{}'::jsonb) || jsonb_build_object('secureManualClose', true, 'exitPriceSource', p_exit_price_source, 'rawPnl', round(raw_pnl::numeric,2), 'pnl', final_pnl, 'settlementAmount', settlement, 'safeFormula', 'margin * leverage * priceMovePercent, capped at margin loss')
+  where id = pos.id;
+
+  insert into public.notifications(id,audience,user_id,title,message,type,link_page,reference_id,read,created_at,raw)
+  values ('notif_manual_close_' || pos.id, 'USER', pos.user_id, 'Manual position closed', coalesce(pos.pair,'Manual') || ' ' || coalesce(pos.side,'') || ' closed. P/L ' || final_pnl::text || '. Settlement ' || settlement::text || '.', 'TRADE', 'orders', 'manual_close_' || pos.id, false, v_now, jsonb_build_object('secureManualClose', true, 'tradeId', pos.id, 'pnl', final_pnl, 'settlement', settlement))
+  on conflict (id) do update set message=excluded.message, raw=excluded.raw, created_at=excluded.created_at;
+
+  return jsonb_build_object('ok', true, 'tradeId', pos.id, 'status', 'CLOSED', 'pnl', final_pnl, 'settlement', settlement);
+end;
+$$;
+
+create or replace function public.aitradex_cancel_manual_limit(
+  p_trade_id text,
+  p_user_id text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  pos public.trade_orders%rowtype;
+  margin numeric;
+  v_account text;
+  v_ledger_id text;
+  v_now timestamptz := now();
+begin
+  select * into pos from public.trade_orders where id = p_trade_id for update;
+  if not found then
+    raise exception 'Pending manual order not found.';
+  end if;
+  if pos.user_id <> p_user_id then
+    raise exception 'Pending order does not belong to this user.';
+  end if;
+  if upper(coalesce(pos.trade_type,'')) <> 'MANUAL' or upper(coalesce(pos.status,'')) not in ('PENDING','LIMIT_PENDING') then
+    raise exception 'Only pending manual limit orders can be cancelled.';
+  end if;
+
+  margin := greatest(coalesce(pos.margin_amount,0),0);
+  v_account := upper(coalesce(pos.account_type,'REAL'));
+  v_ledger_id := 'ledger_manual_limit_release_' || pos.id;
+
+  if coalesce(pos.margin_locked,false) and margin > 0 then
+    insert into public.wallet_ledger(id,user_id,account_type,type,amount,reference_id,note,balance_after,created_at,raw)
+    values (v_ledger_id, pos.user_id, v_account, 'MANUAL_LIMIT_MARGIN_RELEASE', margin, pos.id, coalesce(pos.pair,'Manual') || ' manual limit order cancelled · margin released by backend', null, v_now, jsonb_build_object('secureManualCancel', true, 'margin', margin))
+    on conflict on constraint wallet_ledger_user_id_account_type_type_reference_id_key do nothing;
+  end if;
+
+  update public.trade_orders
+  set status='CANCELLED',
+      close_reason='LIMIT_CANCELLED',
+      closed_at=v_now,
+      source='USER_MANUAL_LIMIT_CANCEL_BACKEND',
+      raw=coalesce(raw,'{}'::jsonb) || jsonb_build_object('secureManualCancel', true, 'cancelledAt', v_now, 'marginReleased', margin)
+  where id = pos.id;
+
+  return jsonb_build_object('ok', true, 'tradeId', pos.id, 'status', 'CANCELLED', 'released', margin);
+end;
+$$;
+
+grant execute on function public.aitradex_open_manual_trade(text,text,text,text,text,text,text,numeric,numeric,numeric,text,numeric,text,text) to anon, authenticated;
+grant execute on function public.aitradex_close_manual_trade(text,text,numeric,text,text,text) to anon, authenticated;
+grant execute on function public.aitradex_cancel_manual_limit(text,text) to anon, authenticated;
+
+insert into public.app_settings(id, settings, updated_at)
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.5','mode','phase6-manual-trade-backend-settlement','manualTradeBackend','rpc-secure-function'), now())
+on conflict (id) do update
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.5','mode','phase6-manual-trade-backend-settlement','manualTradeBackend','rpc-secure-function'),
+    updated_at = now();

@@ -440,6 +440,21 @@
   async function settleManualPosition(position, reason = "USER_CLOSE") {
     const u = user();
     if (!u || !position || position.status !== "OPEN") return false;
+    if (App.isDatabaseMode?.() && window.AITradeXDB?.closeManualTradeSecure) {
+      const current = positionCurrentPrice(position);
+      const display = positionCurrentDisplay(position);
+      const source = (App.getCachedPairPrice && App.getCachedPairPrice(position.pair)?.source) || position.priceSource || "Live price cache";
+      await window.AITradeXDB.closeManualTradeSecure({
+        tradeId: position.id,
+        userId: u.id,
+        exitPrice: current,
+        exitPriceDisplay: display,
+        exitPriceSource: source,
+        reason
+      });
+      try { await window.AITradeXDB.loadAll?.(); } catch {}
+      return true;
+    }
     const original = { ...position };
     const current = positionCurrentPrice(position);
     let pnl = manualPositionPnl(position);
@@ -4349,6 +4364,66 @@
       const pair = selectedPairData();
       const marketNow = visiblePairCardPrice(selectedPair) || (App.getCachedPairPrice ? App.getCachedPairPrice(selectedPair) : null);
 
+      if (App.isDatabaseMode?.() && window.AITradeXDB?.openManualTradeSecure) {
+        try {
+          let entryPrice = 0;
+          let entryDisplay = "";
+          let limitPrice = 0;
+          let limitDisplay = "";
+          let priceSource = marketNow?.source || pair.priceSource || "Live price cache";
+          if (orderType === "LIMIT") {
+            const limitPriceDisplayInput = Number(tradeLimitPrice || 0);
+            limitPrice = limitInputToRaw(selectedPair, limitPriceDisplayInput);
+            if (!Number.isFinite(limitPrice) || limitPrice <= 0) {
+              App.toast("Enter valid limit price.");
+              return;
+            }
+            limitDisplay = formatPairPrice(selectedPair, limitPrice);
+            entryPrice = Number(marketNow?.price || pair.rawPrice || 0);
+            entryDisplay = marketNow?.display || pair.price || "--";
+          } else {
+            let lockedPrice = visiblePairCardPrice(selectedPair);
+            if (!lockedPrice) {
+              try { lockedPrice = App.getLivePairPrice ? await App.getLivePairPrice(selectedPair) : null; }
+              catch { lockedPrice = App.getCachedPairPrice ? App.getCachedPairPrice(selectedPair) : null; }
+            }
+            entryPrice = Number(lockedPrice?.price || pair.rawPrice || 0);
+            if (!Number.isFinite(entryPrice) || entryPrice <= 0) {
+              App.toast("Live entry price unavailable. Please try again.");
+              return;
+            }
+            entryDisplay = lockedPrice?.display || pair.price || String(entryPrice);
+            priceSource = lockedPrice?.source || pair.priceSource || "Live price cache";
+          }
+          await window.AITradeXDB.openManualTradeSecure({
+            tradeId,
+            userId: u.id,
+            accountType: normalizedAccountMode(accountMode),
+            orderType,
+            market: selectedMarket,
+            pair: selectedPair,
+            side: normalizedSide,
+            margin,
+            leverage,
+            entryPrice,
+            entryPriceDisplay: entryDisplay,
+            limitPrice,
+            limitPriceDisplay: limitDisplay,
+            priceSource
+          });
+          try { await window.AITradeXDB.loadAll?.(); } catch {}
+          resetTradeTicketAfterOrder(orderType === "LIMIT" ? "Limit order placed" : "Market order opened", orderType === "LIMIT" ? `${selectedPair} ${normalizedSide} limit placed at ${limitDisplay}.` : `${normalizedSide} ${selectedPair} opened at ${entryDisplay}.`);
+          page = "orders";
+          orderViewTab = orderType === "LIMIT" ? "PENDING" : "MANUAL";
+          localStorage.setItem("AITradeX_ACTIVE_PAGE", page);
+          localStorage.setItem("AITradeX_ORDER_VIEW_TAB", orderViewTab);
+          render();
+        } catch (error) {
+          App.toast(error.message || "Manual trade could not be opened.");
+        }
+        return;
+      }
+
       if (orderType === "LIMIT") {
         const limitPriceDisplayInput = Number(tradeLimitPrice || 0);
         const limitPrice = limitInputToRaw(selectedPair, limitPriceDisplayInput);
@@ -4542,6 +4617,17 @@
       const target = pendingManualOrders().find(order => order.id === orderId);
       if (!target) {
         App.toast("Pending order not found.");
+        render();
+        return;
+      }
+      if (App.isDatabaseMode?.() && window.AITradeXDB?.cancelManualLimitSecure) {
+        try {
+          await window.AITradeXDB.cancelManualLimitSecure({ tradeId: target.id, userId: user().id });
+          try { await window.AITradeXDB.loadAll?.(); } catch {}
+          App.toast("Pending limit order cancelled.");
+        } catch (err) {
+          App.toast(err.message || "Unable to cancel pending order.");
+        }
         render();
         return;
       }
