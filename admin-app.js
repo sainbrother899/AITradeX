@@ -1006,7 +1006,6 @@
 
         <div class="user-control-grid admin-user-premium-grid">
           <article><span>Real Balance</span><b>${App.money(App.realBalance(user.id))}</b></article>
-          <article><span>Demo Balance</span><b>${App.money(App.demoBalance(user.id))}</b></article>
           <article><span>Plan</span><b>${esc(plan.name || "Free")}</b></article>
           <article><span>AI Limit</span><b>${aiUsed}/${aiLimit}</b></article>
           <article><span>Active AI</span><b>${activeAi}</b></article>
