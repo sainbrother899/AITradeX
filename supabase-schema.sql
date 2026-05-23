@@ -238,9 +238,9 @@ create index if not exists wallet_ledger_user_id_idx on public.wallet_ledger(use
 create index if not exists notifications_user_id_idx on public.notifications(user_id);
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','6.1','mode','action-database'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.2','mode','action-database'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.1','mode','action-database'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.2','mode','action-database'),
     updated_at = now();
 
 
@@ -255,9 +255,9 @@ create index if not exists admin_action_logs_created_at_idx on public.admin_acti
 create index if not exists notifications_created_at_idx on public.notifications(created_at desc);
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','6.1','mode','action-database-clean-persistence'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.2','mode','action-database-clean-persistence'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.1','mode','action-database-clean-persistence'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.2','mode','action-database-clean-persistence'),
     updated_at = now();
 
 
@@ -268,9 +268,9 @@ alter table public.users add column if not exists password_hash text;
 alter table public.notifications add column if not exists raw jsonb default '{}'::jsonb;
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','6.1','mode','final-clean-audit-fix','passwordStorage','salted-sha256-runtime'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.2','mode','final-clean-audit-fix','passwordStorage','salted-sha256-runtime'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.1','mode','final-clean-audit-fix','passwordStorage','salted-sha256-runtime'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.2','mode','final-clean-audit-fix','passwordStorage','salted-sha256-runtime'),
     updated_at = now();
 
 
@@ -297,9 +297,9 @@ on conflict (id) do update set
 
 -- Phase 5.29: final deep consistency marker
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','6.1','mode','final-deep-consistency-fix','passwordStorage','salted-sha256-runtime'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.2','mode','final-deep-consistency-fix','passwordStorage','salted-sha256-runtime'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.1','mode','final-deep-consistency-fix','passwordStorage','salted-sha256-runtime'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.2','mode','final-deep-consistency-fix','passwordStorage','salted-sha256-runtime'),
     updated_at = now();
 
 
@@ -330,21 +330,21 @@ begin
 end $$;
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','6.1','mode','rls-safety-pack','rlsMode','testing-frontend-compatible'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.2','mode','rls-safety-pack','rlsMode','testing-frontend-compatible'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.1','mode','rls-safety-pack','rlsMode','testing-frontend-compatible'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.2','mode','rls-safety-pack','rlsMode','testing-frontend-compatible'),
     updated_at = now();
 
 
 -- Phase 5.34: Live Sync Lite marker.
 insert into public.app_settings (id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','6.1','mode','live-sync-lite','liveSync','supabase-realtime-silent-ui'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.2','mode','live-sync-lite','liveSync','supabase-realtime-silent-ui'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.1','mode','live-sync-lite','liveSync','supabase-realtime-silent-ui'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.2','mode','live-sync-lite','liveSync','supabase-realtime-silent-ui'),
     updated_at = now();
 
 
--- Phase 6.1 Secure Auth Foundation (safe, non-breaking)
+-- Phase 6.2 Deposit Backend Security + Secure Auth Foundation (safe, non-breaking)
 -- These columns/tables prepare the project for Supabase Auth + backend Edge Functions without breaking the current Phase5 UI.
 alter table public.users add column if not exists auth_user_id uuid unique;
 alter table public.users add column if not exists password_updated_at timestamptz;
@@ -379,7 +379,190 @@ create index if not exists admin_roles_user_id_idx on public.admin_roles(user_id
 create index if not exists backend_action_queue_status_idx on public.backend_action_queue(status, created_at desc);
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','6.1','mode','phase6-secure-auth-foundation','authMode','legacy-testing'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.2','mode','phase6-secure-auth-foundation','authMode','legacy-testing'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.1','mode','phase6-secure-auth-foundation','authMode','legacy-testing'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.2','mode','phase6-secure-auth-foundation','authMode','legacy-testing'),
+    updated_at = now();
+
+-- Phase 6.2 Deposit Backend Security
+-- Centralizes deposit approve/reject in PostgreSQL RPC functions.
+-- This is a safe migration step before full Edge Function/service-role migration.
+
+create or replace function public.aitradex_validate_admin(p_admin_user_id text)
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.users
+    where id = p_admin_user_id
+      and lower(coalesce(role,'')) = 'admin'
+      and upper(coalesce(status,'ACTIVE')) = 'ACTIVE'
+  );
+$$;
+
+create or replace function public.aitradex_approve_deposit(
+  p_request_id text,
+  p_admin_user_id text default 'control_root',
+  p_admin_email text default '',
+  p_admin_name text default 'Admin'
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  dep public.deposit_requests%rowtype;
+  ledger_applied boolean := false;
+  ledger_inserted integer := 0;
+  duplicate_count integer := 0;
+  ledger_id text;
+  notif_id text;
+  log_id text;
+  queue_id text;
+begin
+  if not public.aitradex_validate_admin(p_admin_user_id) then
+    raise exception 'Admin permission required for deposit approval.';
+  end if;
+
+  select * into dep from public.deposit_requests where id = p_request_id for update;
+  if not found then
+    raise exception 'Deposit request not found.';
+  end if;
+
+  if upper(coalesce(dep.status,'PENDING')) <> 'PENDING' then
+    return jsonb_build_object('ok', true, 'alreadyCompleted', true, 'status', dep.status, 'ledgerApplied', false);
+  end if;
+
+  if coalesce(dep.amount,0) <= 0 then
+    raise exception 'Invalid deposit amount.';
+  end if;
+
+  if nullif(trim(coalesce(dep.utr,'')), '') is not null then
+    select count(*) into duplicate_count
+    from public.deposit_requests
+    where id <> dep.id
+      and utr = dep.utr
+      and upper(coalesce(status,'')) = 'APPROVED';
+    if duplicate_count > 0 then
+      raise exception 'Duplicate approved UTR found. Approval blocked.';
+    end if;
+  end if;
+
+  ledger_id := 'ledger_dep_' || dep.id;
+  insert into public.wallet_ledger(id, user_id, account_type, type, amount, reference_id, note, created_at, raw)
+  values (
+    ledger_id,
+    dep.user_id,
+    'REAL',
+    'DEPOSIT',
+    dep.amount,
+    dep.id,
+    'SECURE_DEPOSIT_APPROVED · UTR ' || coalesce(dep.utr,'-'),
+    now(),
+    jsonb_build_object('secureDepositApprove', true, 'approvedBy', p_admin_user_id, 'approvedByEmail', p_admin_email, 'approvedAt', now())
+  )
+  on conflict on constraint wallet_ledger_user_id_account_type_type_reference_id_key do nothing;
+  get diagnostics ledger_inserted = row_count;
+  ledger_applied := ledger_inserted > 0;
+
+  update public.deposit_requests
+  set status = 'APPROVED',
+      balance_applied = true,
+      reviewed_at = now(),
+      reviewed_by = p_admin_user_id,
+      admin_note = case when duplicate_count > 0 then 'Checked duplicate UTR warning: ' || duplicate_count::text || ' similar approved request(s).' else 'Approved by secure backend function.' end,
+      raw = coalesce(raw, '{}'::jsonb) || jsonb_build_object('secureDepositApprove', true, 'approvedBy', p_admin_user_id, 'approvedByEmail', p_admin_email, 'approvedAt', now(), 'ledgerApplied', ledger_applied)
+  where id = dep.id;
+
+  notif_id := 'notif_dep_ok_' || dep.id;
+  insert into public.notifications(id, audience, user_id, title, message, type, link_page, reference_id, read, created_at, raw)
+  values (notif_id, 'USER', dep.user_id, 'Deposit approved', 'Deposit ' || dep.amount::text || ' approved and credited to your wallet.', 'DEPOSIT', 'wallet', 'dep_ok_' || dep.id, false, now(), jsonb_build_object('secureDepositApprove', true))
+  on conflict (id) do update set
+    audience=excluded.audience, user_id=excluded.user_id, title=excluded.title, message=excluded.message, type=excluded.type, link_page=excluded.link_page, reference_id=excluded.reference_id, raw=excluded.raw;
+
+  log_id := 'adminlog_dep_approve_' || dep.id;
+  insert into public.admin_action_logs(id, admin_user_id, action, target_type, target_id, meta, created_at)
+  values (log_id, p_admin_user_id, 'DEPOSIT_APPROVE_SECURE', 'DEPOSIT', dep.id, jsonb_build_object('userId', dep.user_id, 'amount', dep.amount, 'utr', dep.utr, 'ledgerApplied', ledger_applied, 'adminEmail', p_admin_email, 'adminName', p_admin_name), now())
+  on conflict (id) do update set meta=excluded.meta, created_at=excluded.created_at;
+
+  queue_id := 'backend_deposit_approve_' || dep.id;
+  insert into public.backend_action_queue(id, action_type, status, requested_by, target_user_id, payload, result, created_at, processed_at)
+  values (queue_id, 'DEPOSIT_APPROVE', 'COMPLETED', p_admin_user_id, dep.user_id, jsonb_build_object('requestId', dep.id, 'amount', dep.amount), jsonb_build_object('ledgerApplied', ledger_applied, 'status', 'APPROVED'), now(), now())
+  on conflict (id) do update set status='COMPLETED', result=excluded.result, processed_at=now();
+
+  return jsonb_build_object('ok', true, 'requestId', dep.id, 'userId', dep.user_id, 'amount', dep.amount, 'ledgerApplied', ledger_applied, 'status', 'APPROVED');
+end;
+$$;
+
+create or replace function public.aitradex_reject_deposit(
+  p_request_id text,
+  p_reason text default 'Rejected by admin.',
+  p_admin_user_id text default 'control_root',
+  p_admin_email text default '',
+  p_admin_name text default 'Admin'
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  dep public.deposit_requests%rowtype;
+  notif_id text;
+  log_id text;
+  queue_id text;
+  clean_reason text := coalesce(nullif(trim(p_reason), ''), 'Rejected by admin.');
+begin
+  if not public.aitradex_validate_admin(p_admin_user_id) then
+    raise exception 'Admin permission required for deposit rejection.';
+  end if;
+
+  select * into dep from public.deposit_requests where id = p_request_id for update;
+  if not found then
+    raise exception 'Deposit request not found.';
+  end if;
+
+  if upper(coalesce(dep.status,'PENDING')) <> 'PENDING' then
+    return jsonb_build_object('ok', true, 'alreadyCompleted', true, 'status', dep.status);
+  end if;
+
+  update public.deposit_requests
+  set status = 'REJECTED',
+      reviewed_at = now(),
+      reviewed_by = p_admin_user_id,
+      admin_note = clean_reason,
+      raw = coalesce(raw, '{}'::jsonb) || jsonb_build_object('secureDepositReject', true, 'rejectedBy', p_admin_user_id, 'rejectedByEmail', p_admin_email, 'rejectedAt', now(), 'rejectReason', clean_reason, 'rejectReasonUser', clean_reason)
+  where id = dep.id;
+
+  notif_id := 'notif_dep_rej_' || dep.id;
+  insert into public.notifications(id, audience, user_id, title, message, type, link_page, reference_id, read, created_at, raw)
+  values (notif_id, 'USER', dep.user_id, 'Deposit rejected', 'Deposit request ' || coalesce(dep.amount,0)::text || ' was rejected. ' || clean_reason, 'DEPOSIT', 'wallet', 'dep_rej_' || dep.id, false, now(), jsonb_build_object('secureDepositReject', true, 'reason', clean_reason))
+  on conflict (id) do update set
+    audience=excluded.audience, user_id=excluded.user_id, title=excluded.title, message=excluded.message, type=excluded.type, link_page=excluded.link_page, reference_id=excluded.reference_id, raw=excluded.raw;
+
+  log_id := 'adminlog_dep_reject_' || dep.id;
+  insert into public.admin_action_logs(id, admin_user_id, action, target_type, target_id, meta, created_at)
+  values (log_id, p_admin_user_id, 'DEPOSIT_REJECT_SECURE', 'DEPOSIT', dep.id, jsonb_build_object('userId', dep.user_id, 'amount', dep.amount, 'utr', dep.utr, 'reason', clean_reason, 'adminEmail', p_admin_email, 'adminName', p_admin_name), now())
+  on conflict (id) do update set meta=excluded.meta, created_at=excluded.created_at;
+
+  queue_id := 'backend_deposit_reject_' || dep.id;
+  insert into public.backend_action_queue(id, action_type, status, requested_by, target_user_id, payload, result, created_at, processed_at)
+  values (queue_id, 'DEPOSIT_REJECT', 'COMPLETED', p_admin_user_id, dep.user_id, jsonb_build_object('requestId', dep.id, 'reason', clean_reason), jsonb_build_object('status', 'REJECTED'), now(), now())
+  on conflict (id) do update set status='COMPLETED', result=excluded.result, processed_at=now();
+
+  return jsonb_build_object('ok', true, 'requestId', dep.id, 'userId', dep.user_id, 'status', 'REJECTED', 'reason', clean_reason);
+end;
+$$;
+
+grant execute on function public.aitradex_validate_admin(text) to anon, authenticated;
+grant execute on function public.aitradex_approve_deposit(text,text,text,text) to anon, authenticated;
+grant execute on function public.aitradex_reject_deposit(text,text,text,text) to anon, authenticated;
+
+insert into public.app_settings(id, settings, updated_at)
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.2','mode','phase6-deposit-backend-security','depositBackend','rpc-secure-function'), now())
+on conflict (id) do update
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.2','mode','phase6-deposit-backend-security','depositBackend','rpc-secure-function'),
     updated_at = now();

@@ -3,7 +3,7 @@ AITradeX Phase6 Secure Backend/Auth Architecture
 Goal:
 Move sensitive money/admin actions from browser JavaScript to secure backend Edge Functions while preserving the existing UI/design.
 
-Current Phase6.1 status:
+Current Phase6.2 status:
 - UI unchanged.
 - Legacy testing login remains active.
 - Supabase Auth foundation columns added.

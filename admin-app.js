@@ -3645,8 +3645,8 @@
         maxOpenPositionsPerUser: Math.max(1, Number(inputValue("settingMaxOpenPositions") || 10)),
         usdtInrRate: Math.max(1, Number(inputValue("settingUsdtInrRate") || 95)),
         phase6AuthMode: settings.phase6AuthMode || "legacy-testing",
-        phase6BackendMode: settings.phase6BackendMode || "foundation-only",
-        phase6Build: "6.1-secure-auth-foundation"
+        phase6BackendMode: settings.phase6BackendMode || "deposit-rpc",
+        phase6Build: "6.2-deposit-backend-security"
       };
       logAdminAction("APP_SETTINGS_UPDATE", "SETTINGS", "app", { depositEnabled: App.state.settings.depositEnabled, withdrawalEnabled: App.state.settings.withdrawalEnabled, manualTradingEnabled: App.state.settings.manualTradingEnabled, aiTradingEnabled: App.state.settings.aiTradingEnabled, maintenanceMode: App.state.settings.maintenanceMode, maxLeverage: App.state.settings.maxLeverage });
       await persistSettings("app settings");
@@ -4156,6 +4156,28 @@
       if (!amount || amount <= 0) { App.toast("Invalid deposit amount."); render(); return; }
       const duplicate = depositUtrDuplicateInfo(request);
       if (duplicate?.approved) { App.toast("Duplicate approved UTR found. Approval blocked for safety."); render(); return; }
+      if (App.isDatabaseMode?.() && window.AITradeXDB?.approveDepositSecure) {
+        if (!confirm(`Approve ${App.money(amount)} deposit for ${displayNameFor(target)}? Wallet will be credited once by secure backend function.`)) return;
+        markButton(button, "Approving...");
+        try {
+          const admin = adminUser() || {};
+          const result = await window.AITradeXDB.approveDepositSecure({ requestId: request.id, adminUserId: admin.id || "control_root", adminEmail: admin.email || "", adminName: displayNameFor(admin) || "Admin" });
+          if (window.AITradeXDB?.loadAll) await window.AITradeXDB.loadAll();
+          if (result?.ledgerApplied && App.creditReferralBonusAsync) {
+            try {
+              const referralResult = await App.creditReferralBonusAsync({ referredUserId: target.id, eventType: "DEPOSIT", amount, referenceId: request.id, sourceLabel: `Deposit UTR ${request.utr || "-"}` });
+              if (referralResult?.credited) await logAdminActionAsync("REFERRAL_DEPOSIT_BONUS", "REFERRAL", request.id, { referredUserId: target.id, amount: referralResult.amount, secureDepositApprove: true });
+            } catch (refErr) { console.warn("Referral bonus after secure deposit approve failed", refErr?.message || refErr); }
+          }
+          App.toast(result?.alreadyCompleted ? `Deposit already ${result.status || "completed"}.` : (result?.ledgerApplied ? "Deposit approved securely and balance credited." : "Deposit marked approved securely. Ledger was already applied."));
+          render();
+          return;
+        } catch (err) {
+          App.toast(`Secure deposit approve failed: ${err.message || err}`);
+          render();
+          return;
+        }
+      }
       const ledgerExists = App.hasLedgerEntry?.({ accountType: "REAL", type: "DEPOSIT", referenceId: request.id, userId: target.id });
       if (!ledgerExists && !confirm(`Approve ${App.money(amount)} deposit for ${displayNameFor(target)}? Wallet will be credited once.`)) return;
       markButton(button, "Approving...");
@@ -4198,6 +4220,21 @@
       if (String(request.status || "").toUpperCase() !== "PENDING") { App.toast("Deposit action already completed."); render(); return; }
       const reason = prompt("Reason for rejecting this deposit request?", "Invalid/unclear payment proof");
       if (reason === null) return;
+      if (App.isDatabaseMode?.() && window.AITradeXDB?.rejectDepositSecure) {
+        markButton(button, "Rejecting...");
+        try {
+          const admin = adminUser() || {};
+          const result = await window.AITradeXDB.rejectDepositSecure({ requestId: request.id, reason: reason || "Rejected by admin.", adminUserId: admin.id || "control_root", adminEmail: admin.email || "", adminName: displayNameFor(admin) || "Admin" });
+          if (window.AITradeXDB?.loadAll) await window.AITradeXDB.loadAll();
+          App.toast(result?.alreadyCompleted ? `Deposit already ${result.status || "completed"}.` : "Deposit request rejected securely.");
+          render();
+          return;
+        } catch (err) {
+          App.toast(`Secure deposit reject failed: ${err.message || err}`);
+          render();
+          return;
+        }
+      }
       markButton(button, "Rejecting...");
       try {
         request.status = "REJECTED";

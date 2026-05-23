@@ -1,4 +1,4 @@
--- AITradeX Phase6.1 Auth Foundation - optional standalone file
+-- AITradeX Phase6.2 Auth Foundation - optional standalone file
 -- Safe to run multiple times. It prepares Supabase Auth mapping without breaking current frontend testing login.
 
 alter table public.users add column if not exists auth_user_id uuid unique;
