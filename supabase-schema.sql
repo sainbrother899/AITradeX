@@ -238,9 +238,9 @@ create index if not exists wallet_ledger_user_id_idx on public.wallet_ledger(use
 create index if not exists notifications_user_id_idx on public.notifications(user_id);
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','5.34','mode','action-database'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.1','mode','action-database'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.34','mode','action-database'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.1','mode','action-database'),
     updated_at = now();
 
 
@@ -255,9 +255,9 @@ create index if not exists admin_action_logs_created_at_idx on public.admin_acti
 create index if not exists notifications_created_at_idx on public.notifications(created_at desc);
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','5.34','mode','action-database-clean-persistence'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.1','mode','action-database-clean-persistence'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.34','mode','action-database-clean-persistence'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.1','mode','action-database-clean-persistence'),
     updated_at = now();
 
 
@@ -268,9 +268,9 @@ alter table public.users add column if not exists password_hash text;
 alter table public.notifications add column if not exists raw jsonb default '{}'::jsonb;
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','5.34','mode','final-clean-audit-fix','passwordStorage','salted-sha256-runtime'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.1','mode','final-clean-audit-fix','passwordStorage','salted-sha256-runtime'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.34','mode','final-clean-audit-fix','passwordStorage','salted-sha256-runtime'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.1','mode','final-clean-audit-fix','passwordStorage','salted-sha256-runtime'),
     updated_at = now();
 
 
@@ -297,9 +297,9 @@ on conflict (id) do update set
 
 -- Phase 5.29: final deep consistency marker
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','5.34','mode','final-deep-consistency-fix','passwordStorage','salted-sha256-runtime'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.1','mode','final-deep-consistency-fix','passwordStorage','salted-sha256-runtime'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.34','mode','final-deep-consistency-fix','passwordStorage','salted-sha256-runtime'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.1','mode','final-deep-consistency-fix','passwordStorage','salted-sha256-runtime'),
     updated_at = now();
 
 
@@ -330,15 +330,56 @@ begin
 end $$;
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','5.34','mode','rls-safety-pack','rlsMode','testing-frontend-compatible'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.1','mode','rls-safety-pack','rlsMode','testing-frontend-compatible'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.34','mode','rls-safety-pack','rlsMode','testing-frontend-compatible'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.1','mode','rls-safety-pack','rlsMode','testing-frontend-compatible'),
     updated_at = now();
 
 
 -- Phase 5.34: Live Sync Lite marker.
 insert into public.app_settings (id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','5.34','mode','live-sync-lite','liveSync','supabase-realtime-silent-ui'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.1','mode','live-sync-lite','liveSync','supabase-realtime-silent-ui'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.34','mode','live-sync-lite','liveSync','supabase-realtime-silent-ui'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.1','mode','live-sync-lite','liveSync','supabase-realtime-silent-ui'),
+    updated_at = now();
+
+
+-- Phase 6.1 Secure Auth Foundation (safe, non-breaking)
+-- These columns/tables prepare the project for Supabase Auth + backend Edge Functions without breaking the current Phase5 UI.
+alter table public.users add column if not exists auth_user_id uuid unique;
+alter table public.users add column if not exists password_updated_at timestamptz;
+alter table public.users add column if not exists password_updated_by text;
+
+create table if not exists public.admin_roles (
+  id text primary key,
+  user_id text references public.users(id) on delete cascade,
+  auth_user_id uuid,
+  role text not null default 'admin',
+  permissions jsonb not null default '{}'::jsonb,
+  status text not null default 'ACTIVE',
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+create table if not exists public.backend_action_queue (
+  id text primary key,
+  action_type text not null,
+  status text not null default 'PENDING',
+  requested_by text,
+  target_user_id text,
+  payload jsonb not null default '{}'::jsonb,
+  result jsonb not null default '{}'::jsonb,
+  error text,
+  created_at timestamptz default now(),
+  processed_at timestamptz
+);
+
+create index if not exists users_auth_user_id_idx on public.users(auth_user_id);
+create index if not exists admin_roles_user_id_idx on public.admin_roles(user_id);
+create index if not exists backend_action_queue_status_idx on public.backend_action_queue(status, created_at desc);
+
+insert into public.app_settings(id, settings, updated_at)
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.1','mode','phase6-secure-auth-foundation','authMode','legacy-testing'), now())
+on conflict (id) do update
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.1','mode','phase6-secure-auth-foundation','authMode','legacy-testing'),
     updated_at = now();

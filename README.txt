@@ -1,58 +1,42 @@
-AITradeX Phase 5.34 - Live Sync Lite
+AITradeX Phase 6.1 - Secure Auth Foundation Build
 
-This build keeps Phase 5.33 AI batch auto-risk-close fixes and adds Live Sync Lite for admin/user panels.
+Base used:
+- AITradeX Phase5.36 Hide AI Target User Text
 
-What is new:
-- Supabase Realtime listener added for core tables.
-- Admin and user panels update silently when database rows change.
-- No browser page refresh, no location.reload(), no blinking full-page reload.
-- Active typing/form fields are protected: live sync waits while the user/admin is editing an input, textarea, select, or contenteditable area.
-- Local write protection added: when this tab is saving an action, live sync pauses briefly so the current action is not overwritten mid-save.
-- If Supabase Realtime fails, the app continues working normally with the existing manual/render flow.
-
-Live sync covers:
-- users
-- wallet_ledger
-- trade_orders
-- ai_trade_batches
-- kyc_requests
-- deposit_requests
-- withdrawal_requests
-- payment_methods
-- support_tickets
-- notifications
-- subscriptions
-- referrals
-- plans
-- app_settings
-- admin_action_logs
-
-Previous AI fixes retained:
-- User-side AI Live auto-close remains disabled.
-- AI Live batch close is handled from admin/global batch watcher.
-- Same batch positions close together when profit target, loss target, or margin-risk threshold is hit.
-- AI Live P/L settlement remains margin × leverage based and capped safely.
-
-Cache version:
-- phase536hideaitargetuser
-- Phase 5.36: User Orders → AI Live card no longer exposes admin target profit/loss percent; it shows user-facing amount/position only.
-
-Deploy order:
-1. Run supabase-schema.sql so realtime publication/table compatibility is applied.
-2. Run supabase-storage-policies.sql only if using file uploads/KYC uploads.
-3. Upload/deploy this ZIP.
-4. Hard refresh browser with Ctrl + Shift + R.
-
-Testing checklist:
-- Keep admin panel open in one browser tab.
-- Keep user panel open in another browser/device.
-- Submit KYC/deposit/withdrawal/payment method from user side and confirm admin side updates without page refresh.
-- Approve/reject from admin side and confirm user side status/wallet/notification updates without page refresh.
-- Open/close AI Live batch from admin side and confirm user side global bar/orders update without page refresh.
-
-Emergency off switch:
-- In browser console, run: localStorage.setItem('AITradeX_LIVE_SYNC','off')
-- Then hard refresh. To enable again: localStorage.removeItem('AITradeX_LIVE_SYNC') and hard refresh.
+What this build does:
+1. Keeps the existing Phase5.36 design and user/admin flow unchanged.
+2. Adds Phase6.1 secure-auth foundation for future Supabase Auth migration.
+3. Keeps current legacy testing login active so the working system does not break.
+4. Adds safe database columns for auth_user_id and admin role mapping.
+5. Adds backend action queue table for future Edge Function migration.
+6. Normalizes password fields in auth.js so password, passwordHash and password_hash stay aligned during the migration period.
+7. Adds backend/auth helper functions in db-service.js for future phase migration checks.
 
 Important:
-This is still a frontend-only testing build. Public real-money launch needs Phase 6 backend/Auth/strict RLS migration.
+- This is NOT the final real-money backend migration.
+- This is Phase6.1 foundation only.
+- Deposit approve, withdrawal approve, AI settlement and wallet writes are still using current frontend-tested flow.
+- Do not enable strict production RLS yet.
+
+Deploy order:
+1. Run supabase-schema.sql in Supabase SQL Editor.
+2. If KYC/file uploads are used, run supabase-storage-policies.sql.
+3. Upload/deploy this ZIP.
+4. Hard refresh browser: Ctrl + Shift + R.
+5. Test admin login, user login, deposit, withdrawal, KYC, AI live and manual trade exactly like Phase5.36.
+
+Current cache version:
+- phase61secureauthfoundation
+
+Next recommended Phase6 steps:
+- Phase6.2: migrate deposit approve/reject to backend Edge Function.
+- Phase6.3: migrate withdrawal approve/reject to backend Edge Function.
+- Phase6.4: migrate AI live open/close settlement to backend Edge Function.
+- Phase6.5: enable Supabase Auth login and strict RLS after all sensitive actions are backend-only.
+
+Default admin for testing:
+- control@aitradex.com
+- admin123
+
+Real-money warning:
+This build is safer than the previous frontend-only baseline because migration foundations are prepared, but it is still not a final public real-money launch build. Public real-money launch requires backend Edge Functions, strict RLS, secure payment/KYC flow, legal/compliance review and complete audit policies.

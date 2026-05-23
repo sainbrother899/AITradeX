@@ -60,7 +60,11 @@
   }
   async function setPassword(user,password,{updatedBy="user"}={}){
     if(!user) throw new Error("User not found.");
-    user.password=await hashPassword(password,user.id||randomSalt());
+    const computedHash=await hashPassword(password,user.id||randomSalt());
+    // Phase 6.1 foundation: keep legacy + normalized DB password fields aligned until Supabase Auth migration is enabled.
+    user.password=computedHash;
+    user.passwordHash=computedHash;
+    user.password_hash=computedHash;
     user.passwordUpdatedAt=App.now?.()||new Date().toISOString();
     user.passwordUpdatedBy=updatedBy;
     return user;
@@ -146,5 +150,16 @@
     }
     clearAdminLock(email); await migratePasswordIfNeeded(u,password,verification); u.lastLoginAt=new Date().toISOString(); if(isDb()&&DB.writeUser) await DB.writeUser(u); App.setSession(u.id,"admin"); if(isDb()) await DB.loadAll(); return u;
   }
-  window.AITradeXAuth={registerUser,loginUser,loginControl,loginAdmin:loginControl,hashPassword,verifyPassword,setPassword,isPasswordHash};
+  async function authReadiness(){
+    const client=window.AITradeXDB?.client;
+    if(!client?.auth) return {ok:false,mode:"legacy-testing",message:"Supabase Auth client is not available; legacy testing auth is active."};
+    try{
+      const {data,error}=await client.auth.getSession();
+      if(error) throw error;
+      return {ok:true,mode:"legacy-testing",hasSession:!!data?.session,message:"Supabase Auth SDK reachable. Phase6.1 keeps legacy login active until backend functions are migrated."};
+    }catch(err){
+      return {ok:false,mode:"legacy-testing",message:err?.message||"Supabase Auth readiness check failed."};
+    }
+  }
+  window.AITradeXAuth={registerUser,loginUser,loginControl,loginAdmin:loginControl,hashPassword,verifyPassword,setPassword,isPasswordHash,authReadiness};
 })();

@@ -2786,6 +2786,8 @@
             <article class="admin-small-row"><b>Wrong password lock</b><span>5 wrong attempts = 15 minute lock</span></article>
             <article class="admin-small-row"><b>Audit record</b><span>Admin login/logout and sensitive actions are recorded locally + syncable</span></article>
             <article class="admin-small-row"><b>Manual logout</b><span>Clears current admin session immediately</span></article>
+            <article class="admin-small-row"><b>Phase6.1 Auth Foundation</b><span>Prepared for Supabase Auth + Edge Functions; legacy testing login remains active until backend actions are migrated.</span></article>
+            <article class="admin-small-row"><b>Real-money readiness</b><span>Do not enable strict production RLS until deposit/withdraw/AI settlement are moved to backend functions.</span></article>
           </div>
         </article>
         <article class="premium-card security-card">
@@ -2818,7 +2820,7 @@
           <span class="admin-count-pill">${logs.length} logs</span>
         </div>
         <div class="database-status-panel security-status-panel">
-          <article><b>Security Mode</b><p class="text-loss">Testing RLS mode is active for this frontend-only build. Public launch needs backend / Supabase Auth / Edge Functions before strict production RLS.</p></article>
+          <article><b>Security Mode</b><p class="text-loss">Phase6.1 foundation is active: current UI stays same, while Supabase Auth/backend migration tables and templates are prepared. Public launch still needs backend action migration before strict RLS.</p></article>
           <article><b>Today Actions</b><p>${todayCount} admin action(s) recorded today.</p></article>
           <article><b>Sensitive Actions</b><p>${sensitive} wallet, finance, KYC, AI, plan or user-control actions tracked.</p></article>
           <article><b>Latest Action</b><p>${last ? `${esc(last.action)} · ${new Date(last.createdAt).toLocaleString("en-IN")}` : "No action recorded yet."}</p></article>
@@ -3641,7 +3643,10 @@
         maxAiTrade: Math.max(1, Number(inputValue("settingMaxAiTrade") || 250000)),
         maxLeverage: Math.min(2000, Math.max(1, Number(inputValue("settingMaxLeverage") || 2000))),
         maxOpenPositionsPerUser: Math.max(1, Number(inputValue("settingMaxOpenPositions") || 10)),
-        usdtInrRate: Math.max(1, Number(inputValue("settingUsdtInrRate") || 95))
+        usdtInrRate: Math.max(1, Number(inputValue("settingUsdtInrRate") || 95)),
+        phase6AuthMode: settings.phase6AuthMode || "legacy-testing",
+        phase6BackendMode: settings.phase6BackendMode || "foundation-only",
+        phase6Build: "6.1-secure-auth-foundation"
       };
       logAdminAction("APP_SETTINGS_UPDATE", "SETTINGS", "app", { depositEnabled: App.state.settings.depositEnabled, withdrawalEnabled: App.state.settings.withdrawalEnabled, manualTradingEnabled: App.state.settings.manualTradingEnabled, aiTradingEnabled: App.state.settings.aiTradingEnabled, maintenanceMode: App.state.settings.maintenanceMode, maxLeverage: App.state.settings.maxLeverage });
       await persistSettings("app settings");
