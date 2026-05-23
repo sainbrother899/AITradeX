@@ -1,4 +1,4 @@
-AITradeX Phase 5.29 - RLS Safety Pack + Final Deep Consistency
+AITradeX Phase 5.30 - RLS Safety Pack + Final Deep Consistency
 
 What changed in this build:
 - Phase/runtime/cache labels aligned to 5.27.
@@ -31,15 +31,15 @@ For real public money/users:
 This build is suitable for functional testing and controlled review. It is not a final public real-money security architecture.
 
 
-Phase 5.29 Telegram Coverage Fix:
+Phase 5.30 Telegram Coverage Fix:
 - Telegram scope is now clear: KYC, Bank/Payment Method, Deposit and Withdrawal.
 - Admin Alerts: new KYC, new bank account, new deposit, new withdrawal.
 - User Mirror: KYC/bank/deposit/withdraw approve-reject messages.
 - Notification/Telegram side-alert failures do not roll back saved KYC or payment-method data.
 
 
-Phase 5.29 KYC Persistence Fix
+Phase 5.30 KYC Persistence Fix
 - Fixed KYC approval reverting to PENDING after admin/user refresh.
 - KYC request ID is now kept separate from Aadhaar/idDetails object.
 - Admin and user panels now pick the best KYC row if old duplicate pending rows exist from earlier builds.
-- Cache version: phase529kycpersistence
+- Cache version: phase530manualpositions

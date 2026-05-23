@@ -6,7 +6,8 @@
   let page = localStorage.getItem("AITradeX_ACTIVE_PAGE") || "home";
   let authMode = "login";
   const referralParam = new URLSearchParams(window.location.search).get("ref") || "";
-  let accountMode = localStorage.getItem("AITradeX_ACCOUNT_MODE") || "REAL";
+  let accountMode = String(localStorage.getItem("AITradeX_ACCOUNT_MODE") || "REAL").toUpperCase() === "DEMO" ? "DEMO" : "REAL";
+  localStorage.setItem("AITradeX_ACCOUNT_MODE", accountMode);
   let drawerOpen = false;
   let autoPercent = Number(localStorage.getItem("AITradeX_AUTO_PERCENT") || 75);
   const savedAutoTradeState = localStorage.getItem("AITradeX_AUTO_ON");
@@ -46,6 +47,19 @@
 
   const marketPairs = App.marketPairs || { CRYPTO: [], FOREX: [] };
   const activeMarket = "CRYPTO";
+  function normalizedAccountMode(value = accountMode) {
+    return String(value || "REAL").toUpperCase() === "DEMO" ? "DEMO" : "REAL";
+  }
+  function sameAccountType(rowAccountType, selected = accountMode) {
+    return normalizedAccountMode(rowAccountType || selected) === normalizedAccountMode(selected);
+  }
+  function normalizeTradeRowForDisplay(t) {
+    if (!t) return t;
+    t.tradeType = String(t.tradeType || t.trade_type || "").toUpperCase();
+    t.status = String(t.status || "").toUpperCase();
+    t.accountType = normalizedAccountMode(t.accountType || t.account_type || accountMode);
+    return t;
+  }
   function isTradeActivePair(pair) {
     return App.isCryptoPair ? App.isCryptoPair(pair) : (marketPairs.CRYPTO || []).some(item => item.pair === pair);
   }
@@ -134,12 +148,14 @@
   function manualOpenPositions() {
     const u = user();
     if (!u) return [];
-    return App.state.trades.filter(t =>
-      t.userId === u.id &&
-      t.tradeType === "MANUAL" &&
-      t.status === "OPEN" &&
-      (t.accountType || accountMode) === accountMode
-    );
+    return (App.state.trades || [])
+      .map(normalizeTradeRowForDisplay)
+      .filter(t =>
+        t.userId === u.id &&
+        String(t.tradeType || "").toUpperCase() === "MANUAL" &&
+        String(t.status || "").toUpperCase() === "OPEN" &&
+        sameAccountType(t.accountType, accountMode)
+      );
   }
 
 
@@ -211,12 +227,14 @@
   function pendingManualOrders() {
     const u = user();
     if (!u) return [];
-    return (App.state.trades || []).filter(t =>
-      t.userId === u.id &&
-      t.tradeType === "MANUAL" &&
-      ["PENDING", "LIMIT_PENDING"].includes(String(t.status || "").toUpperCase()) &&
-      (t.accountType || accountMode) === accountMode
-    );
+    return (App.state.trades || [])
+      .map(normalizeTradeRowForDisplay)
+      .filter(t =>
+        t.userId === u.id &&
+        String(t.tradeType || "").toUpperCase() === "MANUAL" &&
+        ["PENDING", "LIMIT_PENDING"].includes(String(t.status || "").toUpperCase()) &&
+        sameAccountType(t.accountType, accountMode)
+      );
   }
 
   function numericPriceFromText(value) {
@@ -462,14 +480,14 @@
       if (settlementAmount !== 0) {
         const row = App.addLedgerAsync ? await App.addLedgerAsync({
           userId: u.id,
-          accountType: position.accountType || accountMode,
+          accountType: normalizedAccountMode(position.accountType || accountMode),
           type: position.marginLocked ? "MANUAL_TRADE_SETTLEMENT" : (pnl >= 0 ? "MANUAL_TRADE_PROFIT" : "MANUAL_TRADE_LOSS"),
           amount: settlementAmount,
           referenceId: position.id,
           note: position.marginLocked ? `${position.pair} manual ${position.side} closed · margin ${App.money(margin)} · P/L ${pnl >= 0 ? "+" : ""}${App.money(pnl)}` : `${position.pair} manual ${position.side} closed`
         }) : App.addLedger({
           userId: u.id,
-          accountType: position.accountType || accountMode,
+          accountType: normalizedAccountMode(position.accountType || accountMode),
           type: position.marginLocked ? "MANUAL_TRADE_SETTLEMENT" : (pnl >= 0 ? "MANUAL_TRADE_PROFIT" : "MANUAL_TRADE_LOSS"),
           amount: settlementAmount,
           referenceId: position.id,
@@ -482,7 +500,7 @@
       return true;
     } catch (err) {
       if (settlementAdded && settlementAmount) {
-        try { await (App.addLedgerAsync ? App.addLedgerAsync({ userId: u.id, accountType: position.accountType || accountMode, type: "MANUAL_TRADE_SETTLEMENT_ROLLBACK", amount: -settlementAmount, referenceId: `${position.id}_close_rollback`, note: "Rollback: manual close save failed" }) : App.addLedger({ userId: u.id, accountType: position.accountType || accountMode, type: "MANUAL_TRADE_SETTLEMENT_ROLLBACK", amount: -settlementAmount, referenceId: `${position.id}_close_rollback`, note: "Rollback: manual close save failed" })); } catch {}
+        try { await (App.addLedgerAsync ? App.addLedgerAsync({ userId: u.id, accountType: normalizedAccountMode(position.accountType || accountMode), type: "MANUAL_TRADE_SETTLEMENT_ROLLBACK", amount: -settlementAmount, referenceId: `${position.id}_close_rollback`, note: "Rollback: manual close save failed" }) : App.addLedger({ userId: u.id, accountType: normalizedAccountMode(position.accountType || accountMode), type: "MANUAL_TRADE_SETTLEMENT_ROLLBACK", amount: -settlementAmount, referenceId: `${position.id}_close_rollback`, note: "Rollback: manual close save failed" })); } catch {}
       }
       Object.assign(position, original);
       throw err;
@@ -985,17 +1003,20 @@
 
   function tradeRows(type) {
     const u = user();
+    const cleanType = String(type || "").toUpperCase();
     if (!u) return [];
     return (App.state.trades || [])
-      .filter(t => t.userId === u.id && t.accountType === accountMode && t.tradeType === type)
+      .map(normalizeTradeRowForDisplay)
+      .filter(t => t.userId === u.id && sameAccountType(t.accountType, accountMode) && String(t.tradeType || "").toUpperCase() === cleanType)
       .sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0));
   }
 
   function pnlValue() {
     const u = user();
     if (!u) return 0;
-    return App.state.trades
-      .filter(t => t.userId === u.id && t.accountType === accountMode && t.status === "CLOSED")
+    return (App.state.trades || [])
+      .map(normalizeTradeRowForDisplay)
+      .filter(t => t.userId === u.id && sameAccountType(t.accountType, accountMode) && String(t.status || "").toUpperCase() === "CLOSED")
       .reduce((sum, t) => sum + Number(t.pnl || 0), 0);
   }
 
@@ -3793,7 +3814,7 @@
       }
     },
     setAccountMode(mode) {
-      accountMode = mode === "DEMO" ? "DEMO" : "REAL";
+      accountMode = normalizedAccountMode(mode);
       localStorage.setItem("AITradeX_ACCOUNT_MODE", accountMode);
       render();
     },
@@ -4361,14 +4382,14 @@
         try {
           limitLedgerRow = App.isDatabaseMode?.() && App.addLedgerAsync ? await App.addLedgerAsync({
             userId: u.id,
-            accountType: accountMode,
+            accountType: normalizedAccountMode(accountMode),
             type: "MANUAL_LIMIT_MARGIN_LOCK",
             amount: -margin,
             referenceId: tradeId,
             note: `${selectedPair} manual ${normalizedSide} limit margin locked`
           }) : App.addLedger({
             userId: u.id,
-            accountType: accountMode,
+            accountType: normalizedAccountMode(accountMode),
             type: "MANUAL_LIMIT_MARGIN_LOCK",
             amount: -margin,
             referenceId: tradeId,
@@ -4382,7 +4403,7 @@
           id: tradeId,
           userId: u.id,
           tradeType: "MANUAL",
-          accountType: accountMode,
+          accountType: normalizedAccountMode(accountMode),
           orderType: "LIMIT",
           market: selectedMarket,
           pair: selectedPair,
@@ -4405,7 +4426,7 @@
         try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) await window.AITradeXDB.writeTrade(order); }
         catch (err) {
           if (limitLedgerRow) {
-            try { await (App.addLedgerAsync ? App.addLedgerAsync({ userId: u.id, accountType: accountMode, type: "MANUAL_LIMIT_MARGIN_ROLLBACK", amount: margin, referenceId: `${tradeId}_rollback`, note: `Rollback: ${selectedPair} limit order save failed` }) : App.addLedger({ userId: u.id, accountType: accountMode, type: "MANUAL_LIMIT_MARGIN_ROLLBACK", amount: margin, referenceId: `${tradeId}_rollback`, note: `Rollback: ${selectedPair} limit order save failed` })); } catch {}
+            try { await (App.addLedgerAsync ? App.addLedgerAsync({ userId: u.id, accountType: normalizedAccountMode(accountMode), type: "MANUAL_LIMIT_MARGIN_ROLLBACK", amount: margin, referenceId: `${tradeId}_rollback`, note: `Rollback: ${selectedPair} limit order save failed` }) : App.addLedger({ userId: u.id, accountType: normalizedAccountMode(accountMode), type: "MANUAL_LIMIT_MARGIN_ROLLBACK", amount: margin, referenceId: `${tradeId}_rollback`, note: `Rollback: ${selectedPair} limit order save failed` })); } catch {}
           }
           App.toast(`Trade save failed: ${err.message || err}`);
           return;
@@ -4413,6 +4434,10 @@
         App.state.trades.unshift(order);
         App.saveState();
         resetTradeTicketAfterOrder("Limit order placed", `${selectedPair} ${normalizedSide} limit placed at ${order.limitPriceDisplay}.`);
+        page = "orders";
+        orderViewTab = "PENDING";
+        localStorage.setItem("AITradeX_ACTIVE_PAGE", page);
+        localStorage.setItem("AITradeX_ORDER_VIEW_TAB", orderViewTab);
         render();
         return;
       }
@@ -4434,14 +4459,14 @@
       try {
         marketLedgerRow = App.isDatabaseMode?.() && App.addLedgerAsync ? await App.addLedgerAsync({
           userId: u.id,
-          accountType: accountMode,
+          accountType: normalizedAccountMode(accountMode),
           type: "MANUAL_TRADE_MARGIN_LOCK",
           amount: -margin,
           referenceId: tradeId,
           note: `${selectedPair} manual ${normalizedSide} margin locked`
         }) : App.addLedger({
           userId: u.id,
-          accountType: accountMode,
+          accountType: normalizedAccountMode(accountMode),
           type: "MANUAL_TRADE_MARGIN_LOCK",
           amount: -margin,
           referenceId: tradeId,
@@ -4455,7 +4480,7 @@
         id: tradeId,
         userId: u.id,
         tradeType: "MANUAL",
-        accountType: accountMode,
+        accountType: normalizedAccountMode(accountMode),
         orderType: "MARKET",
         market: selectedMarket,
         pair: selectedPair,
@@ -4478,7 +4503,7 @@
         try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) await window.AITradeXDB.writeTrade(trade); }
       catch (err) {
         if (marketLedgerRow) {
-          try { await (App.addLedgerAsync ? App.addLedgerAsync({ userId: u.id, accountType: accountMode, type: "MANUAL_TRADE_MARGIN_ROLLBACK", amount: margin, referenceId: `${tradeId}_rollback`, note: `Rollback: ${selectedPair} market trade save failed` }) : App.addLedger({ userId: u.id, accountType: accountMode, type: "MANUAL_TRADE_MARGIN_ROLLBACK", amount: margin, referenceId: `${tradeId}_rollback`, note: `Rollback: ${selectedPair} market trade save failed` })); } catch {}
+          try { await (App.addLedgerAsync ? App.addLedgerAsync({ userId: u.id, accountType: normalizedAccountMode(accountMode), type: "MANUAL_TRADE_MARGIN_ROLLBACK", amount: margin, referenceId: `${tradeId}_rollback`, note: `Rollback: ${selectedPair} market trade save failed` }) : App.addLedger({ userId: u.id, accountType: normalizedAccountMode(accountMode), type: "MANUAL_TRADE_MARGIN_ROLLBACK", amount: margin, referenceId: `${tradeId}_rollback`, note: `Rollback: ${selectedPair} market trade save failed` })); } catch {}
         }
         App.toast(`Trade save failed: ${err.message || err}`);
         return;
@@ -4486,6 +4511,10 @@
       App.state.trades.unshift(trade);
       App.saveState();
       resetTradeTicketAfterOrder("Market order opened", `${trade.side} ${selectedPair} opened at ${trade.entryPriceDisplay}.`);
+      page = "orders";
+      orderViewTab = "MANUAL";
+      localStorage.setItem("AITradeX_ACTIVE_PAGE", page);
+      localStorage.setItem("AITradeX_ORDER_VIEW_TAB", orderViewTab);
       render();
     },
     showAiManagedNotice() {
@@ -4545,14 +4574,14 @@
         if (target.marginLocked && margin > 0) {
           const row = App.addLedgerAsync ? await App.addLedgerAsync({
             userId: user().id,
-            accountType: target.accountType || accountMode,
+            accountType: normalizedAccountMode(target.accountType || accountMode),
             type: "MANUAL_LIMIT_MARGIN_RELEASE",
             amount: margin,
             referenceId: target.id,
             note: `${target.pair} manual ${target.side} limit order cancelled · margin released`
           }) : App.addLedger({
             userId: user().id,
-            accountType: target.accountType || accountMode,
+            accountType: normalizedAccountMode(target.accountType || accountMode),
             type: "MANUAL_LIMIT_MARGIN_RELEASE",
             amount: margin,
             referenceId: target.id,
@@ -4568,7 +4597,7 @@
         App.toast("Pending limit order cancelled.");
       } catch (err) {
         if (releaseAdded && margin > 0) {
-          try { await (App.addLedgerAsync ? App.addLedgerAsync({ userId: user().id, accountType: target.accountType || accountMode, type: "MANUAL_LIMIT_CANCEL_ROLLBACK", amount: -margin, referenceId: `${target.id}_cancel_rollback`, note: "Rollback: limit cancel save failed" }) : App.addLedger({ userId: user().id, accountType: target.accountType || accountMode, type: "MANUAL_LIMIT_CANCEL_ROLLBACK", amount: -margin, referenceId: `${target.id}_cancel_rollback`, note: "Rollback: limit cancel save failed" })); } catch {}
+          try { await (App.addLedgerAsync ? App.addLedgerAsync({ userId: user().id, accountType: normalizedAccountMode(target.accountType || accountMode), type: "MANUAL_LIMIT_CANCEL_ROLLBACK", amount: -margin, referenceId: `${target.id}_cancel_rollback`, note: "Rollback: limit cancel save failed" }) : App.addLedger({ userId: user().id, accountType: normalizedAccountMode(target.accountType || accountMode), type: "MANUAL_LIMIT_CANCEL_ROLLBACK", amount: -margin, referenceId: `${target.id}_cancel_rollback`, note: "Rollback: limit cancel save failed" })); } catch {}
         }
         Object.assign(target, previous);
         App.toast(err.message || "Unable to cancel pending order.");
