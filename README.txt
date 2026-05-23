@@ -1,59 +1,43 @@
-AITradeX Phase 6.2.3 - AI Plan Upgrade Limit Refresh Fix
+AITradeX Phase 6.3 - Withdrawal Backend Security
 
 Base used:
-- AITradeX Phase5.36 Hide AI Target User Text
+- AITradeX Phase6.2.3 AI Plan Upgrade Limit Refresh Fix
 
 What this build does:
-1. Keeps the existing Phase5.36 design and user/admin flow unchanged.
-2. Adds Phase6.1 secure-auth foundation plus Phase6.2.3 deposit RPC plus AI plan-upgrade limit refresh for future Supabase Auth migration.
-3. Keeps current legacy testing login active so the working system does not break.
-4. Adds safe database columns for auth_user_id and admin role mapping.
-5. Adds backend action queue table for future Edge Function migration.
-6. Normalizes password fields in auth.js so password, passwordHash and password_hash stay aligned during the migration period.
-7. Adds backend/auth helper functions in db-service.js for future phase migration checks.
+1. Keeps the existing UI/design and working user/admin flow unchanged.
+2. Keeps Phase6.1 secure-auth foundation and Phase6.2 deposit RPC security.
+3. Adds secure Supabase RPC flow for withdrawal approve/reject.
+4. Admin withdrawal approve now calls: aitradex_approve_withdrawal
+5. Admin withdrawal reject now calls: aitradex_reject_withdrawal
+6. Backend function checks pending status, admin permission, user active status, available wallet balance and duplicate withdrawal ledger before approving.
+7. Backend approval writes wallet ledger debit, withdrawal status, notification, admin log and backend_action_queue record in one DB-side flow.
+8. Reject flow writes rejected status, rejection reason, notification, admin log and backend_action_queue record.
 
 Important:
-- This is NOT the final real-money backend migration.
-- This is Phase6.2.3. Deposit approve/reject still uses Supabase RPC, and AI daily usage now resets its counting window from the active paid plan start time after upgrade.
-- Deposit approve/reject is now routed through database RPC functions. Withdrawal approve, AI settlement and other sensitive writes are still using the current frontend-tested flow.
-- Do not enable strict production RLS yet.
+- This is not the final real-money backend migration.
+- Deposit and withdrawal admin approvals are now safer because they use Supabase RPC.
+- AI settlement, manual trade settlement, KYC/payment method approval and strict production RLS still need later Phase6 steps.
+- Current legacy testing login remains active so the working site does not break.
 
 Deploy order:
-1. Run supabase-schema.sql in Supabase SQL Editor.
+1. Run the updated supabase-schema.sql in Supabase SQL Editor.
 2. If KYC/file uploads are used, run supabase-storage-policies.sql.
 3. Upload/deploy this ZIP.
 4. Hard refresh browser: Ctrl + Shift + R.
-5. Test admin login, user login, deposit, withdrawal, KYC, AI live and manual trade exactly like Phase5.36.
+5. Test: user withdrawal request, admin approve withdrawal, wallet debit, duplicate approve protection, admin reject withdrawal.
 
 Current cache version:
-- phase622aitargetclose
-
-Next recommended Phase6 steps:
-- Phase6.2.2: deposit approve/reject routed through secure Supabase RPC functions. Next: Phase6.3 withdrawal backend security.
-- Phase6.3: migrate withdrawal approve/reject to backend Edge Function.
-- Phase6.4: migrate AI live open/close settlement to backend Edge Function.
-- Phase6.5: enable Supabase Auth login and strict RLS after all sensitive actions are backend-only.
+- phase63withdrawalbackend
 
 Default admin for testing:
 - control@aitradex.com
 - admin123
 
+Next recommended Phase6 steps:
+- Phase6.4: migrate AI live open/close settlement to backend RPC/Edge Function.
+- Phase6.5: migrate manual trade settlement to backend.
+- Phase6.6: migrate KYC + payment method approval to backend.
+- Phase6.7: enable Supabase Auth and strict RLS only after sensitive actions are backend-only.
+
 Real-money warning:
-This build is safer than the previous frontend-only baseline because migration foundations are prepared, but it is still not a final public real-money launch build. Public real-money launch requires backend Edge Functions, strict RLS, secure payment/KYC flow, legal/compliance review and complete audit policies.
-
-
-Phase6.2.2 Deposit Backend Security details:
-- Admin deposit approve/reject now calls Supabase RPC functions: aitradex_approve_deposit and aitradex_reject_deposit.
-- The RPC checks admin status, locks the deposit row, blocks duplicate approved UTR, writes wallet ledger, updates request status, writes notification, admin log and backend_action_queue result in one controlled DB-side action.
-- If the SQL has not been run, deposit approve/reject will show a secure function error. Run supabase-schema.sql first.
-- This is safer than frontend-only writes, but it is not full production Auth/RLS security yet because current login remains legacy testing mode.
-
-Phase6.2.2 AI Target Close Fix
-- AI Live batch watcher now checks cached visible price first and then fetches a fresh live price instead of reusing stale cached prices only.
-- Watcher interval reduced to 5 seconds so positions close soon after target/risk is hit.
-- No UI/design change; deposit backend security remains unchanged.
-
-Phase6.2.3 fix:
-- If a user completes the free/old AI daily limit and then upgrades to a paid plan, AI eligibility now counts trades from the active subscription start time instead of blocking from the old free-plan usage.
-- Admin and user AI limit displays use the same refreshed limit calculation.
-- No SQL change is required for this fix.
+This build is safer than the previous frontend-only baseline because deposit and withdrawal approvals are now database-controlled, but it is still not a final public real-money launch build. Public real-money launch requires secure backend Edge Functions, strict RLS, payment/KYC compliance, legal review and full audit policies.

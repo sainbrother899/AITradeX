@@ -557,12 +557,179 @@ begin
 end;
 $$;
 
+
+
+create or replace function public.aitradex_approve_withdrawal(
+  p_request_id text,
+  p_admin_user_id text default 'control_root',
+  p_admin_email text default '',
+  p_admin_name text default 'Admin'
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  wd public.withdrawal_requests%rowtype;
+  wallet_balance numeric := 0;
+  ledger_applied boolean := false;
+  ledger_inserted integer := 0;
+  ledger_id text;
+  notif_id text;
+  log_id text;
+  queue_id text;
+begin
+  if not public.aitradex_validate_admin(p_admin_user_id) then
+    raise exception 'Admin permission required for withdrawal approval.';
+  end if;
+
+  select * into wd from public.withdrawal_requests where id = p_request_id for update;
+  if not found then
+    raise exception 'Withdrawal request not found.';
+  end if;
+
+  if upper(coalesce(wd.status,'PENDING')) <> 'PENDING' then
+    return jsonb_build_object('ok', true, 'alreadyCompleted', true, 'status', wd.status, 'ledgerApplied', false);
+  end if;
+
+  if coalesce(wd.amount,0) <= 0 then
+    raise exception 'Invalid withdrawal amount.';
+  end if;
+
+  if exists (select 1 from public.users where id = wd.user_id and upper(coalesce(status,'ACTIVE')) <> 'ACTIVE') then
+    raise exception 'User account is not active.';
+  end if;
+
+  select coalesce(sum(amount),0) into wallet_balance
+  from public.wallet_ledger
+  where user_id = wd.user_id
+    and upper(coalesce(account_type,'REAL')) = 'REAL';
+
+  if not exists (
+    select 1 from public.wallet_ledger
+    where user_id = wd.user_id
+      and upper(coalesce(account_type,'REAL')) = 'REAL'
+      and type = 'WITHDRAWAL'
+      and reference_id = wd.id
+  ) and wallet_balance < wd.amount then
+    raise exception 'Insufficient real balance for withdrawal.';
+  end if;
+
+  ledger_id := 'ledger_wd_' || wd.id;
+  insert into public.wallet_ledger(id, user_id, account_type, type, amount, reference_id, note, created_at, raw)
+  values (
+    ledger_id,
+    wd.user_id,
+    'REAL',
+    'WITHDRAWAL',
+    -wd.amount,
+    wd.id,
+    'SECURE_WITHDRAWAL_APPROVED · Admin payout confirmed',
+    now(),
+    jsonb_build_object('secureWithdrawalApprove', true, 'approvedBy', p_admin_user_id, 'approvedByEmail', p_admin_email, 'approvedAt', now())
+  )
+  on conflict on constraint wallet_ledger_user_id_account_type_type_reference_id_key do nothing;
+  get diagnostics ledger_inserted = row_count;
+  ledger_applied := ledger_inserted > 0;
+
+  update public.withdrawal_requests
+  set status = 'APPROVED',
+      reviewed_at = now(),
+      reviewed_by = p_admin_user_id,
+      admin_note = 'Approved payout by secure backend function.',
+      raw = coalesce(raw, '{}'::jsonb) || jsonb_build_object('secureWithdrawalApprove', true, 'approvedBy', p_admin_user_id, 'approvedByEmail', p_admin_email, 'approvedAt', now(), 'ledgerApplied', ledger_applied, 'balanceBefore', wallet_balance)
+  where id = wd.id;
+
+  notif_id := 'notif_wd_ok_' || wd.id;
+  insert into public.notifications(id, audience, user_id, title, message, type, link_page, reference_id, read, created_at, raw)
+  values (notif_id, 'USER', wd.user_id, 'Withdrawal approved', 'Withdrawal ' || wd.amount::text || ' payout approved.', 'WITHDRAWAL', 'wallet', 'wd_ok_' || wd.id, false, now(), jsonb_build_object('secureWithdrawalApprove', true))
+  on conflict (id) do update set
+    audience=excluded.audience, user_id=excluded.user_id, title=excluded.title, message=excluded.message, type=excluded.type, link_page=excluded.link_page, reference_id=excluded.reference_id, raw=excluded.raw;
+
+  log_id := 'adminlog_wd_approve_' || wd.id;
+  insert into public.admin_action_logs(id, admin_user_id, action, target_type, target_id, meta, created_at)
+  values (log_id, p_admin_user_id, 'WITHDRAWAL_APPROVE_SECURE', 'WITHDRAWAL', wd.id, jsonb_build_object('userId', wd.user_id, 'amount', wd.amount, 'ledgerApplied', ledger_applied, 'balanceBefore', wallet_balance, 'adminEmail', p_admin_email, 'adminName', p_admin_name), now())
+  on conflict (id) do update set meta=excluded.meta, created_at=excluded.created_at;
+
+  queue_id := 'backend_withdrawal_approve_' || wd.id;
+  insert into public.backend_action_queue(id, action_type, status, requested_by, target_user_id, payload, result, created_at, processed_at)
+  values (queue_id, 'WITHDRAWAL_APPROVE', 'COMPLETED', p_admin_user_id, wd.user_id, jsonb_build_object('requestId', wd.id, 'amount', wd.amount), jsonb_build_object('ledgerApplied', ledger_applied, 'status', 'APPROVED'), now(), now())
+  on conflict (id) do update set status='COMPLETED', result=excluded.result, processed_at=now();
+
+  return jsonb_build_object('ok', true, 'requestId', wd.id, 'userId', wd.user_id, 'amount', wd.amount, 'ledgerApplied', ledger_applied, 'status', 'APPROVED');
+end;
+$$;
+
+create or replace function public.aitradex_reject_withdrawal(
+  p_request_id text,
+  p_reason text default 'Rejected by admin.',
+  p_admin_user_id text default 'control_root',
+  p_admin_email text default '',
+  p_admin_name text default 'Admin'
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  wd public.withdrawal_requests%rowtype;
+  notif_id text;
+  log_id text;
+  queue_id text;
+  clean_reason text := coalesce(nullif(trim(p_reason), ''), 'Rejected by admin.');
+begin
+  if not public.aitradex_validate_admin(p_admin_user_id) then
+    raise exception 'Admin permission required for withdrawal rejection.';
+  end if;
+
+  select * into wd from public.withdrawal_requests where id = p_request_id for update;
+  if not found then
+    raise exception 'Withdrawal request not found.';
+  end if;
+
+  if upper(coalesce(wd.status,'PENDING')) <> 'PENDING' then
+    return jsonb_build_object('ok', true, 'alreadyCompleted', true, 'status', wd.status);
+  end if;
+
+  update public.withdrawal_requests
+  set status = 'REJECTED',
+      reviewed_at = now(),
+      reviewed_by = p_admin_user_id,
+      admin_note = clean_reason,
+      rejection_reason = clean_reason,
+      raw = coalesce(raw, '{}'::jsonb) || jsonb_build_object('secureWithdrawalReject', true, 'rejectedBy', p_admin_user_id, 'rejectedByEmail', p_admin_email, 'rejectedAt', now(), 'rejectReason', clean_reason)
+  where id = wd.id;
+
+  notif_id := 'notif_wd_rej_' || wd.id;
+  insert into public.notifications(id, audience, user_id, title, message, type, link_page, reference_id, read, created_at, raw)
+  values (notif_id, 'USER', wd.user_id, 'Withdrawal rejected', clean_reason, 'WITHDRAWAL', 'wallet', 'wd_no_' || wd.id, false, now(), jsonb_build_object('secureWithdrawalReject', true, 'reason', clean_reason))
+  on conflict (id) do update set
+    audience=excluded.audience, user_id=excluded.user_id, title=excluded.title, message=excluded.message, type=excluded.type, link_page=excluded.link_page, reference_id=excluded.reference_id, raw=excluded.raw;
+
+  log_id := 'adminlog_wd_reject_' || wd.id;
+  insert into public.admin_action_logs(id, admin_user_id, action, target_type, target_id, meta, created_at)
+  values (log_id, p_admin_user_id, 'WITHDRAWAL_REJECT_SECURE', 'WITHDRAWAL', wd.id, jsonb_build_object('userId', wd.user_id, 'amount', wd.amount, 'reason', clean_reason, 'adminEmail', p_admin_email, 'adminName', p_admin_name), now())
+  on conflict (id) do update set meta=excluded.meta, created_at=excluded.created_at;
+
+  queue_id := 'backend_withdrawal_reject_' || wd.id;
+  insert into public.backend_action_queue(id, action_type, status, requested_by, target_user_id, payload, result, created_at, processed_at)
+  values (queue_id, 'WITHDRAWAL_REJECT', 'COMPLETED', p_admin_user_id, wd.user_id, jsonb_build_object('requestId', wd.id, 'reason', clean_reason), jsonb_build_object('status', 'REJECTED'), now(), now())
+  on conflict (id) do update set status='COMPLETED', result=excluded.result, processed_at=now();
+
+  return jsonb_build_object('ok', true, 'requestId', wd.id, 'userId', wd.user_id, 'status', 'REJECTED', 'reason', clean_reason);
+end;
+$$;
+
 grant execute on function public.aitradex_validate_admin(text) to anon, authenticated;
 grant execute on function public.aitradex_approve_deposit(text,text,text,text) to anon, authenticated;
 grant execute on function public.aitradex_reject_deposit(text,text,text,text,text) to anon, authenticated;
+grant execute on function public.aitradex_approve_withdrawal(text,text,text,text) to anon, authenticated;
+grant execute on function public.aitradex_reject_withdrawal(text,text,text,text,text) to anon, authenticated;
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','6.2.1','mode','phase6-deposit-backend-security','depositBackend','rpc-secure-function'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.3','mode','phase6-withdrawal-backend-security','depositBackend','rpc-secure-function','withdrawalBackend','rpc-secure-function'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.2.1','mode','phase6-deposit-backend-security','depositBackend','rpc-secure-function'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.3','mode','phase6-withdrawal-backend-security','depositBackend','rpc-secure-function','withdrawalBackend','rpc-secure-function'),
     updated_at = now();

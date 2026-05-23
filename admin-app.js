@@ -4271,6 +4271,21 @@
       const ledgerExists = App.hasLedgerEntry?.({ accountType: "REAL", type: "WITHDRAWAL", referenceId: request.id, userId: target.id });
       if (!ledgerExists && App.realBalance(target.id) < amount) { App.toast("Insufficient real balance for withdrawal."); render(); return; }
       if (!ledgerExists && !confirm(`Approve ${App.money(amount)} withdrawal for ${displayNameFor(target)}? Wallet will be debited once.`)) return;
+      if (App.isDatabaseMode?.() && window.AITradeXDB?.approveWithdrawalSecure) {
+        markButton(button, "Approving...");
+        try {
+          const admin = adminUser() || {};
+          const result = await window.AITradeXDB.approveWithdrawalSecure({ requestId: request.id, adminUserId: admin.id || "control_root", adminEmail: admin.email || "", adminName: displayNameFor(admin) || "Admin" });
+          if (window.AITradeXDB?.loadAll) await window.AITradeXDB.loadAll();
+          App.toast(result?.alreadyCompleted ? `Withdrawal already ${result.status || "completed"}.` : "Withdrawal approved securely and balance debited.");
+          render();
+          return;
+        } catch (err) {
+          App.toast(`Secure withdrawal approve failed: ${err.message || err}`);
+          render();
+          return;
+        }
+      }
       markButton(button, "Approving...");
       const previous = { ...request };
       let ledgerApplied = false;
@@ -4311,6 +4326,21 @@
       }
       const reason = prompt("Reject reason:", "Withdrawal details could not be verified.");
       if (reason === null) return;
+      if (App.isDatabaseMode?.() && window.AITradeXDB?.rejectWithdrawalSecure) {
+        markButton(button, "Rejecting...");
+        try {
+          const admin = adminUser() || {};
+          const result = await window.AITradeXDB.rejectWithdrawalSecure({ requestId: request.id, reason: reason || "Withdrawal rejected by admin.", adminUserId: admin.id || "control_root", adminEmail: admin.email || "", adminName: displayNameFor(admin) || "Admin" });
+          if (window.AITradeXDB?.loadAll) await window.AITradeXDB.loadAll();
+          App.toast(result?.alreadyCompleted ? `Withdrawal already ${result.status || "completed"}.` : "Withdrawal request rejected securely.");
+          render();
+          return;
+        } catch (err) {
+          App.toast(`Secure withdrawal reject failed: ${err.message || err}`);
+          render();
+          return;
+        }
+      }
       markButton(button, "Rejecting...");
       request.status = "REJECTED";
       request.rejectReason = reason || "Withdrawal rejected by admin.";
