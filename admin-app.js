@@ -1693,18 +1693,68 @@
     return [...map.values()].sort((a, b) => Date.parse(b.openedAt || 0) - Date.parse(a.openedAt || 0));
   }
 
-  function aiLivePositionPnl(position) {
-    const entry = Number(position.entryPrice || 0);
-    const cached = App.getCachedPairPrice ? App.getCachedPairPrice(position.pair) : null;
-    const current = Number(cached?.price || position.entryPrice || 0);
-    const exposure = Number(position.positionSize || 0);
+  function aiLiveMarginAmount(position) {
+    const margin = Math.max(0, Number(position?.marginAmount || position?.amount || 0));
+    return Number.isFinite(margin) ? margin : 0;
+  }
+
+  function aiLiveLeverageAmount(position) {
+    const lev = Math.max(1, Number(position?.leverage || 1));
+    return Number.isFinite(lev) ? lev : 1;
+  }
+
+  function aiLiveSafeExposure(position) {
+    const margin = aiLiveMarginAmount(position);
+    const leverage = aiLiveLeverageAmount(position);
+    const formulaExposure = margin * leverage;
+    const storedExposure = Math.max(0, Number(position?.positionSize || 0));
+    if (formulaExposure > 0) return Number(formulaExposure.toFixed(2));
+    return Number(storedExposure.toFixed(2));
+  }
+
+  function aiLiveTargetPnlAmount(position) {
+    const targetPercent = Math.max(0, Number(position?.targetPercent || 0));
+    return Number((aiLiveSafeExposure(position) * targetPercent / 100).toFixed(2));
+  }
+
+  function aiLiveExitPriceRow(position) {
+    const cached = App.getCachedPairPrice ? App.getCachedPairPrice(position?.pair) : null;
+    const last = App.getLastPairPrice ? App.getLastPairPrice(position?.pair) : null;
+    return cached || last || null;
+  }
+
+  function aiLiveRawPnl(position, forcedPriceRow = null) {
+    const entry = Number(position?.entryPrice || 0);
+    const row = forcedPriceRow || aiLiveExitPriceRow(position);
+    const current = Number(row?.price || position?.entryPrice || 0);
+    const exposure = aiLiveSafeExposure(position);
     if (!entry || !current || !exposure) return 0;
-    const direction = String(position.side || "BUY").toUpperCase() === "SELL" ? -1 : 1;
-    let pnl = exposure * ((current - entry) / entry) * direction;
-    const margin = Math.max(0, Number(position.marginAmount || 0));
-    const maxLoss = position.marginLocked ? margin : Math.max(0, App.realBalance(position.userId));
-    if (pnl < 0) pnl = Math.max(pnl, -maxLoss);
+    const direction = String(position?.side || "BUY").toUpperCase() === "SELL" ? -1 : 1;
+    return exposure * ((current - entry) / entry) * direction;
+  }
+
+  function aiLiveSettlementPnl(position, forcedPriceRow = null) {
+    const raw = aiLiveRawPnl(position, forcedPriceRow);
+    const margin = aiLiveMarginAmount(position);
+    const target = aiLiveTargetPnlAmount(position);
+    const targetType = String(position?.targetType || "PROFIT").toUpperCase();
+    let pnl = raw;
+    if (target > 0) {
+      if (targetType === "LOSS") {
+        pnl = Math.max(pnl, -Math.min(margin || target, target));
+      } else {
+        pnl = Math.min(pnl, target);
+      }
+    }
+    if (pnl < 0) {
+      const maxLoss = position?.marginLocked ? margin : Math.max(0, App.realBalance(position?.userId));
+      pnl = Math.max(pnl, -maxLoss);
+    }
     return Number(pnl.toFixed(2));
+  }
+
+  function aiLivePositionPnl(position) {
+    return aiLiveSettlementPnl(position);
   }
 
   function aiLivePreviewStats(leverage = 1, minBalance = 0) {
@@ -2831,16 +2881,14 @@
   }
 
 
-  async function settleAiLivePositionByAdmin(position, reason = "ADMIN_CLOSE") {
+  async function settleAiLivePositionByAdmin(position, reason = "ADMIN_CLOSE", forcedPriceRow = null) {
     if (!position || tradeStatusOf(position) !== "OPEN") return false;
     const original = { ...position };
-    const cached = App.getCachedPairPrice ? App.getCachedPairPrice(position.pair) : null;
+    const cached = forcedPriceRow || aiLiveExitPriceRow(position);
     const current = Number(cached?.price || position.entryPrice || 0);
-    let pnl = aiLivePositionPnl(position);
+    const pnl = aiLiveSettlementPnl(position, cached);
     const balanceBefore = App.realBalance(position.userId);
-    const margin = Math.max(0, Number(position.marginAmount || 0));
-    if (position.marginLocked && pnl < -margin) pnl = -margin;
-    if (!position.marginLocked && pnl < 0 && Math.abs(pnl) > balanceBefore) pnl = -balanceBefore;
+    const margin = aiLiveMarginAmount(position);
     const settlementAmount = position.marginLocked ? Math.max(0, margin + pnl) : pnl;
     const now = new Date().toISOString();
     position.tradeType = "AI_LIVE";
@@ -3938,8 +3986,9 @@
       if (!confirm(`Close this AI live trade for ${positions.length} user(s)? Current profit/loss will be settled in real wallet.`)) return;
       markButton(button, "Closing...");
       let closed = 0;
+      const batchExitRow = aiLiveExitPriceRow(positions[0]);
       for (const position of positions) {
-        try { if (await settleAiLivePositionByAdmin(position, "ADMIN_CLOSE")) closed += 1; } catch (error) { console.warn("AI live close failed", error); }
+        try { if (await settleAiLivePositionByAdmin(position, "ADMIN_BATCH_CLOSE", batchExitRow)) closed += 1; } catch (error) { console.warn("AI live close failed", error); }
       }
       const batch = (App.state.aiLiveBatches || []).find(row => row.id === batchId);
       if (batch) {

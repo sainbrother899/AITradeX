@@ -335,104 +335,67 @@
 
 
 
+  function aiLiveMarginAmount(position) {
+    const margin = Math.max(0, Number(position?.marginAmount || position?.amount || 0));
+    return Number.isFinite(margin) ? margin : 0;
+  }
+
+  function aiLiveLeverageAmount(position) {
+    const lev = Math.max(1, Number(position?.leverage || 1));
+    return Number.isFinite(lev) ? lev : 1;
+  }
+
+  function aiLiveSafeExposure(position) {
+    const margin = aiLiveMarginAmount(position);
+    const leverage = aiLiveLeverageAmount(position);
+    const formulaExposure = margin * leverage;
+    const storedExposure = Math.max(0, Number(position?.positionSize || 0));
+    if (formulaExposure > 0) return Number(formulaExposure.toFixed(2));
+    return Number(storedExposure.toFixed(2));
+  }
+
   function aiPositionRawPnl(position) {
     const entry = Number(position.entryPrice || 0);
     const current = positionCurrentPrice(position);
-    const exposure = Number(position.positionSize || 0);
+    const exposure = aiLiveSafeExposure(position);
     if (!entry || !current || !exposure) return 0;
     const direction = String(position.side || "BUY").toUpperCase() === "SELL" ? -1 : 1;
     return exposure * ((current - entry) / entry) * direction;
   }
 
-  function aiPositionPnl(position) {
-    const raw = aiPositionRawPnl(position);
-    if (raw < 0) {
-      const margin = Math.max(0, Number(position.marginAmount || 0));
-      const maxLoss = position.marginLocked ? margin : Math.max(0, App.realBalance(position.userId));
-      return Math.max(raw, -maxLoss);
-    }
-    return raw;
+  function aiPositionTargetAmount(position) {
+    return Math.max(0, aiLiveSafeExposure(position) * Number(position.targetPercent || 0) / 100);
   }
 
-  function aiPositionTargetAmount(position) {
-    return Math.max(0, Number(position.positionSize || 0) * Number(position.targetPercent || 0) / 100);
+  function aiPositionPnl(position) {
+    let pnl = aiPositionRawPnl(position);
+    const target = aiPositionTargetAmount(position);
+    const targetType = String(position.targetType || "PROFIT").toUpperCase();
+    if (target > 0) {
+      if (targetType === "LOSS") pnl = Math.max(pnl, -Math.min(aiLiveMarginAmount(position) || target, target));
+      else pnl = Math.min(pnl, target);
+    }
+    if (pnl < 0) {
+      const margin = aiLiveMarginAmount(position);
+      const maxLoss = position.marginLocked ? margin : Math.max(0, App.realBalance(position.userId));
+      return Number(Math.max(pnl, -maxLoss).toFixed(2));
+    }
+    return Number(pnl.toFixed(2));
   }
 
   async function settleAiLivePosition(position, reason = "TARGET_HIT") {
-    if (!position || String(position.status || "").toUpperCase() !== "OPEN") return false;
-    const original = { ...position };
-    const current = positionCurrentPrice(position);
-    let pnl = aiPositionPnl(position);
-    const balanceBefore = App.realBalance(position.userId);
-    const margin = Math.max(0, Number(position.marginAmount || 0));
-    if (position.marginLocked && pnl < -margin) pnl = -margin;
-    if (!position.marginLocked && pnl < 0 && Math.abs(pnl) > balanceBefore) pnl = -balanceBefore;
-    const settlementAmount = position.marginLocked ? Math.max(0, margin + pnl) : pnl;
-    const now = new Date().toISOString();
-    position.tradeType = "AI_LIVE";
-    position.status = "CLOSED";
-    position.exitPrice = current;
-    position.exitPriceDisplay = positionCurrentDisplay(position);
-    position.exitPriceSource = (App.getCachedPairPrice && App.getCachedPairPrice(position.pair)?.source) || position.priceSource || "Live market";
-    position.closedAt = now;
-    position.closeReason = reason;
-    position.resultType = pnl >= 0 ? "PROFIT" : "LOSS";
-    position.resultPercent = Number(position.targetPercent || 0);
-    position.pnl = Number(pnl.toFixed(2));
-    position.settlementAmount = Number(settlementAmount.toFixed(2));
-    position.balanceAfter = Number((balanceBefore + position.settlementAmount).toFixed(2));
-    position.source = "AI_LIVE_AUTO_CLOSE";
-    let settlementAdded = false;
-    try {
-      if (position.settlementAmount !== 0) {
-        const row = App.addLedgerAsync ? await App.addLedgerAsync({
-          userId: position.userId,
-          accountType: "REAL",
-          type: position.marginLocked ? "AI_LIVE_SETTLEMENT" : (position.pnl >= 0 ? "AI_LIVE_PROFIT" : "AI_LIVE_LOSS"),
-          amount: position.settlementAmount,
-          referenceId: position.id,
-          note: position.marginLocked ? `${position.pair} AI live ${position.side} closed · AI amount ${App.money(margin)} · P/L ${position.pnl >= 0 ? "+" : ""}${App.money(position.pnl)}` : `${position.pair} AI live ${position.side} closed · ${reason}`
-        }) : App.addLedger({
-          userId: position.userId,
-          accountType: "REAL",
-          type: position.marginLocked ? "AI_LIVE_SETTLEMENT" : (position.pnl >= 0 ? "AI_LIVE_PROFIT" : "AI_LIVE_LOSS"),
-          amount: position.settlementAmount,
-          referenceId: position.id,
-          note: position.marginLocked ? `${position.pair} AI live ${position.side} closed · AI amount ${App.money(margin)} · P/L ${position.pnl >= 0 ? "+" : ""}${App.money(position.pnl)}` : `${position.pair} AI live ${position.side} closed · ${reason}`
-        });
-        settlementAdded = !!row;
-      }
-      if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) await window.AITradeXDB.writeTrade(position);
-      App.saveState();
-      return true;
-    } catch (err) {
-      if (settlementAdded && position.settlementAmount) {
-        try { await (App.addLedgerAsync ? App.addLedgerAsync({ userId: position.userId, accountType: "REAL", type: "AI_LIVE_SETTLEMENT_ROLLBACK", amount: -position.settlementAmount, referenceId: `${position.id}_close_rollback`, note: "Rollback: AI live close save failed" }) : App.addLedger({ userId: position.userId, accountType: "REAL", type: "AI_LIVE_SETTLEMENT_ROLLBACK", amount: -position.settlementAmount, referenceId: `${position.id}_close_rollback`, note: "Rollback: AI live close save failed" })); } catch {}
-      }
-      Object.assign(position, original);
-      throw err;
-    }
+    console.warn("User-side AI live auto settlement is disabled. Admin batch close is required.");
+    return false;
   }
 
+
   async function autoCloseAiLivePositions() {
-    const positions = aiOpenPositions();
-    if (!positions.length) return 0;
-    let closed = 0;
-    for (const position of positions) {
-      const pnl = aiPositionPnl(position);
-      const target = aiPositionTargetAmount(position);
-      const targetType = String(position.targetType || "PROFIT").toUpperCase();
-      const hit = target > 0 && (targetType === "LOSS" ? pnl <= -target : pnl >= target);
-      if (hit) {
-        try { if (await settleAiLivePosition(position, "TARGET_HIT")) closed += 1; } catch (err) { console.warn("AI live auto close failed", err); }
-      }
-    }
-    if (closed) {
-      App.toast(`${closed} AI live ${closed === 1 ? "position" : "positions"} closed automatically.`);
-      setTimeout(() => render(), 0);
-    }
-    return closed;
+    // AI Live positions are batch-controlled from admin side only.
+    // User-side auto-close caused same-batch positions to close for one user while remaining open for others.
+    return 0;
   }
+
+
 
   function manualReservedMargin(account = accountMode) {
     return manualOpenPositions()
@@ -752,7 +715,7 @@
   function updateManualLiveBar() {
     updateManualLiveViews();
     updateAiLiveViews();
-    Promise.resolve(autoCloseAiLivePositions()).then(closed => { if (closed) render(); });
+    // User side only updates live P/L display. AI Live settlement is handled from admin batch close.
   }
 
   function updateTradeAmountPreviewDom() {
