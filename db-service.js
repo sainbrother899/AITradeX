@@ -57,7 +57,13 @@
   function rowLedger(x){ return {id:text(x.id), user_id:x.userId||x.user_id, account_type:x.accountType||x.account_type||"REAL", type:x.type||"WALLET", amount:num(x.amount), reference_id:text(x.referenceId||x.reference_id||x.id), note:text(x.note), balance_after:num(x.balanceAfter||x.balance_after), created_at:iso(x.createdAt||x.created_at)}; }
   function stateLedger(r){ return {id:r.id,userId:r.user_id,accountType:r.account_type||"REAL",type:r.type,amount:num(r.amount),referenceId:r.reference_id,note:r.note||"",balanceAfter:num(r.balance_after),createdAt:r.created_at}; }
   function rowKyc(x){ const raw=clone(x); return {id:text(x.id), user_id:x.userId||x.user_id, user_email:x.userEmail||x.user_email||x.personal?.email||"", full_name:x.personal?.fullName||x.fullName||x.full_name||"", mobile:x.personal?.mobile||x.mobile||"", id_number:x.idDetails?.number||x.id?.number||x.id_number||"", address:x.personal?.address||x.address||"", status:x.status||"PENDING", reviewed_at:x.approvedAt||x.rejectedAt?iso(x.approvedAt||x.rejectedAt):null, created_at:iso(x.submittedAt||x.createdAt||x.created_at), raw}; }
-  function stateKyc(r){ const raw=r.raw&&typeof r.raw==="object"?r.raw:{}; const rawIdDetails=(raw.idDetails&&typeof raw.idDetails==="object")?raw.idDetails:(raw.id&&typeof raw.id==="object")?raw.id:{type:"Aadhaar Card",number:r.id_number||raw.id_number||""}; return {...raw,id:r.id,userId:r.user_id,userEmail:r.user_email,status:r.status||raw.status||"PENDING",idDetails:rawIdDetails,submittedAt:raw.submittedAt||r.created_at,approvedAt:raw.approvedAt||"",rejectedAt:raw.rejectedAt||"",rejectReason:raw.rejectReason||"",updatedAt:raw.updatedAt||r.reviewed_at||r.created_at}; }
+  function stateKyc(r){
+    const raw=r.raw&&typeof r.raw==="object"?r.raw:{};
+    const status=String(r.status||raw.status||"PENDING").toUpperCase();
+    const reviewedAt=r.reviewed_at||raw.reviewedAt||raw.updatedAt||"";
+    const rawIdDetails=(raw.idDetails&&typeof raw.idDetails==="object")?raw.idDetails:(raw.id&&typeof raw.id==="object")?raw.id:{type:"Aadhaar Card",number:r.id_number||raw.id_number||""};
+    return {...raw,id:r.id,userId:r.user_id,userEmail:r.user_email,status,idDetails:rawIdDetails,submittedAt:raw.submittedAt||r.created_at,approvedAt:raw.approvedAt||(status==="APPROVED"?reviewedAt:""),rejectedAt:raw.rejectedAt||(status==="REJECTED"?reviewedAt:""),rejectReason:raw.rejectReason||r.admin_note||"",updatedAt:reviewedAt||r.created_at};
+  }
   function rowMethod(x){ const raw=clone(x); return {id:text(x.id),user_id:x.userId||x.user_id,user_email:x.userEmail||x.user_email||"",type:x.type||"BANK",holder_name:x.holderName||x.holder_name||"",upi_id:x.upiId||x.upi_id||"",bank_name:x.bankName||x.bank_name||"",account_number:x.accountNumber||x.account_number||"",ifsc:x.ifsc||"",status:x.status||"PENDING",rejection_reason:x.rejectReason||x.rejection_reason||"",created_at:iso(x.createdAt||x.created_at),raw}; }
   function stateMethod(r){ const raw=r.raw&&typeof r.raw==="object"?r.raw:{}; return {...raw,id:r.id,userId:r.user_id,userEmail:r.user_email,type:r.type,status:r.status||raw.status||"PENDING",holderName:r.holder_name||raw.holderName||"",upiId:r.upi_id||raw.upiId||"",bankName:r.bank_name||raw.bankName||"",accountNumber:r.account_number||raw.accountNumber||"",ifsc:r.ifsc||raw.ifsc||"",rejectReason:r.rejection_reason||raw.rejectReason||"",createdAt:r.created_at||raw.createdAt}; }
   function rowDeposit(x){ const raw=clone(x); return {id:text(x.id),user_id:x.userId||x.user_id,user_email:x.userEmail||x.user_email||"",amount:num(x.amount),method:x.type||x.method||"UPI",utr:text(x.utr),status:x.status||"PENDING",balance_applied:!!(x.balanceApplied||x.balance_applied),first_deposit_referral_checked:!!(x.firstDepositReferralChecked||x.first_deposit_referral_checked),proof_image:x.proofImage||x.proof_image||null,admin_note:x.adminNote||x.rejectReason||x.admin_note||"",created_at:iso(x.createdAt||x.created_at),raw}; }
@@ -183,12 +189,8 @@
         await recordTelegramAlertSecure({status:"SENT",message:text,result:json,source:"edge-function"});
         return {ok:true,data:json,source:"edge-function"};
       }
-      if(!st.telegramBotToken) { await recordTelegramAlertSecure({status:"SKIPPED",message:text,error:"Telegram bot token missing"}); return {ok:false,reason:"Telegram bot token missing"}; }
-      const res=await fetch(`https://api.telegram.org/bot${st.telegramBotToken}/sendMessage`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chat_id:st.telegramChatId,text,parse_mode:"HTML",disable_web_page_preview:true})});
-      json=await res.json().catch(()=>({}));
-      if(!res.ok||json.ok===false) throw new Error(json.description||"Telegram send failed");
-      await recordTelegramAlertSecure({status:"SENT",message:text,result:json,source:"frontend-fallback"});
-      return {ok:true,data:json,source:"frontend-fallback"};
+      await recordTelegramAlertSecure({status:"SKIPPED",message:text,error:"Telegram Edge Function URL missing. Frontend bot-token fallback is disabled for safety."});
+      return {ok:false,skipped:true,reason:"Telegram Edge Function URL missing. Set TELEGRAM_EDGE_FUNCTION_URL or settings.telegramEdgeFunctionUrl."};
     }catch(err){
       await recordTelegramAlertSecure({status:"FAILED",message:text,error:String(err?.message||err)});
       throw err;

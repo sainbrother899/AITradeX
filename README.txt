@@ -1,5 +1,12 @@
 AITradeX Phase6.9 - RLS Readiness Pack
 
+PHASE 6.9.1 CLEAN BASELINE NOTE
+- KYC approve/reject request-id bug fixed.
+- Telegram alerts now expect Supabase Edge Function URL; frontend bot-token fallback is disabled.
+- Fake TP/SL inputs removed from user trade form until full TP/SL backend logic is added.
+- Default admin DB auto-create fallback is disabled in config.
+
+
 Base: Phase6.8 Wallet Telegram Backend.
 This build keeps the same UI/design and working flows, but adds RLS readiness files and clearer production-lock guidance.
 

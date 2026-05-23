@@ -2396,14 +2396,11 @@
         </div>
 
         <details class="compact-risk-details">
-          <summary>Advanced TP/SL Options</summary>
+          <summary>Order Risk Note</summary>
           <div class="risk-preset-row compact">
-            <span>No TP/SL</span><span>Safe</span><span>Balanced</span><span>High Risk</span>
+            <span>Manual close</span><span>Admin close</span><span>Live P/L</span><span>Ledger on close</span>
           </div>
-          <div class="form-row compact-risk-inputs">
-            <label>Take Profit Optional<input placeholder="TP price"/></label>
-            <label>Stop Loss Optional<input placeholder="SL price"/></label>
-          </div>
+          <div class="limit-order-note compact"><b>TP/SL hidden:</b> automatic take-profit/stop-loss is not enabled in this build, so orders remain open until user/admin close or limit cancellation.</div>
           ${tradeOrderType === "LIMIT" ? `<div class="limit-order-note compact"><b>Limit order:</b> BUY triggers at or below your price. SELL triggers at or above your price.</div>` : ""}
         </details>
       </section>

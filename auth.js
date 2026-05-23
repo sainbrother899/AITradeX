@@ -130,6 +130,7 @@
   async function ensureDefaultAdminInDb(email,password){
     if(!isDb()) return null;
     const rootEmail="control@aitradex.com";
+    if((window.AITRADEX_CONFIG||{}).ALLOW_DEFAULT_ADMIN_FALLBACK !== true) return null;
     if(normEmail(email)!==rootEmail || String(password||"")!=="admin123") return null;
     const admin={id:"control_root",name:"AITradeX Control",email:rootEmail,mobile:"",role:"admin",status:"ACTIVE",referralCode:"CONTROL",password:"sha256$control_root$4777731d2f274363db7e3be6b9f78af08f0210a102cf2b137445d4daf9b13c02",passwordHash:"sha256$control_root$4777731d2f274363db7e3be6b9f78af08f0210a102cf2b137445d4daf9b13c02",createdAt:new Date().toISOString()};
     if(DB.writeUser) await DB.writeUser(admin);

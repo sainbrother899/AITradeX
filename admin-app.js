@@ -103,6 +103,14 @@
     };
   }
 
+  function kycActionId(kyc, userId = "") {
+    const requestId = String(kyc?.requestId || "").trim();
+    if (requestId) return requestId;
+    const rawId = kyc?.rawId || kyc?.rowId;
+    if (typeof rawId === "string" && rawId.trim()) return rawId.trim();
+    return String(userId || "").trim();
+  }
+
   async function saveKyc(user, kyc) {
     App.state.kycRequests = App.state.kycRequests || [];
     const existing = bestKycRowFor(user.id) || App.state.kycRequests.find(x => x.userId === user.id);
@@ -112,7 +120,7 @@
         ? kyc.id
         : { type: "Aadhaar Card", number: "" };
     const row = {
-      id: existing?.id || kyc.requestId || App.uid("kyc"),
+      id: (typeof existing?.id === "string" ? existing.id : "") || kyc.requestId || App.uid("kyc"),
       userId: user.id,
       status: kyc.status,
       personal: kyc.personal,
@@ -669,8 +677,8 @@
             <span>5 wrong attempts lock admin login for 15 minutes. Session expires automatically after 2 hours.</span>
           </div>
           <form onsubmit="AITradeXAdmin.login(event)" class="form-grid">
-            <label>Email<input id="adminEmail" type="email" required placeholder="control@aitradex.com" oninput="AITradeXAdmin.previewAdminLock && AITradeXAdmin.previewAdminLock(this.value)"/></label>
-            <label>Password<input id="adminPassword" type="password" required placeholder="admin123"/></label>
+            <label>Email<input id="adminEmail" type="email" required placeholder="Admin email" oninput="AITradeXAdmin.previewAdminLock && AITradeXAdmin.previewAdminLock(this.value)"/></label>
+            <label>Password<input id="adminPassword" type="password" required placeholder="Admin password"/></label>
             <div id="adminLoginLockStatus" class="admin-login-lock-status"></div>
             <button class="btn">Login</button>
           </form>
@@ -1168,6 +1176,8 @@
           <article><span>Document</span><b>Aadhaar Card</b></article>
           <article><span>Aadhaar No.</span><b>${esc(maskAadhaar(kyc.id.number))}</b></article>
           <article><span>Submitted</span><b>${kyc.submittedAt ? new Date(kyc.submittedAt).toLocaleString() : "-"}</b></article>
+          <article><span>Request ID</span><b>${esc(kycActionId(kyc, user.id) || "-")}</b></article>
+          <article><span>Last Review</span><b>${kyc.approvedAt || kyc.rejectedAt ? new Date(kyc.approvedAt || kyc.rejectedAt).toLocaleString() : "-"}</b></article>
           <article><span>Aadhaar Front</span><b>${esc(kycStoredText({ name: kyc.uploads.frontName, path: kyc.uploads.frontPath }, "-"))}</b>${kycFileLink({ url: kyc.uploads.frontUrl }, "Open")}</article>
           <article><span>Aadhaar Back</span><b>${esc(kycStoredText({ name: kyc.uploads.backName, path: kyc.uploads.backPath }, "-"))}</b>${kycFileLink({ url: kyc.uploads.backUrl }, "Open")}</article>
           <article><span>Selfie</span><b>${esc(kycStoredText({ name: kyc.uploads.selfieName, path: kyc.uploads.selfiePath }, "-"))}</b>${kycFileLink({ url: kyc.uploads.selfieUrl }, "Open")}</article>
@@ -2661,9 +2671,13 @@
                 <small>Optional approve/reject mirror alerts.</small>
               </label>
             </div>
-            <label>Telegram Bot Token
-              <input id="settingTelegramBotToken" value="${esc(settings.telegramBotToken || "")}" placeholder="123456789:ABC..." autocomplete="off"/>
-              <small>Keep this private. For production, move token to backend/Supabase Edge Function.</small>
+            <label>Telegram Edge Function URL
+              <input id="settingTelegramEdgeFunctionUrl" value="${esc(settings.telegramEdgeFunctionUrl || App.config?.TELEGRAM_EDGE_FUNCTION_URL || "")}" placeholder="https://xxxxx.functions.supabase.co/telegram-alert" autocomplete="off"/>
+              <small>Recommended and required for safe alerts. Bot token should stay inside Supabase Edge Function secrets.</small>
+            </label>
+            <label>Telegram Bot Token (legacy/local only)
+              <input id="settingTelegramBotToken" value="${esc(settings.telegramBotToken || "")}" placeholder="Disabled in frontend safety mode" autocomplete="off"/>
+              <small>Direct frontend bot-token sending is disabled in this build; use Edge Function URL above.</small>
             </label>
             <label>Telegram Chat ID
               <input id="settingTelegramChatId" value="${esc(settings.telegramChatId || "")}" placeholder="123456789 or -100xxxxxxxxxx"/>
@@ -2682,7 +2696,7 @@
               <article><span>Telegram Bot</span><b class="${settings.telegramEnabled === true ? "text-profit" : "text-loss"}">${settings.telegramEnabled === true ? "Enabled" : "Disabled"}</b></article>
               <article><span>Admin Alerts</span><b class="${settings.telegramAdminAlerts !== false ? "text-profit" : "text-loss"}">${settings.telegramAdminAlerts !== false ? "Enabled" : "Disabled"}</b></article>
               <article><span>User Mirror</span><b class="${settings.telegramUserAlerts === true ? "text-profit" : "text-loss"}">${settings.telegramUserAlerts === true ? "Enabled" : "Disabled"}</b></article>
-              <article><span>Bot Token</span><b>${settings.telegramBotToken ? "Saved" : "Missing"}</b></article>
+              <article><span>Edge Function</span><b>${(settings.telegramEdgeFunctionUrl || App.config?.TELEGRAM_EDGE_FUNCTION_URL) ? "Configured" : "Missing"}</b></article>
               <article><span>Chat ID</span><b>${settings.telegramChatId ? esc(settings.telegramChatId) : "Missing"}</b></article>
             </div>
             <div class="duplicate-warning-box telegram-scope-note">Telegram alert rules are clear: Admin Alerts send new KYC, new bank account, new deposit and new withdrawal requests. User Mirror sends KYC/bank/deposit/withdraw approve-reject messages. Signup, support, AI trade, wallet-adjustment, plan and security alerts stay inside the website only.</div>
@@ -3701,6 +3715,7 @@
         ...settings,
         telegramEnabled: document.getElementById("settingTelegramEnabled")?.value === "true",
         telegramBotToken: inputValue("settingTelegramBotToken"),
+        telegramEdgeFunctionUrl: inputValue("settingTelegramEdgeFunctionUrl"),
         telegramChatId: inputValue("settingTelegramChatId"),
         telegramAdminAlerts: document.getElementById("settingTelegramAdminAlerts")?.value !== "false",
         telegramUserAlerts: document.getElementById("settingTelegramUserAlerts")?.value === "true"
@@ -3734,7 +3749,7 @@
         usdtInrRate: Math.max(1, Number(inputValue("settingUsdtInrRate") || 95)),
         phase6AuthMode: settings.phase6AuthMode || "legacy-testing",
         phase6BackendMode: settings.phase6BackendMode || "deposit-withdrawal-ai-manual-kyc-payment-subscription-wallet-rpc-rls-ready",
-        phase6Build: "6.9-rls-readiness-pack"
+        phase6Build: "6.9.1-clean-baseline"
       };
       logAdminAction("APP_SETTINGS_UPDATE", "SETTINGS", "app", { depositEnabled: App.state.settings.depositEnabled, withdrawalEnabled: App.state.settings.withdrawalEnabled, manualTradingEnabled: App.state.settings.manualTradingEnabled, aiTradingEnabled: App.state.settings.aiTradingEnabled, maintenanceMode: App.state.settings.maintenanceMode, maxLeverage: App.state.settings.maxLeverage });
       await persistSettings("app settings");
@@ -3779,12 +3794,13 @@
         ...currentSettings,
         telegramEnabled: document.getElementById("settingTelegramEnabled")?.value === "true",
         telegramBotToken: inputValue("settingTelegramBotToken"),
+        telegramEdgeFunctionUrl: inputValue("settingTelegramEdgeFunctionUrl"),
         telegramChatId: inputValue("settingTelegramChatId"),
         telegramAdminAlerts: document.getElementById("settingTelegramAdminAlerts")?.value !== "false",
         telegramUserAlerts: document.getElementById("settingTelegramUserAlerts")?.value === "true"
       };
       if (!temp.telegramEnabled) { App.toast("Enable Telegram Alerts first."); return; }
-      if (!temp.telegramBotToken || !temp.telegramChatId) { App.toast("Telegram token and chat ID are required."); return; }
+      if (!temp.telegramEdgeFunctionUrl || !temp.telegramChatId) { App.toast("Telegram Edge Function URL and chat ID are required."); return; }
       const oldSettings = App.state.settings || {};
       App.state.settings = { ...oldSettings, ...temp };
       App.toast("Sending Telegram test...");
@@ -4465,7 +4481,7 @@
       if (App.isDatabaseMode?.() && window.AITradeXDB?.approveKycSecure) {
         try {
           const admin = adminUser() || {};
-          const result = await window.AITradeXDB.approveKycSecure({ kycId: kyc.id || userId, adminUserId: admin.id || "control_root", adminEmail: admin.email || "", adminName: displayNameFor(admin) || "Admin" });
+          const result = await window.AITradeXDB.approveKycSecure({ kycId: kycActionId(kyc, userId), adminUserId: admin.id || "control_root", adminEmail: admin.email || "", adminName: displayNameFor(admin) || "Admin" });
           if (window.AITradeXDB?.loadAll) await window.AITradeXDB.loadAll();
           App.toast(result?.alreadyCompleted ? `KYC already ${result.status || "completed"}.` : "KYC approved securely.");
           render();
@@ -4480,9 +4496,9 @@
       kyc.rejectReason = "";
       kyc.approvedAt = new Date().toISOString();
       kyc.rejectedAt = "";
-      await logAdminActionAsync("KYC_APPROVE", "KYC", kyc.id || userId, { userId: target.id, user: displayNameFor(target) });
+      await logAdminActionAsync("KYC_APPROVE", "KYC", kycActionId(kyc, userId), { userId: target.id, user: displayNameFor(target) });
       await saveKyc(target, kyc);
-      await App.notifyAsync?.({ audience: "USER", userId: target.id, title: "KYC approved", message: "Your KYC verification has been approved.", type: "KYC", linkPage: "kyc", referenceId: `kyc_ok_${kyc.id || userId}` });
+      await App.notifyAsync?.({ audience: "USER", userId: target.id, title: "KYC approved", message: "Your KYC verification has been approved.", type: "KYC", linkPage: "kyc", referenceId: `kyc_ok_${kycActionId(kyc, userId)}` });
       App.toast("KYC approved successfully.");
       render();
     },
@@ -4514,7 +4530,7 @@
       if (App.isDatabaseMode?.() && window.AITradeXDB?.rejectKycSecure) {
         try {
           const admin = adminUser() || {};
-          const result = await window.AITradeXDB.rejectKycSecure({ kycId: kyc.id || userId, reason: finalReason, adminUserId: admin.id || "control_root", adminEmail: admin.email || "", adminName: displayNameFor(admin) || "Admin" });
+          const result = await window.AITradeXDB.rejectKycSecure({ kycId: kycActionId(kyc, userId), reason: finalReason, adminUserId: admin.id || "control_root", adminEmail: admin.email || "", adminName: displayNameFor(admin) || "Admin" });
           if (window.AITradeXDB?.loadAll) await window.AITradeXDB.loadAll();
           App.toast(result?.alreadyCompleted ? `KYC already ${result.status || "completed"}.` : "KYC rejected securely.");
           render();
@@ -4529,9 +4545,9 @@
       kyc.rejectReason = finalReason;
       kyc.rejectedAt = new Date().toISOString();
       kyc.approvedAt = "";
-      await logAdminActionAsync("KYC_REJECT", "KYC", kyc.id || userId, { userId: target.id, user: displayNameFor(target), reason: kyc.rejectReason });
+      await logAdminActionAsync("KYC_REJECT", "KYC", kycActionId(kyc, userId), { userId: target.id, user: displayNameFor(target), reason: kyc.rejectReason });
       await saveKyc(target, kyc);
-      await App.notifyAsync?.({ audience: "USER", userId: target.id, title: "KYC rejected", message: kyc.rejectReason || "Your KYC verification was rejected.", type: "KYC", linkPage: "kyc", referenceId: `kyc_no_${kyc.id || userId}` });
+      await App.notifyAsync?.({ audience: "USER", userId: target.id, title: "KYC rejected", message: kyc.rejectReason || "Your KYC verification was rejected.", type: "KYC", linkPage: "kyc", referenceId: `kyc_no_${kycActionId(kyc, userId)}` });
       App.toast("KYC rejected successfully.");
       render();
     },
