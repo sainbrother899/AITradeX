@@ -1,3 +1,11 @@
+AITradeX Phase 6.5.2 - Sell Limit Trigger Fix
+
+This build fixes SELL limit orders self-triggering on page/tab changes when no live price card is visible. Pending limit orders now trigger only from an actual live/cached market price and never from the limit price fallback.
+
+SQL: Not required for this update. Use the Phase 6.5.1 schema already run for manual trade backend RPC functions.
+
+Deploy: upload the ZIP and hard refresh with Ctrl + Shift + R.
+
 AITradeX Phase 6.5.1 - Limit Order Validation Fix
 
 Base used:
@@ -30,7 +38,7 @@ Deploy order:
 5. Test: manual market order open, manual close, P/L settlement, pending limit order cancel, wallet ledger and reload persistence.
 
 Current cache version:
-- phase651limitordervalidation
+- phase652selllimittriggerfix
 
 Default admin for testing:
 - control@aitradex.com

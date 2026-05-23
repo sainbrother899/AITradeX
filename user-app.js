@@ -301,6 +301,21 @@
     return Number.isFinite(current) && current > 0 ? current : fallback;
   }
 
+  function pendingOrderPriceRow(order) {
+    // Limit orders must only trigger from an actual live/cached market price.
+    // Never fall back to the order limit price, otherwise a SELL limit can self-trigger
+    // when the user navigates away from the orders page and no price card is visible.
+    const row = positionPriceRow({ pair: order?.pair });
+    const price = Number(row?.price || 0);
+    if (!row || !Number.isFinite(price) || price <= 0) return null;
+    return row;
+  }
+
+  function pendingOrderLiveDisplay(order) {
+    const row = pendingOrderPriceRow(order);
+    return row?.display || "Waiting live price";
+  }
+
   function positionCurrentDisplay(position) {
     const cached = positionPriceRow(position);
     if (cached?.display) return cached.display;
@@ -569,13 +584,14 @@
     if (!pending.length) return 0;
     let triggered = 0;
     for (const order of pending) {
-      const current = positionCurrentPrice({ pair: order.pair, entryPrice: order.limitPrice });
+      const liveRow = pendingOrderPriceRow(order);
+      const current = Number(liveRow?.price || 0);
       const limit = Number(order.limitPrice || 0);
-      if (!current || !limit) continue;
+      if (!Number.isFinite(current) || current <= 0 || !Number.isFinite(limit) || limit <= 0) continue;
       const side = String(order.side || "BUY").toUpperCase() === "SELL" ? "SELL" : "BUY";
       const shouldTrigger = side === "BUY" ? current <= limit : current >= limit;
       if (!shouldTrigger) continue;
-      const display = positionCurrentDisplay({ pair: order.pair, entryPrice: current });
+      const display = liveRow?.display || formatPairPrice(order.pair, current);
       try { if (await openPositionFromPendingOrder(order, current, display)) triggered += 1; } catch (err) { console.warn("limit order trigger DB sync failed", err); }
     }
     if (triggered) {
@@ -2764,7 +2780,7 @@
         <span>${rule} ${App.escapeHtml(order.limitPriceDisplay || order.limitPrice || "-")}</span>`,
       priceHtml: `
         <span>Limit <b>${App.escapeHtml(order.limitPriceDisplay || order.limitPrice || "-")}</b></span>
-        <span>Live <b data-live-pair="${App.escapeHtml(order.pair || "")}" data-live-type="price">${App.escapeHtml(positionCurrentDisplay({ pair: order.pair, entryPrice: order.limitPrice }))}</b></span>`,
+        <span>Live <b data-live-pair="${App.escapeHtml(order.pair || "")}" data-live-type="price">${App.escapeHtml(pendingOrderLiveDisplay(order))}</b></span>`,
       pnlHtml: `<strong class="pending-text">Pending</strong>`,
       amountHtml: `<small>Waiting trigger</small>`,
       actionHtml: `<button class="orders-pill-action cancel" onclick="AITradeXUser.cancelPendingOrder('${order.id}')">Cancel</button>`
