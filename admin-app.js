@@ -47,13 +47,42 @@
     return user.name || "User";
   }
 
+  function kycRecordTime(row) {
+    return new Date(row?.updatedAt || row?.approvedAt || row?.rejectedAt || row?.submittedAt || row?.createdAt || 0).getTime() || 0;
+  }
+
+  function kycStatusRank(row) {
+    const status = String(row?.status || "").toUpperCase();
+    if (status === "APPROVED") return 4;
+    if (status === "PENDING") return 3;
+    if (status === "REJECTED") return 2;
+    return 1;
+  }
+
+  function bestKycRowFor(userId) {
+    const rows = (App.state.kycRequests || []).filter(x => x.userId === userId);
+    if (!rows.length) return null;
+    return rows.sort((a, b) => {
+      const rankDiff = kycStatusRank(b) - kycStatusRank(a);
+      if (rankDiff) return rankDiff;
+      return kycRecordTime(b) - kycRecordTime(a);
+    })[0];
+  }
+
   function kycFor(user) {
-    const stateRow = [...(App.state.kycRequests || [])].reverse().find(x => x.userId === user.id);
+    const stateRow = bestKycRowFor(user.id);
     if (stateRow) {
+      const idDetails = (stateRow.idDetails && typeof stateRow.idDetails === "object")
+        ? stateRow.idDetails
+        : (stateRow.id && typeof stateRow.id === "object")
+          ? stateRow.id
+          : { type: "Aadhaar Card", number: stateRow.id_number || "" };
       return {
+        requestId: typeof stateRow.id === "string" ? stateRow.id : "",
         status: stateRow.status || "NOT_SUBMITTED",
         personal: stateRow.personal || { fullName: displayNameFor(user), mobile: user.mobile || "", email: user.email || "", dob: "" },
-        id: stateRow.idDetails || stateRow.id || { type: "PAN Card", number: "" },
+        id: idDetails,
+        idDetails,
         uploads: stateRow.uploads || { frontName: "", backName: "", selfieName: "" },
         submittedAt: stateRow.submittedAt || "",
         approvedAt: stateRow.approvedAt || "",
@@ -62,9 +91,11 @@
       };
     }
     return {
+      requestId: "",
       status: "NOT_SUBMITTED",
       personal: { fullName: displayNameFor(user), mobile: user.mobile || "", email: user.email || "", dob: "" },
-      id: { type: "PAN Card", number: "" },
+      id: { type: "Aadhaar Card", number: "" },
+      idDetails: { type: "Aadhaar Card", number: "" },
       uploads: { frontName: "", backName: "", selfieName: "" },
       submittedAt: "", approvedAt: "", rejectedAt: "", rejectReason: ""
     };
@@ -72,13 +103,18 @@
 
   async function saveKyc(user, kyc) {
     App.state.kycRequests = App.state.kycRequests || [];
-    const existing = App.state.kycRequests.find(x => x.userId === user.id);
+    const existing = bestKycRowFor(user.id) || App.state.kycRequests.find(x => x.userId === user.id);
+    const idDetails = (kyc.idDetails && typeof kyc.idDetails === "object")
+      ? kyc.idDetails
+      : (kyc.id && typeof kyc.id === "object")
+        ? kyc.id
+        : { type: "Aadhaar Card", number: "" };
     const row = {
-      id: kyc.id || existing?.id || App.uid("kyc"),
+      id: existing?.id || kyc.requestId || App.uid("kyc"),
       userId: user.id,
       status: kyc.status,
       personal: kyc.personal,
-      idDetails: kyc.idDetails || kyc.id,
+      idDetails,
       uploads: kyc.uploads,
       submittedAt: kyc.submittedAt || "",
       approvedAt: kyc.approvedAt || "",

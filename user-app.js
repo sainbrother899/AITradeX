@@ -1327,10 +1327,32 @@
     return JSON.stringify(String(value ?? ""));
   }
 
+  function kycRecordTime(row) {
+    return new Date(row?.updatedAt || row?.approvedAt || row?.rejectedAt || row?.submittedAt || row?.createdAt || 0).getTime() || 0;
+  }
+
+  function kycStatusRank(row) {
+    const status = String(row?.status || "").toUpperCase();
+    if (status === "APPROVED") return 4;
+    if (status === "PENDING") return 3;
+    if (status === "REJECTED") return 2;
+    return 1;
+  }
+
+  function bestKycRowFor(userId) {
+    const rows = (App.state.kycRequests || []).filter(x => x.userId === userId);
+    if (!rows.length) return {};
+    return rows.sort((a, b) => {
+      const rankDiff = kycStatusRank(b) - kycStatusRank(a);
+      if (rankDiff) return rankDiff;
+      return kycRecordTime(b) - kycRecordTime(a);
+    })[0] || {};
+  }
+
   function currentKyc() {
     const u = user();
     if (!u) return null;
-    const saved = ([...(App.state.kycRequests || [])].reverse().find(x => x.userId === u.id)) || {};
+    const saved = bestKycRowFor(u.id);
     const personal = {
       fullName: saved.personal?.fullName || displayName(),
       mobile: u.mobile || saved.personal?.mobile || "",
@@ -1341,13 +1363,18 @@
       state: saved.personal?.state || "",
       pincode: saved.personal?.pincode || ""
     };
-    const id = { type: "Aadhaar Card", number: saved.id?.number || saved.idDetails?.number || "" };
+    const idDetails = (saved.idDetails && typeof saved.idDetails === "object")
+      ? saved.idDetails
+      : (saved.id && typeof saved.id === "object")
+        ? saved.id
+        : { type: "Aadhaar Card", number: saved.id_number || "" };
+    const id = { type: "Aadhaar Card", number: idDetails.number || "" };
     const uploads = {
       frontName: saved.uploads?.frontName || "", frontPath: saved.uploads?.frontPath || "", frontBucket: saved.uploads?.frontBucket || "", frontUrl: saved.uploads?.frontUrl || "", frontSize: saved.uploads?.frontSize || 0, frontType: saved.uploads?.frontType || "",
       backName: saved.uploads?.backName || "", backPath: saved.uploads?.backPath || "", backBucket: saved.uploads?.backBucket || "", backUrl: saved.uploads?.backUrl || "", backSize: saved.uploads?.backSize || 0, backType: saved.uploads?.backType || "",
       selfieName: saved.uploads?.selfieName || "", selfiePath: saved.uploads?.selfiePath || "", selfieBucket: saved.uploads?.selfieBucket || "", selfieUrl: saved.uploads?.selfieUrl || "", selfieSize: saved.uploads?.selfieSize || 0, selfieType: saved.uploads?.selfieType || ""
     };
-    return { status: saved.status || "NOT_SUBMITTED", personal, id, uploads, declarationAccepted: !!saved.declarationAccepted, finalAccepted: !!saved.finalAccepted, submittedAt: saved.submittedAt || "", approvedAt: saved.approvedAt || "", rejectedAt: saved.rejectedAt || "", rejectReason: saved.rejectReason || "" };
+    return { requestId: typeof saved.id === "string" ? saved.id : "", status: saved.status || "NOT_SUBMITTED", personal, id, uploads, declarationAccepted: !!saved.declarationAccepted, finalAccepted: !!saved.finalAccepted, submittedAt: saved.submittedAt || "", approvedAt: saved.approvedAt || "", rejectedAt: saved.rejectedAt || "", rejectReason: saved.rejectReason || "" };
   }
 
   async function saveKycData(data) {

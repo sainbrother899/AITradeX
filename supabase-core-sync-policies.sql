@@ -1,4 +1,4 @@
--- AITradeX Phase 5.28 Testing RLS Policies
+-- AITradeX Phase 5.29 Testing RLS Policies
 -- Run this only for the current frontend-only testing build.
 -- It enables RLS but allows anon access because the current app uses custom frontend login, not Supabase Auth.
 -- For public real-money launch, migrate writes to backend/Edge Functions/Supabase Auth and adapt supabase-production-rls-template.sql instead.

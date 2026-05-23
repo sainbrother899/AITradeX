@@ -1,4 +1,4 @@
--- AITradeX Phase 5.28 RLS Safety Pack + Final Deep Consistency
+-- AITradeX Phase 5.29 RLS Safety Pack + Final Deep Consistency
 -- Includes notification delete compatibility and hashed password runtime support.
 -- AITradeX Phase 5.19 Strict DB-First Critical Runtime
 -- Keeps schema/RLS aligned with DB-first critical writes and emergency-only manual repair sync.
@@ -244,7 +244,7 @@ set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_buil
     updated_at = now();
 
 
--- Phase 5.28: Clean persistence compatibility columns/indexes.
+-- Phase 5.29: Clean persistence compatibility columns/indexes.
 alter table public.users add column if not exists last_login_at timestamptz;
 alter table public.users add column if not exists updated_at timestamptz default now();
 alter table public.payment_methods add column if not exists raw jsonb default '{}'::jsonb;
@@ -261,7 +261,7 @@ set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_buil
     updated_at = now();
 
 
--- Phase 5.28: Final clean audit compatibility.
+-- Phase 5.29: Final clean audit compatibility.
 -- New passwords are stored in password_hash as sha256$salt$hash by the frontend runtime.
 -- Existing plain password_hash values are migrated after the next successful login/reset.
 alter table public.users add column if not exists password_hash text;
@@ -274,7 +274,7 @@ set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_buil
     updated_at = now();
 
 
--- Phase 5.28: default control admin + safer ledger uniqueness
+-- Phase 5.29: default control admin + safer ledger uniqueness
 alter table public.wallet_ledger drop constraint if exists wallet_ledger_type_reference_id_key;
 alter table public.wallet_ledger drop constraint if exists wallet_ledger_user_id_account_type_type_reference_id_key;
 alter table public.wallet_ledger add constraint wallet_ledger_user_id_account_type_type_reference_id_key unique(user_id, account_type, type, reference_id);
@@ -291,11 +291,11 @@ on conflict (id) do update set
   updated_at=now();
 
 
--- Phase 5.28 security note:
+-- Phase 5.29 security note:
 -- This schema is suitable for controlled testing. For real public money/users, move admin/funds/trading actions to a private backend/service-role API and tighten RLS policies per role.
 
 
--- Phase 5.28: final deep consistency marker
+-- Phase 5.29: final deep consistency marker
 insert into public.app_settings(id, settings, updated_at)
 values ('main', jsonb_build_object('databaseRuntimeVersion','5.27','mode','final-deep-consistency-fix','passwordStorage','salted-sha256-runtime'), now())
 on conflict (id) do update
@@ -303,7 +303,7 @@ set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_buil
     updated_at = now();
 
 
--- Phase 5.28: TESTING RLS POLICIES FOR CURRENT FRONTEND-ONLY BUILD
+-- Phase 5.29: TESTING RLS POLICIES FOR CURRENT FRONTEND-ONLY BUILD
 -- These policies keep RLS enabled while allowing the current anon-key frontend prototype to function.
 -- They are NOT sufficient for real public money/users because custom frontend login is not available to PostgreSQL RLS.
 -- For real launch, move writes to backend/Edge Functions or Supabase Auth and then adapt supabase-production-rls-template.sql.
