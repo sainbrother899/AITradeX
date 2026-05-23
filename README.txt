@@ -56,3 +56,11 @@ Emergency off switch:
 
 Important:
 This is still a frontend-only testing build. Public real-money launch needs Phase 6 backend/Auth/strict RLS migration.
+
+
+Phase5.37 Deposit Bonus & Turnover Lock
+- First deposit bonus: default 10% capped at ₹1,000.
+- Every approved deposit bonus: default 5% capped at ₹500.
+- Bonus turnover lock: default 10x of bonus amount.
+- Withdrawal is limited while a bonus lock is active: principal + bonus stays locked until required closed-trade turnover is complete.
+- Bonus is credited as DEPOSIT_BONUS ledger entry and shown separately in wallet history.

@@ -557,6 +557,12 @@ App.realBalance=id=>App.state.walletLedger.filter(x=>x.userId===id&&String(x.acc
 App.demoBalance=id=>{const rows=App.state.demoLedger.filter(x=>x.userId===id&&String(x.accountType||"DEMO").toUpperCase()==="DEMO");return rows.reduce((s,x)=>s+Number(x.amount||0),Number(App.state.settings.demoBalance||100000))};
 App.pendingDeposit=id=>App.state.depositRequests.filter(x=>x.userId===id&&x.status==="PENDING").reduce((s,x)=>s+Number(x.amount||0),0);
 App.pendingWithdrawal=id=>App.state.withdrawalRequests.filter(x=>x.userId===id&&x.status==="PENDING").reduce((s,x)=>s+Number(x.amount||0),0);
+App.depositBonusSettings=()=>{App.state.settings=App.state.settings||{};const s=App.state.settings;if(s.depositBonusEnabled===undefined)s.depositBonusEnabled=true;if(s.depositFirstBonusPercent===undefined)s.depositFirstBonusPercent=10;if(s.depositFirstBonusCap===undefined)s.depositFirstBonusCap=1000;if(s.depositEveryBonusPercent===undefined)s.depositEveryBonusPercent=5;if(s.depositEveryBonusCap===undefined)s.depositEveryBonusCap=500;if(s.depositBonusTurnoverMultiplier===undefined)s.depositBonusTurnoverMultiplier=10;if(s.depositBonusLockEnabled===undefined)s.depositBonusLockEnabled=true;return s};
+App.depositBonusLedgerRows=userId=>(App.state.walletLedger||[]).filter(x=>x.userId===userId&&String(x.accountType||"REAL").toUpperCase()==="REAL"&&String(x.type||"").toUpperCase()==="DEPOSIT_BONUS"&&Number(x.amount||0)>0);
+App.tradeTurnoverSince=(userId,since)=>{const sinceMs=Date.parse(since||"")||0;return (App.state.trades||[]).filter(t=>t.userId===userId&&String(t.accountType||"REAL").toUpperCase()==="REAL"&&String(t.status||"").toUpperCase()==="CLOSED"&&(Date.parse(t.closedAt||t.updatedAt||t.createdAt||"")||0)>=sinceMs).reduce((sum,t)=>{const margin=Math.max(0,Number(t.marginAmount||t.amount||0));const lev=Math.max(1,Number(t.leverage||1));const exposure=Math.max(0,Number(t.positionSize||0))||margin*lev;return sum+exposure;},0)};
+App.depositBonusProgress=userId=>{const s=App.depositBonusSettings();const lockEnabled=s.depositBonusLockEnabled!==false;return App.depositBonusLedgerRows(userId).map(row=>{const raw=row.bonusLock||row.raw?.bonusLock||{};const bonusAmount=Number(raw.bonusAmount||row.amount||0);const depositAmount=Number(raw.depositAmount||0);const requiredTurnover=Math.max(0,Number(raw.requiredTurnover||bonusAmount*Number(s.depositBonusTurnoverMultiplier||10)));const completedTurnover=App.tradeTurnoverSince(userId,row.createdAt);const unlocked=!lockEnabled||requiredTurnover<=0||completedTurnover>=requiredTurnover;return {row,depositId:raw.depositId||row.referenceId,depositAmount,bonusAmount,requiredTurnover,completedTurnover,unlocked,lockedAmount:unlocked?0:depositAmount+bonusAmount,createdAt:row.createdAt};});};
+App.lockedBonusWithdrawalAmount=userId=>App.depositBonusProgress(userId).reduce((sum,x)=>sum+Number(x.lockedAmount||0),0);
+App.withdrawableRealBalance=userId=>Math.max(0,App.realBalance(userId)-App.lockedBonusWithdrawalAmount(userId));
 App.kycStatus=id=>([...App.state.kycRequests].reverse().find(x=>x.userId===id)?.status)||"NOT_SUBMITTED";
 App.normalizePlan=plan=>({
   id:String(plan?.id||uid("plan")),
@@ -600,8 +606,37 @@ App.aiTradesToday=userId=>App.state.trades.filter(t=>t.userId===userId&&["AI_AUT
 App.aiDailyLimit=userId=>{const sub=App.activeSubscription(userId);if(sub){const plan=App.planById(sub.planId)||{};return Number(sub.aiTradeLimit||sub.signals||plan.signals||50)||50}const trial=App.freeTrialInfo(userId);return trial.active?Number(App.state.settings.freeAiTradesPerDay||5):Number(App.state.settings.postTrialFreeAiTradesPerDay||1)};
 App.aiSettings=user=>({enabled:!!user?.aiTradeOn,percent:Number(user?.aiTradePercent||25)});
 App.aiAllowedAmount=user=>{const settings=App.aiSettings(user);if(!settings.enabled)return 0;return Math.max(0,App.realBalance(user.id))*settings.percent/100};
-App.addLedger=({userId,accountType="REAL",type,amount,referenceId,note=""})=>{accountType=String(accountType||"REAL").toUpperCase();const list=accountType==="DEMO"?App.state.demoLedger:App.state.walletLedger;if(list.some(x=>x.userId===userId&&String(x.accountType||accountType).toUpperCase()===accountType&&x.type===type&&x.referenceId===referenceId))return false;const before=accountType==="DEMO"?App.demoBalance(userId):App.realBalance(userId),after=before+Number(amount||0);if(after<0)throw new Error("Insufficient balance");const row={id:uid("ledger"),userId,accountType,type,amount:Number(amount||0),referenceId,note,balanceAfter:after,createdAt:now()};list.push(row);if(DB_ONLY&&window.AITradeXDB?.writeLedger){window.AITradeXDB.writeLedger(row).catch(err=>console.warn("ledger write failed",err));}App.saveState();return row};
-App.addLedgerAsync=async ({userId,accountType="REAL",type,amount,referenceId,note=""})=>{accountType=String(accountType||"REAL").toUpperCase();const list=accountType==="DEMO"?App.state.demoLedger:App.state.walletLedger;if(list.some(x=>x.userId===userId&&String(x.accountType||accountType).toUpperCase()===accountType&&x.type===type&&x.referenceId===referenceId))return false;const before=accountType==="DEMO"?App.demoBalance(userId):App.realBalance(userId),after=before+Number(amount||0);if(after<0)throw new Error("Insufficient balance");const row={id:uid("ledger"),userId,accountType,type,amount:Number(amount||0),referenceId,note,balanceAfter:after,createdAt:now()};if(DB_ONLY&&window.AITradeXDB?.writeLedger){await window.AITradeXDB.writeLedger(row);}list.push(row);App.saveState();return row};
+App.addLedger=({userId,accountType="REAL",type,amount,referenceId,note="",...extra})=>{accountType=String(accountType||"REAL").toUpperCase();const list=accountType==="DEMO"?App.state.demoLedger:App.state.walletLedger;if(list.some(x=>x.userId===userId&&String(x.accountType||accountType).toUpperCase()===accountType&&x.type===type&&x.referenceId===referenceId))return false;const before=accountType==="DEMO"?App.demoBalance(userId):App.realBalance(userId),after=before+Number(amount||0);if(after<0)throw new Error("Insufficient balance");const row={...extra,id:uid("ledger"),userId,accountType,type,amount:Number(amount||0),referenceId,note,balanceAfter:after,createdAt:now()};list.push(row);if(DB_ONLY&&window.AITradeXDB?.writeLedger){window.AITradeXDB.writeLedger(row).catch(err=>console.warn("ledger write failed",err));}App.saveState();return row};
+App.addLedgerAsync=async ({userId,accountType="REAL",type,amount,referenceId,note="",...extra})=>{accountType=String(accountType||"REAL").toUpperCase();const list=accountType==="DEMO"?App.state.demoLedger:App.state.walletLedger;if(list.some(x=>x.userId===userId&&String(x.accountType||accountType).toUpperCase()===accountType&&x.type===type&&x.referenceId===referenceId))return false;const before=accountType==="DEMO"?App.demoBalance(userId):App.realBalance(userId),after=before+Number(amount||0);if(after<0)throw new Error("Insufficient balance");const row={...extra,id:uid("ledger"),userId,accountType,type,amount:Number(amount||0),referenceId,note,balanceAfter:after,createdAt:now()};if(DB_ONLY&&window.AITradeXDB?.writeLedger){await window.AITradeXDB.writeLedger(row);}list.push(row);App.saveState();return row};
+
+
+App.applyDepositBonusAsync=async ({userId,depositRequest,amount}={})=>{
+  const settings=App.depositBonusSettings();
+  if(settings.depositBonusEnabled===false)return {credited:false,reason:"Deposit bonus disabled"};
+  const request=depositRequest||{};
+  const depositAmount=Number(amount||request.amount||0);
+  if(!userId||!request.id||!depositAmount||depositAmount<=0)return {credited:false,reason:"Invalid deposit bonus input"};
+  if(String(request.status||"").toUpperCase()!=="APPROVED")return {credited:false,reason:"Deposit is not approved"};
+  const ref=`dep_bonus_${request.id}`;
+  const already=App.hasLedgerEntry?.({userId,accountType:"REAL",type:"DEPOSIT_BONUS",referenceId:ref})||App.depositBonusLedgerRows(userId).some(x=>x.referenceId===ref);
+  if(already)return {credited:false,reason:"Bonus already applied"};
+  const priorApproved=(App.state.depositRequests||[]).filter(r=>r.userId===userId&&r.id!==request.id&&String(r.status||"").toUpperCase()==="APPROVED").length;
+  const isFirst=priorApproved===0;
+  const percent=Number(isFirst?settings.depositFirstBonusPercent:settings.depositEveryBonusPercent)||0;
+  const cap=Number(isFirst?settings.depositFirstBonusCap:settings.depositEveryBonusCap)||0;
+  let bonus=Number((depositAmount*percent/100).toFixed(2));
+  if(cap>0) bonus=Math.min(bonus,cap);
+  if(!bonus||bonus<=0)return {credited:false,reason:"Bonus is zero"};
+  const multiplier=Math.max(0,Number(settings.depositBonusTurnoverMultiplier||10));
+  const requiredTurnover=Number((bonus*multiplier).toFixed(2));
+  const bonusLock={depositId:request.id,depositAmount,bonusAmount:bonus,percent,cap,isFirst,requiredTurnover,turnoverMultiplier:multiplier,creditedAt:new Date().toISOString(),lockEnabled:settings.depositBonusLockEnabled!==false};
+  const row=await (App.addLedgerAsync?App.addLedgerAsync({userId,accountType:"REAL",type:"DEPOSIT_BONUS",amount:bonus,referenceId:ref,note:`${isFirst?"First":"Every"} deposit bonus · ${percent}% · turnover ${multiplier}x`,bonusLock}):App.addLedger({userId,accountType:"REAL",type:"DEPOSIT_BONUS",amount:bonus,referenceId:ref,note:`${isFirst?"First":"Every"} deposit bonus · ${percent}% · turnover ${multiplier}x`,bonusLock}));
+  request.bonus={...(request.bonus||{}),credited:true,ledgerReferenceId:ref,amount:bonus,percent,cap,isFirst,requiredTurnover,turnoverMultiplier:multiplier,creditedAt:bonusLock.creditedAt,status:"LOCKED"};
+  request.bonusLock=bonusLock;
+  try{ if(DB_ONLY&&window.AITradeXDB?.writeDepositRequest) await window.AITradeXDB.writeDepositRequest(request); }catch(err){ console.warn("Deposit bonus request sync failed",err?.message||err); }
+  App.saveState();
+  return {credited:!!row,amount:bonus,percent,isFirst,requiredTurnover,turnoverMultiplier:multiplier,row};
+};
 
 App.referralSettings=()=>{
   App.state.settings=App.state.settings||{};

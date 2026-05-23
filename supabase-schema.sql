@@ -238,9 +238,9 @@ create index if not exists wallet_ledger_user_id_idx on public.wallet_ledger(use
 create index if not exists notifications_user_id_idx on public.notifications(user_id);
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','5.34','mode','action-database'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','5.37','mode','action-database'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.34','mode','action-database'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.37','mode','action-database'),
     updated_at = now();
 
 
@@ -255,9 +255,9 @@ create index if not exists admin_action_logs_created_at_idx on public.admin_acti
 create index if not exists notifications_created_at_idx on public.notifications(created_at desc);
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','5.34','mode','action-database-clean-persistence'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','5.37','mode','action-database-clean-persistence'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.34','mode','action-database-clean-persistence'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.37','mode','action-database-clean-persistence'),
     updated_at = now();
 
 
@@ -268,9 +268,9 @@ alter table public.users add column if not exists password_hash text;
 alter table public.notifications add column if not exists raw jsonb default '{}'::jsonb;
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','5.34','mode','final-clean-audit-fix','passwordStorage','salted-sha256-runtime'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','5.37','mode','final-clean-audit-fix','passwordStorage','salted-sha256-runtime'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.34','mode','final-clean-audit-fix','passwordStorage','salted-sha256-runtime'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.37','mode','final-clean-audit-fix','passwordStorage','salted-sha256-runtime'),
     updated_at = now();
 
 
@@ -297,9 +297,9 @@ on conflict (id) do update set
 
 -- Phase 5.29: final deep consistency marker
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','5.34','mode','final-deep-consistency-fix','passwordStorage','salted-sha256-runtime'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','5.37','mode','final-deep-consistency-fix','passwordStorage','salted-sha256-runtime'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.34','mode','final-deep-consistency-fix','passwordStorage','salted-sha256-runtime'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.37','mode','final-deep-consistency-fix','passwordStorage','salted-sha256-runtime'),
     updated_at = now();
 
 
@@ -330,15 +330,43 @@ begin
 end $$;
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','5.34','mode','rls-safety-pack','rlsMode','testing-frontend-compatible'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','5.37','mode','rls-safety-pack','rlsMode','testing-frontend-compatible'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.34','mode','rls-safety-pack','rlsMode','testing-frontend-compatible'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.37','mode','rls-safety-pack','rlsMode','testing-frontend-compatible'),
     updated_at = now();
 
 
 -- Phase 5.34: Live Sync Lite marker.
 insert into public.app_settings (id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','5.34','mode','live-sync-lite','liveSync','supabase-realtime-silent-ui'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','5.37','mode','live-sync-lite','liveSync','supabase-realtime-silent-ui'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.34','mode','live-sync-lite','liveSync','supabase-realtime-silent-ui'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','5.37','mode','live-sync-lite','liveSync','supabase-realtime-silent-ui'),
     updated_at = now();
+
+
+-- Phase 5.37 deposit bonus + turnover lock defaults
+insert into public.app_settings (id, settings, updated_at)
+values ('main', jsonb_build_object(
+  'databaseRuntimeVersion','5.37',
+  'mode','deposit-bonus-turnover-lock',
+  'depositBonusEnabled', true,
+  'depositFirstBonusPercent', 10,
+  'depositFirstBonusCap', 1000,
+  'depositEveryBonusPercent', 5,
+  'depositEveryBonusCap', 500,
+  'depositBonusTurnoverMultiplier', 10,
+  'depositBonusLockEnabled', true
+), now())
+on conflict (id) do update
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object(
+  'databaseRuntimeVersion','5.37',
+  'mode','deposit-bonus-turnover-lock',
+  'depositBonusEnabled', coalesce(public.app_settings.settings->'depositBonusEnabled','true'::jsonb),
+  'depositFirstBonusPercent', coalesce(public.app_settings.settings->'depositFirstBonusPercent','10'::jsonb),
+  'depositFirstBonusCap', coalesce(public.app_settings.settings->'depositFirstBonusCap','1000'::jsonb),
+  'depositEveryBonusPercent', coalesce(public.app_settings.settings->'depositEveryBonusPercent','5'::jsonb),
+  'depositEveryBonusCap', coalesce(public.app_settings.settings->'depositEveryBonusCap','500'::jsonb),
+  'depositBonusTurnoverMultiplier', coalesce(public.app_settings.settings->'depositBonusTurnoverMultiplier','10'::jsonb),
+  'depositBonusLockEnabled', coalesce(public.app_settings.settings->'depositBonusLockEnabled','true'::jsonb)
+),
+updated_at = now();
