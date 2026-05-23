@@ -1,40 +1,29 @@
-AITradeX Phase 6.7 - Plan + Subscription Backend Control
+AITradeX Phase6.9 - RLS Readiness Pack
 
-Base: Phase 6.5.6 Manual Price Unit Double Convert Fix.
+Base: Phase6.8 Wallet Telegram Backend.
+This build keeps the same UI/design and working flows, but adds RLS readiness files and clearer production-lock guidance.
 
-What changed:
-1. KYC approve/reject now uses secure Supabase RPC functions in database mode.
-2. Bank/payment method approve/reject now uses secure Supabase RPC functions in database mode.
-3. Backend functions validate active admin, lock the target row, block duplicate completed actions, update status, write user notification, write admin action log and backend action queue.
-4. Existing UI/design is preserved.
-5. Deposit backend, withdrawal backend, AI backend settlement and manual trade backend settlement are preserved.
+What is included:
+- Deposit approve/reject backend RPC from previous phases.
+- Withdrawal approve/reject backend RPC from previous phases.
+- AI Live backend settlement from previous phases.
+- Manual trade backend settlement and price-unit cleanup from previous phases.
+- KYC + payment method backend approval from previous phases.
+- Subscription backend control from previous phases.
+- Admin wallet adjustment backend RPC and Telegram audit logs from Phase6.8.
+- New safe audit file: supabase-rls-readiness-audit.sql
+- New production template: supabase-strict-rls-final-lock-template.sql
 
-Required deploy steps:
-1. Run the updated supabase-schema.sql in Supabase SQL Editor.
-2. Upload/deploy this ZIP.
-3. Hard refresh browser: Ctrl + Shift + R.
+Important deployment notes:
+1. For normal testing/deploy, run supabase-schema.sql only if you have not already applied Phase6.8 schema or if you want the latest runtime marker.
+2. You may safely run supabase-rls-readiness-audit.sql. It only reports RLS/function status and does not change data.
+3. Do NOT run supabase-strict-rls-final-lock-template.sql on the current legacy-testing app. It is a future production template only.
+4. Upload the ZIP files to hosting.
+5. Hard refresh browser with Ctrl + Shift + R.
 
-Test checklist:
-- Submit KYC as user, approve from admin, refresh both sides.
-- Submit KYC as user, reject from admin with reason, refresh both sides.
-- Add bank/payment method as user, approve from admin, refresh both sides.
-- Add bank/payment method as user, reject from admin, refresh both sides.
-- Confirm deposit, withdrawal, AI live and manual trade flows still work.
+Why strict RLS is not enabled directly:
+The current app still supports legacy frontend testing mode. If strict production RLS is enabled before Supabase Auth/Edge Functions are fully active, user/admin panels can lose DB access. Strict RLS should be the last production-lock step.
 
-Real-money note:
-This is one more backend-security step, but final real-money launch still requires Supabase Auth/strict RLS and backend-only sensitive actions across all remaining modules.
-
-
-Phase 6.7 notes:
-- User plan purchase now uses backend RPC aitradex_purchase_plan in Supabase mode.
-- Admin plan change now uses backend RPC aitradex_change_user_plan in Supabase mode.
-- Existing UI/design is unchanged.
-- Run the updated supabase-schema.sql before deploy because new RPC functions are added.
-
-
-Phase6.8 update:
-- Admin wallet add/deduct now uses backend RPC: aitradex_admin_wallet_adjust.
-- Wallet adjustment creates ledger, user notification, admin log and backend action queue in one database-side action.
-- Telegram sending now records audit logs in telegram_alert_logs.
-- Optional Supabase Edge Function template added for production-safe Telegram token handling.
-- Run updated supabase-schema.sql before deployment.
+Current build:
+Phase6.9-RLSReadinessPack
+Cache version: phase69rlsreadinesspack

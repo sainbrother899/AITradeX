@@ -2715,7 +2715,7 @@
           </article>
           <article>
             <b>Setup Required</b>
-            <p>Run <code>supabase-schema.sql</code>, then run <code>supabase-storage-policies.sql</code> and <code>supabase-core-sync-policies.sql</code> for testing RLS. For production review, use <code>supabase-production-rls-template.sql</code> only after backend/Auth migration..</p>
+            <p>Run <code>supabase-schema.sql</code>, then run <code>supabase-storage-policies.sql</code> and <code>supabase-core-sync-policies.sql</code> for testing RLS. For production review, use <code>supabase-rls-readiness-audit.sql</code> first. Use <code>supabase-strict-rls-final-lock-template.sql</code> only after backend/Auth migration is fully complete.</p>
           </article>
           <article>
             <b>Last Core Sync</b>
@@ -2726,7 +2726,7 @@
           ${countRows}
         </div>
         <div class="database-status-panel security-status-panel">
-          <article><b>Security Notice</b><p class="text-loss">Testing policies are open for prototype mode. Public launch requires Supabase Auth roles or Edge Functions.</p></article>
+          <article><b>Security Notice</b><p class="text-loss">Phase6.9 RLS readiness is prepared. Testing policies stay frontend-compatible; strict production RLS must be enabled only after Supabase Auth/Edge Functions are fully active.</p></article>
           <article><b>Admin Action Logs</b><p>${(App.state.adminActionLogs || []).length} local audit row(s) ready for Supabase sync.</p></article>
           <article><b>Last Backup</b><p>${lastSync ? esc(new Date(lastSync.at).toLocaleString("en-IN")) : "No sync yet."}</p></article>
         </div>
@@ -2812,8 +2812,8 @@
             <article class="admin-small-row"><b>Wrong password lock</b><span>5 wrong attempts = 15 minute lock</span></article>
             <article class="admin-small-row"><b>Audit record</b><span>Admin login/logout and sensitive actions are recorded locally + syncable</span></article>
             <article class="admin-small-row"><b>Manual logout</b><span>Clears current admin session immediately</span></article>
-            <article class="admin-small-row"><b>Phase6.1 Auth Foundation</b><span>Prepared for Supabase Auth + Edge Functions; legacy testing login remains active until backend actions are migrated.</span></article>
-            <article class="admin-small-row"><b>Real-money readiness</b><span>Do not enable strict production RLS until deposit/withdraw/AI settlement are moved to backend functions.</span></article>
+            <article class="admin-small-row"><b>Phase6.9 RLS Readiness</b><span>Backend RPC flows are staged; strict RLS templates and audit queries are included, while legacy testing login remains active until final Auth migration.</span></article>
+            <article class="admin-small-row"><b>Real-money readiness</b><span>Do not run strict production RLS until Supabase Auth roles/Edge Functions are live for every sensitive action.</span></article>
           </div>
         </article>
         <article class="premium-card security-card">
@@ -2846,7 +2846,7 @@
           <span class="admin-count-pill">${logs.length} logs</span>
         </div>
         <div class="database-status-panel security-status-panel">
-          <article><b>Security Mode</b><p class="text-loss">Phase6.1 foundation is active: current UI stays same, while Supabase Auth/backend migration tables and templates are prepared. Public launch still needs backend action migration before strict RLS.</p></article>
+          <article><b>Security Mode</b><p class="text-loss">Phase6.9 readiness is active: current UI stays same, backend RPC flows are prepared for sensitive actions, and strict RLS templates are included for final production lock after Auth/Edge Functions.</p></article>
           <article><b>Today Actions</b><p>${todayCount} admin action(s) recorded today.</p></article>
           <article><b>Sensitive Actions</b><p>${sensitive} wallet, finance, KYC, AI, plan or user-control actions tracked.</p></article>
           <article><b>Latest Action</b><p>${last ? `${esc(last.action)} · ${new Date(last.createdAt).toLocaleString("en-IN")}` : "No action recorded yet."}</p></article>
@@ -3733,8 +3733,8 @@
         maxOpenPositionsPerUser: Math.max(1, Number(inputValue("settingMaxOpenPositions") || 10)),
         usdtInrRate: Math.max(1, Number(inputValue("settingUsdtInrRate") || 95)),
         phase6AuthMode: settings.phase6AuthMode || "legacy-testing",
-        phase6BackendMode: settings.phase6BackendMode || "deposit-withdrawal-ai-manual-kyc-payment-subscription-rpc",
-        phase6Build: "6.7-subscription-backend"
+        phase6BackendMode: settings.phase6BackendMode || "deposit-withdrawal-ai-manual-kyc-payment-subscription-wallet-rpc-rls-ready",
+        phase6Build: "6.9-rls-readiness-pack"
       };
       logAdminAction("APP_SETTINGS_UPDATE", "SETTINGS", "app", { depositEnabled: App.state.settings.depositEnabled, withdrawalEnabled: App.state.settings.withdrawalEnabled, manualTradingEnabled: App.state.settings.manualTradingEnabled, aiTradingEnabled: App.state.settings.aiTradingEnabled, maintenanceMode: App.state.settings.maintenanceMode, maxLeverage: App.state.settings.maxLeverage });
       await persistSettings("app settings");

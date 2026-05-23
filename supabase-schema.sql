@@ -1857,3 +1857,23 @@ values ('main', jsonb_build_object('databaseRuntimeVersion','6.8','mode','phase6
 on conflict (id) do update
 set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.8','mode','phase6-wallet-telegram-backend','adminWalletBackend','rpc-secure-function','telegramBackend','edge-template-plus-db-audit'),
     updated_at = now();
+
+-- =============================================================
+-- Phase 6.9 RLS readiness runtime marker
+-- This does not enable strict production RLS. It only marks the current DB/runtime mode.
+-- =============================================================
+insert into public.app_settings (id, settings, updated_at)
+values ('main', jsonb_build_object(
+  'databaseRuntimeVersion','6.9',
+  'mode','phase6-rls-readiness-pack',
+  'rlsReadiness','audit-plus-final-lock-template',
+  'strictRlsActive','false'
+), now())
+on conflict (id) do update
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object(
+  'databaseRuntimeVersion','6.9',
+  'mode','phase6-rls-readiness-pack',
+  'rlsReadiness','audit-plus-final-lock-template',
+  'strictRlsActive','false'
+),
+updated_at = now();
