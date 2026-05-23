@@ -301,14 +301,40 @@
     return Number.isFinite(current) && current > 0 ? current : fallback;
   }
 
+  function normalizeLimitComparisonPrice(order, row) {
+    if (!order || !row) return null;
+    let price = Number(row.price || 0);
+    if (!Number.isFinite(price) || price <= 0) return null;
+    const pair = order.pair || row.pair || selectedPair;
+    const reference = Math.max(
+      Number(order.limitPrice || 0),
+      Number(order.currentPriceAtOrder || 0),
+      Number(order.entryPrice || 0)
+    );
+
+    // Crypto limit prices are stored in raw USDT terms, while the UI displays INR.
+    // A stale/older cache row can occasionally carry the INR value in row.price.
+    // For SELL limits that makes current>=limit always true, so normalize before comparing.
+    if (App.isCryptoPair?.(pair) && reference > 0) {
+      const ratio = price / reference;
+      if (ratio > 20 && App.cryptoInrToRaw) {
+        const converted = Number(App.cryptoInrToRaw(price) || 0);
+        if (Number.isFinite(converted) && converted > 0) {
+          price = converted;
+        }
+      }
+    }
+
+    if (!Number.isFinite(price) || price <= 0) return null;
+    return { ...row, price };
+  }
+
   function pendingOrderPriceRow(order) {
     // Limit orders must only trigger from an actual live/cached market price.
     // Never fall back to the order limit price, otherwise a SELL limit can self-trigger
     // when the user navigates away from the orders page and no price card is visible.
     const row = positionPriceRow({ pair: order?.pair });
-    const price = Number(row?.price || 0);
-    if (!row || !Number.isFinite(price) || price <= 0) return null;
-    return row;
+    return normalizeLimitComparisonPrice(order, row);
   }
 
   function pendingOrderLiveDisplay(order) {
