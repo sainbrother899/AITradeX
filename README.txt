@@ -41,3 +41,10 @@ Phase 6.9.2 update notes:
 - Use supabase/functions/telegram-alert/index.ts for Telegram alerts.
 - Do not run strict RLS lock files until Supabase Auth + service-role admin functions are ready.
 - See PHASE6.9.2-FINAL-MONEY-SECURITY-PACK.txt for the test checklist.
+
+
+Phase 6.9.3 update notes:
+- Final UI polish layer added to styles.css.
+- Dashboard cards, spacing, mobile layout, action rows and visible focus/hover states polished.
+- No new SQL is required if Phase 6.9.2 SQL is already run.
+- See PHASE6.9.3-FINAL-UI-POLISH-PACK.txt for the final test checklist.

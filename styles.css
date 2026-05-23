@@ -7563,3 +7563,163 @@ textarea::placeholder{
     min-height:40px;
   }
 }
+
+/* Phase 6.9.3 Final UI Polish + Dashboard Finishing
+   Clean override layer only: preserves current HTML/JS and removes visual rough edges without changing flows. */
+:root{
+  --aitx-card-border:rgba(148,163,184,.16);
+  --aitx-card-bg:linear-gradient(145deg,rgba(15,23,42,.92),rgba(8,17,35,.82));
+  --aitx-soft-bg:rgba(255,255,255,.045);
+  --aitx-soft-bg-2:rgba(255,255,255,.07);
+  --aitx-focus:rgba(56,189,248,.48);
+}
+
+/* Shared shell rhythm */
+.app-shell,.control-shell{min-height:100vh;}
+.page-title,.admin-pro-title{gap:14px;}
+.premium-card,.panel-card,.metric-card,.admin-request-card,.admin-user-control-card,.auth-panel,.trade-card{
+  border:1px solid var(--aitx-card-border);
+  background:var(--aitx-card-bg);
+  box-shadow:0 18px 55px rgba(2,6,23,.24), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.premium-card:hover,.panel-card:hover,.metric-card:hover,.admin-request-card:hover,.admin-user-control-card:hover{
+  border-color:rgba(125,211,252,.26);
+  box-shadow:0 22px 70px rgba(2,6,23,.30), inset 0 1px 0 rgba(255,255,255,.08);
+}
+button,input,select,textarea{transition:border-color .18s ease,background .18s ease,transform .18s ease,box-shadow .18s ease,opacity .18s ease;}
+button:not(:disabled):active{transform:translateY(1px) scale(.995);}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{
+  outline:2px solid var(--aitx-focus);
+  outline-offset:3px;
+}
+button:disabled{opacity:.52;cursor:not-allowed;filter:saturate(.72);}
+input,select,textarea{
+  border-color:rgba(148,163,184,.18)!important;
+  background:rgba(15,23,42,.76)!important;
+}
+input:focus,select:focus,textarea:focus{
+  border-color:rgba(56,189,248,.54)!important;
+  box-shadow:0 0 0 4px rgba(14,165,233,.10)!important;
+}
+
+/* Better typography and text overflow */
+.card-row h2,.section-head h3,.metric-card strong,.user-command-copy h1,.admin-dashboard-hero h2{letter-spacing:-.035em;}
+.card-row h4,.section-head span,.metric-card small,.user-command-copy span,.admin-dashboard-hero p{line-height:1.55;}
+.metric-card strong,.admin-count-pill,.status-pill,.hero-mode-chip{font-variant-numeric:tabular-nums;}
+.admin-small-row b,.user-activity-row b,.admin-history-row b,.metric-card strong{overflow-wrap:anywhere;}
+
+/* User dashboard finishing */
+.user-command-hero.clean-home-hero{
+  border:1px solid rgba(56,189,248,.22);
+  box-shadow:0 24px 80px rgba(2,8,23,.34), inset 0 1px 0 rgba(255,255,255,.08);
+  overflow:hidden;
+}
+.user-command-hero.clean-home-hero:after{
+  content:"";position:absolute;inset:auto -18% -48% 38%;height:230px;
+  background:radial-gradient(circle,rgba(34,211,238,.18),transparent 62%);
+  pointer-events:none;
+}
+.hero-mode-row,.user-command-actions,.user-command-meta{position:relative;z-index:1;}
+.hero-wallet-line{align-items:flex-end;gap:10px;flex-wrap:wrap;}
+.hero-wallet-line b{font-size:clamp(28px,5vw,48px);line-height:1;}
+.hero-wallet-line em{padding:7px 10px;border-radius:999px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.08);}
+.clean-home-meta article,.home-summary-grid article,.quick-action-grid button,.readiness-item{
+  border:1px solid rgba(148,163,184,.14);
+  background:rgba(15,23,42,.62);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.045);
+}
+.home-summary-grid article:hover,.quick-action-grid button:hover,.readiness-item:hover{
+  border-color:rgba(56,189,248,.32);
+  background:rgba(15,23,42,.78);
+}
+.dashboard-action-center{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  border-color:rgba(45,212,191,.18);
+}
+.dashboard-action-center h4{max-width:720px;}
+.user-recent-activity-card .user-activity-list,.dashboard-activity-panel .admin-list,.dashboard-pending-panel .admin-list{gap:10px;}
+.user-activity-row,.dashboard-action-row,.dashboard-activity-row,.admin-small-row{
+  border:1px solid rgba(148,163,184,.12);
+  background:rgba(255,255,255,.04);
+}
+.user-activity-row:hover,.dashboard-action-row:hover,.dashboard-activity-row:hover,.admin-small-row:hover{
+  border-color:rgba(125,211,252,.24);
+  background:rgba(255,255,255,.065);
+}
+
+/* Admin dashboard finishing */
+.admin-dashboard-hero{
+  position:relative;overflow:hidden;
+  border:1px solid rgba(56,189,248,.20);
+  background:linear-gradient(135deg,rgba(8,20,42,.96),rgba(14,51,78,.78));
+  box-shadow:0 24px 75px rgba(2,6,23,.32), inset 0 1px 0 rgba(255,255,255,.07);
+}
+.admin-dashboard-hero:after{
+  content:"";position:absolute;right:-80px;top:-90px;width:240px;height:240px;border-radius:999px;
+  background:radial-gradient(circle,rgba(45,212,191,.18),transparent 62%);
+  pointer-events:none;
+}
+.admin-dashboard-hero>*{position:relative;z-index:1;}
+.admin-dashboard-primary-metrics .metric-card{min-height:132px;display:flex;flex-direction:column;justify-content:space-between;}
+.metric-top i{display:inline-grid;place-items:center;width:36px;height:36px;border-radius:14px;background:rgba(255,255,255,.06);}
+.metric-card strong{font-size:clamp(22px,2.2vw,32px);line-height:1.05;}
+.dashboard-control-grid{align-items:start;}
+.pending-action-link,.dashboard-action-row,.dashboard-activity-row{min-height:64px;}
+.admin-count-pill,.status-pill,.hero-mode-chip,.mini-action,.ghost-action,.change-pair-btn,.approve-btn,.reject-btn,.outline-btn{
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
+}
+.admin-filter-bar,.admin-filter-card{
+  border:1px solid rgba(148,163,184,.14);
+  background:rgba(15,23,42,.72);
+  box-shadow:0 16px 48px rgba(2,6,23,.20);
+}
+.admin-pagination{border-top:1px solid rgba(148,163,184,.12);padding-top:12px;margin-top:12px;}
+.admin-history-table,.admin-mini-table,.admin-request-list,.admin-user-card-list,.paged-finance-list{gap:12px;}
+
+/* Finance/request polish */
+.finance-review-card.pending{border-color:rgba(250,204,21,.22);}
+.finance-review-card.approved{border-color:rgba(34,197,94,.20);}
+.finance-review-card.rejected{border-color:rgba(248,113,113,.20);}
+.admin-action-row{gap:10px;flex-wrap:wrap;}
+.admin-action-row button{min-height:42px;}
+.kyc-debug-line,.admin-date-line{
+  border:1px solid rgba(148,163,184,.12);
+  background:rgba(255,255,255,.035);
+  border-radius:14px;
+  padding:9px 11px;
+}
+
+/* Navigation polish without layout rewrite */
+.admin-nav-button,.nav-item,.mobile-nav button{
+  border:1px solid transparent;
+}
+.admin-nav-button:hover,.nav-item:hover,.mobile-nav button:hover{
+  border-color:rgba(125,211,252,.16);
+  background:rgba(255,255,255,.055);
+}
+.admin-nav-button.active,.nav-item.active,.mobile-nav button.active{
+  border-color:rgba(56,189,248,.28);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 10px 26px rgba(14,165,233,.10);
+}
+
+/* Mobile finishing */
+@media(max-width:900px){
+  .dashboard-action-center{align-items:stretch;flex-direction:column;}
+  .dashboard-action-center .change-pair-btn{width:100%;}
+  .admin-dashboard-primary-metrics{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .admin-dashboard-primary-metrics .metric-card{min-height:118px;}
+}
+@media(max-width:620px){
+  body{overflow-x:hidden;}
+  .premium-card,.panel-card,.metric-card,.admin-request-card,.admin-user-control-card{border-radius:20px;}
+  .user-command-hero.clean-home-hero,.admin-dashboard-hero{border-radius:24px;}
+  .hero-wallet-line{align-items:flex-start;flex-direction:column;}
+  .user-command-actions{grid-template-columns:1fr;}
+  .clean-home-meta,.home-summary-grid,.quick-action-grid,.readiness-grid,.admin-dashboard-primary-metrics{grid-template-columns:1fr;}
+  .admin-action-row button,.user-command-actions button,.quick-action-grid button{width:100%;}
+  .page-title,.admin-pro-title{align-items:flex-start;}
+  .admin-header-actions{width:100%;justify-content:space-between;}
+  .admin-profile-chip b{max-width:118px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .admin-small-row,.user-activity-row,.dashboard-activity-row{align-items:flex-start;}
+  .admin-pagination{flex-direction:column;align-items:stretch;}
+}
