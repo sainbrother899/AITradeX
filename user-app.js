@@ -2106,7 +2106,7 @@
     const kycStatus = App.kycStatus(user()?.id || "");
     const bankReady = approvedPaymentMethods().length > 0;
     return `
-      <section class="user-command-hero clean-home-hero real final-real-home-hero">
+      <section class="user-command-hero clean-home-hero real compact-final-home-hero">
         <div class="hero-glow-orb"></div>
         <div class="hero-mode-row">
           <span class="hero-mode-chip">Real Account</span>
@@ -2120,12 +2120,6 @@
             <b>${App.money(balance)}</b>
             <em class="${pnl >= 0 ? "profit-text" : "loss-text"}">${pnl >= 0 ? "+" : ""}${App.money(pnl)} today</em>
           </div>
-        </div>
-        <div class="user-command-actions premium-hero-actions">
-          <button onclick="AITradeXUser.go('wallet')">Deposit</button>
-          <button onclick="AITradeXUser.setWalletModeAndGo('WITHDRAWAL')">Withdraw</button>
-          <button onclick="AITradeXUser.go('trade')">Trade</button>
-          <button onclick="AITradeXUser.go('positions')">Positions</button>
         </div>
         <div class="user-command-meta clean-home-meta">
           <article><span>Manual</span><b>${activeManualCount}</b></article>
@@ -2252,114 +2246,182 @@
 
   function tradePage() {
     const pair = selectedPairData();
+    const balance = currentBalance();
+    const marginValue = Number(tradeAmountPreview || 0);
+    const leverageValue = Math.max(1, Number(tradeLeveragePreview || 1));
+    const positionSize = marginValue * leverageValue;
     const tradeIsActive = isTradeActivePair(pair.pair);
-    const margin = Math.max(0, Number(tradeAmountPreview || 0));
-    const leverage = Math.max(1, Number(tradeLeveragePreview || 1));
-    const positionSize = margin * leverage;
-    const settings = platformSettings();
-    const available = currentBalance();
+    const marginWarning = tradeIsActive && marginValue > balance;
+
     shell(`
-      <section class="premium-card final-trade-header">
-        <div>
-          <p>TRADE</p>
-          <h2>${App.escapeHtml(displayPair(pair.pair || selectedPair))}</h2>
-          <h4><span data-live-pair="${App.escapeHtml(pair.pair || selectedPair)}" data-live-type="line">${App.escapeHtml(pair.price || "--")} · <em class="${changeClass(pair.change)}">${App.escapeHtml(pair.change || "Live")}</em></span></h4>
+      <section class="trade-command clean-pair-card trade-hero-premium">
+        <div class="trade-hero-main">
+          <p>${selectedMarket} MARKET</p>
+          <h1>${displayPair(selectedPair)}</h1>
+          <span data-price-card="${tradeIsActive ? "true" : "false"}" data-live-pair="${pair.pair}" data-live-type="line">${pair.price} · <em class="${tradeIsActive ? changeClass(pair.change) : "upcoming-text"}">${pair.change}</em></span>
         </div>
-        <button class="change-pair-btn" onclick="AITradeXUser.openSheet('pair')">Change Pair</button>
+        <div class="trade-hero-side">
+          <span class="trade-mode-badge ${accountMode.toLowerCase()}">${accountMode} Account</span>
+          ${usdtRateChip("trade-rate-chip")}
+          <button class="change-pair-btn" onclick="AITradeXUser.openSheet('pair')">Change Pair</button>
+        </div>
+        <div class="trade-hero-metrics">
+          <article><span>Available</span><b>${App.money(balance)}</b></article>
+          <article><span>Signal</span><b class="${tradeIsActive ? changeClass(pair.change) : "upcoming-text"}">${tradeIsActive ? pair.signal || "LIVE" : "SOON"}</b></article>
+          <article><span>Leverage</span><b>${leverageValue}x</b></article>
+        </div>
       </section>
 
-      <section class="trading-chart-card final-trade-chart">
-        <div class="trade-chart-head">
-          <div><p>LIVE CHART</p><h2>${App.escapeHtml(pair.pair || selectedPair)}</h2></div>
-          <button class="ghost-action" onclick="AITradeXUser.openSheet('chart-settings')">Chart Settings</button>
+      <section class="trade-select-bar app-selector-bar market-only-bar">
+        <div class="market-switch">
+          <button class="${selectedMarket === "CRYPTO" ? "active" : ""}" onclick="AITradeXUser.setMarket('CRYPTO')">Crypto</button>
+          <button class="${selectedMarket === "FOREX" ? "active" : ""}" onclick="AITradeXUser.setMarket('FOREX')">Forex & Metals <small>Soon</small></button>
         </div>
-        <div id="tradingview_chart_container" class="tradingview-chart-container"></div>
       </section>
 
-      <section class="premium-card final-order-ticket">
-        <div class="card-row">
+      <section class="pair-rate-list">
+        ${pairsForMarket().map(raw => { const p = pairView(raw); return `
+          <button class="${selectedPair === p.pair ? "active" : ""} ${isUpcomingPair(p.pair) ? "upcoming-pair" : ""}" onclick="AITradeXUser.selectPair('${p.pair}')">
+            <b>${displayPair(p.pair)}</b>
+            <span data-price-card="${isTradeActivePair(p.pair) ? "true" : "false"}" data-live-pair="${p.pair}" data-live-type="price">${p.price}</span>
+            <em data-live-pair="${p.pair}" data-live-type="change" class="${isUpcomingPair(p.pair) ? "upcoming-text" : changeClass(p.change)}">${p.change}</em>
+          </button>
+        `; }).join("")}
+      </section>
+
+      <section class="chart-shell tradingview-shell">
+        <div class="chart-toolbar working-timeframes">
+          ${[
+            ["1", "1m"],
+            ["5", "5m"],
+            ["15", "15m"],
+            ["30", "30m"],
+            ["60", "1h"],
+            ["240", "4h"],
+            ["D", "1D"]
+          ].map(([value, label]) => `<button class="${chartInterval === value ? "active" : ""}" onclick="AITradeXUser.setChartInterval('${value}')">${label}</button>`).join("")}
+          <button class="chart-settings-btn" onclick="AITradeXUser.openSheet('chart-settings')">⚙</button>
+        </div>
+        <div class="responsive-chart tradingview-widget-frame">
+          <div id="tradingview_chart_container" class="tradingview-chart-container"></div>
+        </div>
+      </section>
+
+      <section class="premium-card order-ticket pro-order-ticket compact-trade-ticket">
+        <div class="compact-ticket-head">
           <div>
             <p>ORDER TICKET</p>
-            <h2>Manual Trade</h2>
-            <h4>Available balance: ${App.money(available)} · Max leverage ${Number(settings.maxLeverage || 2000)}x</h4>
+            <h2>${displayPair(selectedPair)}</h2>
+            <span>${accountMode} Account · ${tradeOrderType === "LIMIT" ? "Limit" : "Market"} Order</span>
           </div>
-          <button class="ghost-action" onclick="AITradeXUser.go('positions')">Positions</button>
+          <span class="ticket-chip">${tradeIsActive ? selectedMarket : "UPCOMING"}</span>
         </div>
-        ${tradeOrderNotice ? `<div class="trade-order-notice"><b>${App.escapeHtml(tradeOrderNotice.title)}</b><span>${App.escapeHtml(tradeOrderNotice.detail)}</span></div>` : ""}
-        <div class="trade-ticket-grid">
-          <label>Margin Amount
-            <input type="number" min="0" step="any" value="${App.escapeHtml(String(tradeAmountPreview || ""))}" oninput="AITradeXUser.setTradeAmount(this.value)" placeholder="Enter amount in INR"/>
+
+        ${tradeOrderNotice ? `<div class="order-success-banner compact"><b>${App.escapeHtml(tradeOrderNotice.title)}</b><span>${App.escapeHtml(tradeOrderNotice.detail)}</span></div>` : ""}
+
+        ${tradeIsActive ? `
+          <div class="fast-buy-sell-row priority-actions">
+            <button class="sell-btn" onclick="AITradeXUser.placeManualTrade('SELL')">SELL / SHORT</button>
+            <button class="buy-btn" onclick="AITradeXUser.placeManualTrade('BUY')">BUY / LONG</button>
+          </div>
+        ` : `
+          <div class="coming-soon-trade-bar compact priority-actions">
+            <b>Market Coming Soon</b>
+            <span>Forex, Gold and Silver trading will be available after premium market data integration.</span>
+          </div>
+        `}
+
+        <div class="compact-trade-summary top-action-summary">
+          <span><b>Margin</b>${App.money(tradeAmountPreview)}</span>
+          <span><b>Position</b>${App.money(positionSize)}</span>
+          <span><b>Mode</b>${accountMode}</span>
+        </div>
+
+        ${marginWarning ? `<div class="order-warning-bar compact">Margin is higher than available ${accountMode} balance. Reduce amount before placing trade.</div>` : ""}
+
+        <div class="compact-ticket-grid after-action-fields">
+          <label>Amount
+            <input type="number" value="${App.escapeHtml(String(tradeAmountPreview || ""))}" min="1" oninput="AITradeXUser.setTradeAmount(this.value)" placeholder="Margin INR"/>
           </label>
+          <div class="app-field">
+            <span>Leverage</span>
+            <button class="app-select-btn full compact" onclick="AITradeXUser.openSheet('leverage')">
+              <b>${tradeLeveragePreview}x</b>
+              <em>Change</em>
+            </button>
+          </div>
+        </div>
+
+        <div class="compact-ticket-grid compact-second-row after-action-fields">
           <label>Order Type
             <select onchange="AITradeXUser.setTradeOrderType(this.value)">
               <option value="MARKET" ${tradeOrderType === "MARKET" ? "selected" : ""}>Market</option>
               <option value="LIMIT" ${tradeOrderType === "LIMIT" ? "selected" : ""}>Limit</option>
             </select>
           </label>
-          <label>Leverage
-            <button type="button" class="select-like-btn" onclick="AITradeXUser.openSheet('leverage')">${Number(leverage)}x</button>
-          </label>
-          ${tradeOrderType === "LIMIT" ? `<label>Limit Price
-            <input type="number" min="0" step="any" value="${App.escapeHtml(tradeLimitPrice)}" oninput="AITradeXUser.setTradeLimitPrice(this.value)" placeholder="Trigger price in INR"/>
-          </label>` : ""}
+          ${tradeOrderType === "LIMIT" ? `
+            <label>Limit Price (INR)
+              <input type="number" value="${App.escapeHtml(tradeLimitPrice)}" min="0" step="any" oninput="AITradeXUser.setTradeLimitPrice(this.value)" placeholder="Trigger price in ₹"/>
+            </label>
+          ` : `
+            <div class="compact-account-chip ${accountMode.toLowerCase()}">
+              <span>Available</span>
+              <b>${App.money(balance)}</b>
+            </div>
+          `}
         </div>
-        <div class="trade-preview-strip">
-          <article><span>Margin</span><b data-trade-preview-margin>${App.money(margin)}</b></article>
-          <article><span>Position Size</span><b data-trade-preview-position>${App.money(positionSize)}</b></article>
-          <article><span>Pair</span><b>${App.escapeHtml(pair.pair || selectedPair)}</b></article>
-        </div>
-        <div class="trade-buy-sell-row">
-          <button class="buy" ${tradeIsActive ? "" : "disabled"} onclick="AITradeXUser.placeManualTrade('BUY')">Buy</button>
-          <button class="sell" ${tradeIsActive ? "" : "disabled"} onclick="AITradeXUser.placeManualTrade('SELL')">Sell</button>
-        </div>
-        <small class="trade-risk-note">TP/SL is hidden in this build. Positions remain open until user/admin close or pending limit cancellation.</small>
+
+        <details class="compact-risk-details">
+          <summary>Order Risk Note</summary>
+          <div class="risk-preset-row compact">
+            <span>Manual close</span><span>Admin close</span><span>Live P/L</span><span>Ledger on close</span>
+          </div>
+          <div class="limit-order-note compact"><b>TP/SL hidden:</b> automatic take-profit/stop-loss is not enabled in this build, so orders remain open until user/admin close or limit cancellation.</div>
+          ${tradeOrderType === "LIMIT" ? `<div class="limit-order-note compact"><b>Limit order:</b> BUY triggers at or below your price. SELL triggers at or above your price.</div>` : ""}
+        </details>
       </section>
 
-      <section class="premium-card final-signal-card trade-signal-card">
+      <section class="premium-card market-feed-card">
         <div class="card-row">
-          <div><p>AI SIGNAL STATUS</p><h2>${aiDailyUsage().used}/${aiDailyUsage().limit} used today</h2><h4>AI plan usage is shown here, but this page remains focused on manual trading.</h4></div>
-          <button class="ghost-action" onclick="AITradeXUser.go('subscription')">Subscription</button>
+          <div><p>MARKET FEED</p><h2>${tradeIsActive ? "Crypto Depth" : "Upcoming Market"}</h2></div>
+          <span class="mini-live ${tradeIsActive ? "" : "soon"}">${tradeIsActive ? "LIVE" : "SOON"}</span>
+        </div>
+        <div class="depth-table pair-market-feed">
+          <span>Metric</span><span>Value</span><span>Signal</span>
+          ${marketFeedForPair().map(row => `
+            <b>${row.left}</b>
+            <b>${row.mid}</b>
+            <b class="${row.mood === "up" ? "profit-text" : "loss-text"}">${row.right}</b>
+          `).join("")}
         </div>
       </section>
+
+      <section class="premium-card trade-feed-card">
+        <div class="card-row">
+          <div><p>TRADE FEED</p><h2>${selectedPair} Activity</h2></div>
+          <span class="history-mode">${tradeIsActive ? selectedMarket : "UPCOMING"}</span>
+        </div>
+        <div class="trade-feed-list">
+          ${tradeFeedForMarket().map(item => `
+            <article class="${item.pair === selectedPair ? "active" : ""}">
+              <div>
+                <b>${item.pair}</b>
+                <span>${item.action} · ${item.lev} · ${item.time}</span>
+              </div>
+              <div>
+                <strong>${item.size}</strong>
+                <em class="${changeClass(item.change)}">${item.change}</em>
+              </div>
+            </article>
+          `).join("")}
+        </div>
+      </section>
+
     `);
-    refreshVisiblePrices([pair.pair || selectedPair]);
+
+    refreshVisiblePrices(pairsForMarket());
     scheduleTradingViewChart();
   }
-
-  function homePage() {
-    const balance = currentBalance();
-    const pnl = pnlValue();
-    const activeManualCount = manualOpenPositions().length;
-    const activeAiCount = aiOpenPositions().length;
-
-    shell(`
-      ${dashboardHeroCard({ balance, pnl, activeManualCount, activeAiCount })}
-
-      <section class="premium-card quick-action-card polished-quick-actions clean-quick-actions final-home-actions">
-        <div class="quick-action-head">
-          <div>
-            <p>QUICK ACTIONS</p>
-            <h2>Main actions</h2>
-            <span>Only the most-used actions are shown here to keep the dashboard light.</span>
-          </div>
-        </div>
-        <div class="quick-action-grid four-only">
-          <button onclick="AITradeXUser.setWalletModeAndGo('DEPOSIT')"><i>＋</i><b>Deposit</b><span>Add funds</span></button>
-          <button onclick="AITradeXUser.setWalletModeAndGo('WITHDRAWAL')"><i>↗</i><b>Withdraw</b><span>Payout</span></button>
-          <button onclick="AITradeXUser.go('trade')"><i>📈</i><b>Trade</b><span>Manual + signals</span></button>
-          <button onclick="AITradeXUser.go('positions')"><i>📋</i><b>Positions</b><span>Open trades</span></button>
-        </div>
-      </section>
-
-      ${compactActivePositionCard()}
-      ${compactAiSignalCard()}
-      ${compactStatusBanner()}
-      ${recentActivityCard()}
-    `);
-
-    refreshVisiblePrices([...manualOpenPositions().map(p => p.pair), ...aiOpenPositions().map(p => p.pair)]);
-  }
-
   function walletPage() {
     accountMode = "REAL";
     localStorage.setItem("AITradeX_ACCOUNT_MODE", "REAL");

@@ -48,3 +48,6 @@ Phase 6.9.3 update notes:
 - Dashboard cards, spacing, mobile layout, action rows and visible focus/hover states polished.
 - No new SQL is required if Phase 6.9.2 SQL is already run.
 - See PHASE6.9.3-FINAL-UI-POLISH-PACK.txt for the final test checklist.
+
+
+Phase 6.9.7: compact home hero, duplicate quick actions removed, stable trade/chart layout restored. No SQL required.
