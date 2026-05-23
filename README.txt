@@ -34,7 +34,7 @@ Previous AI fixes retained:
 - AI Live P/L settlement remains margin × leverage based and capped safely.
 
 Cache version:
-- phase534livesynclite
+- phase535globalbarpolish
 
 Deploy order:
 1. Run supabase-schema.sql so realtime publication/table compatibility is applied.
