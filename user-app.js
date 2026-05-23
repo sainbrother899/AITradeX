@@ -160,14 +160,34 @@
 
 
 
-  function aiOpenPositions() {
+  function aiTradeTypeOf(row) {
+    return String(row?.tradeType || row?.trade_type || "").toUpperCase();
+  }
+
+  function tradeStatusOf(row) {
+    return String(row?.status || "").toUpperCase();
+  }
+
+  function aiTradeRows({ status = "", liveOnly = false, instantOnly = false } = {}) {
     const u = user();
     if (!u) return [];
-    return (App.state.trades || []).filter(t =>
-      t.userId === u.id &&
-      t.tradeType === "AI_LIVE" &&
-      String(t.status || "").toUpperCase() === "OPEN"
-    );
+    const wantedStatus = String(status || "").toUpperCase();
+    return (App.state.trades || [])
+      .map(normalizeTradeRowForDisplay)
+      .filter(t => {
+        if (t.userId !== u.id) return false;
+        const type = aiTradeTypeOf(t);
+        if (liveOnly && type !== "AI_LIVE") return false;
+        if (instantOnly && type !== "AI_AUTO") return false;
+        if (!liveOnly && !instantOnly && !["AI_AUTO", "AI_LIVE"].includes(type)) return false;
+        if (wantedStatus && tradeStatusOf(t) !== wantedStatus) return false;
+        return true;
+      })
+      .sort((a, b) => Date.parse(b.closedAt || b.createdAt || b.openedAt || 0) - Date.parse(a.closedAt || a.createdAt || a.openedAt || 0));
+  }
+
+  function aiOpenPositions() {
+    return aiTradeRows({ status: "OPEN", liveOnly: true });
   }
 
   function aiLiveMarginLockExists(position) {
@@ -799,21 +819,19 @@
     return aiOpenPositions().reduce((sum, position) => sum + aiPositionPnl(position), 0);
   }
 
+  function aiClosedRows() {
+    return aiTradeRows({ status: "CLOSED" });
+  }
+
   function todayAiClosedPnl() {
-    const u = user();
-    if (!u) return 0;
     const today = App.todayKey ? App.todayKey() : new Date().toISOString().slice(0, 10);
-    return (App.state.trades || [])
-      .filter(t => t.userId === u.id && t.tradeType === "AI_AUTO" && String(t.createdDate || String(t.createdAt || "").slice(0, 10)) === today)
+    return aiClosedRows()
+      .filter(t => String(t.closedAt || t.createdAt || t.createdDate || "").slice(0, 10) === today)
       .reduce((sum, t) => sum + Number(t.pnl || 0), 0);
   }
 
   function totalAiClosedPnl() {
-    const u = user();
-    if (!u) return 0;
-    return (App.state.trades || [])
-      .filter(t => t.userId === u.id && t.tradeType === "AI_AUTO")
-      .reduce((sum, t) => sum + Number(t.pnl || 0), 0);
+    return aiClosedRows().reduce((sum, t) => sum + Number(t.pnl || 0), 0);
   }
 
   function isAiLimitComplete() {
@@ -822,11 +840,7 @@
   }
 
   function latestAiAutoTrade() {
-    const u = user();
-    if (!u) return null;
-    return (App.state.trades || [])
-      .filter(t => t.userId === u.id && t.tradeType === "AI_AUTO")
-      .sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0))[0] || null;
+    return aiTradeRows()[0] || null;
   }
 
 
@@ -1984,13 +1998,17 @@
       .filter(t => t.userId === u.id)
       .sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0))
       .slice(0, 4)
-      .forEach(t => rows.push({
-        icon: t.tradeType === "AI_AUTO" ? "🤖" : "📈",
-        title: `${t.tradeType === "AI_AUTO" ? "AI" : "Manual"} ${t.status || "Trade"}`,
-        detail: `${t.pair || "Trade"} · ${Number(t.pnl || 0) >= 0 ? "+" : ""}${App.money(Number(t.pnl || 0))}`,
-        time: t.createdAt,
-        page: "orders"
-      }));
+      .forEach(t => {
+        const type = aiTradeTypeOf(t);
+        const label = type === "AI_AUTO" ? "AI Instant" : type === "AI_LIVE" ? "AI Live" : "Manual";
+        rows.push({
+          icon: type.startsWith("AI_") ? "🤖" : "📈",
+          title: `${label} ${t.status || "Trade"}`,
+          detail: `${t.pair || "Trade"} · ${Number(t.pnl || 0) >= 0 ? "+" : ""}${App.money(Number(t.pnl || 0))}`,
+          time: t.createdAt || t.openedAt || t.closedAt,
+          page: "orders"
+        });
+      });
     return rows
       .sort((a, b) => Date.parse(b.time || 0) - Date.parse(a.time || 0))
       .slice(0, limit);
@@ -2869,9 +2887,7 @@
   }
 
   function historyFilteredRows() {
-    const aiRows = tradeRows("AI_AUTO")
-      .filter(t => String(t.status || "").toUpperCase() === "CLOSED")
-      .map(t => normalizeHistoryRow(t, "AI"));
+    const aiRows = aiClosedRows().map(t => normalizeHistoryRow(t, "AI"));
     const manualRows = tradeRows("MANUAL")
       .filter(t => String(t.status || "").toUpperCase() === "CLOSED")
       .map(t => normalizeHistoryRow(t, "MANUAL"));
@@ -2942,7 +2958,7 @@
   }
 
   function historyPage() {
-    const aiRows = tradeRows("AI_AUTO").filter(t => String(t.status || "").toUpperCase() === "CLOSED").map(t => normalizeHistoryRow(t, "AI"));
+    const aiRows = aiClosedRows().map(t => normalizeHistoryRow(t, "AI"));
     const manualRows = tradeRows("MANUAL").filter(t => String(t.status || "").toUpperCase() === "CLOSED").map(t => normalizeHistoryRow(t, "MANUAL"));
     const allRows = [...aiRows, ...manualRows].sort((a, b) => b.sortTime - a.sortTime);
     const filteredRows = historyFilteredRows();
@@ -4700,7 +4716,7 @@
       render();
     },
     setAiHistoryPage(index) {
-      const rows = tradeRows("AI_AUTO").filter(t => String(t.status || "").toUpperCase() === "CLOSED");
+      const rows = aiClosedRows();
       const maxIndex = Math.max(0, rows.length - 1);
       aiHistoryPageIndex = Math.min(Math.max(0, Number(index || 0)), maxIndex);
       localStorage.setItem("AITradeX_AI_HISTORY_PAGE", String(aiHistoryPageIndex));

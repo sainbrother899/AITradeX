@@ -1581,9 +1581,17 @@
 
 
 
+  function aiTradeTypeOf(row) {
+    return String(row?.tradeType || row?.trade_type || "").toUpperCase();
+  }
+
+  function tradeStatusOf(row) {
+    return String(row?.status || "").toUpperCase();
+  }
+
   function aiLivePositions() {
     return (App.state.trades || [])
-      .filter(t => t.tradeType === "AI_LIVE" && String(t.status || "").toUpperCase() === "OPEN")
+      .filter(t => aiTradeTypeOf(t) === "AI_LIVE" && tradeStatusOf(t) === "OPEN")
       .sort((a, b) => Date.parse(b.openedAt || b.createdAt || 0) - Date.parse(a.openedAt || a.createdAt || 0));
   }
 
@@ -1738,7 +1746,7 @@
 
   function aiRecentTrades() {
     return (App.state.trades || [])
-      .filter(t => t.tradeType === "AI_AUTO")
+      .filter(t => aiTradeTypeOf(t) === "AI_AUTO")
       .sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0));
   }
 
@@ -1768,7 +1776,7 @@
 
   function aiLiveHistoryRows() {
     return (App.state.trades || [])
-      .filter(t => (t.tradeType === "AI_LIVE" || t.source === "ADMIN_AI_LIVE_CLOSE") && String(t.status || "").toUpperCase() === "CLOSED")
+      .filter(t => (aiTradeTypeOf(t) === "AI_LIVE" || t.source === "ADMIN_AI_LIVE_CLOSE") && tradeStatusOf(t) === "CLOSED")
       .sort((a, b) => Date.parse(b.closedAt || b.createdAt || 0) - Date.parse(a.closedAt || a.createdAt || 0));
   }
 
@@ -2824,7 +2832,8 @@
 
 
   async function settleAiLivePositionByAdmin(position, reason = "ADMIN_CLOSE") {
-    if (!position || String(position.status || "").toUpperCase() !== "OPEN") return false;
+    if (!position || tradeStatusOf(position) !== "OPEN") return false;
+    const original = { ...position };
     const cached = App.getCachedPairPrice ? App.getCachedPairPrice(position.pair) : null;
     const current = Number(cached?.price || position.entryPrice || 0);
     let pnl = aiLivePositionPnl(position);
@@ -2847,31 +2856,33 @@
     position.settlementAmount = Number(settlementAmount.toFixed(2));
     position.balanceAfter = Number((balanceBefore + position.settlementAmount).toFixed(2));
     position.source = "ADMIN_AI_LIVE_CLOSE";
-    if (position.settlementAmount !== 0) {
-      if (App.isDatabaseMode?.() && App.addLedgerAsync) await App.addLedgerAsync({
-        userId: position.userId,
-        accountType: "REAL",
-        type: position.marginLocked ? "AI_LIVE_SETTLEMENT" : (position.pnl >= 0 ? "AI_LIVE_PROFIT" : "AI_LIVE_LOSS"),
-        amount: position.settlementAmount,
-        referenceId: position.id,
-        note: position.marginLocked
-          ? `${position.pair} AI live ${position.side} closed by admin · AI amount ${App.money(margin)} · P/L ${position.pnl >= 0 ? "+" : ""}${App.money(position.pnl)}`
-          : `${position.pair} AI live ${position.side} closed by admin`
-      });
-      else App.addLedger({
-        userId: position.userId,
-        accountType: "REAL",
-        type: position.marginLocked ? "AI_LIVE_SETTLEMENT" : (position.pnl >= 0 ? "AI_LIVE_PROFIT" : "AI_LIVE_LOSS"),
-        amount: position.settlementAmount,
-        referenceId: position.id,
-        note: position.marginLocked
-          ? `${position.pair} AI live ${position.side} closed by admin · AI amount ${App.money(margin)} · P/L ${position.pnl >= 0 ? "+" : ""}${App.money(position.pnl)}`
-          : `${position.pair} AI live ${position.side} closed by admin`
-      });
-    } else {
+    let settlementAdded = false;
+    try {
+      if (position.settlementAmount !== 0) {
+        const ledgerPayload = {
+          userId: position.userId,
+          accountType: "REAL",
+          type: position.marginLocked ? "AI_LIVE_SETTLEMENT" : (position.pnl >= 0 ? "AI_LIVE_PROFIT" : "AI_LIVE_LOSS"),
+          amount: position.settlementAmount,
+          referenceId: position.id,
+          note: position.marginLocked
+            ? `${position.pair} AI live ${position.side} closed by admin · AI amount ${App.money(margin)} · P/L ${position.pnl >= 0 ? "+" : ""}${App.money(position.pnl)}`
+            : `${position.pair} AI live ${position.side} closed by admin`
+        };
+        const row = App.addLedgerAsync ? await App.addLedgerAsync(ledgerPayload) : App.addLedger(ledgerPayload);
+        settlementAdded = !!row;
+      }
+      if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) await window.AITradeXDB.writeTrade(position);
       App.saveState();
+    } catch (err) {
+      if (settlementAdded && position.settlementAmount) {
+        try {
+          await (App.addLedgerAsync ? App.addLedgerAsync({ userId: position.userId, accountType: "REAL", type: "AI_LIVE_SETTLEMENT_ROLLBACK", amount: -position.settlementAmount, referenceId: `${position.id}_admin_close_rollback`, note: "Rollback: admin AI live close save failed" }) : App.addLedger({ userId: position.userId, accountType: "REAL", type: "AI_LIVE_SETTLEMENT_ROLLBACK", amount: -position.settlementAmount, referenceId: `${position.id}_admin_close_rollback`, note: "Rollback: admin AI live close save failed" }));
+        } catch {}
+      }
+      Object.assign(position, original);
+      throw err;
     }
-    if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) await window.AITradeXDB.writeTrade(position);
     await (App.addNotificationAsync ? App.addNotificationAsync({ audience: "USER", userId: position.userId, title: "AI live position closed", message: `${position.pair} ${position.side} closed. P/L ${position.pnl >= 0 ? "+" : ""}${App.money(position.pnl)}. Settlement ${App.money(position.settlementAmount)}.`, type: "AI", linkPage: "orders", referenceId: `ai_close_${position.id}` }) : App.addNotification?.({ audience: "USER", userId: position.userId, title: "AI live position closed", message: `${position.pair} ${position.side} closed. P/L ${position.pnl >= 0 ? "+" : ""}${App.money(position.pnl)}. Settlement ${App.money(position.settlementAmount)}.`, type: "AI", linkPage: "orders", referenceId: `ai_close_${position.id}` }));
     await (App.addNotificationAsync ? App.addNotificationAsync({ audience: "ADMIN", title: "AI live trade closed", message: `${position.pair} ${position.side} closed for user ${position.userId}. P/L ${position.pnl >= 0 ? "+" : ""}${App.money(position.pnl)}.`, type: "AI", linkPage: "liveAi", referenceId: `admin_ai_close_${position.id}` }) : App.addNotification?.({ audience: "ADMIN", title: "AI live trade closed", message: `${position.pair} ${position.side} closed for user ${position.userId}. P/L ${position.pnl >= 0 ? "+" : ""}${App.money(position.pnl)}.`, type: "AI", linkPage: "liveAi", referenceId: `admin_ai_close_${position.id}` }));
     return true;
