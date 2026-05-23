@@ -4770,65 +4770,65 @@
       const ok = confirm(`Buy ${plan.name} for ${App.money(price)} from your real wallet?`);
       if (!ok) return;
       const subId = App.uid("sub");
-      const startedAt = new Date();
-      const durationDays = Math.max(0, Number(plan.durationDays || 30));
-      const expiresAt = durationDays ? new Date(startedAt.getTime() + durationDays * 86400000).toISOString() : "";
       try {
-        const subscriptionLedgerRow = App.isDatabaseMode?.() && App.addLedgerAsync ? await App.addLedgerAsync({
-          userId: u.id,
-          accountType: "REAL",
-          type: "SUBSCRIPTION_PURCHASE",
-          amount: -price,
-          referenceId: subId,
-          note: `${plan.name} subscription purchased`
-        }) : App.addLedger({
-          userId: u.id,
-          accountType: "REAL",
-          type: "SUBSCRIPTION_PURCHASE",
-          amount: -price,
-          referenceId: subId,
-          note: `${plan.name} subscription purchased`
-        });
-        const changedSubscriptions = [];
-        (App.state.subscriptions || []).forEach(row => {
-          if (row.userId === u.id && row.status === "ACTIVE") {
-            row.status = "REPLACED";
-            row.replacedAt = new Date().toISOString();
-            changedSubscriptions.push(row);
-          }
-        });
-        if (!App.state.subscriptions) App.state.subscriptions = [];
-        const newSubscription = {
-          id: subId,
-          userId: u.id,
-          planId: plan.id,
-          planName: plan.name,
-          price,
-          amount: price,
-          aiTradeLimit: Number(plan.signals || 0),
-          signals: Number(plan.signals || 0),
-          durationDays,
-          status: "ACTIVE",
-          createdAt: startedAt.toISOString(),
-          startsAt: startedAt.toISOString(),
-          expiresAt,
-          ledgerReferenceId: subId
-        };
-        App.state.subscriptions.unshift(newSubscription);
-        if (App.isDatabaseMode?.() && window.AITradeXDB?.writeSubscription) {
+        if (App.isDatabaseMode?.() && window.AITradeXDB?.purchasePlanSecure) {
+          await window.AITradeXDB.purchasePlanSecure({ subscriptionId: subId, userId: u.id, planId: plan.id, source: "USER_PURCHASE" });
           try {
-            for (const row of changedSubscriptions) await window.AITradeXDB.writeSubscription(row);
-            await window.AITradeXDB.writeSubscription(newSubscription);
-          } catch (err) {
-            try { await (App.addLedgerAsync ? App.addLedgerAsync({ userId: u.id, accountType: "REAL", type: "SUBSCRIPTION_PURCHASE_ROLLBACK", amount: price, referenceId: `${subId}_rollback`, note: `Rollback: ${plan.name} subscription save failed` }) : App.addLedger({ userId: u.id, accountType: "REAL", type: "SUBSCRIPTION_PURCHASE_ROLLBACK", amount: price, referenceId: `${subId}_rollback`, note: `Rollback: ${plan.name} subscription save failed` })); } catch {}
-            App.state.subscriptions = (App.state.subscriptions || []).filter(row => row.id !== subId);
-            changedSubscriptions.forEach(row => { if (row.status === "REPLACED") { row.status = "ACTIVE"; delete row.replacedAt; } });
-            throw err;
+            const referralResult = await (App.creditReferralBonusAsync ? App.creditReferralBonusAsync({ referredUserId: u.id, eventType: "SUBSCRIPTION", amount: price, referenceId: subId, sourceLabel: plan.name }) : Promise.resolve(App.creditReferralBonus?.({ referredUserId: u.id, eventType: "SUBSCRIPTION", amount: price, referenceId: subId, sourceLabel: plan.name })));
+            if (referralResult?.credited) console.info("Referral subscription bonus credited", referralResult);
+          } catch (refErr) {
+            console.warn("Subscription referral bonus failed; plan remains active", refErr?.message || refErr);
           }
+          await window.AITradeXDB.loadAll?.();
+        } else {
+          const startedAt = new Date();
+          const durationDays = Math.max(0, Number(plan.durationDays || 30));
+          const expiresAt = durationDays ? new Date(startedAt.getTime() + durationDays * 86400000).toISOString() : "";
+          await (App.addLedgerAsync ? App.addLedgerAsync({
+            userId: u.id,
+            accountType: "REAL",
+            type: "SUBSCRIPTION_PURCHASE",
+            amount: -price,
+            referenceId: subId,
+            note: `${plan.name} subscription purchased`
+          }) : App.addLedger({
+            userId: u.id,
+            accountType: "REAL",
+            type: "SUBSCRIPTION_PURCHASE",
+            amount: -price,
+            referenceId: subId,
+            note: `${plan.name} subscription purchased`
+          }));
+          const changedSubscriptions = [];
+          (App.state.subscriptions || []).forEach(row => {
+            if (row.userId === u.id && row.status === "ACTIVE") {
+              row.status = "REPLACED";
+              row.replacedAt = new Date().toISOString();
+              changedSubscriptions.push(row);
+            }
+          });
+          if (!App.state.subscriptions) App.state.subscriptions = [];
+          const newSubscription = {
+            id: subId,
+            userId: u.id,
+            planId: plan.id,
+            planName: plan.name,
+            price,
+            amount: price,
+            aiTradeLimit: Number(plan.signals || 0),
+            signals: Number(plan.signals || 0),
+            durationDays,
+            status: "ACTIVE",
+            createdAt: startedAt.toISOString(),
+            startsAt: startedAt.toISOString(),
+            expiresAt,
+            ledgerReferenceId: subId
+          };
+          App.state.subscriptions.unshift(newSubscription);
+          App.saveState();
+          const referralResult = await (App.creditReferralBonusAsync ? App.creditReferralBonusAsync({ referredUserId: u.id, eventType: "SUBSCRIPTION", amount: price, referenceId: subId, sourceLabel: plan.name }) : Promise.resolve(App.creditReferralBonus?.({ referredUserId: u.id, eventType: "SUBSCRIPTION", amount: price, referenceId: subId, sourceLabel: plan.name })));
+          if (referralResult?.credited) console.info("Referral subscription bonus credited", referralResult);
         }
-        App.saveState();
-        const referralResult = await (App.creditReferralBonusAsync ? App.creditReferralBonusAsync({ referredUserId: u.id, eventType: "SUBSCRIPTION", amount: price, referenceId: subId, sourceLabel: plan.name }) : Promise.resolve(App.creditReferralBonus?.({ referredUserId: u.id, eventType: "SUBSCRIPTION", amount: price, referenceId: subId, sourceLabel: plan.name })));
-        if (referralResult?.credited) console.info("Referral subscription bonus credited", referralResult);
         App.toast(`${plan.name} activated successfully.`);
         render();
       } catch (error) {

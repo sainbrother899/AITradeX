@@ -3461,52 +3461,61 @@
       const plan = App.planById(planId) || App.planById("free");
       if (!plan) return;
       if (!confirm(`Change ${displayNameFor(target)} plan to ${plan.name}?`)) return;
-      App.state.subscriptions = App.state.subscriptions || [];
-      const changedSubscriptions = [];
-      App.state.subscriptions.forEach(sub => {
-        if (sub.userId === userId && sub.status === "ACTIVE") {
-          sub.status = "ADMIN_REPLACED";
-          sub.replacedAt = App.now();
-          changedSubscriptions.push(sub);
+      try {
+        if (App.isDatabaseMode?.() && window.AITradeXDB?.changeUserPlanSecure) {
+          const admin = adminUser() || {};
+          await window.AITradeXDB.changeUserPlanSecure({
+            userId,
+            planId: plan.id,
+            adminUserId: admin.id || "control_root",
+            adminEmail: admin.email || "",
+            adminName: displayNameFor(admin) || "Admin"
+          });
+          await window.AITradeXDB.loadAll?.();
+        } else {
+          App.state.subscriptions = App.state.subscriptions || [];
+          const changedSubscriptions = [];
+          App.state.subscriptions.forEach(sub => {
+            if (sub.userId === userId && sub.status === "ACTIVE") {
+              sub.status = "ADMIN_REPLACED";
+              sub.replacedAt = App.now();
+              changedSubscriptions.push(sub);
+            }
+          });
+          let newSubscription = null;
+          if (plan.id !== "free") {
+            const days = Math.max(1, Number(plan.durationDays || 30));
+            const created = new Date();
+            const expires = new Date(created.getTime() + days * 86400000);
+            newSubscription = {
+              id: App.uid("sub"),
+              userId,
+              planId: plan.id,
+              planName: plan.name,
+              price: Number(plan.price || 0),
+              amount: Number(plan.price || 0),
+              aiTradeLimit: Number(plan.signals || 0),
+              signals: Number(plan.signals || 0),
+              durationDays: days,
+              status: "ACTIVE",
+              source: "ADMIN_PLAN_CHANGE",
+              createdAt: created.toISOString(),
+              startsAt: created.toISOString(),
+              expiresAt: expires.toISOString()
+            };
+            App.state.subscriptions.push(newSubscription);
+          }
+          target.planChangedAt = App.now();
+          target.planChangedBy = "admin";
+          App.addNotification?.({ audience: "USER", userId, title: "Subscription plan updated", message: `Your plan was changed to ${plan.name} by admin.`, type: "PLAN", linkPage: "subscription", referenceId: `plan_${userId}_${Date.now()}` });
+          logAdminAction("PLAN_CHANGE", "USER", userId, { user: displayNameFor(target), planId: plan.id, planName: plan.name });
+          App.saveState();
         }
-      });
-      let newSubscription = null;
-      if (plan.id !== "free") {
-        const days = Math.max(1, Number(plan.durationDays || 30));
-        const created = new Date();
-        const expires = new Date(created.getTime() + days * 86400000);
-        newSubscription = {
-          id: App.uid("sub"),
-          userId,
-          planId: plan.id,
-          planName: plan.name,
-          price: Number(plan.price || 0),
-          amount: Number(plan.price || 0),
-          aiTradeLimit: Number(plan.signals || 0),
-          signals: Number(plan.signals || 0),
-          durationDays: days,
-          status: "ACTIVE",
-          source: "ADMIN_PLAN_CHANGE",
-          createdAt: created.toISOString(),
-          startsAt: created.toISOString(),
-          expiresAt: expires.toISOString()
-        };
-        App.state.subscriptions.push(newSubscription);
+        App.toast(`${displayNameFor(target)} plan updated to ${plan.name}.`);
+        render();
+      } catch (error) {
+        App.toast(error.message || "Plan update failed.");
       }
-      if (App.isDatabaseMode?.() && window.AITradeXDB?.writeSubscription) {
-        try {
-          for (const row of changedSubscriptions) await window.AITradeXDB.writeSubscription(row);
-          if (newSubscription) await window.AITradeXDB.writeSubscription(newSubscription);
-        } catch (err) { App.toast(`Plan database save failed: ${err.message || err}`); return; }
-      }
-      target.planChangedAt = App.now();
-      target.planChangedBy = "admin";
-      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeUser) await window.AITradeXDB.writeUser(target); } catch (err) { App.toast(`User plan marker save failed: ${err.message || err}`); return; }
-      App.addNotification?.({ audience: "USER", userId, title: "Subscription plan updated", message: `Your plan was changed to ${plan.name} by admin.`, type: "PLAN", linkPage: "subscription", referenceId: `plan_${userId}_${Date.now()}` });
-      logAdminAction("PLAN_CHANGE", "USER", userId, { user: displayNameFor(target), planId: plan.id, planName: plan.name });
-      App.saveState();
-      App.toast(`${displayNameFor(target)} plan updated to ${plan.name}.`);
-      render();
     },
     async resetUserPassword(event, userId) {
       event.preventDefault();
@@ -3702,8 +3711,8 @@
         maxOpenPositionsPerUser: Math.max(1, Number(inputValue("settingMaxOpenPositions") || 10)),
         usdtInrRate: Math.max(1, Number(inputValue("settingUsdtInrRate") || 95)),
         phase6AuthMode: settings.phase6AuthMode || "legacy-testing",
-        phase6BackendMode: settings.phase6BackendMode || "deposit-withdrawal-ai-manual-rpc",
-        phase6Build: "6.6-kyc-payment-backend"
+        phase6BackendMode: settings.phase6BackendMode || "deposit-withdrawal-ai-manual-kyc-payment-subscription-rpc",
+        phase6Build: "6.7-subscription-backend"
       };
       logAdminAction("APP_SETTINGS_UPDATE", "SETTINGS", "app", { depositEnabled: App.state.settings.depositEnabled, withdrawalEnabled: App.state.settings.withdrawalEnabled, manualTradingEnabled: App.state.settings.manualTradingEnabled, aiTradingEnabled: App.state.settings.aiTradingEnabled, maintenanceMode: App.state.settings.maintenanceMode, maxLeverage: App.state.settings.maxLeverage });
       await persistSettings("app settings");

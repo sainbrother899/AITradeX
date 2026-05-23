@@ -1,4 +1,4 @@
-AITradeX Phase 6.6 - KYC + Payment Method Backend Approval
+AITradeX Phase 6.7 - Plan + Subscription Backend Control
 
 Base: Phase 6.5.6 Manual Price Unit Double Convert Fix.
 
@@ -23,3 +23,10 @@ Test checklist:
 
 Real-money note:
 This is one more backend-security step, but final real-money launch still requires Supabase Auth/strict RLS and backend-only sensitive actions across all remaining modules.
+
+
+Phase 6.7 notes:
+- User plan purchase now uses backend RPC aitradex_purchase_plan in Supabase mode.
+- Admin plan change now uses backend RPC aitradex_change_user_plan in Supabase mode.
+- Existing UI/design is unchanged.
+- Run the updated supabase-schema.sql before deploy because new RPC functions are added.

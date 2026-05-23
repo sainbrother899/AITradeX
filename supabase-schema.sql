@@ -17,6 +17,10 @@ create table if not exists public.withdrawal_requests (id text primary key,user_
 create table if not exists public.ai_trades (id text primary key,user_id text,user_email text,account_type text,pair text,side text,amount numeric,leverage numeric,status text default 'OPEN',pnl numeric,created_at timestamptz default now(),closed_at timestamptz);
 create table if not exists public.referrals (id text primary key,referrer_user_id text,referred_user_id text,status text default 'REGISTERED',commission_paid boolean default false,commission_amount numeric default 0,created_at timestamptz default now());
 create table if not exists public.plans (id text primary key,name text,price numeric,signals integer,ai_access text,trade_limit numeric,is_active boolean default true);
+alter table public.plans add column if not exists status text default 'ACTIVE';
+alter table public.plans add column if not exists duration_days integer default 30;
+alter table public.users add column if not exists plan_changed_at timestamptz;
+alter table public.users add column if not exists plan_changed_by text;
 create table if not exists public.subscriptions (id text primary key,user_id text,plan_id text,plan_name text,amount numeric,status text default 'PENDING',starts_at timestamptz,expires_at timestamptz,created_at timestamptz default now());
 
 
@@ -1573,7 +1577,189 @@ grant execute on function public.aitradex_close_manual_trade(text,text,numeric,t
 grant execute on function public.aitradex_cancel_manual_limit(text,text) to anon, authenticated;
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','6.6','mode','phase6-kyc-payment-backend','manualTradeBackend','rpc-secure-function','kycBackend','rpc-secure-function','paymentMethodBackend','rpc-secure-function','manualPriceUnit','raw-storage-display-only-inr-fixed'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.7','mode','phase6-subscription-backend','manualTradeBackend','rpc-secure-function','kycBackend','rpc-secure-function','paymentMethodBackend','rpc-secure-function','manualPriceUnit','raw-storage-display-only-inr-fixed'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.6','mode','phase6-kyc-payment-backend','manualTradeBackend','rpc-secure-function','kycBackend','rpc-secure-function','paymentMethodBackend','rpc-secure-function','manualPriceUnit','raw-storage-display-only-inr-fixed'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.7','mode','phase6-subscription-backend','manualTradeBackend','rpc-secure-function','kycBackend','rpc-secure-function','paymentMethodBackend','rpc-secure-function','manualPriceUnit','raw-storage-display-only-inr-fixed'),
     updated_at = now();
+
+
+-- Phase 6.7: Backend-secure plan/subscription purchase and admin plan change.
+create or replace function public.aitradex_purchase_plan(
+  p_subscription_id text,
+  p_user_id text,
+  p_plan_id text,
+  p_source text default 'USER_PURCHASE'
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user public.users%rowtype;
+  v_plan public.plans%rowtype;
+  v_price numeric := 0;
+  v_balance numeric := 0;
+  v_days integer := 30;
+  v_starts timestamptz := now();
+  v_expires timestamptz;
+  v_ledger_id text;
+  v_sub_id text := coalesce(nullif(trim(p_subscription_id),''), 'sub_' || md5(random()::text || clock_timestamp()::text));
+  v_raw jsonb;
+begin
+  select * into v_user from public.users where id = p_user_id for update;
+  if not found then raise exception 'User not found.'; end if;
+  if upper(coalesce(v_user.status,'ACTIVE')) <> 'ACTIVE' then raise exception 'User is not active.'; end if;
+
+  select * into v_plan from public.plans where id = p_plan_id;
+  if not found then raise exception 'Plan not found.'; end if;
+  if coalesce(v_plan.is_active,true) = false or upper(coalesce(v_plan.status,'ACTIVE')) <> 'ACTIVE' then raise exception 'Plan is not active.'; end if;
+  if v_plan.id = 'free' then raise exception 'Free plan does not require purchase.'; end if;
+
+  v_price := greatest(coalesce(v_plan.price,0),0);
+  if v_price <= 0 then raise exception 'Invalid plan price.'; end if;
+
+  select coalesce(sum(amount),0) into v_balance from public.wallet_ledger where user_id=p_user_id and upper(coalesce(account_type,'REAL'))='REAL';
+  if v_balance < v_price then raise exception 'Insufficient real wallet balance.'; end if;
+
+  v_ledger_id := 'ledger_subscription_' || v_sub_id;
+  if exists(select 1 from public.wallet_ledger where user_id=p_user_id and account_type='REAL' and type='SUBSCRIPTION_PURCHASE' and reference_id=v_sub_id) then
+    return jsonb_build_object('ok', true, 'alreadyCompleted', true, 'subscriptionId', v_sub_id);
+  end if;
+
+  update public.subscriptions
+  set status='REPLACED',
+      raw=coalesce(raw,'{}'::jsonb) || jsonb_build_object('replacedAt', now(), 'replacedBySubscription', v_sub_id, 'secureSubscriptionPurchase', true)
+  where user_id=p_user_id and status='ACTIVE';
+
+  v_days := greatest(coalesce(nullif(v_plan.raw->>'durationDays','')::integer, coalesce(v_plan.duration_days,30), 30), 1);
+  v_expires := v_starts + make_interval(days => v_days);
+  v_raw := coalesce(v_plan.raw,'{}'::jsonb) || jsonb_build_object(
+    'id', v_sub_id,
+    'userId', p_user_id,
+    'planId', v_plan.id,
+    'planName', v_plan.name,
+    'price', v_price,
+    'amount', v_price,
+    'aiTradeLimit', coalesce(v_plan.signals,0),
+    'signals', coalesce(v_plan.signals,0),
+    'durationDays', v_days,
+    'status', 'ACTIVE',
+    'source', coalesce(p_source,'USER_PURCHASE_BACKEND'),
+    'createdAt', v_starts,
+    'startsAt', v_starts,
+    'expiresAt', v_expires,
+    'ledgerReferenceId', v_sub_id,
+    'secureSubscriptionPurchase', true
+  );
+
+  insert into public.wallet_ledger(id,user_id,account_type,type,amount,reference_id,note,balance_after,created_at,raw)
+  values (v_ledger_id,p_user_id,'REAL','SUBSCRIPTION_PURCHASE',-v_price,v_sub_id,coalesce(v_plan.name,'Plan') || ' subscription purchased by backend',null,v_starts,jsonb_build_object('secureSubscriptionPurchase',true,'planId',v_plan.id,'planName',v_plan.name,'amount',v_price))
+  on conflict on constraint wallet_ledger_user_id_account_type_type_reference_id_key do nothing;
+
+  insert into public.subscriptions(id,user_id,plan_id,plan_name,amount,status,starts_at,expires_at,created_at,raw)
+  values (v_sub_id,p_user_id,v_plan.id,v_plan.name,v_price,'ACTIVE',v_starts,v_expires,v_starts,v_raw)
+  on conflict (id) do update set user_id=excluded.user_id, plan_id=excluded.plan_id, plan_name=excluded.plan_name, amount=excluded.amount, status='ACTIVE', starts_at=excluded.starts_at, expires_at=excluded.expires_at, raw=excluded.raw;
+
+  insert into public.notifications(id,audience,user_id,title,message,type,link_page,reference_id,read,created_at,raw)
+  values ('notif_sub_ok_' || v_sub_id,'USER',p_user_id,'Subscription activated',coalesce(v_plan.name,'Plan') || ' activated successfully.','PLAN','subscription','sub_ok_' || v_sub_id,false,v_starts,jsonb_build_object('secureSubscriptionPurchase',true,'planId',v_plan.id))
+  on conflict (id) do update set message=excluded.message, raw=excluded.raw, created_at=excluded.created_at;
+
+  insert into public.backend_action_queue(id, action_type, status, requested_by, target_user_id, payload, result, created_at, processed_at)
+  values ('backend_sub_purchase_' || v_sub_id, 'SUBSCRIPTION_PURCHASE', 'COMPLETED', p_user_id, p_user_id, jsonb_build_object('subscriptionId', v_sub_id, 'planId', v_plan.id), jsonb_build_object('status','ACTIVE','amount',v_price), v_starts, v_starts)
+  on conflict (id) do update set status='COMPLETED', result=excluded.result, processed_at=now();
+
+  return jsonb_build_object('ok', true, 'subscriptionId', v_sub_id, 'userId', p_user_id, 'planId', v_plan.id, 'status', 'ACTIVE', 'amount', v_price);
+end;
+$$;
+
+create or replace function public.aitradex_change_user_plan(
+  p_user_id text,
+  p_plan_id text,
+  p_admin_user_id text default 'control_root',
+  p_admin_email text default '',
+  p_admin_name text default 'Admin'
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user public.users%rowtype;
+  v_plan public.plans%rowtype;
+  v_days integer := 30;
+  v_starts timestamptz := now();
+  v_expires timestamptz;
+  v_sub_id text := 'sub_admin_' || md5(random()::text || clock_timestamp()::text);
+  v_raw jsonb;
+begin
+  if not public.aitradex_validate_admin(p_admin_user_id) then
+    raise exception 'Admin permission required for plan change.';
+  end if;
+  select * into v_user from public.users where id=p_user_id for update;
+  if not found then raise exception 'User not found.'; end if;
+  select * into v_plan from public.plans where id=p_plan_id;
+  if not found then raise exception 'Plan not found.'; end if;
+
+  update public.subscriptions
+  set status='ADMIN_REPLACED',
+      raw=coalesce(raw,'{}'::jsonb) || jsonb_build_object('replacedAt', now(), 'replacedByAdmin', p_admin_user_id, 'secureAdminPlanChange', true)
+  where user_id=p_user_id and status='ACTIVE';
+
+  if v_plan.id <> 'free' then
+    v_days := greatest(coalesce(nullif(v_plan.raw->>'durationDays','')::integer, coalesce(v_plan.duration_days,30), 30), 1);
+    v_expires := v_starts + make_interval(days => v_days);
+    v_raw := coalesce(v_plan.raw,'{}'::jsonb) || jsonb_build_object(
+      'id', v_sub_id,
+      'userId', p_user_id,
+      'planId', v_plan.id,
+      'planName', v_plan.name,
+      'price', coalesce(v_plan.price,0),
+      'amount', coalesce(v_plan.price,0),
+      'aiTradeLimit', coalesce(v_plan.signals,0),
+      'signals', coalesce(v_plan.signals,0),
+      'durationDays', v_days,
+      'status', 'ACTIVE',
+      'source', 'ADMIN_PLAN_CHANGE_BACKEND',
+      'createdAt', v_starts,
+      'startsAt', v_starts,
+      'expiresAt', v_expires,
+      'secureAdminPlanChange', true,
+      'changedBy', p_admin_user_id
+    );
+    insert into public.subscriptions(id,user_id,plan_id,plan_name,amount,status,starts_at,expires_at,created_at,raw)
+    values (v_sub_id,p_user_id,v_plan.id,v_plan.name,coalesce(v_plan.price,0),'ACTIVE',v_starts,v_expires,v_starts,v_raw);
+  end if;
+
+  update public.users
+  set plan_changed_at = v_starts,
+      plan_changed_by = p_admin_user_id,
+      updated_at = v_starts
+  where id=p_user_id;
+
+  insert into public.notifications(id,audience,user_id,title,message,type,link_page,reference_id,read,created_at,raw)
+  values ('notif_plan_change_' || p_user_id || '_' || replace(v_starts::text,' ','_'),'USER',p_user_id,'Subscription plan updated','Your plan was changed to ' || coalesce(v_plan.name,'Free') || ' by admin.','PLAN','subscription','plan_' || p_user_id || '_' || extract(epoch from v_starts)::bigint,false,v_starts,jsonb_build_object('secureAdminPlanChange',true,'planId',v_plan.id))
+  on conflict (id) do nothing;
+
+  insert into public.admin_action_logs(id,admin_user_id,action,target_type,target_id,meta,created_at)
+  values ('adminlog_plan_change_' || p_user_id || '_' || extract(epoch from v_starts)::bigint,p_admin_user_id,'PLAN_CHANGE_SECURE','USER',p_user_id,jsonb_build_object('planId',v_plan.id,'planName',v_plan.name,'adminEmail',p_admin_email,'adminName',p_admin_name),v_starts)
+  on conflict (id) do nothing;
+
+  insert into public.backend_action_queue(id, action_type, status, requested_by, target_user_id, payload, result, created_at, processed_at)
+  values ('backend_plan_change_' || p_user_id || '_' || extract(epoch from v_starts)::bigint, 'PLAN_CHANGE', 'COMPLETED', p_admin_user_id, p_user_id, jsonb_build_object('planId', v_plan.id), jsonb_build_object('status','ACTIVE','subscriptionId',case when v_plan.id='free' then null else v_sub_id end), v_starts, v_starts)
+  on conflict (id) do nothing;
+
+  return jsonb_build_object('ok', true, 'userId', p_user_id, 'planId', v_plan.id, 'subscriptionId', case when v_plan.id='free' then null else v_sub_id end);
+end;
+$$;
+
+grant execute on function public.aitradex_purchase_plan(text,text,text,text) to anon, authenticated;
+grant execute on function public.aitradex_change_user_plan(text,text,text,text,text) to anon, authenticated;
+
+insert into public.app_settings(id, settings, updated_at)
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.7','mode','phase6-subscription-backend','subscriptionBackend','rpc-secure-function'), now())
+on conflict (id) do update
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.7','mode','phase6-subscription-backend','subscriptionBackend','rpc-secure-function'),
+    updated_at = now();
+
