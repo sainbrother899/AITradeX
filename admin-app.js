@@ -2016,7 +2016,7 @@
   function aiModeSeparationNotice(activeMode) {
     const instantActive = activeMode === "instant";
     return `
-      <section class="panel-card ai-separation-notice ${instantActive ? "instant-mode" : "live-mode"}">
+      <section class="panel-card ai-separation-notice ai-single-mode-head ${instantActive ? "instant-mode" : "live-mode"}">
         <div class="section-head">
           <div>
             <h3>${instantActive ? "Instant AI Trade = immediate result" : "Live Position Trade = running position"}</h3>
@@ -2043,8 +2043,6 @@
         ${metric("⏭️", "Skipped Now", previewReport.skipped.length)}
         ${metric("🎁", "Free AI / Day", Number(settings.freeAiTradesPerDay || 5))}
       </section>
-
-      ${aiTradeModeBars("instant")}
 
       ${aiModeSeparationNotice("instant")}
 
@@ -2166,8 +2164,6 @@
         ${metric("⏭️", "Live Skipped", previewReport.skipped.length)}
         ${metric("📌", "Max Open/User", maxOpenPerUser)}
       </section>
-
-      ${aiTradeModeBars("live")}
 
       ${aiModeSeparationNotice("live")}
 
@@ -3822,7 +3818,7 @@
         usdtInrRate: Math.max(1, Number(inputValue("settingUsdtInrRate") || 95)),
         phase6AuthMode: settings.phase6AuthMode || "legacy-testing",
         phase6BackendMode: settings.phase6BackendMode || "deposit-withdrawal-ai-manual-kyc-payment-subscription-wallet-rpc-rls-ready",
-        phase6Build: "6.9.4-separated-ai-trade-pack"
+        phase6Build: "6.9.5-strict-separated-ai-pages"
       };
       logAdminAction("APP_SETTINGS_UPDATE", "SETTINGS", "app", { depositEnabled: App.state.settings.depositEnabled, withdrawalEnabled: App.state.settings.withdrawalEnabled, manualTradingEnabled: App.state.settings.manualTradingEnabled, aiTradingEnabled: App.state.settings.aiTradingEnabled, maintenanceMode: App.state.settings.maintenanceMode, maxLeverage: App.state.settings.maxLeverage });
       await persistSettings("app settings");
