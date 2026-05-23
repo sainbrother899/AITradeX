@@ -51,7 +51,7 @@
     return "REAL";
   }
   function sameAccountType(rowAccountType, selected = accountMode) {
-    return normalizedAccountMode(rowAccountType || "REAL") === "REAL";
+    return String(rowAccountType || "REAL").toUpperCase() !== "DEMO";
   }
   function normalizeTradeRowForDisplay(t) {
     if (!t) return t;
@@ -679,7 +679,7 @@
             <span id="aiLivePositionMeta">Locked ${App.money(locked)} · Live <em class="${pnl >= 0 ? "profit-text" : "loss-text"}">${pnl >= 0 ? "+" : ""}${App.money(pnl)}</em> ${label}</span>
           </div>
         </div>
-        <button onclick="AITradeXUser.go('positions')">View</button>
+        <button onclick="AITradeXUser.go('orders')">View</button>
       </section>`;
   }
 
@@ -832,7 +832,7 @@
     localStorage.removeItem("AITradeX_TRADE_LIMIT_PRICE");
     tradeOrderNotice = {
       title: message || "Order placed successfully",
-      detail: detail || "Your position has been moved to Positions. Fill fresh details to place another trade."
+      detail: detail || "Your order has been moved to Orders. Fill fresh details to place another trade."
     };
   }
 
@@ -914,7 +914,7 @@
             <h2>${App.escapeHtml(plan.name || "Free")} · ${ai.enabled ? "AI Active" : "AI OFF"}</h2>
             <h4>Daily limit, live AI positions and profit/loss in one place.</h4>
           </div>
-          <button class="change-pair-btn" onclick="AITradeXUser.go('positions')">View Positions</button>
+          <button class="change-pair-btn" onclick="AITradeXUser.go('orders')">View Orders</button>
         </div>
         <div class="compact-grid ai-summary-grid">
           <article><span>Used Today</span><b>${usage.used}/${usage.limit}</b><small>${remaining} remaining</small></article>
@@ -1689,7 +1689,10 @@
   }
 
   function accountSwitch(compact = false) {
-    return "";
+    return `
+      <div class="account-segment ${compact ? "compact" : ""} real-only-segment" aria-label="Account mode">
+        <button class="active" type="button">Real</button>
+      </div>`;
   }
 
   function userNotifications() {
@@ -1800,7 +1803,6 @@
       home: `<svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 11.2 12 4.7l7.5 6.5v7.6a1.7 1.7 0 0 1-1.7 1.7h-3.4v-5.8H9.6v5.8H6.2a1.7 1.7 0 0 1-1.7-1.7v-7.6Z"/><path d="M3 12.4 12 4l9 8.4"/></svg>`,
       trade: `<svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5v14"/><path d="M4.5 7.5 7 5l2.5 2.5"/><path d="M4.5 16.5 7 19l2.5-2.5"/><path d="M17 5v14"/><path d="M14.5 7.5 17 5l2.5 2.5"/><path d="M14.5 16.5 17 19l2.5-2.5"/></svg>`,
       orders: `<svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h10a2 2 0 0 1 2 2v13H5v-13a2 2 0 0 1 2-2Z"/><path d="M9 3h6v4H9V3Z"/><path d="M8 11h8"/><path d="M8 15h8"/></svg>`,
-      positions: `<svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h10a2 2 0 0 1 2 2v13H5v-13a2 2 0 0 1 2-2Z"/><path d="M9 3h6v4H9V3Z"/><path d="M8 11h8"/><path d="M8 15h8"/></svg>`,
       wallet: `<svg class="nav-svg wallet-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.7h15.2a2 2 0 0 1 2 2v8.1a2 2 0 0 1-2 2H4.8a2 2 0 0 1-2-2V6.9c0-1 .7-1.8 1.7-2l10.7-1.7c1-.2 1.9.6 1.9 1.6v2.9"/><path d="M16.1 12.2h5.1v4.3h-5.1a2.1 2.1 0 1 1 0-4.3Z"/><path d="M16.3 14.4h.1"/><path d="M6.4 7.5 15.1 6"/></svg>`,
       history: `<svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.6 11.2a7.6 7.6 0 1 1 2.2 6.1"/><path d="M4 6.5v4.9h4.9"/><path d="M12 8v4.4l3 1.8"/></svg>`
     };
@@ -1811,7 +1813,7 @@
     const nav = [
       ["home", "Home"],
       ["trade", "Trade"],
-      ["positions", "Positions"],
+      ["orders", "Orders"],
       ["wallet", "Wallet"],
       ["history", "History"]
     ];
@@ -1954,7 +1956,7 @@
         </section>
 
         <section class="landing-grid landing-feature-grid">
-          <article><i>📈</i><h3>Manual Trading</h3><p>Place market or limit orders, lock entry price, track live P/L and close positions from the Positions flow.</p></article>
+          <article><i>📈</i><h3>Manual Trading</h3><p>Place market or limit orders, lock entry price, track live P/L and close positions from the Orders flow.</p></article>
           <article><i>🤖</i><h3>AI Auto Trading</h3><p>AI trading starts ON with 75% allocation by default. Users can change allocation anytime.</p></article>
           <article><i>💳</i><h3>INR Wallet</h3><p>Deposit requests, bank-only withdrawals, wallet ledger and admin approval flow are built in.</p></article>
         </section>
@@ -2055,7 +2057,7 @@
           title: `${label} ${t.status || "Trade"}`,
           detail: `${t.pair || "Trade"} · ${Number(t.pnl || 0) >= 0 ? "+" : ""}${App.money(Number(t.pnl || 0))}`,
           time: t.createdAt || t.openedAt || t.closedAt,
-          page: "positions"
+          page: "orders"
         });
       });
     return rows
@@ -2103,27 +2105,32 @@
   function dashboardHeroCard({ balance, pnl, activeManualCount, activeAiCount }) {
     const unread = userUnreadNotifications();
     const totalActive = Number(activeManualCount || 0) + Number(activeAiCount || 0);
-    const kycStatus = App.kycStatus(user()?.id || "");
-    const bankReady = approvedPaymentMethods().length > 0;
+    const modeLabel = "Real Account";
+    const modeHint = "Real wallet selected";
     return `
-      <section class="user-command-hero clean-home-hero real compact-final-home-hero">
+      <section class="user-command-hero clean-home-hero real">
         <div class="hero-glow-orb"></div>
         <div class="hero-mode-row">
-          <span class="hero-mode-chip">Real Account</span>
-          <span class="hero-mode-chip light">${kycStatus === "APPROVED" ? "KYC Approved" : "KYC Pending"}</span>
+          <span class="hero-mode-chip">${modeLabel}</span>
+          ${accountSwitch(true)}
         </div>
         <div class="user-command-copy">
           <p>USER DASHBOARD</p>
           <h1>Welcome back, ${App.escapeHtml(dashboardUserName())}</h1>
-          <span>${totalActive ? `${totalActive} active position${totalActive > 1 ? "s" : ""}` : "No active positions"} · ${bankReady ? "Bank ready" : "Bank setup pending"}</span>
+          <span>${modeHint} · ${totalActive ? `${totalActive} active position${totalActive > 1 ? "s" : ""}` : "No active positions"}</span>
           <div class="hero-wallet-line">
             <b>${App.money(balance)}</b>
             <em class="${pnl >= 0 ? "profit-text" : "loss-text"}">${pnl >= 0 ? "+" : ""}${App.money(pnl)} today</em>
           </div>
         </div>
+        <div class="user-command-actions premium-hero-actions">
+          <button onclick="AITradeXUser.go('trade')">Trade Now</button>
+          <button onclick="AITradeXUser.go('wallet')">Add Funds</button>
+          <button onclick="AITradeXUser.go('orders')">${totalActive ? `View ${totalActive} Position${totalActive > 1 ? "s" : ""}` : "View Orders"}</button>
+        </div>
         <div class="user-command-meta clean-home-meta">
           <article><span>Manual</span><b>${activeManualCount}</b></article>
-          <article><span>Live AI</span><b>${activeAiCount}</b></article>
+          <article><span>AI Positions</span><b>${activeAiCount}</b></article>
           <article><span>Unread</span><b>${unread}</b></article>
         </div>
       </section>`;
@@ -2170,11 +2177,11 @@
   }
 
   function recentActivityCard() {
-    const rows = latestUserActivity(3);
+    const rows = latestUserActivity(5);
     return `
-      <section class="premium-card user-recent-activity-card compact-recent-activity-card">
+      <section class="premium-card user-recent-activity-card">
         <div class="card-row">
-          <div><p>RECENT ACTIVITY</p><h2>Latest 3 updates</h2><h4>Only important wallet, trade and notification updates.</h4></div>
+          <div><p>RECENT ACTIVITY</p><h2>Latest account updates</h2><h4>Wallet, AI trades and notification activity in one place.</h4></div>
           <button class="ghost-action" onclick="AITradeXUser.go('notifications')">All Notifications</button>
         </div>
         <div class="user-activity-list">
@@ -2188,61 +2195,77 @@
       </section>`;
   }
 
-
-  function compactAiSignalCard() {
+  function homePage() {
+    const balance = currentBalance();
+    const real = realBalance();
+    const pnl = pnlValue();
+    const ai = currentAiSettings();
     const usage = aiDailyUsage();
-    const limit = Math.max(1, Number(usage.limit || 5));
-    const used = Math.min(limit, Math.max(0, Number(usage.used || 0)));
-    const percent = Math.round((used / limit) * 100);
-    return `
-      <section class="premium-card final-signal-card">
+    const tradeAmount = accountMode === "REAL" ? real * Number(ai.percent || 0) / 100 : 0;
+    const pair = selectedPairData();
+    const activeManualCount = manualOpenPositions().length;
+    const activeAiCount = aiOpenPositions().length;
+    const activeTotal = activeManualCount + activeAiCount;
+
+    shell(`
+      ${dashboardHeroCard({ balance, pnl, activeManualCount, activeAiCount })}
+
+      <section class="compact-grid home-summary-grid polished-home-summary clean-home-summary">
+        <article><span>AI Status</span><b>${ai.enabled ? "Active" : "OFF"}</b><small>${usage.used}/${usage.limit} AI trades today</small></article>
+        <article><span>Active Positions</span><b>${activeTotal}</b><small>${activeManualCount} manual · ${activeAiCount} AI</small></article>
+        <article><span>Real Wallet</span><b>${App.money(real)}</b><small>${accountMode === "REAL" ? "Selected" : "Switch to Real for wallet"}</small></article>
+        <article><span>Selected Pair</span><b>${selectedPair}</b><small>${pair.signal} bias</small></article>
+      </section>
+
+      ${aiTradingSummaryCard()}
+
+      <section class="premium-card quick-action-card polished-quick-actions clean-quick-actions">
+        <div class="quick-action-head">
+          <div>
+            <p>QUICK ACTIONS</p>
+            <h2>Everything in one tap</h2>
+            <span>Trade, check orders, manage wallet or raise support quickly.</span>
+          </div>
+        </div>
+        <div class="quick-action-grid">
+          <button onclick="AITradeXUser.go('trade')"><i>📈</i><b>Trade</b><span>Crypto market</span></button>
+          <button onclick="AITradeXUser.go('orders')"><i>📋</i><b>Orders</b><span>Positions</span></button>
+          <button onclick="AITradeXUser.go('wallet')"><i>💳</i><b>Wallet</b><span>Deposit / Withdraw</span></button>
+          <button onclick="AITradeXUser.go('support')"><i>🎧</i><b>Support</b><span>Tickets</span></button>
+        </div>
+      </section>
+
+      <section class="premium-card subscription-mini-card polished-plan-card clean-plan-card">
         <div class="card-row">
-          <div><p>AI SIGNALS</p><h2>${used} of ${limit} used today</h2><h4>Manual trade stays on the Trade page. AI usage is only shown as a light status here.</h4></div>
-          <button class="ghost-action" onclick="AITradeXUser.go('subscription')">Plan</button>
+          <div>
+            <p>CURRENT PLAN</p>
+            <h2>${App.escapeHtml(currentPlan().name || "Free")}</h2>
+            <h4>${usage.used}/${usage.limit} AI auto trades used today · Expires ${subscriptionExpiryText(activeSubscription())}</h4>
+            ${isAiLimitComplete() ? `<span class="upgrade-inline-note">Daily AI trade limit completed. Upgrade your plan to unlock more AI auto trades.</span>` : ""}
+          </div>
+          <button class="change-pair-btn" onclick="AITradeXUser.go('subscription')">${isAiLimitComplete() ? "Upgrade Plan" : "View Plan"}</button>
         </div>
-        <div class="final-progress"><span style="width:${percent}%"></span></div>
-      </section>`;
-  }
+      </section>
 
-  function compactStatusBanner() {
-    const kyc = App.kycStatus(user()?.id || "");
-    const bankCount = approvedPaymentMethods().length;
-    const kycOk = kyc === "APPROVED";
-    return `
-      <section class="premium-card final-status-banner ${kycOk && bankCount ? "ok" : "todo"}">
-        <div>
-          <b>${kycOk ? "KYC Approved" : "KYC Pending"}</b>
-          <span>${bankCount ? `${bankCount} approved bank account${bankCount > 1 ? "s" : ""}` : "Add an approved bank account for withdrawals"}</span>
+      <section class="premium-card auto-card polished-auto-card clean-ai-control-card">
+        <div class="card-row">
+          <div><p>AI TRADE CONTROL</p><h2>Auto Trade Amount</h2><h4>Choose how much real balance AI can use for future automatic trades.</h4></div>
+          <button class="ai-power ${ai.enabled ? "on" : ""}" onclick="AITradeXUser.toggleAutoTrade()">${ai.enabled ? "ON" : "OFF"}</button>
         </div>
-        <button onclick="AITradeXUser.go('${kycOk ? "payments" : "kyc"}')">${kycOk ? "Bank" : "KYC"}</button>
-      </section>`;
+        <div class="percent-grid">
+          ${[25, 50, 75, 100].map(v => `<button class="${ai.percent === v ? "active" : ""}" onclick="AITradeXUser.setAutoPercent(${v})">${v}%</button>`).join("")}
+        </div>
+        <div class="auto-summary">
+          <article><span>Selected</span><b>${ai.percent}%</b></article>
+          <article><span>AI Trade Pool</span><b>${App.money(tradeAmount)}</b></article>
+          <article><span>Daily AI Trades</span><b>${usage.used}/${usage.limit}</b></article>
+        </div>
+        ${!ai.enabled ? `<div class="ai-status-banner off"><b>AI Auto Trading is OFF.</b><span>Turn it ON to receive AI auto trades.</span></div>` : ""}
+        ${ai.enabled && isAiLimitComplete() ? `<div class="ai-status-banner limit"><b>Daily AI trade limit completed.</b><span>Upgrade your plan to unlock more AI auto trades.</span><button onclick="AITradeXUser.go('subscription')">Upgrade Plan</button></div>` : ""}
+      </section>
+    `);
+    refreshVisiblePrices([selectedPair]);
   }
-
-  function compactActivePositionCard() {
-    const manual = manualOpenPositions();
-    const ai = aiOpenPositions();
-    const all = [...manual.map(p => ({ ...p, _kind: "Manual", _pnl: manualPositionPnl(p) })), ...ai.map(p => ({ ...p, _kind: "Live AI", _pnl: aiPositionPnl(p) }))]
-      .sort((a, b) => Math.abs(Number(b._pnl || 0)) - Math.abs(Number(a._pnl || 0)));
-    const top = all[0];
-    if (!top) return `
-      <section class="premium-card final-position-card empty">
-        <div><p>POSITIONS</p><h2>No active position</h2><h4>Open manual trades from Trade page or view running trades here.</h4></div>
-        <button class="change-pair-btn" onclick="AITradeXUser.go('trade')">Start Trade</button>
-      </section>`;
-    return `
-      <section class="premium-card final-position-card">
-        <div>
-          <p>ACTIVE POSITION</p>
-          <h2>${App.escapeHtml(top.pair || "Position")} <span class="side-pill ${orderSideClass(top.side)}">${App.escapeHtml(String(top.side || "BUY").toUpperCase())}</span></h2>
-          <h4>${App.escapeHtml(top._kind)} · ${Number(top.leverage || 1)}x · Entry ${App.escapeHtml(top.entryPriceDisplay || String(top.entryPrice || "--"))}</h4>
-        </div>
-        <div class="final-position-pnl">
-          <b class="${Number(top._pnl || 0) >= 0 ? "profit-text" : "loss-text"}">${Number(top._pnl || 0) >= 0 ? "+" : ""}${App.money(Number(top._pnl || 0))}</b>
-          <button onclick="AITradeXUser.go('positions')">View</button>
-        </div>
-      </section>`;
-  }
-
 
   function tradePage() {
     const pair = selectedPairData();
@@ -2423,9 +2446,6 @@
     scheduleTradingViewChart();
   }
   function walletPage() {
-    accountMode = "REAL";
-    localStorage.setItem("AITradeX_ACCOUNT_MODE", "REAL");
-
     depositStep = Math.min(3, Math.max(1, Number(depositStep || 1)));
     withdrawalStep = Math.min(3, Math.max(1, Number(withdrawalStep || 1)));
     const kyc = currentKyc();
@@ -2667,7 +2687,7 @@
         <div class="wallet-hero-glow"></div>
         <div class="wallet-hero-content">
           <div>
-            <p>WALLET</p>
+            <p>REAL WALLET</p>
             <h1>${App.money(availableRealBalance())}</h1>
             <span>Available balance · ${statusPill(kyc.status)}</span>
             ${usdtRateChip("wallet-rate-chip")}
@@ -2810,8 +2830,8 @@
     shell(`
       <section class="orders-app-hero">
         <div>
-          <p>POSITIONS</p>
-          <h2>Open trades, live AI positions and pending limit orders</h2>
+          <p>ORDERS & POSITIONS</p>
+          <h2>Open trades, AI positions and pending orders</h2>
           <span>Compact real-app view for quick tracking and action.</span>
         </div>
         <button class="orders-hero-action" onclick="AITradeXUser.go('trade')">New Trade</button>
@@ -2822,14 +2842,14 @@
         <article><span>Live P/L</span><b class="${totalLivePnl >= 0 ? "profit-text" : "loss-text"}">${totalLivePnl >= 0 ? "+" : ""}${App.money(totalLivePnl)}</b></article>
         <article><span>Locked</span><b>${App.money(lockedMargin + aiLockedMargin)}</b></article>
         <article><span>Pending</span><b>${pending.length}</b></article>
-        
+        <article><span>Mode</span><b>${accountMode}</b></article>
       </section>
 
       <section class="orders-app-card">
         <div class="orders-app-head">
           <div>
             <p>POSITION BOOK</p>
-            <h2>${activeTab === "ALL" ? "All Active Positions" : `${activeTab.charAt(0)}${activeTab.slice(1).toLowerCase()} Positions`}</h2>
+            <h2>${activeTab === "ALL" ? "All Active Orders" : `${activeTab.charAt(0)}${activeTab.slice(1).toLowerCase()} Orders`}</h2>
           </div>
           <span>${filteredRows.length} item${filteredRows.length === 1 ? "" : "s"}</span>
         </div>
@@ -2841,7 +2861,7 @@
           `).join("")}
         </div>
         <div class="orders-app-list">
-          ${filteredRows.length ? filteredRows.map(row => row.html).join("") : `<div class="empty-state">No ${activeTab === "ALL" ? "active positions" : activeTab.toLowerCase()} records right now.</div>`}
+          ${filteredRows.length ? filteredRows.map(row => row.html).join("") : `<div class="empty-state">No ${activeTab === "ALL" ? "active orders" : activeTab.toLowerCase()} records right now.</div>`}
         </div>
       </section>
     `);
@@ -2999,7 +3019,7 @@
         ${historyStatCard("Total P/L", `${stats.totalPnl >= 0 ? "+" : ""}${App.money(stats.totalPnl)}`, `${allRows.length} closed trades`, stats.totalPnl >= 0 ? "profit" : "loss")}
         ${historyStatCard("Win Rate", `${stats.winRate}%`, `${stats.wins} profit trades`, "")}
         ${historyStatCard("Best Trade", `${stats.best >= 0 ? "+" : ""}${App.money(stats.best)}`, "Highest closed P/L", stats.best >= 0 ? "profit" : "loss")}
-        ${historyStatCard("Account", App.escapeHtml(accountMode), "Current account mode", "")}
+        ${historyStatCard("Account", "REAL", "Real account only", "")}
       </section>
 
       <section class="history-real-card">
@@ -3654,11 +3674,11 @@
 
     if (page === "home") return homePage();
     if (page === "pnl") {
-      page = "positions";
+      page = "orders";
       localStorage.setItem("AITradeX_ACTIVE_PAGE", page);
     }
     if (page === "trade") return tradePage();
-    if (page === "orders" || page === "positions") return ordersPage();
+    if (page === "orders") return ordersPage();
     if (page === "wallet") return walletPage();
     if (page === "history") return historyPage();
     if (page === "kyc") return kycPage();
@@ -3713,7 +3733,7 @@
       }
     },
     go(next) {
-      page = next === "orders" ? "positions" : next;
+      page = next;
       drawerOpen = false;
       localStorage.setItem("AITradeX_ACTIVE_PAGE", page);
       render();
@@ -3839,14 +3859,6 @@
     setAccountMode(mode) {
       accountMode = "REAL";
       localStorage.setItem("AITradeX_ACCOUNT_MODE", "REAL");
-      render();
-    },
-    setWalletModeAndGo(mode) {
-      walletMode = ["DEPOSIT", "WITHDRAWAL", "HISTORY"].includes(mode) ? mode : "DEPOSIT";
-      localStorage.setItem("AITradeX_WALLET_MODE", walletMode);
-      page = "wallet";
-      drawerOpen = false;
-      localStorage.setItem("AITradeX_ACTIVE_PAGE", page);
       render();
     },
     setWalletMode(mode) {
@@ -4453,7 +4465,7 @@
           });
           try { await window.AITradeXDB.loadAll?.(); } catch {}
           resetTradeTicketAfterOrder(orderType === "LIMIT" ? "Limit order placed" : "Market order opened", orderType === "LIMIT" ? `${selectedPair} ${normalizedSide} limit placed at ${limitDisplay}.` : `${normalizedSide} ${selectedPair} opened at ${entryDisplay}.`);
-          page = "positions";
+          page = "orders";
           orderViewTab = orderType === "LIMIT" ? "PENDING" : "MANUAL";
           localStorage.setItem("AITradeX_ACTIVE_PAGE", page);
           localStorage.setItem("AITradeX_ORDER_VIEW_TAB", orderViewTab);
@@ -4530,7 +4542,7 @@
         App.state.trades.unshift(order);
         App.saveState();
         resetTradeTicketAfterOrder("Limit order placed", `${selectedPair} ${normalizedSide} limit placed at ${order.limitPriceDisplay}.`);
-        page = "positions";
+        page = "orders";
         orderViewTab = "PENDING";
         localStorage.setItem("AITradeX_ACTIVE_PAGE", page);
         localStorage.setItem("AITradeX_ORDER_VIEW_TAB", orderViewTab);
@@ -4607,7 +4619,7 @@
       App.state.trades.unshift(trade);
       App.saveState();
       resetTradeTicketAfterOrder("Market order opened", `${trade.side} ${selectedPair} opened at ${trade.entryPriceDisplay}.`);
-      page = "positions";
+      page = "orders";
       orderViewTab = "MANUAL";
       localStorage.setItem("AITradeX_ACTIVE_PAGE", page);
       localStorage.setItem("AITradeX_ORDER_VIEW_TAB", orderViewTab);
