@@ -18,6 +18,8 @@
   let usersPageNo = Math.max(1, Number(localStorage.getItem("AITradeX_ADMIN_USERS_PAGE") || 1));
   let depositHistoryPage = Math.max(1, Number(localStorage.getItem("AITradeX_ADMIN_DEPOSIT_HISTORY_PAGE") || 1));
   let withdrawalHistoryPage = Math.max(1, Number(localStorage.getItem("AITradeX_ADMIN_WITHDRAWAL_HISTORY_PAGE") || 1));
+  let aiBatchAutoCloseRunning = false;
+  let aiBatchAutoCloseTimer = null;
 
   function adminUser() {
     return App.currentUser();
@@ -1776,7 +1778,7 @@
     const batches = aiLiveBatches();
     return `
       <section class="panel-card">
-        <div class="section-head"><div><h3>Running AI Live Positions</h3><span>Market-connected AI positions remain active until target hit or admin closes them</span></div></div>
+        <div class="section-head"><div><h3>Running AI Live Positions</h3><span>Batch-level watcher closes all users together on profit target, loss target, or margin-risk hit</span></div><button class="ghost-action" type="button" onclick="AITradeXAdmin.checkAiLiveAutoClose(this)">Check Auto Close</button></div>
         <div class="admin-list">
           ${batches.length ? batches.map(batch => `
             <article class="admin-user-card ai-live-batch-card">
@@ -2109,7 +2111,7 @@
                   <input id="aiLiveMinBalance" type="number" min="0" value="0" oninput="AITradeXAdmin.updateAiLivePreview()"/>
                 </label>
                 <label>Close Mode
-                  <input value="Target hit or Admin Close" readonly/>
+                  <input value="Batch auto close or Admin Close" readonly/>
                 </label>
               </div>
               <label>Position Note
@@ -2881,6 +2883,141 @@
   }
 
 
+  function aiLiveBatchId(position) {
+    return String(position?.batchId || position?.id || "");
+  }
+
+  function aiLiveOpenPositionsByBatch(batchId) {
+    const cleanId = String(batchId || "");
+    return aiLivePositions().filter(position => aiLiveBatchId(position) === cleanId);
+  }
+
+  function aiLiveAutoCloseTriggerForBatch(positions, priceRow) {
+    if (!positions || !positions.length || !priceRow) return null;
+    for (const position of positions) {
+      const rawPnl = aiLiveRawPnl(position, priceRow);
+      const margin = aiLiveMarginAmount(position);
+      const targetPnl = aiLiveTargetPnlAmount(position);
+      const targetType = String(position?.targetType || "PROFIT").toUpperCase();
+      const maxLoss = Math.max(0, margin);
+
+      if (rawPnl < 0 && maxLoss > 0 && Math.abs(rawPnl) >= maxLoss) {
+        return {
+          reason: "AUTO_RISK_CLOSE",
+          label: "Loss reached locked AI amount",
+          rawPnl: Number(rawPnl.toFixed(2)),
+          triggerPositionId: position.id
+        };
+      }
+
+      if (targetPnl > 0) {
+        if (targetType === "LOSS") {
+          const lossTarget = Math.min(maxLoss || targetPnl, targetPnl);
+          if (lossTarget > 0 && rawPnl <= -lossTarget) {
+            return {
+              reason: "AUTO_LOSS_TARGET_CLOSE",
+              label: `Loss target hit (${Number(position.targetPercent || 0)}%)`,
+              rawPnl: Number(rawPnl.toFixed(2)),
+              triggerPositionId: position.id
+            };
+          }
+        } else if (rawPnl >= targetPnl) {
+          return {
+            reason: "AUTO_PROFIT_TARGET_CLOSE",
+            label: `Profit target hit (${Number(position.targetPercent || 0)}%)`,
+            rawPnl: Number(rawPnl.toFixed(2)),
+            triggerPositionId: position.id
+          };
+        }
+      }
+    }
+    return null;
+  }
+
+  async function markAiLiveBatchClosed(batchId, reason, closed, totalPositions, priceRow, trigger = null) {
+    const batch = (App.state.aiLiveBatches || []).find(row => String(row.id) === String(batchId));
+    if (!batch) return;
+    batch.status = closed === totalPositions ? "CLOSED" : "PARTIAL_CLOSE";
+    batch.closedAt = new Date().toISOString();
+    batch.closeReason = reason;
+    batch.exitPrice = Number(priceRow?.price || batch.entryPrice || 0);
+    batch.exitPriceDisplay = priceRow?.display || String(batch.exitPrice || batch.entryPrice || "-");
+    batch.exitPriceSource = priceRow?.source || batch.priceSource || "Live market";
+    batch.closedCount = closed;
+    batch.totalPositions = totalPositions;
+    if (trigger) batch.autoCloseTrigger = trigger.label || trigger.reason || reason;
+    if (App.isDatabaseMode?.() && window.AITradeXDB?.writeAiBatch) await window.AITradeXDB.writeAiBatch(batch);
+  }
+
+  async function runAiLiveBatchAutoClose({ silent = false } = {}) {
+    if (aiBatchAutoCloseRunning) return 0;
+    aiBatchAutoCloseRunning = true;
+    let closedTotal = 0;
+    let checkedBatches = 0;
+    try {
+      const groups = new Map();
+      aiLivePositions().forEach(position => {
+        const id = aiLiveBatchId(position);
+        if (!id) return;
+        if (!groups.has(id)) groups.set(id, []);
+        groups.get(id).push(position);
+      });
+
+      for (const [batchId, positions] of groups.entries()) {
+        if (!positions.length) continue;
+        checkedBatches += 1;
+        let priceRow = null;
+        try {
+          priceRow = App.getLivePairPrice ? await App.getLivePairPrice(positions[0].pair) : null;
+        } catch (err) {
+          priceRow = aiLiveExitPriceRow(positions[0]);
+          if (!priceRow) {
+            console.warn("AI live auto-close price unavailable", batchId, err?.message || err);
+            continue;
+          }
+        }
+        const trigger = aiLiveAutoCloseTriggerForBatch(positions, priceRow);
+        if (!trigger) continue;
+
+        let closed = 0;
+        for (const position of positions) {
+          try {
+            if (await settleAiLivePositionByAdmin(position, trigger.reason, priceRow)) closed += 1;
+          } catch (error) {
+            console.warn("AI live auto-close failed", position.id, error?.message || error);
+          }
+        }
+        if (closed) {
+          closedTotal += closed;
+          try { await markAiLiveBatchClosed(batchId, trigger.reason, closed, positions.length, priceRow, trigger); }
+          catch (err) { console.warn("AI live auto-close batch save failed", err?.message || err); }
+          await (typeof logAdminActionAsync === "function"
+            ? logAdminActionAsync("AI_LIVE_AUTO_CLOSE", "AI_BATCH", batchId, { closed, totalPositions: positions.length, reason: trigger.reason, trigger: trigger.label, price: priceRow?.display || priceRow?.price || "" })
+            : logAdminAction("AI_LIVE_AUTO_CLOSE", "AI_BATCH", batchId, { closed, totalPositions: positions.length, reason: trigger.reason, trigger: trigger.label, price: priceRow?.display || priceRow?.price || "" }));
+        }
+      }
+    } finally {
+      aiBatchAutoCloseRunning = false;
+    }
+    if (closedTotal) {
+      App.saveState();
+      if (!silent) App.toast(`AI live auto-closed ${closedTotal} position(s) at batch level.`);
+      if (typeof render === "function") setTimeout(() => render(), 0);
+    } else if (!silent) {
+      App.toast(checkedBatches ? "No AI live batch target/risk hit yet." : "No running AI live batch found.");
+    }
+    return closedTotal;
+  }
+
+  function startAiLiveBatchAutoCloseWatcher() {
+    if (aiBatchAutoCloseTimer) clearInterval(aiBatchAutoCloseTimer);
+    aiBatchAutoCloseTimer = setInterval(() => {
+      if (App.session?.userId && Auth?.isAdmin?.()) {
+        runAiLiveBatchAutoClose({ silent: true }).catch(err => console.warn("AI live auto-close watcher failed", err?.message || err));
+      }
+    }, 30000);
+  }
+
   async function settleAiLivePositionByAdmin(position, reason = "ADMIN_CLOSE", forcedPriceRow = null) {
     if (!position || tradeStatusOf(position) !== "OPEN") return false;
     const original = { ...position };
@@ -2937,6 +3074,12 @@
   }
 
   window.AITradeXAdmin = {
+    async checkAiLiveAutoClose(button) {
+      markButton(button, "Checking...");
+      try { await runAiLiveBatchAutoClose({ silent: false }); }
+      catch (err) { App.toast(`AI live auto-close check failed: ${err.message || err}`); }
+      finally { render(); }
+    },
     changeAiHistoryPage(kind, delta) {
       const key = `AITradeX_ADMIN_${kind}_PAGE`;
       const current = Math.max(1, Number(localStorage.getItem(key) || 1));
@@ -3977,7 +4120,7 @@
       render();
     },
     async closeAiLiveBatch(batchId, button) {
-      const positions = aiLivePositions().filter(position => (position.batchId || position.id) === batchId);
+      const positions = aiLiveOpenPositionsByBatch(batchId);
       if (!positions.length) {
         App.toast("No open AI live positions found.");
         render();
@@ -3990,13 +4133,8 @@
       for (const position of positions) {
         try { if (await settleAiLivePositionByAdmin(position, "ADMIN_BATCH_CLOSE", batchExitRow)) closed += 1; } catch (error) { console.warn("AI live close failed", error); }
       }
-      const batch = (App.state.aiLiveBatches || []).find(row => row.id === batchId);
-      if (batch) {
-        batch.status = "CLOSED";
-        batch.closedAt = new Date().toISOString();
-        batch.closeReason = "ADMIN_CLOSE";
-        try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeAiBatch) await window.AITradeXDB.writeAiBatch(batch); } catch (err) { App.toast(`AI live batch close save failed: ${err.message || err}`); return; }
-      }
+      try { await markAiLiveBatchClosed(batchId, "ADMIN_CLOSE", closed, positions.length, batchExitRow, { reason: "ADMIN_CLOSE", label: "Admin manual close" }); }
+      catch (err) { App.toast(`AI live batch close save failed: ${err.message || err}`); return; }
       await (typeof logAdminActionAsync === "function" ? logAdminActionAsync("AI_LIVE_CLOSE", "AI_BATCH", batchId, { closed, totalPositions: positions.length }) : logAdminAction("AI_LIVE_CLOSE", "AI_BATCH", batchId, { closed, totalPositions: positions.length }));
       App.saveState();
       App.toast(closed ? `Closed AI live trade for ${closed} user(s).` : "Unable to close trade.");
@@ -4266,6 +4404,8 @@
       }
     }catch(err){ console.warn("AITradeX admin boot DB load skipped", err?.message||err); }
     render();
+    startAiLiveBatchAutoCloseWatcher();
+    runAiLiveBatchAutoClose({ silent: true }).catch(err => console.warn("AI live initial auto-close check failed", err?.message || err));
   }
 
   bootAdminApp();

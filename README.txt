@@ -1,4 +1,5 @@
-AITradeX Phase 5.32 - AI Batch Settlement Fix
+AITradeX Phase 5.33 - AI Batch Auto Risk Close Fix
+
 
 This build keeps previous fixes and corrects AI Live batch settlement behavior.
 
@@ -8,7 +9,7 @@ Key fixes:
 - AI Live P/L uses safe exposure from margin × leverage instead of trusting a stale/corrupted stored positionSize.
 - AI Live profit settlement is capped to the configured target percent. Example: ₹7,500 margin × 100x × 5% = ₹37,500 profit, not a BTC price-sized wallet credit.
 - Admin batch close settles all currently open positions in the selected batch together.
-- Cache version: phase532aibatchsettlement.
+- Cache version: phase533aibatchriskclose.
 
 Deploy order:
 1. Run supabase-schema.sql if you have not already applied the latest schema.
@@ -21,3 +22,11 @@ If a previous AI Live close already credited a wrong huge amount, correct that w
 
 Note:
 This is still a frontend-only testing build. Public real-money launch needs Phase 6 backend/Auth/strict RLS migration.
+
+
+Phase 5.33 update:
+- Added admin/global batch-level auto close watcher for AI Live positions.
+- Same AI batch positions now close together when profit target, loss target, or margin-risk threshold is hit.
+- User panel still only displays AI Live P/L; it does not individually close batch positions.
+- AI Live loss is capped to locked AI amount/margin and settlement remains margin/leverage based.
+- Cache version: phase533aibatchriskclose.
