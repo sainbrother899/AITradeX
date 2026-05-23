@@ -330,19 +330,26 @@ App.cryptoRawUnitCeiling=pair=>{
   const map={BTC:200000,ETH:20000,BNB:5000,SOL:3000,AVAX:1000,LINK:1000,XRP:1000,DOGE:1000,ADA:1000,TRX:1000};
   return map[base]||1000;
 };
-App.tradeRawPrice=(pair,value,{display="",reference=0}={})=>{
+App.tradeRawPrice=(pair,value,{display="",reference=0,raw=false}={})=>{
   let n=Number(value||0);
   if(!Number.isFinite(n)||n<=0)return 0;
   if(!isCryptoPair(pair))return n;
+  if(raw===true)return n;
   const text=String(display||"");
   const ref=Number(reference||0);
+  const ceiling=App.cryptoRawUnitCeiling(pair);
   const looksInr=text.includes("₹")||/INR/i.test(text);
-  if(looksInr)return App.cryptoInrToRaw(n);
+  // Important: many live rows carry raw USDT price plus INR display text.
+  // Do NOT convert again when the numeric value is already in a normal raw range.
+  if(looksInr){
+    if(n>ceiling)return App.cryptoInrToRaw(n);
+    return n;
+  }
   if(ref>0){
     const ratio=n/ref;
     if(ratio>20)return App.cryptoInrToRaw(n);
   }
-  if(n>App.cryptoRawUnitCeiling(pair))return App.cryptoInrToRaw(n);
+  if(n>ceiling)return App.cryptoInrToRaw(n);
   return n;
 };
 App.tradePriceDisplay=(pair,value)=>App.priceDisplayFor?App.priceDisplayFor(pair,App.tradeRawPrice(pair,value)):String(value||"--");

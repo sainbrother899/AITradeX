@@ -982,6 +982,11 @@ begin
     when 'SOL' then 3000
     else 1000
   end;
+  -- If numeric value is already in the normal raw range for the asset, keep it raw.
+  -- Frontend sends raw entry/limit price plus INR display text for readability.
+  if n <= ceiling then
+    return n;
+  end if;
   if position('₹' in coalesce(p_display,'')) > 0 or upper(coalesce(p_display,'')) like '%INR%' or n > ceiling then
     return round((n / rate)::numeric, 8);
   end if;
@@ -1285,7 +1290,7 @@ grant execute on function public.aitradex_close_manual_trade(text,text,numeric,t
 grant execute on function public.aitradex_cancel_manual_limit(text,text) to anon, authenticated;
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','6.5.5','mode','phase6-manual-price-unit-cleanup','manualTradeBackend','rpc-secure-function','limitOrderValidation','pending-only-limit-fill','manualPriceUnit','raw-storage-display-only-inr'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.5.6','mode','phase6-manual-price-unit-fix','manualTradeBackend','rpc-secure-function','limitOrderValidation','pending-only-limit-fill','manualPriceUnit','raw-storage-display-only-inr-fixed'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.5.5','mode','phase6-manual-price-unit-cleanup','manualTradeBackend','rpc-secure-function','limitOrderValidation','pending-only-limit-fill','manualPriceUnit','raw-storage-display-only-inr'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.5.6','mode','phase6-manual-price-unit-fix','manualTradeBackend','rpc-secure-function','limitOrderValidation','pending-only-limit-fill','manualPriceUnit','raw-storage-display-only-inr-fixed'),
     updated_at = now();

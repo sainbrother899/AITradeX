@@ -271,7 +271,13 @@
 
   function normalizeTradePriceRow(pair, row, reference = 0) {
     if (!row) return null;
-    const raw = tradeRawPrice(pair || row.pair || selectedPair, row.price, { display: row.display || "", reference });
+    const cleanPair = pair || row.pair || selectedPair;
+    // If a data row already has rawPrice or came from a live API/cache, trust row.price as raw.
+    // Display text can be INR, so passing raw+INR display into tradeRawPrice would double-convert.
+    const trustedRaw = Number(row.rawPrice || 0) || (row.sourceType || row.source || row.fetchedAt ? Number(row.price || 0) : 0);
+    const raw = trustedRaw > 0
+      ? tradeRawPrice(cleanPair, trustedRaw, { raw: true })
+      : tradeRawPrice(cleanPair, row.price, { display: row.display || "", reference });
     if (!Number.isFinite(raw) || raw <= 0) return null;
     return { ...row, price: raw, rawPrice: raw };
   }
@@ -283,8 +289,9 @@
     const node = document.querySelector(`[data-price-card="true"][data-live-pair="${escapedPair}"]`);
     if (!node) return null;
     const displayText = node.dataset.displayPrice || node.textContent.trim() || "";
-    const rawCandidate = Number(node.dataset.rawPrice || 0) || numericPriceFromText(displayText);
-    const raw = tradeRawPrice(pair, rawCandidate, { display: displayText });
+    const datasetRaw = Number(node.dataset.rawPrice || 0);
+    const rawCandidate = datasetRaw || numericPriceFromText(displayText);
+    const raw = datasetRaw ? tradeRawPrice(pair, rawCandidate, { raw: true }) : tradeRawPrice(pair, rawCandidate, { display: displayText });
     if (!Number.isFinite(raw) || raw <= 0) return null;
     const meta = [...marketPairs.CRYPTO, ...marketPairs.FOREX].find(item => item.pair === pair);
     return {
@@ -4446,7 +4453,7 @@
               return;
             }
             limitDisplay = formatPairPrice(selectedPair, limitPrice);
-            entryPrice = tradeRawPrice(selectedPair, Number(marketNow?.price || pair.rawPrice || 0), { display: marketNow?.display || pair.price || "" });
+            entryPrice = Number(marketNow?.rawPrice || marketNow?.price || pair.rawPrice || 0);
             entryDisplay = marketNow?.display || pair.price || "--";
             const directionError = limitOrderDirectionError(normalizedSide, limitPrice, entryPrice);
             if (directionError) { App.toast(directionError); return; }
@@ -4456,7 +4463,7 @@
               try { lockedPrice = App.getLivePairPrice ? await App.getLivePairPrice(selectedPair) : null; }
               catch { lockedPrice = normalizeTradePriceRow(selectedPair, App.getCachedPairPrice ? App.getCachedPairPrice(selectedPair) : null); }
             }
-            entryPrice = tradeRawPrice(selectedPair, Number(lockedPrice?.price || pair.rawPrice || 0), { display: lockedPrice?.display || pair.price || "" });
+            entryPrice = Number(lockedPrice?.rawPrice || lockedPrice?.price || pair.rawPrice || 0);
             if (!Number.isFinite(entryPrice) || entryPrice <= 0) {
               App.toast("Live entry price unavailable. Please try again.");
               return;
@@ -4500,7 +4507,7 @@
           App.toast("Enter valid limit price.");
           return;
         }
-        const currentForLimit = tradeRawPrice(selectedPair, Number(marketNow?.price || pair.rawPrice || 0), { display: marketNow?.display || pair.price || "" });
+        const currentForLimit = Number(marketNow?.rawPrice || marketNow?.price || pair.rawPrice || 0);
         const directionError = limitOrderDirectionError(normalizedSide, limitPrice, currentForLimit);
         if (directionError) { App.toast(directionError); return; }
         let limitLedgerRow = null;
@@ -4535,7 +4542,7 @@
           side: normalizedSide,
           limitPrice,
           limitPriceDisplay: formatPairPrice(selectedPair, limitPrice),
-          currentPriceAtOrder: tradeRawPrice(selectedPair, Number(marketNow?.price || pair.rawPrice || 0), { display: marketNow?.display || pair.price || "" }),
+          currentPriceAtOrder: Number(marketNow?.rawPrice || marketNow?.price || pair.rawPrice || 0),
           currentPriceAtOrderDisplay: marketNow?.display || pair.price || "--",
           priceSource: marketNow?.source || pair.priceSource || "Live price cache",
           leverage,
@@ -4575,7 +4582,7 @@
           lockedPrice = normalizeTradePriceRow(selectedPair, App.getCachedPairPrice ? App.getCachedPairPrice(selectedPair) : null);
         }
       }
-      const entryPrice = tradeRawPrice(selectedPair, Number(lockedPrice?.price || pair.rawPrice || 0), { display: lockedPrice?.display || pair.price || "" });
+      const entryPrice = Number(lockedPrice?.rawPrice || lockedPrice?.price || pair.rawPrice || 0);
       if (!Number.isFinite(entryPrice) || entryPrice <= 0) {
         App.toast("Live entry price unavailable. Please try again.");
         return;
