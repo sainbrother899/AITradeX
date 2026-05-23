@@ -3749,7 +3749,7 @@
         usdtInrRate: Math.max(1, Number(inputValue("settingUsdtInrRate") || 95)),
         phase6AuthMode: settings.phase6AuthMode || "legacy-testing",
         phase6BackendMode: settings.phase6BackendMode || "deposit-withdrawal-ai-manual-kyc-payment-subscription-wallet-rpc-rls-ready",
-        phase6Build: "6.9.1-clean-baseline"
+        phase6Build: "6.9.2-final-money-security-pack"
       };
       logAdminAction("APP_SETTINGS_UPDATE", "SETTINGS", "app", { depositEnabled: App.state.settings.depositEnabled, withdrawalEnabled: App.state.settings.withdrawalEnabled, manualTradingEnabled: App.state.settings.manualTradingEnabled, aiTradingEnabled: App.state.settings.aiTradingEnabled, maintenanceMode: App.state.settings.maintenanceMode, maxLeverage: App.state.settings.maxLeverage });
       await persistSettings("app settings");

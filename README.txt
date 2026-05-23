@@ -34,3 +34,10 @@ The current app still supports legacy frontend testing mode. If strict productio
 Current build:
 Phase6.9-RLSReadinessPack
 Cache version: phase69rlsreadinesspack
+
+
+Phase 6.9.2 update notes:
+- Run supabase-phase6.9.2-final-money-security.sql after deployment.
+- Use supabase/functions/telegram-alert/index.ts for Telegram alerts.
+- Do not run strict RLS lock files until Supabase Auth + service-role admin functions are ready.
+- See PHASE6.9.2-FINAL-MONEY-SECURITY-PACK.txt for the test checklist.
