@@ -34,7 +34,8 @@ Previous AI fixes retained:
 - AI Live P/L settlement remains margin × leverage based and capped safely.
 
 Cache version:
-- phase535globalbarpolish
+- phase536hideaitargetuser
+- Phase 5.36: User Orders → AI Live card no longer exposes admin target profit/loss percent; it shows user-facing amount/position only.
 
 Deploy order:
 1. Run supabase-schema.sql so realtime publication/table compatibility is applied.

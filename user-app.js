@@ -2697,7 +2697,6 @@
 
   function aiPositionCard(position) {
     const pnl = aiPositionPnl(position);
-    const targetType = String(position.targetType || "PROFIT").toUpperCase();
     return ordersRowShell({
       kind: "AI",
       className: "ai-row",
@@ -2707,7 +2706,7 @@
       metaHtml: `
         <span>${Number(position.leverage || 1)}x</span>
         <span>AI Amount ${App.money(position.marginAmount || 0)}</span>
-        <span>Target ${targetType} ${Number(position.targetPercent || 0)}%</span>`,
+        <span>Position ${App.money(aiLiveSafeExposure(position))}</span>`,
       priceHtml: `
         <span>Entry <b>${App.escapeHtml(position.entryPriceDisplay || String(position.entryPrice || "--"))}</b></span>
         <span>Live <b data-ai-current="${position.id}">${App.escapeHtml(positionCurrentDisplay(position))}</b></span>`,
