@@ -1,36 +1,25 @@
-AITradeX Phase 6.5.6 - Manual Price Unit Cleanup
+AITradeX Phase 6.6 - KYC + Payment Method Backend Approval
 
-This build keeps the existing UI/design and fixes the repeated BUY/SELL market/limit issues caused by mixed price units.
+Base: Phase 6.5.6 Manual Price Unit Double Convert Fix.
 
-Core rule added:
-- Crypto trade prices are stored internally in raw USDT/USD quote units.
-- INR is display-only.
-- Entry price, limit price, trigger price, live price and exit price are normalized before comparison or P/L settlement.
+What changed:
+1. KYC approve/reject now uses secure Supabase RPC functions in database mode.
+2. Bank/payment method approve/reject now uses secure Supabase RPC functions in database mode.
+3. Backend functions validate active admin, lock the target row, block duplicate completed actions, update status, write user notification, write admin action log and backend action queue.
+4. Existing UI/design is preserved.
+5. Deposit backend, withdrawal backend, AI backend settlement and manual trade backend settlement are preserved.
 
-Fixes included:
-1. BUY/SELL market orders use raw price for entry.
-2. BUY/SELL limit orders compare raw live price vs raw limit price.
-3. Triggered limit orders fill at the limit price.
-4. Manual live P/L uses same-unit entry/live prices.
-5. Manual close backend RPC normalizes entry/exit price before settlement.
-6. Old rows with INR display price are guarded through SQL helper.
-7. AI frontend fallback settlement remains disabled; AI close continues through backend RPC.
-8. Version labels updated to Phase 6.5.6.
+Required deploy steps:
+1. Run the updated supabase-schema.sql in Supabase SQL Editor.
+2. Upload/deploy this ZIP.
+3. Hard refresh browser: Ctrl + Shift + R.
 
-SQL required: YES.
-Run the updated supabase-schema.sql because it updates manual trade RPC logic and adds the helper function public.aitradex_trade_raw_price().
+Test checklist:
+- Submit KYC as user, approve from admin, refresh both sides.
+- Submit KYC as user, reject from admin with reason, refresh both sides.
+- Add bank/payment method as user, approve from admin, refresh both sides.
+- Add bank/payment method as user, reject from admin, refresh both sides.
+- Confirm deposit, withdrawal, AI live and manual trade flows still work.
 
-Deploy:
-1. Run supabase-schema.sql in Supabase SQL Editor.
-2. Upload/deploy the ZIP.
-3. Hard refresh: Ctrl + Shift + R.
-
-Test:
-- BUY market: should remain open and close with correct P/L.
-- SELL market: should not auto-close when visiting Trade page.
-- BUY limit: only triggers when actual price moves down to limit.
-- SELL limit: only triggers when actual price moves up to limit.
-- Manual close: user wallet/history should show correct P/L settlement.
-
-
-Phase 6.5.6 note: Fixed manual trade raw/INR double conversion. Raw USDT price is trusted when coming from live API/cache/dataset raw price; INR remains display-only. SQL helper also keeps values in normal raw range unchanged even when INR display text is supplied.
+Real-money note:
+This is one more backend-security step, but final real-money launch still requires Supabase Auth/strict RLS and backend-only sensitive actions across all remaining modules.

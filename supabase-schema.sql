@@ -723,6 +723,289 @@ end;
 $$;
 
 grant execute on function public.aitradex_validate_admin(text) to anon, authenticated;
+
+
+-- Phase 6.6: Backend-secure KYC approval/rejection
+create or replace function public.aitradex_approve_kyc(
+  p_kyc_id text,
+  p_admin_user_id text default 'control_root',
+  p_admin_email text default '',
+  p_admin_name text default 'Admin'
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  kyc public.kyc_requests%rowtype;
+  notif_id text;
+  log_id text;
+  queue_id text;
+begin
+  if not public.aitradex_validate_admin(p_admin_user_id) then
+    raise exception 'Admin permission required for KYC approval.';
+  end if;
+
+  select * into kyc from public.kyc_requests where id = p_kyc_id for update;
+  if not found then
+    raise exception 'KYC request not found.';
+  end if;
+
+  if upper(coalesce(kyc.status,'PENDING')) <> 'PENDING' then
+    return jsonb_build_object('ok', true, 'alreadyCompleted', true, 'status', kyc.status);
+  end if;
+
+  update public.kyc_requests
+  set status = 'APPROVED',
+      reviewed_at = now(),
+      reviewed_by = p_admin_user_id,
+      admin_note = 'Approved by secure backend function.',
+      raw = coalesce(raw, '{}'::jsonb) || jsonb_build_object(
+        'status','APPROVED',
+        'secureKycApprove', true,
+        'approvedBy', p_admin_user_id,
+        'approvedByEmail', p_admin_email,
+        'approvedByName', p_admin_name,
+        'approvedAt', now(),
+        'rejectedAt', '',
+        'rejectReason', ''
+      )
+  where id = kyc.id;
+
+  notif_id := 'notif_kyc_ok_' || kyc.id;
+  insert into public.notifications(id, audience, user_id, title, message, type, link_page, reference_id, read, created_at, raw)
+  values (notif_id, 'USER', kyc.user_id, 'KYC approved', 'Your KYC verification has been approved.', 'KYC', 'kyc', 'kyc_ok_' || kyc.id, false, now(), jsonb_build_object('secureKycApprove', true))
+  on conflict (id) do update set
+    audience=excluded.audience, user_id=excluded.user_id, title=excluded.title, message=excluded.message, type=excluded.type, link_page=excluded.link_page, reference_id=excluded.reference_id, raw=excluded.raw;
+
+  log_id := 'adminlog_kyc_approve_' || kyc.id;
+  insert into public.admin_action_logs(id, admin_user_id, action, target_type, target_id, meta, created_at)
+  values (log_id, p_admin_user_id, 'KYC_APPROVE_SECURE', 'KYC', kyc.id, jsonb_build_object('userId', kyc.user_id, 'userEmail', kyc.user_email, 'adminEmail', p_admin_email, 'adminName', p_admin_name), now())
+  on conflict (id) do update set meta=excluded.meta, created_at=excluded.created_at;
+
+  queue_id := 'backend_kyc_approve_' || kyc.id;
+  insert into public.backend_action_queue(id, action_type, status, requested_by, target_user_id, payload, result, created_at, processed_at)
+  values (queue_id, 'KYC_APPROVE', 'COMPLETED', p_admin_user_id, kyc.user_id, jsonb_build_object('kycId', kyc.id), jsonb_build_object('status', 'APPROVED'), now(), now())
+  on conflict (id) do update set status='COMPLETED', result=excluded.result, processed_at=now();
+
+  return jsonb_build_object('ok', true, 'kycId', kyc.id, 'userId', kyc.user_id, 'status', 'APPROVED');
+end;
+$$;
+
+create or replace function public.aitradex_reject_kyc(
+  p_kyc_id text,
+  p_reason text default 'Rejected by admin.',
+  p_admin_user_id text default 'control_root',
+  p_admin_email text default '',
+  p_admin_name text default 'Admin'
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  kyc public.kyc_requests%rowtype;
+  notif_id text;
+  log_id text;
+  queue_id text;
+  clean_reason text := coalesce(nullif(trim(p_reason), ''), 'Rejected by admin.');
+begin
+  if not public.aitradex_validate_admin(p_admin_user_id) then
+    raise exception 'Admin permission required for KYC rejection.';
+  end if;
+
+  select * into kyc from public.kyc_requests where id = p_kyc_id for update;
+  if not found then
+    raise exception 'KYC request not found.';
+  end if;
+
+  if upper(coalesce(kyc.status,'PENDING')) <> 'PENDING' then
+    return jsonb_build_object('ok', true, 'alreadyCompleted', true, 'status', kyc.status);
+  end if;
+
+  update public.kyc_requests
+  set status = 'REJECTED',
+      reviewed_at = now(),
+      reviewed_by = p_admin_user_id,
+      admin_note = clean_reason,
+      raw = coalesce(raw, '{}'::jsonb) || jsonb_build_object(
+        'status','REJECTED',
+        'secureKycReject', true,
+        'rejectedBy', p_admin_user_id,
+        'rejectedByEmail', p_admin_email,
+        'rejectedByName', p_admin_name,
+        'rejectedAt', now(),
+        'approvedAt', '',
+        'rejectReason', clean_reason
+      )
+  where id = kyc.id;
+
+  notif_id := 'notif_kyc_rej_' || kyc.id;
+  insert into public.notifications(id, audience, user_id, title, message, type, link_page, reference_id, read, created_at, raw)
+  values (notif_id, 'USER', kyc.user_id, 'KYC rejected', clean_reason, 'KYC', 'kyc', 'kyc_no_' || kyc.id, false, now(), jsonb_build_object('secureKycReject', true, 'reason', clean_reason))
+  on conflict (id) do update set
+    audience=excluded.audience, user_id=excluded.user_id, title=excluded.title, message=excluded.message, type=excluded.type, link_page=excluded.link_page, reference_id=excluded.reference_id, raw=excluded.raw;
+
+  log_id := 'adminlog_kyc_reject_' || kyc.id;
+  insert into public.admin_action_logs(id, admin_user_id, action, target_type, target_id, meta, created_at)
+  values (log_id, p_admin_user_id, 'KYC_REJECT_SECURE', 'KYC', kyc.id, jsonb_build_object('userId', kyc.user_id, 'userEmail', kyc.user_email, 'reason', clean_reason, 'adminEmail', p_admin_email, 'adminName', p_admin_name), now())
+  on conflict (id) do update set meta=excluded.meta, created_at=excluded.created_at;
+
+  queue_id := 'backend_kyc_reject_' || kyc.id;
+  insert into public.backend_action_queue(id, action_type, status, requested_by, target_user_id, payload, result, created_at, processed_at)
+  values (queue_id, 'KYC_REJECT', 'COMPLETED', p_admin_user_id, kyc.user_id, jsonb_build_object('kycId', kyc.id, 'reason', clean_reason), jsonb_build_object('status', 'REJECTED'), now(), now())
+  on conflict (id) do update set status='COMPLETED', result=excluded.result, processed_at=now();
+
+  return jsonb_build_object('ok', true, 'kycId', kyc.id, 'userId', kyc.user_id, 'status', 'REJECTED', 'reason', clean_reason);
+end;
+$$;
+
+-- Phase 6.6: Backend-secure payment method approval/rejection
+create or replace function public.aitradex_approve_payment_method(
+  p_method_id text,
+  p_admin_user_id text default 'control_root',
+  p_admin_email text default '',
+  p_admin_name text default 'Admin'
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  method public.payment_methods%rowtype;
+  notif_id text;
+  log_id text;
+  queue_id text;
+  masked_tail text;
+begin
+  if not public.aitradex_validate_admin(p_admin_user_id) then
+    raise exception 'Admin permission required for payment method approval.';
+  end if;
+
+  select * into method from public.payment_methods where id = p_method_id for update;
+  if not found then
+    raise exception 'Payment method not found.';
+  end if;
+
+  if upper(coalesce(method.status,'PENDING')) <> 'PENDING' then
+    return jsonb_build_object('ok', true, 'alreadyCompleted', true, 'status', method.status);
+  end if;
+
+  masked_tail := right(coalesce(method.account_number,''), 4);
+
+  update public.payment_methods
+  set status = 'APPROVED',
+      rejection_reason = '',
+      reviewed_at = now(),
+      reviewed_by = p_admin_user_id,
+      raw = coalesce(raw, '{}'::jsonb) || jsonb_build_object(
+        'status','APPROVED',
+        'securePaymentMethodApprove', true,
+        'approvedBy', p_admin_user_id,
+        'approvedByEmail', p_admin_email,
+        'approvedByName', p_admin_name,
+        'approvedAt', now(),
+        'rejectedAt', '',
+        'rejectReason', ''
+      )
+  where id = method.id;
+
+  notif_id := 'notif_pm_ok_' || method.id;
+  insert into public.notifications(id, audience, user_id, title, message, type, link_page, reference_id, read, created_at, raw)
+  values (notif_id, 'USER', method.user_id, 'Bank account approved', coalesce(method.bank_name, 'Bank account') || ' ending ' || coalesce(nullif(masked_tail,''), '-') || ' has been approved for withdrawals.', 'PAYMENT_METHOD', 'payments', 'pm_ok_' || method.id, false, now(), jsonb_build_object('securePaymentMethodApprove', true))
+  on conflict (id) do update set
+    audience=excluded.audience, user_id=excluded.user_id, title=excluded.title, message=excluded.message, type=excluded.type, link_page=excluded.link_page, reference_id=excluded.reference_id, raw=excluded.raw;
+
+  log_id := 'adminlog_pm_approve_' || method.id;
+  insert into public.admin_action_logs(id, admin_user_id, action, target_type, target_id, meta, created_at)
+  values (log_id, p_admin_user_id, 'PAYMENT_METHOD_APPROVE_SECURE', 'PAYMENT_METHOD', method.id, jsonb_build_object('userId', method.user_id, 'bankName', method.bank_name, 'type', method.type, 'adminEmail', p_admin_email, 'adminName', p_admin_name), now())
+  on conflict (id) do update set meta=excluded.meta, created_at=excluded.created_at;
+
+  queue_id := 'backend_pm_approve_' || method.id;
+  insert into public.backend_action_queue(id, action_type, status, requested_by, target_user_id, payload, result, created_at, processed_at)
+  values (queue_id, 'PAYMENT_METHOD_APPROVE', 'COMPLETED', p_admin_user_id, method.user_id, jsonb_build_object('methodId', method.id), jsonb_build_object('status', 'APPROVED'), now(), now())
+  on conflict (id) do update set status='COMPLETED', result=excluded.result, processed_at=now();
+
+  return jsonb_build_object('ok', true, 'methodId', method.id, 'userId', method.user_id, 'status', 'APPROVED');
+end;
+$$;
+
+create or replace function public.aitradex_reject_payment_method(
+  p_method_id text,
+  p_reason text default 'Rejected by admin.',
+  p_admin_user_id text default 'control_root',
+  p_admin_email text default '',
+  p_admin_name text default 'Admin'
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  method public.payment_methods%rowtype;
+  notif_id text;
+  log_id text;
+  queue_id text;
+  clean_reason text := coalesce(nullif(trim(p_reason), ''), 'Rejected by admin.');
+begin
+  if not public.aitradex_validate_admin(p_admin_user_id) then
+    raise exception 'Admin permission required for payment method rejection.';
+  end if;
+
+  select * into method from public.payment_methods where id = p_method_id for update;
+  if not found then
+    raise exception 'Payment method not found.';
+  end if;
+
+  if upper(coalesce(method.status,'PENDING')) <> 'PENDING' then
+    return jsonb_build_object('ok', true, 'alreadyCompleted', true, 'status', method.status);
+  end if;
+
+  update public.payment_methods
+  set status = 'REJECTED',
+      rejection_reason = clean_reason,
+      reviewed_at = now(),
+      reviewed_by = p_admin_user_id,
+      raw = coalesce(raw, '{}'::jsonb) || jsonb_build_object(
+        'status','REJECTED',
+        'securePaymentMethodReject', true,
+        'rejectedBy', p_admin_user_id,
+        'rejectedByEmail', p_admin_email,
+        'rejectedByName', p_admin_name,
+        'rejectedAt', now(),
+        'approvedAt', '',
+        'rejectReason', clean_reason
+      )
+  where id = method.id;
+
+  notif_id := 'notif_pm_rej_' || method.id;
+  insert into public.notifications(id, audience, user_id, title, message, type, link_page, reference_id, read, created_at, raw)
+  values (notif_id, 'USER', method.user_id, 'Bank account rejected', clean_reason, 'PAYMENT_METHOD', 'payments', 'pm_no_' || method.id, false, now(), jsonb_build_object('securePaymentMethodReject', true, 'reason', clean_reason))
+  on conflict (id) do update set
+    audience=excluded.audience, user_id=excluded.user_id, title=excluded.title, message=excluded.message, type=excluded.type, link_page=excluded.link_page, reference_id=excluded.reference_id, raw=excluded.raw;
+
+  log_id := 'adminlog_pm_reject_' || method.id;
+  insert into public.admin_action_logs(id, admin_user_id, action, target_type, target_id, meta, created_at)
+  values (log_id, p_admin_user_id, 'PAYMENT_METHOD_REJECT_SECURE', 'PAYMENT_METHOD', method.id, jsonb_build_object('userId', method.user_id, 'bankName', method.bank_name, 'type', method.type, 'reason', clean_reason, 'adminEmail', p_admin_email, 'adminName', p_admin_name), now())
+  on conflict (id) do update set meta=excluded.meta, created_at=excluded.created_at;
+
+  queue_id := 'backend_pm_reject_' || method.id;
+  insert into public.backend_action_queue(id, action_type, status, requested_by, target_user_id, payload, result, created_at, processed_at)
+  values (queue_id, 'PAYMENT_METHOD_REJECT', 'COMPLETED', p_admin_user_id, method.user_id, jsonb_build_object('methodId', method.id, 'reason', clean_reason), jsonb_build_object('status', 'REJECTED'), now(), now())
+  on conflict (id) do update set status='COMPLETED', result=excluded.result, processed_at=now();
+
+  return jsonb_build_object('ok', true, 'methodId', method.id, 'userId', method.user_id, 'status', 'REJECTED', 'reason', clean_reason);
+end;
+$$;
+
+grant execute on function public.aitradex_approve_kyc(text,text,text,text) to anon, authenticated;
+grant execute on function public.aitradex_reject_kyc(text,text,text,text,text) to anon, authenticated;
+grant execute on function public.aitradex_approve_payment_method(text,text,text,text) to anon, authenticated;
+grant execute on function public.aitradex_reject_payment_method(text,text,text,text,text) to anon, authenticated;
 grant execute on function public.aitradex_approve_deposit(text,text,text,text) to anon, authenticated;
 grant execute on function public.aitradex_reject_deposit(text,text,text,text,text) to anon, authenticated;
 grant execute on function public.aitradex_approve_withdrawal(text,text,text,text) to anon, authenticated;
@@ -1290,7 +1573,7 @@ grant execute on function public.aitradex_close_manual_trade(text,text,numeric,t
 grant execute on function public.aitradex_cancel_manual_limit(text,text) to anon, authenticated;
 
 insert into public.app_settings(id, settings, updated_at)
-values ('main', jsonb_build_object('databaseRuntimeVersion','6.5.6','mode','phase6-manual-price-unit-fix','manualTradeBackend','rpc-secure-function','limitOrderValidation','pending-only-limit-fill','manualPriceUnit','raw-storage-display-only-inr-fixed'), now())
+values ('main', jsonb_build_object('databaseRuntimeVersion','6.6','mode','phase6-kyc-payment-backend','manualTradeBackend','rpc-secure-function','kycBackend','rpc-secure-function','paymentMethodBackend','rpc-secure-function','manualPriceUnit','raw-storage-display-only-inr-fixed'), now())
 on conflict (id) do update
-set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.5.6','mode','phase6-manual-price-unit-fix','manualTradeBackend','rpc-secure-function','limitOrderValidation','pending-only-limit-fill','manualPriceUnit','raw-storage-display-only-inr-fixed'),
+set settings = coalesce(public.app_settings.settings, '{}'::jsonb) || jsonb_build_object('databaseRuntimeVersion','6.6','mode','phase6-kyc-payment-backend','manualTradeBackend','rpc-secure-function','kycBackend','rpc-secure-function','paymentMethodBackend','rpc-secure-function','manualPriceUnit','raw-storage-display-only-inr-fixed'),
     updated_at = now();

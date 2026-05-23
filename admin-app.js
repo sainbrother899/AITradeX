@@ -3703,7 +3703,7 @@
         usdtInrRate: Math.max(1, Number(inputValue("settingUsdtInrRate") || 95)),
         phase6AuthMode: settings.phase6AuthMode || "legacy-testing",
         phase6BackendMode: settings.phase6BackendMode || "deposit-withdrawal-ai-manual-rpc",
-        phase6Build: "6.5-manual-backend-settlement"
+        phase6Build: "6.6-kyc-payment-backend"
       };
       logAdminAction("APP_SETTINGS_UPDATE", "SETTINGS", "app", { depositEnabled: App.state.settings.depositEnabled, withdrawalEnabled: App.state.settings.withdrawalEnabled, manualTradingEnabled: App.state.settings.manualTradingEnabled, aiTradingEnabled: App.state.settings.aiTradingEnabled, maintenanceMode: App.state.settings.maintenanceMode, maxLeverage: App.state.settings.maxLeverage });
       await persistSettings("app settings");
@@ -4431,6 +4431,20 @@
         render();
         return;
       }
+      if (App.isDatabaseMode?.() && window.AITradeXDB?.approveKycSecure) {
+        try {
+          const admin = adminUser() || {};
+          const result = await window.AITradeXDB.approveKycSecure({ kycId: kyc.id || userId, adminUserId: admin.id || "control_root", adminEmail: admin.email || "", adminName: displayNameFor(admin) || "Admin" });
+          if (window.AITradeXDB?.loadAll) await window.AITradeXDB.loadAll();
+          App.toast(result?.alreadyCompleted ? `KYC already ${result.status || "completed"}.` : "KYC approved securely.");
+          render();
+          return;
+        } catch (err) {
+          App.toast(`Secure KYC approve failed: ${err.message || err}`);
+          render();
+          return;
+        }
+      }
       kyc.status = "APPROVED";
       kyc.rejectReason = "";
       kyc.approvedAt = new Date().toISOString();
@@ -4465,8 +4479,23 @@
         return;
       }
       markButton(button, "Rejecting...");
+      const finalReason = note ? `${reason}: ${note}` : reason;
+      if (App.isDatabaseMode?.() && window.AITradeXDB?.rejectKycSecure) {
+        try {
+          const admin = adminUser() || {};
+          const result = await window.AITradeXDB.rejectKycSecure({ kycId: kyc.id || userId, reason: finalReason, adminUserId: admin.id || "control_root", adminEmail: admin.email || "", adminName: displayNameFor(admin) || "Admin" });
+          if (window.AITradeXDB?.loadAll) await window.AITradeXDB.loadAll();
+          App.toast(result?.alreadyCompleted ? `KYC already ${result.status || "completed"}.` : "KYC rejected securely.");
+          render();
+          return;
+        } catch (err) {
+          App.toast(`Secure KYC reject failed: ${err.message || err}`);
+          render();
+          return;
+        }
+      }
       kyc.status = "REJECTED";
-      kyc.rejectReason = note ? `${reason}: ${note}` : reason;
+      kyc.rejectReason = finalReason;
       kyc.rejectedAt = new Date().toISOString();
       kyc.approvedAt = "";
       await logAdminActionAsync("KYC_REJECT", "KYC", kyc.id || userId, { userId: target.id, user: displayNameFor(target), reason: kyc.rejectReason });
@@ -4486,6 +4515,20 @@
         App.toast("Payment method action already completed.");
         render();
         return;
+      }
+      if (App.isDatabaseMode?.() && window.AITradeXDB?.approvePaymentMethodSecure) {
+        try {
+          const admin = adminUser() || {};
+          const result = await window.AITradeXDB.approvePaymentMethodSecure({ methodId: method.id, adminUserId: admin.id || "control_root", adminEmail: admin.email || "", adminName: displayNameFor(admin) || "Admin" });
+          if (window.AITradeXDB?.loadAll) await window.AITradeXDB.loadAll();
+          App.toast(result?.alreadyCompleted ? `Payment method already ${result.status || "completed"}.` : "Payment method approved securely.");
+          render();
+          return;
+        } catch (err) {
+          App.toast(`Secure payment method approve failed: ${err.message || err}`);
+          render();
+          return;
+        }
       }
       method.status = "APPROVED";
       method.rejectReason = "";
@@ -4511,8 +4554,23 @@
       const reason = prompt("Reject reason:", "Holder name does not match KYC.");
       if (reason === null) return;
       markButton(button, "Rejecting...");
+      const finalReason = reason || "Rejected by admin.";
+      if (App.isDatabaseMode?.() && window.AITradeXDB?.rejectPaymentMethodSecure) {
+        try {
+          const admin = adminUser() || {};
+          const result = await window.AITradeXDB.rejectPaymentMethodSecure({ methodId: method.id, reason: finalReason, adminUserId: admin.id || "control_root", adminEmail: admin.email || "", adminName: displayNameFor(admin) || "Admin" });
+          if (window.AITradeXDB?.loadAll) await window.AITradeXDB.loadAll();
+          App.toast(result?.alreadyCompleted ? `Payment method already ${result.status || "completed"}.` : "Payment method rejected securely.");
+          render();
+          return;
+        } catch (err) {
+          App.toast(`Secure payment method reject failed: ${err.message || err}`);
+          render();
+          return;
+        }
+      }
       method.status = "REJECTED";
-      method.rejectReason = reason || "Rejected by admin.";
+      method.rejectReason = finalReason;
       method.rejectedAt = new Date().toISOString();
       method.approvedAt = "";
       await logAdminActionAsync("PAYMENT_METHOD_REJECT", "PAYMENT_METHOD", method.id, { userId: target.id, user: displayNameFor(target), reason: method.rejectReason });
