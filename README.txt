@@ -1,11 +1,11 @@
-AITradeX Phase 6.2.2 - Deposit Backend Security Build
+AITradeX Phase 6.2.3 - AI Plan Upgrade Limit Refresh Fix
 
 Base used:
 - AITradeX Phase5.36 Hide AI Target User Text
 
 What this build does:
 1. Keeps the existing Phase5.36 design and user/admin flow unchanged.
-2. Adds Phase6.1 secure-auth foundation plus Phase6.2.2 secure deposit approve/reject RPC for future Supabase Auth migration.
+2. Adds Phase6.1 secure-auth foundation plus Phase6.2.3 deposit RPC plus AI plan-upgrade limit refresh for future Supabase Auth migration.
 3. Keeps current legacy testing login active so the working system does not break.
 4. Adds safe database columns for auth_user_id and admin role mapping.
 5. Adds backend action queue table for future Edge Function migration.
@@ -14,7 +14,7 @@ What this build does:
 
 Important:
 - This is NOT the final real-money backend migration.
-- This is Phase6.2.2 deposit backend security foundation. Deposit approve/reject now uses Supabase RPC functions when database mode is active.
+- This is Phase6.2.3. Deposit approve/reject still uses Supabase RPC, and AI daily usage now resets its counting window from the active paid plan start time after upgrade.
 - Deposit approve/reject is now routed through database RPC functions. Withdrawal approve, AI settlement and other sensitive writes are still using the current frontend-tested flow.
 - Do not enable strict production RLS yet.
 
@@ -52,3 +52,8 @@ Phase6.2.2 AI Target Close Fix
 - AI Live batch watcher now checks cached visible price first and then fetches a fresh live price instead of reusing stale cached prices only.
 - Watcher interval reduced to 5 seconds so positions close soon after target/risk is hit.
 - No UI/design change; deposit backend security remains unchanged.
+
+Phase6.2.3 fix:
+- If a user completes the free/old AI daily limit and then upgrades to a paid plan, AI eligibility now counts trades from the active subscription start time instead of blocking from the old free-plan usage.
+- Admin and user AI limit displays use the same refreshed limit calculation.
+- No SQL change is required for this fix.

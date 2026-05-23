@@ -618,7 +618,25 @@ App.currentPlan=id=>{
 };
 
 App.todayKey=()=>new Date().toISOString().slice(0,10);
-App.aiTradesToday=userId=>App.state.trades.filter(t=>t.userId===userId&&["AI_AUTO","AI_LIVE"].includes(String(t.tradeType||""))&&String(t.createdDate||"")===App.todayKey()).length;
+App.aiLimitWindowStart=userId=>{
+  const sub=App.activeSubscription(userId);
+  if(sub){
+    const start=Date.parse(sub.startsAt||sub.createdAt||sub.planChangedAt||"");
+    if(Number.isFinite(start))return start;
+  }
+  return Date.parse(App.todayKey()+"T00:00:00.000Z")||0;
+};
+App.aiTradesToday=userId=>{
+  const windowStart=App.aiLimitWindowStart(userId);
+  const today=App.todayKey();
+  return (App.state.trades||[]).filter(t=>{
+    if(t.userId!==userId)return false;
+    if(!["AI_AUTO","AI_LIVE"].includes(String(t.tradeType||"")))return false;
+    if(String(t.createdDate||"")!==today)return false;
+    const created=Date.parse(t.createdAt||t.openedAt||t.closedAt||"");
+    return !Number.isFinite(windowStart)||!Number.isFinite(created)||created>=windowStart;
+  }).length;
+};
 App.aiDailyLimit=userId=>{const sub=App.activeSubscription(userId);if(sub){const plan=App.planById(sub.planId)||{};return Number(sub.aiTradeLimit||sub.signals||plan.signals||50)||50}const trial=App.freeTrialInfo(userId);return trial.active?Number(App.state.settings.freeAiTradesPerDay||5):Number(App.state.settings.postTrialFreeAiTradesPerDay||1)};
 App.aiSettings=user=>({enabled:!!user?.aiTradeOn,percent:Number(user?.aiTradePercent||25)});
 App.aiAllowedAmount=user=>{const settings=App.aiSettings(user);if(!settings.enabled)return 0;return Math.max(0,App.realBalance(user.id))*settings.percent/100};
