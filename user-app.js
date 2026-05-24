@@ -831,7 +831,7 @@
     localStorage.removeItem("AITradeX_TRADE_LIMIT_PRICE");
     tradeOrderNotice = {
       title: message || "Order placed successfully",
-      detail: detail || "Your order has been moved to Orders. Fill fresh details to place another trade."
+      detail: detail || "Your order has been moved to Positions. Fill fresh details to place another trade."
     };
   }
 

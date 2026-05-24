@@ -33,7 +33,7 @@ The current app still supports legacy frontend testing mode. If strict productio
 
 Current build:
 Phase6.9-RLSReadinessPack
-Cache version: phase69rlsreadinesspack
+Cache version: phase695-dbfirst-finalcheck-20260524
 
 
 Phase 6.9.2 update notes:
