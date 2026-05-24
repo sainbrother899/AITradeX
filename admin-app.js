@@ -1512,6 +1512,7 @@
       reasons: {
         inactive: 0,
         aiOff: 0,
+        limit: 0,
         maxOpen: 0,
         lowBalance: 0,
         noPool: 0
@@ -1523,6 +1524,8 @@
       const status = userStatus(u);
       const balance = App.realBalance(u.id);
       const allowedPool = App.aiAllowedAmount(u);
+      const used = App.aiTradesToday(u.id);
+      const limit = App.aiDailyLimit(u.id);
       const openLiveCount = aiLivePositions().filter(pos => pos.userId === u.id).length;
 
       if (status !== "ACTIVE") {
@@ -1533,6 +1536,11 @@
       if (!u.aiTradeOn) {
         report.skipped.push({ userId: u.id, reason: "AI Live Trading OFF" });
         report.reasons.aiOff += 1;
+        return;
+      }
+      if (used >= limit) {
+        report.skipped.push({ userId: u.id, reason: "Daily AI trade limit completed" });
+        report.reasons.limit += 1;
         return;
       }
       if (openLiveCount >= maxOpen) {
@@ -1582,7 +1590,7 @@
     return `
       <section class="panel-card ai-validation-panel ${isLive ? "live-only" : "instant-only"}">
         <div class="section-head">
-          <div><h3>${isLive ? "Eligible Live Position Users" : "Eligible Instant AI Users"}</h3><span>${isLive ? "Live Position uses open-position limit, wallet pool and AI ON only. Instant result history is not included here." : "Instant AI uses daily AI trade limit, wallet pool and AI ON. Live positions are not included here."}</span></div>
+          <div><h3>${isLive ? "Eligible Live Position Users" : "Eligible Instant AI Users"}</h3><span>${isLive ? "Live Position also uses daily plan AI limit, open-position limit, wallet pool and AI ON." : "Instant AI uses daily AI trade limit, wallet pool and AI ON. Live positions are not included here."}</span></div>
           <span class="admin-count-pill">${users.length} shown · ${skipped.length} skipped</span>
         </div>
         <div class="admin-list">
@@ -1599,7 +1607,7 @@
                   <div class="admin-user-stats"><span>Wallet</span><b>${App.money(balance)}</b></div>
                   <div class="admin-user-stats"><span>AI Pool</span><b>${App.money(pool)}</b></div>
                   <div class="admin-user-stats"><span>${isLive ? "Open Live" : "Remaining"}</span><b>${isLive ? aiLivePositions().filter(pos => pos.userId === target.id).length : `${aiRemainingForUser(target.id)}/${limit}`}</b></div>
-                  <div class="admin-user-stats"><span>${isLive ? "Mode" : "Used"}</span><b>${isLive ? "LIVE" : used}</b></div>
+                  <div class="admin-user-stats"><span>${isLive ? "Used" : "Used"}</span><b>${isLive ? `${used}/${limit}` : used}</b></div>
                 </div>
               </article>`;
           }).join("") : `<div class="empty-state">No eligible AI users found. Check user status, AI ON, wallet balance and plan limit.</div>`}
@@ -2236,7 +2244,7 @@
               <article><span>Exposure</span><b id="aiLivePreviewExposure">${App.money(aiLivePreviewStats(1,0).totalExposure)}</b></article>
               <article><span>Target</span><b id="aiLivePreviewTarget">Profit 2%</b></article>
               <article><span>Close rule</span><b id="aiLivePreviewDuration">Target/Admin</b></article>
-              <article><span>Plan limit check</span><b id="aiLivePreviewLimitCheck">${previewReport.reasons.limit ? previewReport.reasons.limit + " blocked" : "Passed"}</b></article>
+              <article><span>Plan/live limit check</span><b id="aiLivePreviewLimitCheck">${(previewReport.reasons.limit || previewReport.reasons.maxOpen) ? `${previewReport.reasons.limit || 0} limit · ${previewReport.reasons.maxOpen || 0} max-open blocked` : "Passed"}</b></article>
               <article><span>Wallet check</span><b id="aiLivePreviewWalletCheck">${previewReport.reasons.lowBalance || previewReport.reasons.noPool ? "Needs review" : "Passed"}</b></article>
             </div>
             <div class="premium-bank-card ai-last-card">
@@ -4025,6 +4033,13 @@
       catch (err) { App.toast(`AI batch init save failed: ${err.message || err}`); return; }
 
       for (const target of report.eligible) {
+        const liveUsedNow = App.aiTradesToday(target.id);
+        const liveLimitNow = App.aiDailyLimit(target.id);
+        if (liveUsedNow >= liveLimitNow) {
+          report.skipped.push({ userId: target.id, reason: "Daily AI trade limit completed" });
+          report.reasons.limit = Number(report.reasons.limit || 0) + 1;
+          continue;
+        }
         const balanceBefore = App.realBalance(target.id);
         const margin = Math.min(balanceBefore, App.aiAllowedAmount(target), Number(settings.maxAiTrade || 250000));
         if (!margin || margin < Number(settings.minAiTrade || 100)) {
@@ -4165,7 +4180,7 @@
       setText("aiLivePreviewExposure", App.money(stats.totalExposure));
       setText("aiLivePreviewTarget", `${targetType === "LOSS" ? "Loss" : "Profit"} ${targetPercent}%`);
       setText("aiLivePreviewDuration", "Target/Admin");
-      setText("aiLivePreviewLimitCheck", stats.report.reasons.maxOpen ? `${stats.report.reasons.maxOpen} max-open blocked` : "Passed");
+      setText("aiLivePreviewLimitCheck", (stats.report.reasons.limit || stats.report.reasons.maxOpen) ? `${stats.report.reasons.limit || 0} limit · ${stats.report.reasons.maxOpen || 0} max-open blocked` : "Passed");
       setText("aiLivePreviewWalletCheck", (stats.report.reasons.lowBalance || stats.report.reasons.noPool) ? "Needs review" : "Passed");
     },
     async openLiveAiPosition(event) {
@@ -4227,6 +4242,13 @@
       catch (err) { App.toast(`AI live batch init save failed: ${err.message || err}`); return; }
 
       for (const target of report.eligible) {
+        const liveUsedNow = App.aiTradesToday(target.id);
+        const liveLimitNow = App.aiDailyLimit(target.id);
+        if (liveUsedNow >= liveLimitNow) {
+          report.skipped.push({ userId: target.id, reason: "Daily AI trade limit completed" });
+          report.reasons.limit = Number(report.reasons.limit || 0) + 1;
+          continue;
+        }
         const balanceBefore = App.realBalance(target.id);
         const margin = Math.min(balanceBefore, App.aiAllowedAmount(target), Number(settings.maxAiTrade || 250000));
         if (!margin || margin < Number(settings.minAiTrade || 100)) {
