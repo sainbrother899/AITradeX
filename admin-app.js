@@ -3006,16 +3006,19 @@
     if (!positions || !positions.length || !priceRow) return null;
     for (const position of positions) {
       const rawPnl = aiLiveRawPnl(position, priceRow);
+      const settlementPnl = aiLiveSettlementPnl(position, priceRow);
       const margin = aiLiveMarginAmount(position);
       const targetPnl = aiLiveTargetPnlAmount(position);
       const targetType = String(position?.targetType || "PROFIT").toUpperCase();
       const maxLoss = Math.max(0, margin);
+      const tolerance = Math.max(0.01, Math.abs(targetPnl || maxLoss || 0) * 0.0001);
 
-      if (rawPnl < 0 && maxLoss > 0 && Math.abs(rawPnl) >= maxLoss) {
+      if (rawPnl < 0 && maxLoss > 0 && Math.abs(rawPnl) + tolerance >= maxLoss) {
         return {
           reason: "AUTO_RISK_CLOSE",
           label: "Loss reached locked AI amount",
           rawPnl: Number(rawPnl.toFixed(2)),
+          settlementPnl: Number(settlementPnl.toFixed(2)),
           triggerPositionId: position.id
         };
       }
@@ -3023,19 +3026,21 @@
       if (targetPnl > 0) {
         if (targetType === "LOSS") {
           const lossTarget = Math.min(maxLoss || targetPnl, targetPnl);
-          if (lossTarget > 0 && rawPnl <= -lossTarget) {
+          if (lossTarget > 0 && (rawPnl <= -lossTarget + tolerance || settlementPnl <= -lossTarget + tolerance)) {
             return {
               reason: "AUTO_LOSS_TARGET_CLOSE",
               label: `Loss target hit (${Number(position.targetPercent || 0)}%)`,
               rawPnl: Number(rawPnl.toFixed(2)),
+              settlementPnl: Number(settlementPnl.toFixed(2)),
               triggerPositionId: position.id
             };
           }
-        } else if (rawPnl >= targetPnl) {
+        } else if (rawPnl + tolerance >= targetPnl || settlementPnl + tolerance >= targetPnl) {
           return {
             reason: "AUTO_PROFIT_TARGET_CLOSE",
             label: `Profit target hit (${Number(position.targetPercent || 0)}%)`,
             rawPnl: Number(rawPnl.toFixed(2)),
+            settlementPnl: Number(settlementPnl.toFixed(2)),
             triggerPositionId: position.id
           };
         }
@@ -3113,8 +3118,8 @@
             closed = Number(result.closed || result.closedCount || positions.length || 0);
             if (window.AITradeXDB?.loadAll) await window.AITradeXDB.loadAll();
           } catch (error) {
-            console.warn("AI live backend auto-close failed; browser fallback disabled for backend mode", batchId, error?.message || error);
-            continue;
+            console.warn("AI live backend auto-close failed; using safe browser fallback", batchId, error?.message || error);
+            closed = 0;
           }
         }
         if (!closed) {
@@ -3150,13 +3155,28 @@
     return closedTotal;
   }
 
+  function triggerAiLiveAutoCloseCheckSoon(delay = 250) {
+    setTimeout(() => {
+      if (App.session?.userId && Auth?.isAdmin?.()) {
+        runAiLiveBatchAutoClose({ silent: true }).catch(err => console.warn("AI live auto-close watcher failed", err?.message || err));
+      }
+    }, Math.max(0, Number(delay || 0)));
+  }
+
   function startAiLiveBatchAutoCloseWatcher() {
     if (aiBatchAutoCloseTimer) clearInterval(aiBatchAutoCloseTimer);
     aiBatchAutoCloseTimer = setInterval(() => {
       if (App.session?.userId && Auth?.isAdmin?.()) {
         runAiLiveBatchAutoClose({ silent: true }).catch(err => console.warn("AI live auto-close watcher failed", err?.message || err));
       }
-    }, 5000);
+    }, 3000);
+    if (!window.__aitxAiLiveAutoCloseListeners) {
+      window.__aitxAiLiveAutoCloseListeners = true;
+      window.addEventListener("focus", () => triggerAiLiveAutoCloseCheckSoon(150));
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) triggerAiLiveAutoCloseCheckSoon(150);
+      });
+    }
   }
 
   async function settleAiLivePositionByAdmin(position, reason = "ADMIN_CLOSE", forcedPriceRow = null) {
@@ -4302,6 +4322,7 @@
       await (typeof logAdminActionAsync === "function" ? logAdminActionAsync("AI_LIVE_OPEN", "AI_BATCH", batchId, { pair, side, leverage, appliedCount, skippedCount: report.skipped.length, totalMargin: Number(totalMargin.toFixed(2)), totalExposure: Number(totalExposure.toFixed(2)) }) : logAdminAction("AI_LIVE_OPEN", "AI_BATCH", batchId, { pair, side, leverage, appliedCount, skippedCount: report.skipped.length, totalMargin: Number(totalMargin.toFixed(2)), totalExposure: Number(totalExposure.toFixed(2)) }));
       App.saveState();
       App.toast(appliedCount ? `Live AI position opened for ${appliedCount} valid user(s).` : "No valid AI users found. Live position not opened.");
+      triggerAiLiveAutoCloseCheckSoon(1200);
       render();
     },
     async closeAiLiveBatch(batchId, button) {
@@ -4329,9 +4350,8 @@
           render();
           return;
         } catch (err) {
-          App.toast(`AI live backend close failed: ${err.message || err}`);
-          if (button) { button.disabled = false; button.textContent = button.dataset.oldText || "Close Trade"; }
-          return;
+          console.warn("AI live backend close failed; using safe browser fallback", err?.message || err);
+          App.toast("Backend close failed. Using safe fallback close...");
         }
       }
       let closed = 0;
