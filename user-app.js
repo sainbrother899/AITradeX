@@ -1781,6 +1781,7 @@
         <div class="drawer-group rich-group">
           <span>Growth</span>
           ${drawerItem({ pageKey: "subscription", icon: "⭐", title: "Subscription", subtitle: "AI trade limit and plan control", badge: planBadge })}
+          ${drawerItem({ pageKey: "ai-settings", icon: "🤖", title: "AI Settings", subtitle: "Auto trade amount and AI controls" })}
           ${drawerItem({ pageKey: "referral", icon: "🎁", title: "Referral", subtitle: "Invite friends and earn credits" })}
         </div>
 
@@ -2094,7 +2095,7 @@
         title: "AI Auto",
         value: ai.enabled ? "Active" : "OFF",
         ok: !!ai.enabled,
-        page: "home"
+        page: "ai-settings"
       }
     ];
   }
@@ -2160,7 +2161,7 @@
       : !bankReady
         ? { title: "Add bank account", detail: "Approved bank account is required for payout requests.", page: "payments", cta: "Add Bank" }
         : !ai.enabled
-          ? { title: "Turn on AI Auto Trading", detail: "AI is OFF. Turn it ON from dashboard controls.", page: "home", cta: "AI Control" }
+          ? { title: "Turn on AI Auto Trading", detail: "AI is OFF. Turn it ON from AI Settings.", page: "ai-settings", cta: "AI Settings" }
           : { title: "Ready for trading", detail: `${usage.used}/${usage.limit} AI trades used today.`, page: "trade", cta: "Open Trade" };
     return `
       <section class="premium-card dashboard-action-center">
@@ -2244,9 +2245,30 @@
         </div>
       </section>
 
-      <section class="premium-card auto-card polished-auto-card clean-ai-control-card">
+      <section class="premium-card ai-settings-mini-card clean-ai-settings-summary">
         <div class="card-row">
-          <div><p>AI TRADE CONTROL</p><h2>Auto Trade Amount</h2><h4>Choose how much wallet balance AI can use for future automatic trades.</h4></div>
+          <div><p>AI SETTINGS</p><h2>${ai.enabled ? "AI Auto Trading ON" : "AI Auto Trading OFF"}</h2><h4>${usage.used}/${usage.limit} AI auto trades used today · Allocation ${ai.percent}% · Pool ${App.money(tradeAmount)}</h4></div>
+          <button class="change-pair-btn" onclick="AITradeXUser.go('ai-settings')">Manage</button>
+        </div>
+      </section>
+    `);
+    refreshVisiblePrices([selectedPair]);
+  }
+
+  function aiSettingsPage() {
+    const ai = currentAiSettings();
+    const usage = aiDailyUsage();
+    const balance = realBalance();
+    const tradeAmount = balance * Number(ai.percent || 0) / 100;
+
+    shell(`
+      <section class="premium-card auto-card polished-auto-card clean-ai-control-card ai-settings-page-card">
+        <div class="card-row">
+          <div>
+            <p>AI SETTINGS</p>
+            <h2>Auto Trade Control</h2>
+            <h4>Manage AI auto trading and choose how much wallet balance AI can use for future automatic trades.</h4>
+          </div>
           <button class="ai-power ${ai.enabled ? "on" : ""}" onclick="AITradeXUser.toggleAutoTrade()">${ai.enabled ? "ON" : "OFF"}</button>
         </div>
         <div class="percent-grid">
@@ -2260,8 +2282,16 @@
         ${!ai.enabled ? `<div class="ai-status-banner off"><b>AI Auto Trading is OFF.</b><span>Turn it ON to receive AI auto trades.</span></div>` : ""}
         ${ai.enabled && isAiLimitComplete() ? `<div class="ai-status-banner limit"><b>Daily AI trade limit completed.</b><span>Upgrade your plan to unlock more AI auto trades.</span><button onclick="AITradeXUser.go('subscription')">Upgrade Plan</button></div>` : ""}
       </section>
+
+      <section class="premium-card dashboard-action-center ai-settings-help-card">
+        <div>
+          <p>AI CONTROL NOTE</p>
+          <h2>Home stays clean now</h2>
+          <h4>AI settings are kept here, while Home shows only account summary and quick actions.</h4>
+        </div>
+        <button class="ghost-action" onclick="AITradeXUser.go('home')">Back Home</button>
+      </section>
     `);
-    refreshVisiblePrices([selectedPair]);
   }
 
   function tradePage() {
@@ -3681,6 +3711,7 @@
     if (page === "kyc") return kycPage();
     if (page === "payments") return paymentPage();
     if (page === "subscription") return subscriptionPage();
+    if (page === "ai-settings") return aiSettingsPage();
     if (page === "referral") return referralPage();
     if (page === "profile") return profilePage();
     if (page === "security") return securityPage();
