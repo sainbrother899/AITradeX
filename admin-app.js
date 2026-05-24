@@ -3753,8 +3753,14 @@
         };
       }
       const savedPlan = App.planById(planId) || App.normalizePlan(next);
-      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writePlan) await window.AITradeXDB.writePlan(savedPlan); } catch (err) { App.toast(`Plan save failed: ${err.message || err}`); return; }
-      logAdminAction("PLAN_SETTINGS_UPDATE", "PLAN", planId, { name: next.name, price: next.price, signals: next.signals, status: next.status });
+      try {
+        if (App.isDatabaseMode?.() && window.AITradeXDB?.writePlan) {
+          // Keep the full plan catalog safe. Older DBs could contain only the edited plan,
+          // which made the admin/user pages show a single plan after realtime reload.
+          for (const row of App.getPlans()) await window.AITradeXDB.writePlan(App.normalizePlan(row));
+        }
+      } catch (err) { App.toast(`Plan save failed: ${err.message || err}`); return; }
+      logAdminAction("PLAN_SETTINGS_UPDATE", "PLAN", planId, { name: next.name, price: next.price, signals: next.signals, status: next.status, catalogCount: App.getPlans().length });
       await persistSettings("plan settings");
       App.saveState();
       App.toast(`${next.name} plan saved.`);

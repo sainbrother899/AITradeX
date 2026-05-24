@@ -126,7 +126,16 @@
       };
       const settingsRow=settingsRows.find(x=>x.id==="main")||settingsRows.find(x=>x.id==="global");
       const settings=settingsRow?.settings; if(settings&&typeof settings==="object") App.state.settings={...base.settings,...settings};
-      if(plans.length) App.state.plans=plans.map(statePlan);
+      if(plans.length){
+        const mergedPlans=(base.plans||[]).map(x=>App.normalizePlan?App.normalizePlan(x):x);
+        const indexById=new Map(mergedPlans.map((row,idx)=>[String(row.id),idx]));
+        plans.map(statePlan).forEach(row=>{
+          const id=String(row.id||"");
+          if(indexById.has(id)) mergedPlans[indexById.get(id)]={...mergedPlans[indexById.get(id)],...row};
+          else mergedPlans.push(row);
+        });
+        App.state.plans=mergedPlans;
+      }
       status(`Loaded database rows: users ${users.length}, KYC ${kyc.length}, deposits ${deposits.length}, withdrawals ${withdrawals.length}.`, true);
       loading=null; return App.state;
     })();
