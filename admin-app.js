@@ -27,6 +27,11 @@
     return App.currentUser();
   }
 
+  function isAdminSessionActive() {
+    const current = adminUser ? adminUser() : null;
+    return !!(App.session?.userId && current && String(current.role || "").toLowerCase() === "admin");
+  }
+
   function allUsers() {
     return App.state.users.filter(u => u.role === "user");
   }
@@ -3007,6 +3012,7 @@
     const current = adminUser();
     if (!current || current.role !== "admin") return loginPage();
     if (App.touchSession && !App.touchSession()) return loginPage();
+    if ((page === "liveAi" || page === "dashboard") && aiLivePositions().length) triggerAiLiveAutoCloseCheckSoon(300);
 
     if (page === "dashboard") return dashboardPage();
     if (page === "notifications") return notificationsPage();
@@ -3196,7 +3202,7 @@
 
   function triggerAiLiveAutoCloseCheckSoon(delay = 250) {
     setTimeout(() => {
-      if (App.session?.userId && Auth?.isAdmin?.()) {
+      if (isAdminSessionActive()) {
         runAiLiveBatchAutoClose({ silent: true }).catch(err => console.warn("AI live auto-close watcher failed", err?.message || err));
       }
     }, Math.max(0, Number(delay || 0)));
@@ -3205,7 +3211,7 @@
   function startAiLiveBatchAutoCloseWatcher() {
     if (aiBatchAutoCloseTimer) clearInterval(aiBatchAutoCloseTimer);
     aiBatchAutoCloseTimer = setInterval(() => {
-      if (App.session?.userId && Auth?.isAdmin?.()) {
+      if (isAdminSessionActive()) {
         runAiLiveBatchAutoClose({ silent: true }).catch(err => console.warn("AI live auto-close watcher failed", err?.message || err));
       }
     }, 3000);
