@@ -20,6 +20,8 @@
   let withdrawalHistoryPage = Math.max(1, Number(localStorage.getItem("AITradeX_ADMIN_WITHDRAWAL_HISTORY_PAGE") || 1));
   let aiBatchAutoCloseRunning = false;
   let aiBatchAutoCloseTimer = null;
+  let aiLiveEligiblePage = Math.max(1, Number(localStorage.getItem("AITradeX_ADMIN_AI_LIVE_ELIGIBLE_PAGE") || 1));
+  const AI_LIVE_ELIGIBLE_PAGE_SIZE = 12;
 
   function adminUser() {
     return App.currentUser();
@@ -1583,15 +1585,35 @@
     return Math.max(0, Number(limit || 0) - Number(used || 0));
   }
 
+  function sortedAiEligibleUsers(users = [], mode = "instant") {
+    return [...users].sort((a, b) => {
+      const remainingDiff = aiRemainingForUser(b.id) - aiRemainingForUser(a.id);
+      if (remainingDiff) return remainingDiff;
+      const poolDiff = App.aiAllowedAmount(b) - App.aiAllowedAmount(a);
+      if (poolDiff) return poolDiff;
+      const balanceDiff = App.realBalance(b.id) - App.realBalance(a.id);
+      if (balanceDiff) return balanceDiff;
+      return displayNameFor(a).localeCompare(displayNameFor(b));
+    });
+  }
+
   function aiValidationOverviewHtml(report, mode = "instant") {
-    const users = (report?.eligible || []).slice(0, 8);
     const skipped = report?.skipped || [];
     const isLive = mode === "live";
+    const allEligible = isLive ? sortedAiEligibleUsers(report?.eligible || [], "live") : (report?.eligible || []);
+    const totalEligible = allEligible.length;
+    const pageSize = isLive ? AI_LIVE_ELIGIBLE_PAGE_SIZE : 8;
+    const totalPages = Math.max(1, Math.ceil(totalEligible / pageSize));
+    if (isLive && aiLiveEligiblePage > totalPages) aiLiveEligiblePage = totalPages;
+    const currentPage = isLive ? aiLiveEligiblePage : 1;
+    const startIndex = (currentPage - 1) * pageSize;
+    const users = allEligible.slice(startIndex, startIndex + pageSize);
+    const rangeText = totalEligible ? `${startIndex + 1}-${startIndex + users.length} of ${totalEligible}` : "0 of 0";
     return `
       <section class="panel-card ai-validation-panel ${isLive ? "live-only" : "instant-only"}">
         <div class="section-head">
-          <div><h3>${isLive ? "Eligible Live Position Users" : "Eligible Instant AI Users"}</h3><span>${isLive ? "Live Position also uses daily plan AI limit, open-position limit, wallet pool and AI ON." : "Instant AI uses daily AI trade limit, wallet pool and AI ON. Live positions are not included here."}</span></div>
-          <span class="admin-count-pill">${users.length} shown · ${skipped.length} skipped</span>
+          <div><h3>${isLive ? "Eligible Live Position Users" : "Eligible Instant AI Users"}</h3><span>${isLive ? "Sorted by remaining AI limit first. Only 12 users are shown per page to avoid long scrolling." : "Instant AI uses daily AI trade limit, wallet pool and AI ON. Live positions are not included here."}</span></div>
+          <span class="admin-count-pill">${isLive ? `${rangeText} shown` : `${users.length} shown`} · ${skipped.length} skipped</span>
         </div>
         <div class="admin-list">
           ${users.length ? users.map(target => {
@@ -1600,18 +1622,26 @@
             const pool = App.aiAllowedAmount(target);
             const used = App.aiTradesToday(target.id);
             const limit = App.aiDailyLimit(target.id);
+            const remaining = aiRemainingForUser(target.id);
+            const openLive = aiLivePositions().filter(pos => pos.userId === target.id).length;
             return `
               <article class="admin-user-card ai-validation-card">
                 <div class="admin-user-main">
                   <div><b>${esc(displayNameFor(target))}</b><span>${esc(plan.name || "Free")} · AI ${target.aiTradeOn ? "ON" : "OFF"} · ${Number(target.aiTradePercent || 25)}% allocation</span></div>
                   <div class="admin-user-stats"><span>Wallet</span><b>${App.money(balance)}</b></div>
                   <div class="admin-user-stats"><span>AI Pool</span><b>${App.money(pool)}</b></div>
-                  <div class="admin-user-stats"><span>${isLive ? "Open Live" : "Remaining"}</span><b>${isLive ? aiLivePositions().filter(pos => pos.userId === target.id).length : `${aiRemainingForUser(target.id)}/${limit}`}</b></div>
-                  <div class="admin-user-stats"><span>${isLive ? "Used" : "Used"}</span><b>${isLive ? `${used}/${limit}` : used}</b></div>
+                  <div class="admin-user-stats"><span>${isLive ? "Remaining" : "Remaining"}</span><b>${remaining}/${limit}</b></div>
+                  <div class="admin-user-stats"><span>${isLive ? "Open Live" : "Used"}</span><b>${isLive ? openLive : used}</b></div>
                 </div>
               </article>`;
           }).join("") : `<div class="empty-state">No eligible AI users found. Check user status, AI ON, wallet balance and plan limit.</div>`}
         </div>
+        ${isLive && totalPages > 1 ? `
+          <div class="admin-pagination ai-live-pagination">
+            <button type="button" class="secondary-btn" onclick="AITradeXAdmin.changeAiLiveEligiblePage(${Math.max(1, currentPage - 1)})" ${currentPage <= 1 ? "disabled" : ""}>Previous</button>
+            <span>Page ${currentPage} of ${totalPages}</span>
+            <button type="button" class="secondary-btn" onclick="AITradeXAdmin.changeAiLiveEligiblePage(${Math.min(totalPages, currentPage + 1)})" ${currentPage >= totalPages ? "disabled" : ""}>Next</button>
+          </div>` : ""}
       </section>`;
   }
 

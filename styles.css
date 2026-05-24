@@ -7850,3 +7850,18 @@ input:focus,select:focus,textarea:focus{
     grid-template-columns: repeat(3, minmax(0,1fr));
   }
 }
+
+/* Phase 6.9.5 - AI Live Eligible Users pagination polish */
+.ai-live-pagination{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  padding:14px 0 2px;
+  color:var(--muted);
+  font-size:13px;
+}
+.ai-live-pagination button[disabled]{
+  opacity:.45;
+  cursor:not-allowed;
+}
