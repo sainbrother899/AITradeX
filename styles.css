@@ -7758,3 +7758,95 @@ input:focus,select:focus,textarea:focus{
   background:rgba(34,197,94,.14);
   color:#86efac;
 }
+
+/* Phase 6.9.5 trade page final compact polish */
+.trade-mode-badge.account-only {
+  min-width: auto;
+  padding: 9px 16px;
+  letter-spacing: .02em;
+}
+.compact-trade-ticket .compact-ticket-head span {
+  color: var(--muted);
+}
+.compact-trade-ticket .top-action-summary span:last-child b,
+.compact-trade-ticket .top-action-summary span:last-child {
+  color: inherit;
+}
+.order-warning-bar.compact {
+  font-weight: 800;
+  line-height: 1.35;
+}
+.clean-market-insight-card,
+.clean-trade-feed-card {
+  padding-bottom: 18px;
+}
+.compact-market-head {
+  align-items: center;
+  gap: 12px;
+}
+.change-pair-btn.small {
+  min-height: 42px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+.market-insight-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+.market-insight-row article {
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.045);
+  border-radius: 18px;
+  padding: 13px 12px;
+  min-width: 0;
+}
+.market-insight-row article span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+.market-insight-row article b {
+  display: block;
+  color: var(--text);
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.market-insight-row article em {
+  display: block;
+  margin-top: 6px;
+  font-style: normal;
+  font-weight: 900;
+  font-size: 13px;
+}
+.compact-trade-feed-list article {
+  min-height: auto;
+  padding: 14px 16px;
+}
+.compact-trade-feed-list article:nth-child(n+3) {
+  display: none;
+}
+@media (max-width: 560px) {
+  .market-insight-row {
+    grid-template-columns: 1fr;
+  }
+  .market-insight-row article {
+    display: grid;
+    grid-template-columns: .75fr 1fr auto;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 13px;
+  }
+  .market-insight-row article span,
+  .market-insight-row article b,
+  .market-insight-row article em {
+    margin: 0;
+  }
+  .compact-trade-ticket .top-action-summary {
+    grid-template-columns: repeat(3, minmax(0,1fr));
+  }
+}

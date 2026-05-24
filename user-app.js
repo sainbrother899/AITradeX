@@ -2307,7 +2307,7 @@
           <span data-price-card="${tradeIsActive ? "true" : "false"}" data-live-pair="${pair.pair}" data-live-type="line">${pair.price} · <em class="${tradeIsActive ? changeClass(pair.change) : "upcoming-text"}">${pair.change}</em></span>
         </div>
         <div class="trade-hero-side">
-          <span class="trade-mode-badge ${accountMode.toLowerCase()}">${accountMode} Account</span>
+          <span class="trade-mode-badge account-only">Account</span>
           ${usdtRateChip("trade-rate-chip")}
           <button class="change-pair-btn" onclick="AITradeXUser.openSheet('pair')">Change Pair</button>
         </div>
@@ -2358,7 +2358,7 @@
           <div>
             <p>ORDER TICKET</p>
             <h2>${displayPair(selectedPair)}</h2>
-            <span>${accountMode} Account · ${tradeOrderType === "LIMIT" ? "Limit" : "Market"} Order</span>
+            <span>${tradeOrderType === "LIMIT" ? "Limit" : "Market"} Order</span>
           </div>
           <span class="ticket-chip">${tradeIsActive ? selectedMarket : "UPCOMING"}</span>
         </div>
@@ -2380,10 +2380,10 @@
         <div class="compact-trade-summary top-action-summary">
           <span><b>Margin</b>${App.money(tradeAmountPreview)}</span>
           <span><b>Position</b>${App.money(positionSize)}</span>
-          <span><b>Mode</b>${accountMode}</span>
+          <span><b>Leverage</b>${leverageValue}x</span>
         </div>
 
-        ${marginWarning ? `<div class="order-warning-bar compact">Margin is higher than available ${accountMode} balance. Reduce amount before placing trade.</div>` : ""}
+        ${marginWarning ? `<div class="order-warning-bar compact">Insufficient balance. Please reduce the amount or add funds.</div>` : ""}
 
         <div class="compact-ticket-grid after-action-fields">
           <label>Amount
@@ -2427,31 +2427,32 @@
         </details>
       </section>
 
-      <section class="premium-card market-feed-card">
-        <div class="card-row">
-          <div><p>MARKET FEED</p><h2>${tradeIsActive ? "Crypto Depth" : "Upcoming Market"}</h2></div>
+      <section class="premium-card market-feed-card clean-market-insight-card">
+        <div class="card-row compact-market-head">
+          <div><p>MARKET FEED</p><h2>${tradeIsActive ? "Market Depth" : "Upcoming Market"}</h2></div>
           <span class="mini-live ${tradeIsActive ? "" : "soon"}">${tradeIsActive ? "LIVE" : "SOON"}</span>
         </div>
-        <div class="depth-table pair-market-feed">
-          <span>Metric</span><span>Value</span><span>Signal</span>
-          ${marketFeedForPair().map(row => `
-            <b>${row.left}</b>
-            <b>${row.mid}</b>
-            <b class="${row.mood === "up" ? "profit-text" : "loss-text"}">${row.right}</b>
+        <div class="market-insight-row">
+          ${marketFeedForPair().slice(0, 3).map(row => `
+            <article>
+              <span>${row.left}</span>
+              <b>${row.mid}</b>
+              <em class="${row.mood === "up" ? "profit-text" : "loss-text"}">${row.right}</em>
+            </article>
           `).join("")}
         </div>
       </section>
 
-      <section class="premium-card trade-feed-card">
-        <div class="card-row">
-          <div><p>TRADE FEED</p><h2>${selectedPair} Activity</h2></div>
-          <span class="history-mode">${tradeIsActive ? selectedMarket : "UPCOMING"}</span>
+      <section class="premium-card trade-feed-card clean-trade-feed-card">
+        <div class="card-row compact-market-head">
+          <div><p>TRADE FEED</p><h2>${displayPair(selectedPair)} Activity</h2></div>
+          <button class="change-pair-btn small" onclick="AITradeXUser.go('history')">View More</button>
         </div>
-        <div class="trade-feed-list">
-          ${tradeFeedForMarket().map(item => `
+        <div class="trade-feed-list compact-trade-feed-list">
+          ${tradeFeedForMarket().slice(0, 2).map(item => `
             <article class="${item.pair === selectedPair ? "active" : ""}">
               <div>
-                <b>${item.pair}</b>
+                <b>${displayPair(item.pair)}</b>
                 <span>${item.action} · ${item.lev} · ${item.time}</span>
               </div>
               <div>
