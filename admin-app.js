@@ -1838,7 +1838,8 @@
       }
     }
     if (pnl < 0) {
-      const maxLoss = position?.marginLocked ? margin : Math.max(0, App.realBalance(position?.userId));
+      // Hard safety cap: AI live loss can never exceed the locked AI amount/margin.
+      const maxLoss = Math.max(0, margin);
       pnl = Math.max(pnl, -maxLoss);
     }
     return Number(pnl.toFixed(2));
@@ -1867,12 +1868,12 @@
     const batches = aiLiveBatches();
     return `
       <section class="panel-card">
-        <div class="section-head"><div><h3>Running AI Live Positions</h3><span>Batch-level watcher closes all users together on profit target, loss target, or margin-risk hit</span></div><button class="ghost-action" type="button" onclick="AITradeXAdmin.checkAiLiveAutoClose(this)">Check Auto Close</button></div>
+        <div class="section-head"><div><h3>Running AI Live Positions</h3><span>Batch watcher closes on profit target, loss target, or max-loss hit. Loss is capped at AI amount.</span></div><button class="ghost-action" type="button" onclick="AITradeXAdmin.checkAiLiveAutoClose(this)">Check Auto Close</button></div>
         <div class="admin-list">
           ${batches.length ? batches.map(batch => `
             <article class="admin-user-card ai-live-batch-card">
               <div class="admin-user-main">
-                <div><b>${esc(batch.pair)} · ${esc(batch.side)}</b><span>Entry ${esc(batch.entryPriceDisplay || batch.entryPrice || "-")} · ${Number(batch.leverage || 1)}x · Target ${esc(batch.targetType || "PROFIT")} ${Number(batch.targetPercent || 0)}%</span></div>
+                <div><b>${esc(batch.pair)} · ${esc(batch.side)}</b><span>Entry ${esc(batch.entryPriceDisplay || batch.entryPrice || "-")} · ${Number(batch.leverage || 1)}x · Target ${esc(batch.targetType || "PROFIT")} ${Number(batch.targetPercent || 0)}% · Max loss = AI amount</span></div>
                 <div class="admin-user-stats"><span>Users</span><b>${batch.users}</b></div>
                 <div class="admin-user-stats"><span>AI Amount</span><b>${App.money(batch.totalMargin)}</b></div>
                 <div class="admin-user-stats"><span>Exposure</span><b>${App.money(batch.totalExposure)}</b></div>
@@ -3213,7 +3214,7 @@
           referenceId: position.id,
           note: position.marginLocked
             ? `${position.pair} AI live ${position.side} closed by admin · AI amount ${App.money(margin)} · P/L ${position.pnl >= 0 ? "+" : ""}${App.money(position.pnl)}`
-            : `${position.pair} AI live ${position.side} closed by admin`
+            : `${position.pair} AI live ${position.side} closed · ${reason}`
         };
         const row = App.addLedgerAsync ? await App.addLedgerAsync(ledgerPayload) : App.addLedger(ledgerPayload);
         settlementAdded = !!row;

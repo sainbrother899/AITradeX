@@ -431,7 +431,8 @@
     }
     if (pnl < 0) {
       const margin = aiLiveMarginAmount(position);
-      const maxLoss = position.marginLocked ? margin : Math.max(0, App.realBalance(position.userId));
+      // Hard safety cap: AI live loss display can never exceed the locked AI amount/margin.
+      const maxLoss = Math.max(0, margin);
       return Number(Math.max(pnl, -maxLoss).toFixed(2));
     }
     return Number(pnl.toFixed(2));
@@ -2798,6 +2799,7 @@
       metaHtml: `
         <span>${Number(position.leverage || 1)}x</span>
         <span>AI Amount ${App.money(position.marginAmount || 0)}</span>
+        <span>Max Loss ${App.money(aiLiveMarginAmount(position))}</span>
         <span>Position ${App.money(aiLiveSafeExposure(position))}</span>`,
       priceHtml: `
         <span>Entry <b>${App.escapeHtml(position.entryPriceDisplay || String(position.entryPrice || "--"))}</b></span>
