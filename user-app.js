@@ -679,7 +679,7 @@
             <span id="aiLivePositionMeta">Locked ${App.money(locked)} · Live <em class="${pnl >= 0 ? "profit-text" : "loss-text"}">${pnl >= 0 ? "+" : ""}${App.money(pnl)}</em> ${label}</span>
           </div>
         </div>
-        <button onclick="AITradeXUser.go('orders')">View</button>
+        <button onclick="AITradeXUser.go('positions')">View</button>
       </section>`;
   }
 
@@ -914,7 +914,7 @@
             <h2>${App.escapeHtml(plan.name || "Free")} · ${ai.enabled ? "AI Active" : "AI OFF"}</h2>
             <h4>Daily limit, live AI positions and profit/loss in one place.</h4>
           </div>
-          <button class="change-pair-btn" onclick="AITradeXUser.go('orders')">View Orders</button>
+          <button class="change-pair-btn" onclick="AITradeXUser.go('positions')">View Positions</button>
         </div>
         <div class="compact-grid ai-summary-grid">
           <article><span>Used Today</span><b>${usage.used}/${usage.limit}</b><small>${remaining} remaining</small></article>
@@ -1801,6 +1801,7 @@
       home: `<svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 11.2 12 4.7l7.5 6.5v7.6a1.7 1.7 0 0 1-1.7 1.7h-3.4v-5.8H9.6v5.8H6.2a1.7 1.7 0 0 1-1.7-1.7v-7.6Z"/><path d="M3 12.4 12 4l9 8.4"/></svg>`,
       trade: `<svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5v14"/><path d="M4.5 7.5 7 5l2.5 2.5"/><path d="M4.5 16.5 7 19l2.5-2.5"/><path d="M17 5v14"/><path d="M14.5 7.5 17 5l2.5 2.5"/><path d="M14.5 16.5 17 19l2.5-2.5"/></svg>`,
       orders: `<svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h10a2 2 0 0 1 2 2v13H5v-13a2 2 0 0 1 2-2Z"/><path d="M9 3h6v4H9V3Z"/><path d="M8 11h8"/><path d="M8 15h8"/></svg>`,
+      positions: `<svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 6.8h15"/><path d="M7 4v5.5"/><path d="M17 4v5.5"/><path d="M4.5 17.2h15"/><path d="M10 14.5V20"/><path d="M14 14.5V20"/><path d="M8 12h8"/></svg>`,
       wallet: `<svg class="nav-svg wallet-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.7h15.2a2 2 0 0 1 2 2v8.1a2 2 0 0 1-2 2H4.8a2 2 0 0 1-2-2V6.9c0-1 .7-1.8 1.7-2l10.7-1.7c1-.2 1.9.6 1.9 1.6v2.9"/><path d="M16.1 12.2h5.1v4.3h-5.1a2.1 2.1 0 1 1 0-4.3Z"/><path d="M16.3 14.4h.1"/><path d="M6.4 7.5 15.1 6"/></svg>`,
       history: `<svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.6 11.2a7.6 7.6 0 1 1 2.2 6.1"/><path d="M4 6.5v4.9h4.9"/><path d="M12 8v4.4l3 1.8"/></svg>`
     };
@@ -1811,7 +1812,7 @@
     const nav = [
       ["home", "Home"],
       ["trade", "Trade"],
-      ["orders", "Orders"],
+      ["positions", "Positions"],
       ["wallet", "Wallet"],
       ["history", "History"]
     ];
@@ -1954,7 +1955,7 @@
         </section>
 
         <section class="landing-grid landing-feature-grid">
-          <article><i>📈</i><h3>Manual Trading</h3><p>Place market or limit orders, lock entry price, track live P/L and close positions from the Orders flow.</p></article>
+          <article><i>📈</i><h3>Manual Trading</h3><p>Place market or limit orders, lock entry price, track live P/L and close positions from the Positions flow.</p></article>
           <article><i>🤖</i><h3>AI Auto Trading</h3><p>AI trading starts ON with 75% allocation by default. Users can change allocation anytime.</p></article>
           <article><i>💳</i><h3>INR Wallet</h3><p>Deposit requests, bank-only withdrawals, wallet ledger and admin approval flow are built in.</p></article>
         </section>
@@ -2055,7 +2056,7 @@
           title: `${label} ${t.status || "Trade"}`,
           detail: `${t.pair || "Trade"} · ${Number(t.pnl || 0) >= 0 ? "+" : ""}${App.money(Number(t.pnl || 0))}`,
           time: t.createdAt || t.openedAt || t.closedAt,
-          page: "orders"
+          page: "positions"
         });
       });
     return rows
@@ -2217,12 +2218,12 @@
           <div>
             <p>QUICK ACTIONS</p>
             <h2>Everything in one tap</h2>
-            <span>Trade, check orders, manage wallet or raise support quickly.</span>
+            <span>Trade, track positions, manage wallet or raise support quickly.</span>
           </div>
         </div>
         <div class="quick-action-grid">
           <button onclick="AITradeXUser.go('trade')"><i>📈</i><b>Trade</b><span>Crypto market</span></button>
-          <button onclick="AITradeXUser.go('orders')"><i>📋</i><b>Orders</b><span>Positions</span></button>
+          <button onclick="AITradeXUser.go('positions')"><i>📊</i><b>Positions</b><span>Open trades</span></button>
           <button onclick="AITradeXUser.go('wallet')"><i>💳</i><b>Wallet</b><span>Deposit / Withdraw</span></button>
           <button onclick="AITradeXUser.go('support')"><i>🎧</i><b>Support</b><span>Tickets</span></button>
         </div>
@@ -2658,9 +2659,9 @@
       <section class="premium-card wallet-action-panel history-panel">
         <div class="wallet-panel-head">
           <div>
-            <p>WALLET HISTORY</p>
+            <p>WALLET RECORDS</p>
             <h2>Requests & Ledger</h2>
-            <span>Deposit, withdrawal and balance movement records</span>
+            <span>Deposit, withdrawal and balance movement records in one clean place.</span>
           </div>
           <b class="wallet-mini-badge">${requestFiltered.length} Requests</b>
         </div>
@@ -2726,10 +2727,10 @@
           <i>＋</i><b>Deposit</b><span>Add funds with UPI or bank</span>
         </button>
         <button class="${activePanel === "WITHDRAWAL" ? "active" : ""}" onclick="AITradeXUser.setWalletMode('WITHDRAWAL')">
-          <i>↗</i><b>Withdrawal</b><span>Send balance to approved bank</span>
+          <i>↗</i><b>Withdraw</b><span>Send balance to approved bank</span>
         </button>
         <button class="${activePanel === "HISTORY" ? "active" : ""}" onclick="AITradeXUser.setWalletMode('HISTORY')">
-          <i>≡</i><b>History</b><span>Requests and wallet ledger</span>
+          <i>≡</i><b>Requests</b><span>Requests and ledger</span>
         </button>
       </section>
 
@@ -2850,11 +2851,11 @@
     const totalLivePnl = livePnl + aiLivePnl;
 
     shell(`
-      <section class="orders-app-hero">
+      <section class="orders-app-hero positions-app-hero">
         <div>
-          <p>ORDERS & POSITIONS</p>
-          <h2>Open trades, AI positions and pending orders</h2>
-          <span>Compact real-app view for quick tracking and action.</span>
+          <p>POSITIONS</p>
+          <h2>Open trades and running positions</h2>
+          <span>Manual trades, AI live positions and pending limit orders in one clean view.</span>
         </div>
         <button class="orders-hero-action" onclick="AITradeXUser.go('trade')">New Trade</button>
       </section>
@@ -2871,7 +2872,7 @@
         <div class="orders-app-head">
           <div>
             <p>POSITION BOOK</p>
-            <h2>${activeTab === "ALL" ? "All Active Orders" : `${activeTab.charAt(0)}${activeTab.slice(1).toLowerCase()} Orders`}</h2>
+            <h2>${activeTab === "ALL" ? "All Positions" : `${activeTab.charAt(0)}${activeTab.slice(1).toLowerCase()} Positions`}</h2>
           </div>
           <span>${filteredRows.length} item${filteredRows.length === 1 ? "" : "s"}</span>
         </div>
@@ -2883,7 +2884,7 @@
           `).join("")}
         </div>
         <div class="orders-app-list">
-          ${filteredRows.length ? filteredRows.map(row => row.html).join("") : `<div class="empty-state">No ${activeTab === "ALL" ? "active orders" : activeTab.toLowerCase()} records right now.</div>`}
+          ${filteredRows.length ? filteredRows.map(row => row.html).join("") : `<div class="empty-state">No ${activeTab === "ALL" ? "active positions" : activeTab.toLowerCase()} records right now.</div>`}
         </div>
       </section>
     `);
@@ -3031,8 +3032,8 @@
       <section class="history-real-hero">
         <div>
           <p>TRADE HISTORY</p>
-          <h2>Closed trades in one clean timeline</h2>
-          <span>Manual and AI trades stay together, searchable and easy to review.</span>
+          <h2>Completed trades</h2>
+          <span>Manual and AI results in a searchable, easy-to-review timeline.</span>
         </div>
         <button onclick="AITradeXUser.go('wallet')">View Wallet Ledger</button>
       </section>
@@ -3481,7 +3482,6 @@
     if (u?.lastLoginAt) rows.push({ label: "Last login", value: new Date(u.lastLoginAt).toLocaleString(), tone: "good" });
     rows.push({ label: "Session expiry", value: `${sessionMinutesLeft()} min left`, tone: sessionMinutesLeft() <= 30 ? "warn" : "good" });
     rows.push({ label: "Login protection", value: "6 wrong attempts = 10 min lock", tone: "neutral" });
-    rows.push({ label: "Database mode", value: window.AITradeXDB?.ready ? "Supabase connected" : "Local fallback", tone: window.AITradeXDB?.ready ? "good" : "warn" });
     return rows;
   }
 
@@ -3503,7 +3503,6 @@
         <article><span>Session</span><b>${minutes} min</b></article>
         <article><span>Login Lock</span><b>6 Attempts</b></article>
         <article><span>Account</span><b>${App.escapeHtml(String(u?.status || "ACTIVE"))}</b></article>
-        <article><span>Database</span><b>${window.AITradeXDB?.ready ? "Connected" : "Local"}</b></article>
       </section>
 
       <section class="premium-card security-control-card">
@@ -3517,7 +3516,7 @@
       </section>
 
       <section class="premium-card security-password-card">
-        <div class="card-row"><div><p>PASSWORD</p><h2>Change password</h2></div><span class="history-mode">Local Account</span></div>
+        <div class="card-row"><div><p>PASSWORD</p><h2>Change password</h2></div><span class="history-mode">Protected</span></div>
         <div class="profile-form compact-inner-form security-form-grid">
           <label>Current Password<input id="securityCurrentPassword" type="password" placeholder="Current password" autocomplete="current-password"/></label>
           <label>New Password<input id="securityNewPassword" type="password" placeholder="Minimum 4 characters" autocomplete="new-password"/></label>
@@ -3696,11 +3695,11 @@
 
     if (page === "home") return homePage();
     if (page === "pnl") {
-      page = "orders";
+      page = "positions";
       localStorage.setItem("AITradeX_ACTIVE_PAGE", page);
     }
     if (page === "trade") return tradePage();
-    if (page === "orders") return ordersPage();
+    if (page === "positions" || page === "orders") return ordersPage();
     if (page === "wallet") return walletPage();
     if (page === "history") return historyPage();
     if (page === "kyc") return kycPage();
@@ -4488,7 +4487,7 @@
           });
           try { await window.AITradeXDB.loadAll?.(); } catch {}
           resetTradeTicketAfterOrder(orderType === "LIMIT" ? "Limit order placed" : "Market order opened", orderType === "LIMIT" ? `${selectedPair} ${normalizedSide} limit placed at ${limitDisplay}.` : `${normalizedSide} ${selectedPair} opened at ${entryDisplay}.`);
-          page = "orders";
+          page = "positions";
           orderViewTab = orderType === "LIMIT" ? "PENDING" : "MANUAL";
           localStorage.setItem("AITradeX_ACTIVE_PAGE", page);
           localStorage.setItem("AITradeX_ORDER_VIEW_TAB", orderViewTab);
@@ -4565,7 +4564,7 @@
         App.state.trades.unshift(order);
         App.saveState();
         resetTradeTicketAfterOrder("Limit order placed", `${selectedPair} ${normalizedSide} limit placed at ${order.limitPriceDisplay}.`);
-        page = "orders";
+        page = "positions";
         orderViewTab = "PENDING";
         localStorage.setItem("AITradeX_ACTIVE_PAGE", page);
         localStorage.setItem("AITradeX_ORDER_VIEW_TAB", orderViewTab);
@@ -4642,7 +4641,7 @@
       App.state.trades.unshift(trade);
       App.saveState();
       resetTradeTicketAfterOrder("Market order opened", `${trade.side} ${selectedPair} opened at ${trade.entryPriceDisplay}.`);
-      page = "orders";
+      page = "positions";
       orderViewTab = "MANUAL";
       localStorage.setItem("AITradeX_ACTIVE_PAGE", page);
       localStorage.setItem("AITradeX_ORDER_VIEW_TAB", orderViewTab);
