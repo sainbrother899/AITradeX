@@ -2376,7 +2376,7 @@
       </section>
 
       <section class="panel-card referral-settings-panel">
-        <div class="section-head"><div><h3>Referral Bonus Settings</h3><span>Bonus is credited automatically to wallet. No manual approval is required.</span></div><span class="admin-count-pill">Auto Credit</span></div>
+        <div class="section-head"><div><h3>Referral Bonus Settings</h3><span>Bonus is credited automatically by backend during deposit/plan approval.</span></div><div class="panel-actions"><button class="mini-action" type="button" onclick="AITradeXAdmin.repairReferralBonuses(this)">Repair missed bonuses</button><span class="admin-count-pill">Backend Auto Credit</span></div></div>
         <form class="admin-settings-grid" onsubmit="AITradeXAdmin.saveReferralSettings(event)">
           <label>Deposit Bonus %
             <input id="referralDepositPercent" type="number" min="0" step="0.01" value="${Number(settings.referralDepositPercent ?? settings.referralFirstDepositPercent ?? 10)}" required/>
@@ -3803,6 +3803,23 @@
       App.toast("Referral settings saved.");
       render();
     },
+    async repairReferralBonuses(button) {
+      if (!window.AITradeXDB?.repairReferralBonusesSecure) { App.toast("Run the referral backend SQL patch first, then refresh admin."); return; }
+      if (!confirm("Repair missed referral bonuses from approved deposits and paid subscriptions? Duplicate bonuses will be skipped.")) return;
+      const original = button?.textContent || "Repair missed bonuses";
+      if (button) { button.disabled = true; button.textContent = "Repairing..."; }
+      try {
+        const admin = adminUser() || {};
+        const result = await window.AITradeXDB.repairReferralBonusesSecure({ adminUserId: admin.id || "control_root", adminEmail: admin.email || "", adminName: displayNameFor(admin) || "Admin" });
+        await window.AITradeXDB.loadAll?.();
+        App.toast(`Referral repair done. Deposit: ${result.depositCredited || 0}, Plan: ${result.subscriptionCredited || 0}.`);
+        render();
+      } catch (err) {
+        App.toast(`Referral repair failed: ${err.message || err}`);
+      } finally {
+        if (button) { button.disabled = false; button.textContent = original; }
+      }
+    },
     async saveTelegramSettings(event) {
       event.preventDefault();
       const settings = platformSettings();
@@ -4384,12 +4401,7 @@
           const admin = adminUser() || {};
           const result = await window.AITradeXDB.approveDepositSecure({ requestId: request.id, adminUserId: admin.id || "control_root", adminEmail: admin.email || "", adminName: displayNameFor(admin) || "Admin" });
           if (window.AITradeXDB?.loadAll) await window.AITradeXDB.loadAll();
-          if (result?.ledgerApplied && App.creditReferralBonusAsync) {
-            try {
-              const referralResult = await App.creditReferralBonusAsync({ referredUserId: target.id, eventType: "DEPOSIT", amount, referenceId: request.id, sourceLabel: `Deposit UTR ${request.utr || "-"}` });
-              if (referralResult?.credited) await logAdminActionAsync("REFERRAL_DEPOSIT_BONUS", "REFERRAL", request.id, { referredUserId: target.id, amount: referralResult.amount, secureDepositApprove: true });
-            } catch (refErr) { console.warn("Referral bonus after secure deposit approve failed", refErr?.message || refErr); }
-          }
+          // Referral deposit bonus is now credited inside the secure backend RPC.
           App.toast(result?.alreadyCompleted ? `Deposit already ${result.status || "completed"}.` : (result?.ledgerApplied ? "Deposit approved securely and balance credited." : "Deposit marked approved securely. Ledger was already applied."));
           render();
           return;

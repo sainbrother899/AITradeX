@@ -4776,12 +4776,7 @@
       try {
         if (App.isDatabaseMode?.() && window.AITradeXDB?.purchasePlanSecure) {
           await window.AITradeXDB.purchasePlanSecure({ subscriptionId: subId, userId: u.id, planId: plan.id, source: "USER_PURCHASE" });
-          try {
-            const referralResult = await (App.creditReferralBonusAsync ? App.creditReferralBonusAsync({ referredUserId: u.id, eventType: "SUBSCRIPTION", amount: price, referenceId: subId, sourceLabel: plan.name }) : Promise.resolve(App.creditReferralBonus?.({ referredUserId: u.id, eventType: "SUBSCRIPTION", amount: price, referenceId: subId, sourceLabel: plan.name })));
-            if (referralResult?.credited) console.info("Referral subscription bonus credited", referralResult);
-          } catch (refErr) {
-            console.warn("Subscription referral bonus failed; plan remains active", refErr?.message || refErr);
-          }
+          // Referral subscription bonus is now credited inside the secure backend RPC.
           await window.AITradeXDB.loadAll?.();
         } else {
           const startedAt = new Date();
