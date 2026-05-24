@@ -9,9 +9,8 @@
   let accountMode = "REAL";
   localStorage.setItem("AITradeX_ACCOUNT_MODE", "REAL");
   let drawerOpen = false;
-  let autoPercent = Number(localStorage.getItem("AITradeX_AUTO_PERCENT") || 75);
-  const savedAutoTradeState = localStorage.getItem("AITradeX_AUTO_ON");
-  let autoTradeOn = savedAutoTradeState === null ? true : savedAutoTradeState === "true";
+  let autoPercent = 75;
+  let autoTradeOn = true;
   let selectedMarket = localStorage.getItem("AITradeX_SELECTED_MARKET") || "CRYPTO";
   let selectedPair = localStorage.getItem("AITradeX_SELECTED_PAIR") || "BTC/USDT";
   let tradeAmountPreview = Number(localStorage.getItem("AITradeX_TRADE_AMOUNT_PREVIEW") || 1000);
@@ -849,8 +848,11 @@
   function currentAiSettings() {
     const u = user();
     if (!u) return { enabled: autoTradeOn, percent: autoPercent };
+    // DB-first AI settings: values come from users.ai_trade_on / users.ai_trade_percent.
+    // localStorage is no longer used as the source of truth for AI auto-trade settings.
     if (typeof u.aiTradeOn === "undefined") u.aiTradeOn = true;
-    if (!u.aiTradePercent) u.aiTradePercent = 75;
+    const pct = Number(u.aiTradePercent);
+    if (![25, 50, 75, 100].includes(pct)) u.aiTradePercent = 75;
     autoTradeOn = !!u.aiTradeOn;
     autoPercent = Number(u.aiTradePercent || 75);
     return { enabled: autoTradeOn, percent: autoPercent };
@@ -4882,7 +4884,6 @@
     async setAutoPercent(value) {
       const u = user();
       autoPercent = Number(value);
-      localStorage.setItem("AITradeX_AUTO_PERCENT", autoPercent);
       if (u) {
         u.aiTradePercent = autoPercent;
         try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeUser) await window.AITradeXDB.writeUser(u); } catch (err) { App.toast(`AI setting save failed: ${err.message || err}`); return; }
@@ -4898,7 +4899,6 @@
         return;
       }
       autoTradeOn = true;
-      localStorage.setItem("AITradeX_AUTO_ON", "true");
       if (u) {
         u.aiTradeOn = true;
         if (!u.aiTradePercent) u.aiTradePercent = autoPercent || 75;
@@ -4916,7 +4916,6 @@
       const u = user();
       aiOffConfirmOpen = false;
       autoTradeOn = false;
-      localStorage.setItem("AITradeX_AUTO_ON", "false");
       if (u) {
         u.aiTradeOn = false;
         if (!u.aiTradePercent) u.aiTradePercent = autoPercent || 75;
@@ -5043,6 +5042,7 @@
 
   async function bootUserApp(){
     try{
+      App.clearOldUiCache?.();
       if(App.session?.userId && window.AITradeXDB?.ready){
         await window.AITradeXDB.loadAll();
       }
