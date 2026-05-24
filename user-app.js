@@ -2121,11 +2121,6 @@
             <em class="${pnl >= 0 ? "profit-text" : "loss-text"}">${pnl >= 0 ? "+" : ""}${App.money(pnl)} today</em>
           </div>
         </div>
-        <div class="user-command-actions premium-hero-actions">
-          <button onclick="AITradeXUser.go('trade')">Trade Now</button>
-          <button onclick="AITradeXUser.go('wallet')">Add Funds</button>
-          <button onclick="AITradeXUser.go('orders')">${totalActive ? `View ${totalActive} Position${totalActive > 1 ? "s" : ""}` : "View Orders"}</button>
-        </div>
         <div class="user-command-meta clean-home-meta">
           <article><span>Manual</span><b>${activeManualCount}</b></article>
           <article><span>AI Positions</span><b>${activeAiCount}</b></article>
