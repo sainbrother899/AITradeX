@@ -636,7 +636,7 @@ declare
   settlement numeric;
   closed_count integer := 0;
   total_positions integer := 0;
-  total_pnl numeric := 0;
+  v_total_pnl numeric := 0;
   total_settlement numeric := 0;
   ledger_id text;
   notif_id text;
@@ -771,13 +771,13 @@ begin
       audience=excluded.audience, user_id=excluded.user_id, title=excluded.title, message=excluded.message, type=excluded.type, link_page=excluded.link_page, reference_id=excluded.reference_id, raw=excluded.raw, created_at=excluded.created_at;
 
     closed_count := closed_count + 1;
-    total_pnl := total_pnl + final_pnl;
+    v_total_pnl := v_total_pnl + final_pnl;
     total_settlement := total_settlement + settlement;
   end loop;
 
   update public.ai_trade_batches
   set status = 'CLOSED',
-      total_pnl = round(total_pnl::numeric,2),
+      total_pnl = round(v_total_pnl::numeric,2),
       closed_at = now(),
       raw = coalesce(raw, '{}'::jsonb) || jsonb_build_object(
         'secureAiLiveClose', true,
@@ -795,15 +795,15 @@ begin
 
   log_id := 'adminlog_ai_live_close_' || p_batch_id || '_' || replace(effective_reason,' ','_');
   insert into public.admin_action_logs(id, admin_user_id, action, target_type, target_id, meta, created_at)
-  values (log_id, p_admin_user_id, 'AI_LIVE_CLOSE_SECURE', 'AI_BATCH', p_batch_id, jsonb_build_object('closed', closed_count, 'totalPositions', total_positions, 'reason', effective_reason, 'exitPrice', v_exit_price, 'totalPnl', round(total_pnl::numeric,2), 'totalSettlement', round(total_settlement::numeric,2), 'adminEmail', p_admin_email, 'adminName', p_admin_name), now())
+  values (log_id, p_admin_user_id, 'AI_LIVE_CLOSE_SECURE', 'AI_BATCH', p_batch_id, jsonb_build_object('closed', closed_count, 'totalPositions', total_positions, 'reason', effective_reason, 'exitPrice', v_exit_price, 'totalPnl', round(v_total_pnl::numeric,2), 'totalSettlement', round(total_settlement::numeric,2), 'adminEmail', p_admin_email, 'adminName', p_admin_name), now())
   on conflict (id) do update set meta=excluded.meta, created_at=excluded.created_at;
 
   queue_id := 'backend_ai_live_close_' || p_batch_id || '_' || replace(effective_reason,' ','_');
   insert into public.backend_action_queue(id, action_type, status, requested_by, target_user_id, payload, result, created_at, processed_at)
-  values (queue_id, 'AI_LIVE_CLOSE', 'COMPLETED', p_admin_user_id, null, jsonb_build_object('batchId', p_batch_id, 'reason', effective_reason, 'exitPrice', v_exit_price), jsonb_build_object('closed', closed_count, 'totalPnl', round(total_pnl::numeric,2), 'totalSettlement', round(total_settlement::numeric,2)), now(), now())
+  values (queue_id, 'AI_LIVE_CLOSE', 'COMPLETED', p_admin_user_id, null, jsonb_build_object('batchId', p_batch_id, 'reason', effective_reason, 'exitPrice', v_exit_price), jsonb_build_object('closed', closed_count, 'totalPnl', round(v_total_pnl::numeric,2), 'totalSettlement', round(total_settlement::numeric,2)), now(), now())
   on conflict (id) do update set status='COMPLETED', result=excluded.result, processed_at=now();
 
-  return jsonb_build_object('ok', true, 'batchId', p_batch_id, 'closed', closed_count, 'totalPositions', total_positions, 'exitPrice', v_exit_price, 'totalPnl', round(total_pnl::numeric,2), 'totalSettlement', round(total_settlement::numeric,2), 'status', 'CLOSED');
+  return jsonb_build_object('ok', true, 'batchId', p_batch_id, 'closed', closed_count, 'totalPositions', total_positions, 'exitPrice', v_exit_price, 'totalPnl', round(v_total_pnl::numeric,2), 'totalSettlement', round(total_settlement::numeric,2), 'status', 'CLOSED');
 end;
 $$;
 
