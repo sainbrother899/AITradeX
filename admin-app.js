@@ -3951,7 +3951,9 @@
       }
 
       const batchId = App.uid("ai_batch");
-      const report = aiLiveEligibilityReport(minBalance);
+      const report = aiEligibilityReport(minBalance);
+      // Instant AI must use the instant eligibility rules: daily AI trade limit + AI ON + wallet pool.
+      // Live Position eligibility is separate and should only be used in openLiveAiPosition().
       let appliedCount = 0;
       let totalMargin = 0;
       let totalExposure = 0;
