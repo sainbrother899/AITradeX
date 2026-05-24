@@ -1689,10 +1689,7 @@
   }
 
   function accountSwitch(compact = false) {
-    return `
-      <div class="account-segment ${compact ? "compact" : ""} real-only-segment" aria-label="Account mode">
-        <button class="active" type="button">Real</button>
-      </div>`;
+    return "";
   }
 
   function userNotifications() {
@@ -2105,8 +2102,8 @@
   function dashboardHeroCard({ balance, pnl, activeManualCount, activeAiCount }) {
     const unread = userUnreadNotifications();
     const totalActive = Number(activeManualCount || 0) + Number(activeAiCount || 0);
-    const modeLabel = "Real Account";
-    const modeHint = "Real wallet selected";
+    const modeLabel = "Account";
+    const modeHint = "Wallet ready";
     return `
       <section class="user-command-hero clean-home-hero real">
         <div class="hero-glow-orb"></div>
@@ -2213,7 +2210,7 @@
       <section class="compact-grid home-summary-grid polished-home-summary clean-home-summary">
         <article><span>AI Status</span><b>${ai.enabled ? "Active" : "OFF"}</b><small>${usage.used}/${usage.limit} AI trades today</small></article>
         <article><span>Active Positions</span><b>${activeTotal}</b><small>${activeManualCount} manual · ${activeAiCount} AI</small></article>
-        <article><span>Real Wallet</span><b>${App.money(real)}</b><small>${accountMode === "REAL" ? "Selected" : "Switch to Real for wallet"}</small></article>
+        <article><span>Wallet</span><b>${App.money(real)}</b><small>Available balance</small></article>
         <article><span>Selected Pair</span><b>${selectedPair}</b><small>${pair.signal} bias</small></article>
       </section>
 
@@ -2249,7 +2246,7 @@
 
       <section class="premium-card auto-card polished-auto-card clean-ai-control-card">
         <div class="card-row">
-          <div><p>AI TRADE CONTROL</p><h2>Auto Trade Amount</h2><h4>Choose how much real balance AI can use for future automatic trades.</h4></div>
+          <div><p>AI TRADE CONTROL</p><h2>Auto Trade Amount</h2><h4>Choose how much wallet balance AI can use for future automatic trades.</h4></div>
           <button class="ai-power ${ai.enabled ? "on" : ""}" onclick="AITradeXUser.toggleAutoTrade()">${ai.enabled ? "ON" : "OFF"}</button>
         </div>
         <div class="percent-grid">
@@ -2687,7 +2684,7 @@
         <div class="wallet-hero-glow"></div>
         <div class="wallet-hero-content">
           <div>
-            <p>REAL WALLET</p>
+            <p>WALLET</p>
             <h1>${App.money(availableRealBalance())}</h1>
             <span>Available balance · ${statusPill(kyc.status)}</span>
             ${usdtRateChip("wallet-rate-chip")}
@@ -3019,7 +3016,7 @@
         ${historyStatCard("Total P/L", `${stats.totalPnl >= 0 ? "+" : ""}${App.money(stats.totalPnl)}`, `${allRows.length} closed trades`, stats.totalPnl >= 0 ? "profit" : "loss")}
         ${historyStatCard("Win Rate", `${stats.winRate}%`, `${stats.wins} profit trades`, "")}
         ${historyStatCard("Best Trade", `${stats.best >= 0 ? "+" : ""}${App.money(stats.best)}`, "Highest closed P/L", stats.best >= 0 ? "profit" : "loss")}
-        ${historyStatCard("Account", "REAL", "Real account only", "")}
+        ${historyStatCard("Account", "Active", "Single account", "")}
       </section>
 
       <section class="history-real-card">
@@ -3297,7 +3294,7 @@
         <div>
           <p>SUBSCRIPTION</p>
           <h1>${App.escapeHtml(plan.name || "Free")}</h1>
-          <span>${usage.used}/${usage.limit} AI auto trades used today · Real Wallet ${App.money(balance)}</span>
+          <span>${usage.used}/${usage.limit} AI auto trades used today · Wallet ${App.money(balance)}</span>
         </div>
         <button onclick="AITradeXUser.go('wallet')">Add Balance</button>
       </section>
@@ -3314,7 +3311,7 @@
       </section>
 
       <section class="premium-card subscription-history-card">
-        <div class="card-row"><div><p>SUBSCRIPTION HISTORY</p><h2>Plan Purchases</h2></div><span class="history-mode">Real Wallet</span></div>
+        <div class="card-row"><div><p>SUBSCRIPTION HISTORY</p><h2>Plan Purchases</h2></div><span class="history-mode">Wallet</span></div>
         ${history.length ? `<div class="subscription-history-list">${history.map(row => `
           <article>
             <div><b>${App.escapeHtml(row.planName || row.planId)}</b><span>${new Date(row.createdAt).toLocaleString("en-IN")}</span></div>
@@ -3372,7 +3369,7 @@
         <article><span>Total Invited</span><b>${stats.totalInvited}</b><small>Registered users</small></article>
         <article><span>Deposit Bonus</span><b>${App.money(stats.depositBonus)}</b><small>${settings.referralDepositPercent || 0}% auto credit</small></article>
         <article><span>Subscription Bonus</span><b>${App.money(stats.subscriptionBonus)}</b><small>${settings.referralSubscriptionPercent || 0}% auto credit</small></article>
-        <article><span>Total Earned</span><b>${App.money(stats.totalBonus)}</b><small>Real wallet credited</small></article>
+        <article><span>Total Earned</span><b>${App.money(stats.totalBonus)}</b><small>Wallet credited</small></article>
       </section>
 
       <section class="premium-card">
@@ -3381,7 +3378,7 @@
           <article><span>First Deposit Bonus</span><b>${settings.referralDepositEnabled === false ? "Disabled" : `${Number(settings.referralDepositPercent || 0)}%`}</b></article>
           <article><span>Subscription Bonus</span><b>${settings.referralSubscriptionEnabled === false ? "Disabled" : `${Number(settings.referralSubscriptionPercent || 0)}%`}</b></article>
           <article><span>Credit Type</span><b>Automatic</b></article>
-          <article><span>Wallet</span><b>Real Balance</b></article>
+          <article><span>Wallet</span><b>Available Balance</b></article>
         </div>
       </section>
 
@@ -4740,10 +4737,10 @@
         return;
       }
       if (App.realBalance(u.id) < price) {
-        App.toast("Insufficient real wallet balance. Please deposit funds first.");
+        App.toast("Insufficient wallet balance. Please deposit funds first.");
         return;
       }
-      const ok = confirm(`Buy ${plan.name} for ${App.money(price)} from your real wallet?`);
+      const ok = confirm(`Buy ${plan.name} for ${App.money(price)} from your wallet?`);
       if (!ok) return;
       const subId = App.uid("sub");
       try {

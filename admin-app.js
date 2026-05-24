@@ -267,7 +267,7 @@
           <article><span>Email</span><b>${esc(user.email || "-")}</b></article>
           <article><span>Mobile</span><b>${esc(user.mobile || "-")}</b></article>
           <article><span>Request Amount</span><b>${App.money(request.amount || 0)}</b></article>
-          <article><span>Current Real Balance</span><b>${App.money(safeBalance)}</b></article>
+          <article><span>Current Balance</span><b>${App.money(safeBalance)}</b></article>
           <article><span>${isDeposit ? "UTR / Method" : "Balance After Approval"}</span><b>${isDeposit ? esc(financeMethodText(request, type)) : App.money(afterWithdrawal)}</b></article>
           <article><span>Request ID</span><b>${esc(request.id || "-")}</b></article>
           <article><span>Created</span><b>${request.createdAt ? new Date(request.createdAt).toLocaleString() : "-"}</b></article>
@@ -279,7 +279,7 @@
             ${method.ifsc ? `<span>IFSC: ${esc(method.ifsc)}</span>` : ""}
           </div>`}
         <div class="finance-safety-note">
-          ${isDeposit ? "Approve will credit real wallet once only. Duplicate approved UTR is blocked." : "Approve will debit real wallet at approval time. If balance is insufficient, approval is blocked."}
+          ${isDeposit ? "Approve will credit wallet once only. Duplicate approved UTR is blocked." : "Approve will debit wallet at approval time. If balance is insufficient, approval is blocked."}
         </div>
       </section>`;
   }
@@ -827,7 +827,7 @@
         ${metric("👥", "Total Users", stats.users.length)}
         ${metric("✅", "Active Users", stats.activeUsers)}
         ${metric("🚫", "Blocked / Suspended", `${stats.blockedUsers}/${stats.suspendedUsers}`)}
-        ${metric("💰", "Total Real Wallet", App.money(stats.totalWallet))}
+        ${metric("💰", "Total Wallet", App.money(stats.totalWallet))}
         ${metric("⬇️", "Today Deposits", App.money(stats.deposits.todayAmount))}
         ${metric("⬆️", "Today Withdrawals", App.money(stats.withdrawals.todayAmount))}
         ${metric("⌛", "Pending Deposits", `${stats.deposits.pending} · ${App.money(stats.deposits.pendingAmount)}`)}
@@ -941,7 +941,7 @@
       ${userFilterBar()}
       <section class="metrics-grid user-wallet-metrics">
         ${metric("👥", "Filtered Users", users.length)}
-        ${metric("💰", "Total Real Balance", App.money(users.reduce((sum, u) => sum + App.realBalance(u.id), 0)))}
+        ${metric("💰", "Total Balance", App.money(users.reduce((sum, u) => sum + App.realBalance(u.id), 0)))}
         ${metric("🤖", "AI Enabled", users.filter(u => u.aiTradeOn).length)}
         ${metric("⛔", "Blocked", allUsers().filter(u => userStatus(u) === "BLOCKED").length)}
       </section>
@@ -1005,7 +1005,7 @@
         </div>
 
         <div class="user-control-grid admin-user-premium-grid">
-          <article><span>Real Balance</span><b>${App.money(App.realBalance(user.id))}</b></article>
+          <article><span>Available Balance</span><b>${App.money(App.realBalance(user.id))}</b></article>
           <article><span>Plan</span><b>${esc(plan.name || "Free")}</b></article>
           <article><span>AI Limit</span><b>${aiUsed}/${aiLimit}</b></article>
           <article><span>Active AI</span><b>${activeAi}</b></article>
@@ -1428,7 +1428,7 @@
         <div class="request-grid wallet-request-grid finance-quick-grid">
           <article><span>User</span><b>${esc(displayNameFor(user))}</b></article>
           <article><span>Amount</span><b>${App.money(request.amount || 0)}</b></article>
-          <article><span>Real Balance</span><b>${App.money(App.realBalance(user.id))}</b></article>
+          <article><span>Available Balance</span><b>${App.money(App.realBalance(user.id))}</b></article>
           <article><span>${isDeposit ? "UTR" : "Pay To"}</span><b>${esc(isDeposit ? (request.utr || "-") : methodText)}</b></article>
         </div>
 
@@ -1489,7 +1489,7 @@
         return;
       }
       if (balance < minBalance) {
-        report.skipped.push({ userId: u.id, reason: "Below minimum real balance" });
+        report.skipped.push({ userId: u.id, reason: "Below minimum balance" });
         report.reasons.lowBalance += 1;
         return;
       }
@@ -1541,7 +1541,7 @@
         return;
       }
       if (balance < minBalance) {
-        report.skipped.push({ userId: u.id, reason: "Below minimum real balance" });
+        report.skipped.push({ userId: u.id, reason: "Below minimum balance" });
         report.reasons.lowBalance += 1;
         return;
       }
@@ -2093,8 +2093,8 @@
             <div class="ai-step-card">
               <div class="ai-step-label"><b>4</b><span>Result & leverage up to 2000x</span></div>
               <div class="ai-toggle-grid two">
-                <label class="ai-radio-card profit"><input type="radio" name="aiTradeResultType" value="PROFIT" checked onchange="AITradeXAdmin.updateAiPreview()"/><span>Profit</span><small>Add P/L to real wallet</small></label>
-                <label class="ai-radio-card loss"><input type="radio" name="aiTradeResultType" value="LOSS" onchange="AITradeXAdmin.updateAiPreview()"/><span>Loss</span><small>Deduct P/L from real wallet</small></label>
+                <label class="ai-radio-card profit"><input type="radio" name="aiTradeResultType" value="PROFIT" checked onchange="AITradeXAdmin.updateAiPreview()"/><span>Profit</span><small>Add P/L to wallet</small></label>
+                <label class="ai-radio-card loss"><input type="radio" name="aiTradeResultType" value="LOSS" onchange="AITradeXAdmin.updateAiPreview()"/><span>Loss</span><small>Deduct P/L from wallet</small></label>
               </div>
               <div class="ai-inline-fields">
                 <label>Profit / Loss %
@@ -2110,7 +2110,7 @@
 
             <div class="ai-step-card">
               <div class="ai-step-label"><b>5</b><span>Final check</span></div>
-              <label>Minimum Real Balance
+              <label>Minimum Available Balance
                 <input id="aiTradeMinBalance" type="number" min="0" value="0" oninput="AITradeXAdmin.updateAiPreview()"/>
                 <small>Users below this balance will be skipped. Keep 0 for all valid users.</small>
               </label>
@@ -2211,7 +2211,7 @@
             <div class="ai-step-card">
               <div class="ai-step-label"><b>3</b><span>Admin close rule</span></div>
               <div class="ai-inline-fields">
-                <label>Minimum Real Balance
+                <label>Minimum Available Balance
                   <input id="aiLiveMinBalance" type="number" min="0" value="0" oninput="AITradeXAdmin.updateAiLivePreview()"/>
                 </label>
                 <label>Close Mode
@@ -2375,7 +2375,7 @@
       </section>
 
       <section class="panel-card referral-settings-panel">
-        <div class="section-head"><div><h3>Referral Bonus Settings</h3><span>Bonus is credited automatically to real wallet. No manual approval is required.</span></div><span class="admin-count-pill">Auto Credit</span></div>
+        <div class="section-head"><div><h3>Referral Bonus Settings</h3><span>Bonus is credited automatically to wallet. No manual approval is required.</span></div><span class="admin-count-pill">Auto Credit</span></div>
         <form class="admin-settings-grid" onsubmit="AITradeXAdmin.saveReferralSettings(event)">
           <label>Deposit Bonus %
             <input id="referralDepositPercent" type="number" min="0" step="0.01" value="${Number(settings.referralDepositPercent ?? settings.referralFirstDepositPercent ?? 10)}" required/>
@@ -3374,7 +3374,7 @@
     confirmFinanceAction(action, userId, requestId, userName, amountText, button) {
       const actionTitle = String(action || "").includes("approve") ? "Approve" : "Reject";
       const isWithdrawal = String(action || "").toLowerCase().includes("withdrawal");
-      const impact = isWithdrawal ? "This may debit the user's real wallet on approval." : "This may credit the user's real wallet on approval.";
+      const impact = isWithdrawal ? "This may debit the user's wallet on approval." : "This may credit the user's wallet on approval.";
       const ok = confirm(`${actionTitle} request for ${userName || "user"}?\nAmount: ${amountText || "-"}\n${impact}`);
       if (!ok) return;
       if (typeof this[action] === "function") this[action](userId, requestId, button);
@@ -3547,7 +3547,7 @@
             referenceId,
             note: note || `Admin wallet ${action.toLowerCase()}`
           });
-          App.addNotification?.({ audience: "USER", userId, title: action === "DEDUCT" ? "Wallet debited by admin" : "Wallet credited by admin", message: `${App.money(amount)} ${action === "DEDUCT" ? "deducted from" : "added to"} your real wallet.${note ? ` Note: ${note}` : ""}`, type: "WALLET", linkPage: "wallet", referenceId });
+          App.addNotification?.({ audience: "USER", userId, title: action === "DEDUCT" ? "Wallet debited by admin" : "Wallet credited by admin", message: `${App.money(amount)} ${action === "DEDUCT" ? "deducted from" : "added to"} your wallet.${note ? ` Note: ${note}` : ""}`, type: "WALLET", linkPage: "wallet", referenceId });
           logAdminAction(action === "DEDUCT" ? "WALLET_DEBIT" : "WALLET_CREDIT", "USER", userId, { user: displayNameFor(target), amount, note, referenceId });
         }
         App.toast(`Wallet ${action === "DEDUCT" ? "deducted" : "credited"} successfully.`);
@@ -4303,7 +4303,7 @@
         render();
         return;
       }
-      if (!confirm(`Close this AI live trade for ${positions.length} user(s)? Current profit/loss will be settled in real wallet.`)) return;
+      if (!confirm(`Close this AI live trade for ${positions.length} user(s)? Current profit/loss will be settled in wallet.`)) return;
       markButton(button, "Closing...");
       const batchExitRow = await aiLiveFreshExitPriceRow(positions[0]);
       if (App.isDatabaseMode?.() && window.AITradeXDB?.closeAiLiveBatchSecure) {
@@ -4451,7 +4451,7 @@
       const amount = Number(request.amount || 0);
       if (!amount || amount <= 0) { App.toast("Invalid withdrawal amount."); render(); return; }
       const ledgerExists = App.hasLedgerEntry?.({ accountType: "REAL", type: "WITHDRAWAL", referenceId: request.id, userId: target.id });
-      if (!ledgerExists && App.realBalance(target.id) < amount) { App.toast("Insufficient real balance for withdrawal."); render(); return; }
+      if (!ledgerExists && App.realBalance(target.id) < amount) { App.toast("Insufficient balance for withdrawal."); render(); return; }
       if (!ledgerExists && !confirm(`Approve ${App.money(amount)} withdrawal for ${displayNameFor(target)}? Wallet will be debited once.`)) return;
       if (App.isDatabaseMode?.() && window.AITradeXDB?.approveWithdrawalSecure) {
         markButton(button, "Approving...");
