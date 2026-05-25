@@ -2215,62 +2215,68 @@
     const pnl = pnlValue();
     const ai = currentAiSettings();
     const usage = aiDailyUsage();
-    const tradeAmount = accountMode === "REAL" ? real * Number(ai.percent || 0) / 100 : 0;
     const pair = selectedPairData();
     const activeManualCount = manualOpenPositions().length;
     const activeAiCount = aiOpenPositions().length;
     const activeTotal = activeManualCount + activeAiCount;
+    const plan = currentPlan();
+    const subscription = activeSubscription();
+    const kyc = currentKyc();
+    const recentRows = latestUserActivity(3);
 
     shell(`
-      ${dashboardHeroCard({ balance, pnl, activeManualCount, activeAiCount })}
-
-      <section class="compact-grid home-summary-grid polished-home-summary clean-home-summary">
-        <article><span>AI Status</span><b>${ai.enabled ? "Active" : "OFF"}</b><small>${usage.used}/${usage.limit} AI trades today</small></article>
-        <article><span>Active Positions</span><b>${activeTotal}</b><small>${activeManualCount} manual · ${activeAiCount} AI</small></article>
-        <article><span>Wallet</span><b>${App.money(real)}</b><small>Available balance</small></article>
-        <article><span>Selected Pair</span><b>${selectedPair}</b><small>${pair.signal} bias</small></article>
-      </section>
-
-      ${aiTradingSummaryCard()}
-
-      <section class="premium-card quick-action-card polished-quick-actions clean-quick-actions">
-        <div class="quick-action-head">
+      <section class="ux-home-hero">
+        <div class="ux-home-topline">
           <div>
-            <p>QUICK ACTIONS</p>
-            <h2>Everything in one tap</h2>
-            <span>Trade, track positions, manage wallet or raise support quickly.</span>
+            <p>AVAILABLE BALANCE</p>
+            <h1>${App.money(balance)}</h1>
           </div>
+          <span>${statusPill(kyc.status)}</span>
         </div>
-        <div class="quick-action-grid">
-          <button onclick="AITradeXUser.go('trade')"><i>📈</i><b>Trade</b><span>Crypto market</span></button>
-          <button onclick="AITradeXUser.go('positions')"><i>📊</i><b>Positions</b><span>Open trades</span></button>
-          <button onclick="AITradeXUser.go('wallet')"><i>💳</i><b>Wallet</b><span>Deposit / Withdraw</span></button>
-          <button onclick="AITradeXUser.go('support')"><i>🎧</i><b>Support</b><span>Tickets</span></button>
+        <div class="ux-home-pnl">
+          <span>Today P/L</span>
+          <b class="${pnl >= 0 ? "profit-text" : "loss-text"}">${pnl >= 0 ? "+" : ""}${App.money(pnl)}</b>
         </div>
       </section>
 
-      <section class="premium-card subscription-mini-card polished-plan-card clean-plan-card">
-        <div class="card-row">
-          <div>
-            <p>CURRENT PLAN</p>
-            <h2>${App.escapeHtml(currentPlan().name || "Free")}</h2>
-            <h4>${usage.used}/${usage.limit} AI auto trades used today · Expires ${subscriptionExpiryText(activeSubscription())}</h4>
-            ${isAiLimitComplete() ? `<span class="upgrade-inline-note">Daily AI trade limit completed. Upgrade your plan to unlock more AI auto trades.</span>` : ""}
-          </div>
-          <button class="change-pair-btn" onclick="AITradeXUser.go('subscription')">${isAiLimitComplete() ? "Upgrade Plan" : "View Plan"}</button>
-        </div>
+      <section class="ux-quick-grid">
+        <button onclick="AITradeXUser.go('wallet')"><i>↓</i><b>Deposit</b><span>पैसे जमा करें</span></button>
+        <button onclick="AITradeXUser.go('wallet'); setTimeout(()=>AITradeXUser.setWalletMode('WITHDRAWAL'), 0)"><i>↑</i><b>Withdraw</b><span>पैसे निकालें</span></button>
+        <button onclick="AITradeXUser.go('trade')"><i>↗</i><b>Trade</b><span>ट्रेड करें</span></button>
+        <button onclick="AITradeXUser.go('positions')"><i>▣</i><b>Positions</b><span>ओपन पोजिशन</span></button>
       </section>
 
-      <section class="premium-card ai-settings-mini-card clean-ai-settings-summary">
-        <div class="card-row">
-          <div><p>AI SETTINGS</p><h2>${ai.enabled ? "AI Auto Trading ON" : "AI Auto Trading OFF"}</h2><h4>${usage.used}/${usage.limit} AI auto trades used today · Allocation ${ai.percent}% · Pool ${App.money(tradeAmount)}</h4></div>
-          <button class="change-pair-btn" onclick="AITradeXUser.go('ai-settings')">Manage</button>
+      <section class="ux-status-grid">
+        <button onclick="AITradeXUser.go('ai-settings')"><i>🤖</i><span>AI Signals Used</span><b>${usage.used}/${usage.limit}</b><em>आज</em></button>
+        <button onclick="AITradeXUser.go('positions')"><i>▱</i><span>Open Positions</span><b>${activeTotal}</b><em>${activeManualCount} manual · ${activeAiCount} AI</em></button>
+        <button onclick="AITradeXUser.go('wallet')"><i>💳</i><span>Wallet</span><b>${App.money(real)}</b><em>कुल बैलेंस</em></button>
+        <button onclick="AITradeXUser.go('trade')"><i>🌐</i><span>Market</span><b>${displayPair(selectedPair)}</b><em>${pair.change}</em></button>
+      </section>
+
+      <section class="ux-plan-strip">
+        <div><i>♛</i><span>Current Plan</span><b>${App.escapeHtml(plan.name || "Free Trial")}</b></div>
+        <div><span>Valid Till</span><b>${subscriptionExpiryText(subscription)}</b></div>
+        <button onclick="AITradeXUser.go('subscription')">${isAiLimitComplete() ? "Upgrade" : "View"}</button>
+      </section>
+
+      <section class="ux-activity-card">
+        <div class="ux-section-head">
+          <h2>हाल की गतिविधियाँ</h2>
+          <button onclick="AITradeXUser.go('notifications')">सभी देखें</button>
+        </div>
+        <div class="ux-activity-list">
+          ${recentRows.length ? recentRows.map(row => `
+            <button onclick="AITradeXUser.go('${row.page}')">
+              <i>${row.icon}</i>
+              <span><b>${App.escapeHtml(row.title)}</b><em>${App.escapeHtml(row.detail)}</em></span>
+              <small>${row.time ? formatHistoryDate(row.time) : "Now"}</small>
+            </button>
+          `).join("") : `<div class="empty-state">No recent activity yet.</div>`}
         </div>
       </section>
     `);
     refreshVisiblePrices([selectedPair]);
   }
-
   function aiSettingsPage() {
     const ai = currentAiSettings();
     const usage = aiDailyUsage();
@@ -2320,34 +2326,24 @@
     const marginWarning = tradeIsActive && marginValue > balance;
 
     shell(`
-      <section class="trade-command clean-pair-card trade-hero-premium">
-        <div class="trade-hero-main">
-          <p>${selectedMarket} MARKET</p>
-          <h1>${displayPair(selectedPair)}</h1>
-          <span data-price-card="${tradeIsActive ? "true" : "false"}" data-live-pair="${pair.pair}" data-live-type="line">${pair.price} · <em class="${tradeIsActive ? changeClass(pair.change) : "upcoming-text"}">${pair.change}</em></span>
+      <section class="ux-trade-market-card">
+        <div class="ux-trade-title">
+          <div>
+            <p>${selectedMarket} MARKET</p>
+            <h1>${displayPair(selectedPair)}</h1>
+            <span>${pair.name || "Live market"}</span>
+          </div>
+          <button onclick="AITradeXUser.openSheet('pair')">Change</button>
         </div>
-        <div class="trade-hero-side">
-          <span class="trade-mode-badge account-only">Account</span>
-          ${usdtRateChip("trade-rate-chip")}
-          <button class="change-pair-btn" onclick="AITradeXUser.openSheet('pair')">Change Pair</button>
-        </div>
-        <div class="trade-hero-metrics">
-          <article><span>Available</span><b>${App.money(balance)}</b></article>
-          <article><span>Signal</span><b class="${tradeIsActive ? changeClass(pair.change) : "upcoming-text"}">${tradeIsActive ? pair.signal || "LIVE" : "SOON"}</b></article>
-          <article><span>Leverage</span><b>${leverageValue}x</b></article>
+        <div class="ux-trade-price" data-price-card="${tradeIsActive ? "true" : "false"}" data-live-pair="${pair.pair}" data-live-type="line">
+          <b>${pair.price}</b>
+          <em class="${tradeIsActive ? changeClass(pair.change) : "upcoming-text"}">${pair.change}</em>
         </div>
       </section>
 
-      <section class="trade-select-bar app-selector-bar market-only-bar">
-        <div class="market-switch">
-          <button class="${selectedMarket === "CRYPTO" ? "active" : ""}" onclick="AITradeXUser.setMarket('CRYPTO')">Crypto</button>
-          <button class="${selectedMarket === "FOREX" ? "active" : ""}" onclick="AITradeXUser.setMarket('FOREX')">Forex & Metals <small>Soon</small></button>
-        </div>
-      </section>
-
-      <section class="pair-rate-list">
-        ${pairsForMarket().map(raw => { const p = pairView(raw); return `
-          <button class="${selectedPair === p.pair ? "active" : ""} ${isUpcomingPair(p.pair) ? "upcoming-pair" : ""}" onclick="AITradeXUser.selectPair('${p.pair}')">
+      <section class="ux-pair-strip">
+        ${pairsForMarket().slice(0, 4).map(raw => { const p = pairView(raw); return `
+          <button class="${selectedPair === p.pair ? "active" : ""}" onclick="AITradeXUser.selectPair('${p.pair}')">
             <b>${displayPair(p.pair)}</b>
             <span data-price-card="${isTradeActivePair(p.pair) ? "true" : "false"}" data-live-pair="${p.pair}" data-live-type="price">${p.price}</span>
             <em data-live-pair="${p.pair}" data-live-type="change" class="${isUpcomingPair(p.pair) ? "upcoming-text" : changeClass(p.change)}">${p.change}</em>
@@ -2355,146 +2351,64 @@
         `; }).join("")}
       </section>
 
-      <section class="chart-shell tradingview-shell premium-native-chart-shell">
-        <div class="native-chart-head">
-          <div>
-            <p>LIVE CHART</p>
-            <h3>${displayPair(selectedPair)}</h3>
-          </div>
-          <span class="native-chart-price" data-price-card="${tradeIsActive ? "true" : "false"}" data-live-pair="${pair.pair}" data-live-type="line">${pair.price} · <em class="${tradeIsActive ? changeClass(pair.change) : "upcoming-text"}">${pair.change}</em></span>
-        </div>
-        <div class="chart-toolbar working-timeframes native-timeframe-row">
+      <section class="ux-chart-card">
+        <div class="ux-timeframe-row">
           ${[
-            ["1", "1m"],
-            ["5", "5m"],
-            ["15", "15m"],
-            ["30", "30m"],
-            ["60", "1h"],
-            ["240", "4h"],
-            ["D", "1D"]
+            ["1", "1m"], ["5", "5m"], ["15", "15m"], ["30", "30m"], ["60", "1h"], ["240", "4h"], ["D", "1D"]
           ].map(([value, label]) => `<button class="${chartInterval === value ? "active" : ""}" onclick="AITradeXUser.setChartInterval('${value}')">${label}</button>`).join("")}
-          <button class="chart-settings-btn" onclick="AITradeXUser.openSheet('chart-settings')">⚙</button>
+          <button onclick="AITradeXUser.openSheet('chart-settings')">☷</button>
         </div>
-        <div class="responsive-chart tradingview-widget-frame native-chart-frame">
+        <div class="responsive-chart tradingview-widget-frame ux-chart-frame">
           <div id="tradingview_chart_container" class="tradingview-chart-container"></div>
-        </div>
-        <div class="native-chart-foot">
-          <span>TradingView market chart</span>
-          <b>${chartToolbar ? "Tools on" : "Clean mode"}</b>
         </div>
       </section>
 
-      <section class="premium-card order-ticket pro-order-ticket compact-trade-ticket">
-        <div class="compact-ticket-head">
+      <section class="ux-order-card">
+        <div class="ux-order-head">
           <div>
             <p>ORDER TICKET</p>
             <h2>${displayPair(selectedPair)}</h2>
             <span>${tradeOrderType === "LIMIT" ? "Limit" : "Market"} Order</span>
           </div>
-          <span class="ticket-chip">${tradeIsActive ? selectedMarket : "UPCOMING"}</span>
+          <b>${selectedMarket}</b>
         </div>
 
         ${tradeOrderNotice ? `<div class="order-success-banner compact"><b>${App.escapeHtml(tradeOrderNotice.title)}</b><span>${App.escapeHtml(tradeOrderNotice.detail)}</span></div>` : ""}
 
         ${tradeIsActive ? `
-          <div class="fast-buy-sell-row priority-actions">
-            <button class="sell-btn" onclick="AITradeXUser.placeManualTrade('SELL')">SELL / SHORT</button>
-            <button class="buy-btn" onclick="AITradeXUser.placeManualTrade('BUY')">BUY / LONG</button>
+          <div class="ux-buy-sell">
+            <button class="buy" onclick="AITradeXUser.placeManualTrade('BUY')">BUY / LONG</button>
+            <button class="sell" onclick="AITradeXUser.placeManualTrade('SELL')">SELL / SHORT</button>
           </div>
-        ` : `
-          <div class="coming-soon-trade-bar compact priority-actions">
-            <b>Market Coming Soon</b>
-            <span>Forex, Gold and Silver trading will be available after premium market data integration.</span>
-          </div>
-        `}
+        ` : `<div class="coming-soon-trade-bar compact"><b>Market Coming Soon</b><span>This market will be available after data integration.</span></div>`}
 
-        <div class="compact-trade-summary top-action-summary">
+        <div class="ux-order-stats">
           <span><b>Margin</b>${App.money(tradeAmountPreview)}</span>
           <span><b>Position</b>${App.money(positionSize)}</span>
           <span><b>Leverage</b>${leverageValue}x</span>
+          <span><b>Available</b>${App.money(balance)}</span>
         </div>
 
         ${marginWarning ? `<div class="order-warning-bar compact">Insufficient balance. Please reduce the amount or add funds.</div>` : ""}
 
-        <div class="compact-ticket-grid after-action-fields">
+        <div class="ux-order-fields">
           <label>Amount
             <input type="number" value="${App.escapeHtml(String(tradeAmountPreview || ""))}" min="1" oninput="AITradeXUser.setTradeAmount(this.value)" placeholder="Margin INR"/>
           </label>
-          <div class="app-field">
-            <span>Leverage</span>
-            <button class="app-select-btn full compact" onclick="AITradeXUser.openSheet('leverage')">
-              <b>${tradeLeveragePreview}x</b>
-              <em>Change</em>
-            </button>
-          </div>
-        </div>
-
-        <div class="compact-ticket-grid compact-second-row after-action-fields">
           <label>Order Type
             <select onchange="AITradeXUser.setTradeOrderType(this.value)">
               <option value="MARKET" ${tradeOrderType === "MARKET" ? "selected" : ""}>Market</option>
               <option value="LIMIT" ${tradeOrderType === "LIMIT" ? "selected" : ""}>Limit</option>
             </select>
           </label>
-          ${tradeOrderType === "LIMIT" ? `
-            <label>Limit Price (INR)
-              <input type="number" value="${App.escapeHtml(tradeLimitPrice)}" min="0" step="any" oninput="AITradeXUser.setTradeLimitPrice(this.value)" placeholder="Trigger price in ₹"/>
-            </label>
-          ` : `
-            <div class="compact-account-chip ${accountMode.toLowerCase()}">
-              <span>Available</span>
-              <b>${App.money(balance)}</b>
-            </div>
-          `}
         </div>
 
-        <details class="compact-risk-details">
-          <summary>Order Risk Note</summary>
-          <div class="risk-preset-row compact">
-            <span>Manual close</span><span>Admin close</span><span>Live P/L</span><span>Ledger on close</span>
-          </div>
-          <div class="limit-order-note compact"><b>TP/SL hidden:</b> automatic take-profit/stop-loss is not enabled in this build, so orders remain open until user/admin close or limit cancellation.</div>
-          ${tradeOrderType === "LIMIT" ? `<div class="limit-order-note compact"><b>Limit order:</b> BUY triggers at or below your price. SELL triggers at or above your price.</div>` : ""}
-        </details>
+        ${tradeOrderType === "LIMIT" ? `
+          <label class="ux-limit-input">Limit Price
+            <input type="number" value="${App.escapeHtml(tradeLimitPrice)}" min="0" step="any" oninput="AITradeXUser.setTradeLimitPrice(this.value)" placeholder="Trigger price in ₹"/>
+          </label>
+        ` : ""}
       </section>
-
-      <section class="premium-card market-feed-card clean-market-insight-card">
-        <div class="card-row compact-market-head">
-          <div><p>MARKET FEED</p><h2>${tradeIsActive ? "Market Depth" : "Upcoming Market"}</h2></div>
-          <span class="mini-live ${tradeIsActive ? "" : "soon"}">${tradeIsActive ? "LIVE" : "SOON"}</span>
-        </div>
-        <div class="market-insight-row">
-          ${marketFeedForPair().slice(0, 3).map(row => `
-            <article>
-              <span>${row.left}</span>
-              <b>${row.mid}</b>
-              <em class="${row.mood === "up" ? "profit-text" : "loss-text"}">${row.right}</em>
-            </article>
-          `).join("")}
-        </div>
-      </section>
-
-      <section class="premium-card trade-feed-card clean-trade-feed-card">
-        <div class="card-row compact-market-head">
-          <div><p>TRADE FEED</p><h2>${displayPair(selectedPair)} Activity</h2></div>
-          <button class="change-pair-btn small" onclick="AITradeXUser.go('history')">View More</button>
-        </div>
-        <div class="trade-feed-list compact-trade-feed-list">
-          ${tradeFeedForMarket().slice(0, 2).map(item => `
-            <article class="${item.pair === selectedPair ? "active" : ""}">
-              <div>
-                <b>${displayPair(item.pair)}</b>
-                <span>${item.action} · ${item.lev} · ${item.time}</span>
-              </div>
-              <div>
-                <strong>${item.size}</strong>
-                <em class="${changeClass(item.change)}">${item.change}</em>
-              </div>
-            </article>
-          `).join("")}
-        </div>
-      </section>
-
     `);
 
     refreshVisiblePrices(pairsForMarket());
@@ -2844,8 +2758,7 @@
     const aiPositions = aiOpenPositions();
     const livePnl = positions.reduce((sum, position) => sum + manualPositionPnl(position), 0);
     const aiLivePnl = aiPositions.reduce((sum, position) => sum + aiPositionPnl(position), 0);
-    const lockedMargin = positions.reduce((sum, position) => sum + Math.max(0, Number(position.marginAmount || 0)), 0);
-    const aiLockedMargin = aiPositions.reduce((sum, position) => sum + Math.max(0, Number(position.marginAmount || 0)), 0);
+    const totalLivePnl = livePnl + aiLivePnl;
     const rows = [
       ...positions.map(position => ({ type: "MANUAL", time: position.openedAt || position.createdAt || "", html: orderPositionCard(position) })),
       ...aiPositions.map(position => ({ type: "AI", time: position.openedAt || position.createdAt || "", html: aiPositionCard(position) })),
@@ -2853,55 +2766,31 @@
     ].sort((a, b) => Date.parse(b.time || 0) - Date.parse(a.time || 0));
     const activeTab = ["ALL", "MANUAL", "AI", "PENDING"].includes(orderViewTab) ? orderViewTab : "ALL";
     const filteredRows = activeTab === "ALL" ? rows : rows.filter(row => row.type === activeTab);
-    const tabItems = [
-      ["ALL", "All", rows.length],
-      ["MANUAL", "Manual", positions.length],
-      ["AI", "AI", aiPositions.length],
-      ["PENDING", "Pending", pending.length]
-    ];
-    const totalLivePnl = livePnl + aiLivePnl;
 
     shell(`
-      <section class="orders-app-hero positions-app-hero">
-        <div>
-          <p>POSITIONS</p>
-          <h2>Open trades and running positions</h2>
-          <span>Manual trades, AI live positions and pending limit orders in one clean view.</span>
-        </div>
-        <button class="orders-hero-action" onclick="AITradeXUser.go('trade')">New Trade</button>
+      <section class="ux-position-summary">
+        <article><i>▱</i><span>Open Positions</span><b>${positions.length + aiPositions.length}</b></article>
+        <article><i>↗</i><span>Active P/L</span><b class="${totalLivePnl >= 0 ? "profit-text" : "loss-text"}">${totalLivePnl >= 0 ? "+" : ""}${App.money(totalLivePnl)}</b></article>
+        <article><i>🛡</i><span>Risk Protected</span><b>All Positions</b></article>
       </section>
 
-      <section class="orders-stat-strip">
-        <article><span>Open</span><b>${positions.length + aiPositions.length}</b></article>
-        <article><span>Live P/L</span><b class="${totalLivePnl >= 0 ? "profit-text" : "loss-text"}">${totalLivePnl >= 0 ? "+" : ""}${App.money(totalLivePnl)}</b></article>
-        <article><span>Locked</span><b>${App.money(lockedMargin + aiLockedMargin)}</b></article>
-        <article><span>Pending</span><b>${pending.length}</b></article>
-        <article><span>Mode</span><b>${accountMode}</b></article>
+      <section class="ux-segment-tabs">
+        ${[
+          ["ALL", "All", rows.length],
+          ["MANUAL", "Manual", positions.length],
+          ["AI", "AI Live", aiPositions.length],
+          ["PENDING", "Pending", pending.length]
+        ].map(([value, label, count]) => `
+          <button class="${activeTab === value ? "active" : ""}" onclick="AITradeXUser.setOrderViewTab('${value}')">${label}<small>${count}</small></button>
+        `).join("")}
       </section>
 
-      <section class="orders-app-card">
-        <div class="orders-app-head">
-          <div>
-            <p>POSITION BOOK</p>
-            <h2>${activeTab === "ALL" ? "All Positions" : `${activeTab.charAt(0)}${activeTab.slice(1).toLowerCase()} Positions`}</h2>
-          </div>
-          <span>${filteredRows.length} item${filteredRows.length === 1 ? "" : "s"}</span>
-        </div>
-        <div class="orders-tabs">
-          ${tabItems.map(([value, label, count]) => `
-            <button class="${activeTab === value ? "active" : ""}" onclick="AITradeXUser.setOrderViewTab('${value}')">
-              ${label}<b>${count}</b>
-            </button>
-          `).join("")}
-        </div>
-        <div class="orders-app-list">
-          ${filteredRows.length ? filteredRows.map(row => row.html).join("") : `<div class="empty-state">No ${activeTab === "ALL" ? "active positions" : activeTab.toLowerCase()} records right now.</div>`}
-        </div>
+      <section class="ux-position-list">
+        ${filteredRows.length ? filteredRows.map(row => row.html).join("") : `<div class="empty-state">No active positions right now.</div>`}
       </section>
     `);
     refreshVisiblePrices([...positions.map(position => position.pair), ...aiPositions.map(position => position.pair), ...pending.map(order => order.pair)]);
   }
-
   function formatHistoryDate(value) {
     if (!value) return "-";
     const d = new Date(value);
@@ -3025,63 +2914,40 @@
     const allRows = [...aiRows, ...manualRows].sort((a, b) => b.sortTime - a.sortTime);
     const filteredRows = historyFilteredRows();
     const stats = historyStats(allRows);
-    const pageSize = 5;
+    const pageSize = 6;
     const maxPage = Math.max(0, Math.ceil(filteredRows.length / pageSize) - 1);
     const currentPage = Math.min(Math.max(0, historyPageIndex), maxPage);
     historyPageIndex = currentPage;
     localStorage.setItem("AITradeX_HISTORY_PAGE", String(currentPage));
     const pageRows = filteredRows.slice(currentPage * pageSize, currentPage * pageSize + pageSize);
-    const tabs = [
-      ["ALL", "All", allRows.length],
-      ["MANUAL", "Manual", manualRows.length],
-      ["AI", "AI", aiRows.length],
-      ["PROFIT", "Profit", allRows.filter(row => row.pnl >= 0).length],
-      ["LOSS", "Loss", allRows.filter(row => row.pnl < 0).length]
-    ];
 
     shell(`
-      <section class="history-real-hero">
-        <div>
-          <p>TRADE HISTORY</p>
-          <h2>Completed trades</h2>
-          <span>Manual and AI results in a searchable, easy-to-review timeline.</span>
-        </div>
-        <button onclick="AITradeXUser.go('wallet')">View Wallet Ledger</button>
+      <section class="ux-history-summary">
+        <article><span>Total Trades</span><b>${allRows.length}</b></article>
+        <article><span>Win Ratio</span><b>${stats.winRate}%</b></article>
+        <article><span>Net P/L</span><b class="${stats.totalPnl >= 0 ? "profit-text" : "loss-text"}">${stats.totalPnl >= 0 ? "+" : ""}${App.money(stats.totalPnl)}</b></article>
       </section>
 
-      <section class="history-real-stats">
-        ${historyStatCard("Total P/L", `${stats.totalPnl >= 0 ? "+" : ""}${App.money(stats.totalPnl)}`, `${allRows.length} closed trades`, stats.totalPnl >= 0 ? "profit" : "loss")}
-        ${historyStatCard("Win Rate", `${stats.winRate}%`, `${stats.wins} profit trades`, "")}
-        ${historyStatCard("Best Trade", `${stats.best >= 0 ? "+" : ""}${App.money(stats.best)}`, "Highest closed P/L", stats.best >= 0 ? "profit" : "loss")}
-        ${historyStatCard("Account", "Active", "Single account", "")}
+      <section class="ux-segment-tabs ux-history-tabs">
+        ${[
+          ["ALL", "All"],
+          ["MANUAL", "Trades"],
+          ["AI", "AI Signals"],
+          ["PROFIT", "Profit"],
+          ["LOSS", "Loss"]
+        ].map(([value, label]) => `
+          <button class="${historyViewTab === value ? "active" : ""}" onclick="AITradeXUser.setHistoryTab('${value}')">${label}</button>
+        `).join("")}
       </section>
 
-      <section class="history-real-card">
-        <div class="history-real-head">
-          <div>
-            <p>HISTORY BOOK</p>
-            <h2>${filteredRows.length} result${filteredRows.length === 1 ? "" : "s"}</h2>
-          </div>
-          <span>Page ${currentPage + 1} / ${Math.max(1, maxPage + 1)}</span>
+      <section class="ux-history-card">
+        <div class="ux-section-head">
+          <h2>Transaction History</h2>
+          <button onclick="AITradeXUser.setHistorySearch(prompt('Search history', '${App.escapeHtml(historySearch)}') || '')">Filter</button>
         </div>
-
-        <div class="history-filter-bar">
-          <div class="history-tab-row">
-            ${tabs.map(([value, label, count]) => `
-              <button class="${historyViewTab === value ? "active" : ""}" onclick="AITradeXUser.setHistoryTab('${value}')">
-                ${label}<b>${count}</b>
-              </button>`).join("")}
-          </div>
-          <label class="history-search-box">
-            <span>Search</span>
-            <input value="${App.escapeHtml(historySearch)}" placeholder="Search pair, AI, manual, buy or sell" oninput="AITradeXUser.setHistorySearch(this.value)" />
-          </label>
-        </div>
-
-        <div class="history-real-list">
+        <div class="history-real-list ux-history-list">
           ${pageRows.length ? pageRows.map(historyRow).join("") : `<div class="empty-state">No matching trade history found.</div>`}
         </div>
-
         <div class="history-real-pagination">
           <button ${currentPage <= 0 ? "disabled" : ""} onclick="AITradeXUser.setHistoryPage(${currentPage - 1})">Previous</button>
           <span>${filteredRows.length ? `${currentPage * pageSize + 1}-${Math.min(filteredRows.length, currentPage * pageSize + pageRows.length)} of ${filteredRows.length}` : "0 records"}</span>
@@ -3090,7 +2956,6 @@
       </section>
     `);
   }
-
   function kycPage() {
     const kyc = currentKyc();
 

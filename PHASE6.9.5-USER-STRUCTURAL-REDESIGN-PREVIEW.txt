@@ -1,0 +1,22 @@
+AITradeX User Structural Redesign Preview
+
+Base:
+- AITradeX-Phase6.9.5-WalletCleanPremium.zip
+
+This is not just a CSS color/shadow patch.
+Changed actual user page layouts in user-app.js:
+- Home page
+- Trade page
+- Positions page
+- History page
+
+Wallet page keeps the clean premium wallet structure from previous ZIP.
+Admin side not touched.
+
+Files changed:
+- user-app.js
+- styles.css
+- index.html cache version
+
+No SQL required.
+Logic/database/AI/cron/referral/admin unchanged.
