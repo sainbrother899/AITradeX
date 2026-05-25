@@ -1,0 +1,29 @@
+AITradeX Phase 6.9.5 - Landing Page Redesign
+
+Base:
+- AITradeX-Phase6.9.5-ProfileMenuRefined.zip
+
+Scope:
+- Public landing page only.
+
+Changed:
+- Replaced landing() markup in user-app.js with a clean dark fintech landing page:
+  - Hero section
+  - Balance preview card
+  - Action strip
+  - Feature cards
+  - Market overview
+  - How it works
+  - Plans
+  - Login/register auth section
+- Added landing-specific CSS classes in styles.css.
+- Updated index.html cache version.
+
+Not changed:
+- Admin side
+- User dashboard logic
+- Wallet logic
+- Trading / AI / cron / referral logic
+- SQL
+
+No SQL required.

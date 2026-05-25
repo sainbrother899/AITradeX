@@ -1943,99 +1943,132 @@
   }
 
   function landing() {
-    const activePlans = (App.state.plans || []).filter(p => String(p.status || "ACTIVE").toUpperCase() === "ACTIVE").slice(0, 4);
-    const planCards = activePlans.map(plan => `
-      <article class="landing-plan-card">
-        <div><p>${App.escapeHtml(plan.name || "Plan")}</p><h3>${Number(plan.price || 0) ? App.money(plan.price) : "Free"}</h3></div>
-        <span>${Number(plan.signals || 0)} AI trades/day</span>
+    const activePlans = (App.state.plans || []).filter(p => String(p.status || "ACTIVE").toUpperCase() === "ACTIVE").slice(0, 3);
+    const fallbackPlans = [
+      { name: "Starter", price: 999, signals: 5, features: ["AI Auto Trading", "Basic Analytics", "Email Support"] },
+      { name: "Pro", price: 2999, signals: 20, features: ["Advanced AI Trading", "Real-Time Signals", "Priority Support", "Higher Accuracy"], popular: true },
+      { name: "Elite", price: 6999, signals: 50, features: ["AI Pro Features", "Personal Account Manager", "VIP Support"] }
+    ];
+    const plans = activePlans.length ? activePlans.map((plan, index) => ({
+      name: plan.name || "Plan",
+      price: Number(plan.price || 0),
+      signals: Number(plan.signals || plan.aiTrades || 0),
+      features: [
+        `${Number(plan.signals || plan.aiTrades || 0) || 5} AI trades/day`,
+        "Wallet + KYC flow",
+        "Support access"
+      ],
+      popular: index === 1
+    })) : fallbackPlans;
+    const planCards = plans.map(plan => `
+      <article class="lp-plan-card ${plan.popular ? "popular" : ""}">
+        ${plan.popular ? `<em>Most Popular</em>` : ""}
+        <h3>${App.escapeHtml(plan.name)}</h3>
+        <h2>${plan.price ? App.money(plan.price) : "Free"} <small>/ month</small></h2>
+        <ul>${(plan.features || []).slice(0, 4).map(feature => `<li>✓ ${App.escapeHtml(feature)}</li>`).join("")}</ul>
       </article>`).join("");
+
     root.innerHTML = `
-      <main class="public-wrap landing-premium">
-        <nav class="public-nav landing-nav">
-          <div class="brand aitx-public-logo">${App.logoHtml("full", "aitx-logo-full")}</div>
-          <div class="public-actions">
-            <a href="#how">How it works</a>
-            <a href="#plans">Plans</a>
-            <a href="#security">Security</a>
-            <button onclick="AITradeXUser.scrollAuth()" class="btn small">Get Started</button>
+      <main class="lp-page">
+        <nav class="lp-nav">
+          <div class="lp-brand"><span>X</span><b>AITradeX</b></div>
+          <div class="lp-nav-actions">
+            <button class="lp-login" onclick="AITradeXUser.setAuthMode('login')">Login</button>
+            <button class="lp-primary small" onclick="AITradeXUser.scrollAuth()">Create Account</button>
           </div>
         </nav>
 
-        <section class="hero-section landing-hero-v2">
-          <div class="hero-copy">
-            <p class="eyebrow">AI Powered Trading Dashboard</p>
-            <h1>Trade crypto smarter with AI auto trading, live prices and INR wallet.</h1>
-            <p class="hero-text">AITradeX brings live crypto trading, market/limit orders, AI auto trades, subscriptions, referrals, Aadhaar KYC, verified bank withdrawals and support tickets into one premium dashboard. Forex, Gold and Silver markets are coming soon.</p>
-            <div class="hero-buttons">
-              <button onclick="AITradeXUser.scrollAuth()" class="btn">Create Account</button>
-              <button onclick="AITradeXUser.setAuthMode('login')" class="btn ghost">User Login</button>
+        <section class="lp-hero">
+          <div class="lp-hero-copy">
+            <h1>AI-Powered<br/>Smart <strong>Trading</strong></h1>
+            <p>Automated trading, simple deposits & withdrawals, and a secure wallet experience—built for you.</p>
+            <div class="lp-trust-row">
+              <span>🛡️ KYC Verified</span>
+              <span>🔒 Bank-Grade Security</span>
+              <span>🔐 256-Bit SSL Encryption</span>
             </div>
-            <div class="trust-pills"><span>Crypto Live Now</span><span>Forex / Metals Coming Soon</span><span>Bank-only Withdrawals</span></div>
           </div>
-
-          <div class="hero-terminal landing-terminal-v2 landing-tv-card">
-            <div class="terminal-head"><div><span>Live Market Preview</span><strong>BTC/USDT</strong></div><em>TradingView · Binance</em></div>
-            <div class="landing-tv-frame">
-              <div id="landing_tradingview_chart_container" class="landing-tradingview-chart-container">
-                <div class="chart-loading-state">
-                  <div class="chart-spinner"></div>
-                  <b>BTC/USDT</b>
-                  <span>Loading live chart...</span>
-                </div>
-              </div>
+          <div class="lp-balance-preview">
+            <div class="lp-balance-top">
+              <div><span>Available Balance</span><h2>₹ 2,48,750.45</h2></div>
+              <b>🛡 KYC Verified</b>
             </div>
-            <div class="terminal-grid"><div><span>Order Types</span><b>Market / Limit</b></div><div><span>AI Trades</span><b>Trial + Plans</b></div><div><span>Wallet</span><b>INR Ledger</b></div></div>
+            <div class="lp-growth-line">
+              <i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+            <div class="lp-balance-bottom">
+              <article><span>Pending Deposit</span><b>₹ 0</b></article>
+              <article><span>Pending Withdrawal</span><b>₹ 5,000</b></article>
+            </div>
           </div>
         </section>
 
-        <section class="landing-grid landing-feature-grid">
-          <article><i>📈</i><h3>Manual Trading</h3><p>Place market or limit orders, lock entry price, track live P/L and close positions from the Positions flow.</p></article>
-          <article><i>🤖</i><h3>AI Auto Trading</h3><p>AI trading starts ON with 75% allocation by default. Users can change allocation anytime.</p></article>
-          <article><i>💳</i><h3>INR Wallet</h3><p>Deposit requests, bank-only withdrawals, wallet ledger and admin approval flow are built in.</p></article>
+        <section class="lp-action-strip">
+          <button onclick="AITradeXUser.scrollAuth()"><i>↓</i><b>Deposit</b><span>Add funds</span></button>
+          <button onclick="AITradeXUser.scrollAuth()"><i>↑</i><b>Withdraw</b><span>Withdraw funds</span></button>
+          <button onclick="AITradeXUser.scrollAuth()"><i>▥</i><b>Trade</b><span>Start trading</span></button>
+          <button onclick="AITradeXUser.scrollAuth()"><i>◔</i><b>Positions</b><span>View positions</span></button>
         </section>
 
-        <section id="how" class="landing-section-card">
-          <div class="landing-section-head"><p class="eyebrow">How It Works</p><h2>Start in four clean steps</h2></div>
-          <div class="landing-steps-grid">
-            <article><b>01</b><h3>Create Account</h3><p>Register with email, mobile and optional referral code.</p></article>
-            <article><b>02</b><h3>Complete KYC</h3><p>Submit Aadhaar, selfie and personal details for review.</p></article>
-            <article><b>03</b><h3>Add Funds</h3><p>Use INR wallet deposits and verified bank withdrawals.</p></article>
-            <article><b>04</b><h3>Trade Crypto</h3><p>Use crypto manual orders or AI auto trading with daily plan limits. Forex and metals are coming soon.</p></article>
+        <section class="lp-section">
+          <h2>Why Traders Choose <strong>AITradeX</strong></h2>
+          <div class="lp-feature-grid">
+            <article><i>🤖</i><h3>AI Auto Trading</h3><p>Advanced algorithms analyze the market 24/7 and trade for you.</p></article>
+            <article><i>🛡️</i><h3>Secure Wallet</h3><p>Your funds are protected with bank-grade security and approvals.</p></article>
+            <article><i>📊</i><h3>Live Insights</h3><p>Real-time market data and AI-driven insights to stay ahead.</p></article>
+            <article><i>⚡</i><h3>Fast Withdrawals</h3><p>Withdrawals are processed quickly and securely after approval.</p></article>
           </div>
         </section>
 
-        <section id="plans" class="landing-section-card landing-plans-preview">
-          <div class="landing-section-head"><p class="eyebrow">Subscription Plans</p><h2>Unlock more daily AI trades</h2></div>
-          <div class="landing-plan-grid">${planCards || `<article class="landing-plan-card"><div><p>Free Trial</p><h3>Free</h3></div><span>5 AI trades/day</span></article>`}</div>
-          <button onclick="AITradeXUser.scrollAuth()" class="btn small">Create Account to View Plans</button>
+        <section class="lp-market">
+          <div class="lp-section-head"><h2>Market Overview</h2><button onclick="AITradeXUser.scrollAuth()">View All Markets →</button></div>
+          <div class="lp-market-card">
+            <div class="lp-market-main">
+              <span>₿ BTC / USDT <em>+1.35%</em></span>
+              <h2>$66,452.18</h2>
+              <small>24H Volume<br/><b>$24.58B</b></small>
+              <div class="lp-chart-line"><i></i></div>
+            </div>
+            <div class="lp-market-list">
+              <article><b>BTC / USDT</b><span>$66,452.18</span><em>+1.35%</em></article>
+              <article><b>ETH / USDT</b><span>$3,245.67</span><em>+0.85%</em></article>
+              <article><b>BNB / USDT</b><span>$601.23</span><em class="red">-0.23%</em></article>
+              <article><b>XRP / USDT</b><span>$0.5412</span><em>+2.14%</em></article>
+            </div>
+          </div>
         </section>
 
-        <section class="landing-grid landing-feature-grid">
-          <article><i>🛡️</i><h3>KYC Security</h3><p>Required Aadhaar KYC, selfie verification and admin review help reduce account misuse.</p></article>
-          <article><i>🤝</i><h3>Referral Rewards</h3><p>Earn rewards when invited users complete their first approved deposit or paid plan purchase.</p></article>
-          <article><i>💬</i><h3>Support + WhatsApp</h3><p>Raise support tickets inside the app and use WhatsApp quick help for urgent issues.</p></article>
+        <section id="how" class="lp-how">
+          <h2>How <strong>AITradeX</strong> Works</h2>
+          <div class="lp-how-strip">
+            <article><b>1</b><i>↓</i><h3>Deposit</h3><p>Add funds easily via UPI or Bank transfer.</p></article>
+            <article><b>2</b><i>🤖</i><h3>AI Trades</h3><p>Our AI analyzes markets and executes smart trades.</p></article>
+            <article><b>3</b><i>↑</i><h3>Withdraw</h3><p>Withdraw settled balance to your bank account.</p></article>
+          </div>
         </section>
 
-        <section id="authBox" class="auth-section landing-auth-v2">
-          <div class="auth-copy"><div class="auth-logo-box">${App.logoHtml("full", "aitx-logo-full")}</div><p class="eyebrow">User Access</p><h2>${authMode === "login" ? "Login to AITradeX" : "Create AITradeX account"}</h2><p>Start with AI auto trading enabled, complete KYC, add funds and manage trades from a clean mobile-first dashboard.</p></div>
-          <div class="auth-card">
+        <section id="plans" class="lp-plans">
+          <h2>Choose the Plan That Suits You</h2>
+          <div class="lp-plan-grid">${planCards}</div>
+        </section>
+
+        <section id="authBox" class="lp-auth">
+          <div>
+            <h2>Ready to Grow Your Wealth?</h2>
+            <p>Join AITradeX and manage wallet, AI trading, positions and withdrawals from one clean dashboard.</p>
+          </div>
+          <div class="auth-card lp-auth-card">
             <div class="auth-tabs"><button class="${authMode === "login" ? "active" : ""}" onclick="AITradeXUser.setAuthMode('login')">Login</button><button class="${authMode === "register" ? "active" : ""}" onclick="AITradeXUser.setAuthMode('register')">Register</button></div>
             ${authMode === "login" ? loginForm() : registerForm()}
           </div>
         </section>
 
-        <section id="security" class="landing-security-band">
-          <div><b>Security-first trading flow</b><span>Aadhaar KYC · Verified bank accounts · Deposit proof review · Ticket records · AI Control Center</span></div>
-          <button onclick="AITradeXUser.scrollAuth()" class="btn ghost small">Join Now</button>
+        <section class="lp-footer-security">
+          <span>🔒 256-Bit SSL Encryption</span>
+          <span>🛡 KYC Verified</span>
+          <span>🏦 Bank-Grade Security</span>
         </section>
-
-        <footer class="landing-footer">
-          <div>${App.logoHtml("full", "aitx-logo-full")}</div>
-          <p>AITradeX is a crypto-first trading dashboard experience with wallet, KYC, subscription, referral and support modules. Forex, Gold and Silver are planned as upcoming markets.</p>
-          <span>© ${new Date().getFullYear()} AITradeX. All rights reserved.</span>
-        </footer>
       </main>`;
-    setTimeout(renderLandingTradingViewChart, 120);
   }
 
   function loginForm() {
