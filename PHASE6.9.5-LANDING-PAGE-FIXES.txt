@@ -1,0 +1,22 @@
+AITradeX Phase 6.9.5 - Landing Page Fixes
+
+Base:
+- AITradeX-Phase6.9.5-LandingPageRedesign.zip
+
+Fixes:
+1. Login button now switches to login mode and scrolls to auth section.
+2. Create Account button now switches to register mode and scrolls to register section.
+3. Removed extra X after AITradeX brand name.
+4. Replaced fake market chart with real TradingView landing chart.
+5. Plans remain dynamic from admin App.state.plans:
+   - name
+   - price
+   - AI trades/signals
+   - description/note if available
+6. No hard-fixed plan cards unless no admin plans exist, then one fallback card appears.
+
+Not changed:
+- Admin side
+- Dashboard/wallet/trade logic
+- SQL
+- AI/cron/referral logic

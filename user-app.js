@@ -1943,38 +1943,39 @@
   }
 
   function landing() {
-    const activePlans = (App.state.plans || []).filter(p => String(p.status || "ACTIVE").toUpperCase() === "ACTIVE").slice(0, 3);
-    const fallbackPlans = [
-      { name: "Starter", price: 999, signals: 5, features: ["AI Auto Trading", "Basic Analytics", "Email Support"] },
-      { name: "Pro", price: 2999, signals: 20, features: ["Advanced AI Trading", "Real-Time Signals", "Priority Support", "Higher Accuracy"], popular: true },
-      { name: "Elite", price: 6999, signals: 50, features: ["AI Pro Features", "Personal Account Manager", "VIP Support"] }
-    ];
-    const plans = activePlans.length ? activePlans.map((plan, index) => ({
-      name: plan.name || "Plan",
-      price: Number(plan.price || 0),
-      signals: Number(plan.signals || plan.aiTrades || 0),
-      features: [
-        `${Number(plan.signals || plan.aiTrades || 0) || 5} AI trades/day`,
-        "Wallet + KYC flow",
+    const activePlans = (App.state.plans || [])
+      .filter(p => String(p.status || "ACTIVE").toUpperCase() === "ACTIVE")
+      .slice(0, 4);
+
+    const planCards = activePlans.length ? activePlans.map((plan, index) => {
+      const signals = Number(plan.signals || plan.aiTrades || plan.dailyAiTrades || 0);
+      const price = Number(plan.price || 0);
+      const features = [
+        signals ? `${signals} AI trades/day` : "AI trade access",
+        plan.description || plan.note || "Wallet + KYC flow",
         "Support access"
-      ],
-      popular: index === 1
-    })) : fallbackPlans;
-    const planCards = plans.map(plan => `
-      <article class="lp-plan-card ${plan.popular ? "popular" : ""}">
-        ${plan.popular ? `<em>Most Popular</em>` : ""}
-        <h3>${App.escapeHtml(plan.name)}</h3>
-        <h2>${plan.price ? App.money(plan.price) : "Free"} <small>/ month</small></h2>
-        <ul>${(plan.features || []).slice(0, 4).map(feature => `<li>✓ ${App.escapeHtml(feature)}</li>`).join("")}</ul>
-      </article>`).join("");
+      ];
+      return `
+        <article class="lp-plan-card ${index === 1 ? "popular" : ""}">
+          ${index === 1 ? `<em>Most Popular</em>` : ""}
+          <h3>${App.escapeHtml(plan.name || "Plan")}</h3>
+          <h2>${price ? App.money(price) : "Free"} <small>/ month</small></h2>
+          <ul>${features.slice(0, 4).map(feature => `<li>✓ ${App.escapeHtml(feature)}</li>`).join("")}</ul>
+        </article>`;
+    }).join("") : `
+        <article class="lp-plan-card">
+          <h3>Free Trial</h3>
+          <h2>Free <small>/ month</small></h2>
+          <ul><li>✓ AI trade access</li><li>✓ Wallet + KYC flow</li><li>✓ Support access</li></ul>
+        </article>`;
 
     root.innerHTML = `
       <main class="lp-page">
         <nav class="lp-nav">
-          <div class="lp-brand"><span>X</span><b>AITradeX</b></div>
+          <div class="lp-brand"><b>AITradeX</b></div>
           <div class="lp-nav-actions">
             <button class="lp-login" onclick="AITradeXUser.setAuthMode('login')">Login</button>
-            <button class="lp-primary small" onclick="AITradeXUser.scrollAuth()">Create Account</button>
+            <button class="lp-primary small" onclick="AITradeXUser.setAuthMode('register')">Create Account</button>
           </div>
         </nav>
 
@@ -2004,10 +2005,10 @@
         </section>
 
         <section class="lp-action-strip">
-          <button onclick="AITradeXUser.scrollAuth()"><i>↓</i><b>Deposit</b><span>Add funds</span></button>
-          <button onclick="AITradeXUser.scrollAuth()"><i>↑</i><b>Withdraw</b><span>Withdraw funds</span></button>
-          <button onclick="AITradeXUser.scrollAuth()"><i>▥</i><b>Trade</b><span>Start trading</span></button>
-          <button onclick="AITradeXUser.scrollAuth()"><i>◔</i><b>Positions</b><span>View positions</span></button>
+          <button onclick="AITradeXUser.setAuthMode('register')"><i>↓</i><b>Deposit</b><span>Add funds</span></button>
+          <button onclick="AITradeXUser.setAuthMode('register')"><i>↑</i><b>Withdraw</b><span>Withdraw funds</span></button>
+          <button onclick="AITradeXUser.setAuthMode('register')"><i>▥</i><b>Trade</b><span>Start trading</span></button>
+          <button onclick="AITradeXUser.setAuthMode('register')"><i>◔</i><b>Positions</b><span>View positions</span></button>
         </section>
 
         <section class="lp-section">
@@ -2021,13 +2022,25 @@
         </section>
 
         <section class="lp-market">
-          <div class="lp-section-head"><h2>Market Overview</h2><button onclick="AITradeXUser.scrollAuth()">View All Markets →</button></div>
+          <div class="lp-section-head"><h2>Market Overview</h2><button onclick="AITradeXUser.setAuthMode('register')">View All Markets →</button></div>
           <div class="lp-market-card">
-            <div class="lp-market-main">
-              <span>₿ BTC / USDT <em>+1.35%</em></span>
-              <h2>$66,452.18</h2>
-              <small>24H Volume<br/><b>$24.58B</b></small>
-              <div class="lp-chart-line"><i></i></div>
+            <div class="lp-market-main lp-real-chart-main">
+              <div class="lp-market-chart-head">
+                <div>
+                  <span>₿ BTC / USDT <em>LIVE</em></span>
+                  <h2>Real Market Chart</h2>
+                </div>
+                <small>Powered by TradingView</small>
+              </div>
+              <div class="lp-tradingview-frame">
+                <div id="landing_tradingview_chart_container" class="landing-tradingview-chart-container">
+                  <div class="chart-loading-state">
+                    <div class="chart-spinner"></div>
+                    <b>BTC/USDT</b>
+                    <span>Loading live chart...</span>
+                  </div>
+                </div>
+              </div>
             </div>
             <div class="lp-market-list">
               <article><b>BTC / USDT</b><span>$66,452.18</span><em>+1.35%</em></article>
@@ -2069,6 +2082,7 @@
           <span>🏦 Bank-Grade Security</span>
         </section>
       </main>`;
+    setTimeout(renderLandingTradingViewChart, 120);
   }
 
   function loginForm() {

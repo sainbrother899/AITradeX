@@ -9310,3 +9310,89 @@ input:focus,select:focus,textarea:focus{
     right:12px;
   }
 }
+
+
+/* Landing page fixes: brand, real chart, admin dynamic plans */
+.lp-brand span,
+.lp-brand b::after{
+  display:none!important;
+  content:none!important;
+}
+.lp-brand b{
+  font-size:32px!important;
+  letter-spacing:-.055em!important;
+}
+.lp-market-main.lp-real-chart-main{
+  min-height:360px!important;
+  padding:0!important;
+  overflow:hidden!important;
+}
+.lp-market-chart-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+  padding:16px 16px 10px;
+  border-bottom:1px solid rgba(255,255,255,.07);
+}
+.lp-market-chart-head span{
+  display:block;
+  color:#fff;
+  font-weight:950;
+}
+.lp-market-chart-head em{
+  color:#20e58f;
+  font-style:normal;
+  margin-left:8px;
+}
+.lp-market-chart-head h2{
+  margin:6px 0 0;
+  font-size:24px;
+}
+.lp-market-chart-head small{
+  color:#aebbd1;
+  white-space:nowrap;
+}
+.lp-tradingview-frame{
+  height:300px;
+  border-radius:0 0 18px 18px;
+  overflow:hidden;
+  position:relative;
+  background:#050814;
+}
+.lp-tradingview-frame .landing-tradingview-chart-container{
+  width:100%;
+  height:100%;
+}
+.lp-tradingview-frame iframe{
+  width:100%!important;
+  height:100%!important;
+  border:0!important;
+  opacity:1!important;
+}
+.lp-chart-line{
+  display:none!important;
+}
+.lp-market-main.lp-real-chart-main small b{
+  color:#fff;
+}
+.lp-plan-card h2{
+  word-break:break-word;
+}
+.lp-plan-card ul li{
+  line-height:1.35;
+}
+@media(max-width:620px){
+  .lp-brand b{
+    font-size:25px!important;
+  }
+  .lp-market-main.lp-real-chart-main{
+    min-height:330px!important;
+  }
+  .lp-market-chart-head{
+    display:grid;
+  }
+  .lp-tradingview-frame{
+    height:260px;
+  }
+}
