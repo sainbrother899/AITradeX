@@ -9396,3 +9396,771 @@ input:focus,select:focus,textarea:focus{
     height:260px;
   }
 }
+
+
+/* ==========================================================================
+   AITradeX Phase 6.9.5 - All Profile/Menu Sections Redesign
+   Scope: user profile-menu pages only
+   ========================================================================== */
+.aitx-app .pro-page-title,
+.aitx-app .pro-page-head,
+.aitx-app .pro-security-hero,
+.aitx-app .pro-referral-hero{
+  margin:8px 0 14px;
+}
+.aitx-app .pro-page-title{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+.aitx-app .pro-page-title.with-back{
+  justify-content:flex-start;
+}
+.aitx-app .pro-page-title>button{
+  width:44px;
+  height:44px;
+  border:0;
+  border-radius:999px;
+  background:rgba(255,255,255,.035);
+  color:#dce8fb;
+  font-size:25px;
+}
+.aitx-app .pro-page-title h1,
+.aitx-app .pro-security-hero h1,
+.aitx-app .pro-referral-hero h1{
+  margin:0;
+  color:#fff;
+  font-size:clamp(34px,8vw,48px);
+  line-height:1.05;
+  letter-spacing:-.055em;
+}
+.aitx-app .pro-page-title p,
+.aitx-app .pro-security-hero p,
+.aitx-app .pro-referral-hero p{
+  margin:8px 0 0;
+  color:#aebbd1;
+  font-size:16px;
+  line-height:1.45;
+}
+.aitx-app .pro-profile-top{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  gap:18px;
+  align-items:center;
+  padding:16px 0 10px;
+}
+.aitx-app .pro-profile-top .avatar{
+  width:112px!important;
+  height:112px!important;
+  border:2px solid rgba(34,230,243,.55);
+  box-shadow:0 0 34px rgba(34,230,243,.16);
+  font-size:40px;
+}
+.aitx-app .pro-profile-top h1{
+  margin:0 0 8px;
+  font-size:34px;
+  letter-spacing:-.04em;
+}
+.aitx-app .pro-profile-top p{
+  margin:5px 0;
+  color:#aebbd1;
+}
+.aitx-app .pro-outline-btn{
+  border:1px solid rgba(34,230,243,.48);
+  background:rgba(34,230,243,.06);
+  color:#22e6f3;
+  border-radius:15px;
+  padding:12px 16px;
+  font-weight:950;
+}
+.aitx-app .pro-card,
+.aitx-app .pro-status-card,
+.aitx-app .pro-ai-hero,
+.aitx-app .pro-bank-card,
+.aitx-app .pro-referral-stats,
+.aitx-app .pro-support-hero,
+.aitx-app .pro-plan-card{
+  border:1px solid rgba(132,177,235,.17);
+  background:linear-gradient(145deg,rgba(12,30,58,.72),rgba(5,15,31,.88));
+  border-radius:24px;
+  box-shadow:0 14px 36px rgba(0,0,0,.24);
+}
+.aitx-app .pro-card{
+  padding:16px;
+  margin-bottom:12px;
+}
+.aitx-app .pro-card-head{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin-bottom:12px;
+}
+.aitx-app .pro-card-head>i,
+.aitx-app .pro-setting-row>i,
+.aitx-app .pro-support-hero>i,
+.aitx-app .pro-ai-hero>i,
+.aitx-app .pro-security-hero>i{
+  width:52px;
+  height:52px;
+  border-radius:18px;
+  display:grid;
+  place-items:center;
+  background:rgba(34,230,243,.08);
+  border:1px solid rgba(34,230,243,.18);
+  color:#22e6f3;
+  font-style:normal;
+  font-size:22px;
+}
+.aitx-app .pro-card-head h2{
+  margin:0;
+  font-size:22px;
+  letter-spacing:-.035em;
+}
+.aitx-app .pro-card-head span{
+  margin-left:auto;
+  color:#aebbd1;
+  font-weight:850;
+}
+.aitx-app .pro-detail-list{
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:18px;
+  background:rgba(255,255,255,.025);
+  overflow:hidden;
+}
+.aitx-app .pro-detail-list>div{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  min-height:50px;
+  padding:13px 16px;
+  border-bottom:1px solid rgba(255,255,255,.07);
+}
+.aitx-app .pro-detail-list>div:last-child{border-bottom:0}
+.aitx-app .pro-detail-list span{
+  color:#aebbd1;
+}
+.aitx-app .pro-detail-list b{
+  color:#fff;
+  text-align:right;
+  word-break:break-word;
+}
+.aitx-app .pro-status-card{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:0;
+  padding:14px;
+  margin-bottom:12px;
+}
+.aitx-app .pro-status-card.two{
+  grid-template-columns:1fr 1fr;
+}
+.aitx-app .pro-status-card article{
+  display:grid;
+  grid-template-columns:auto 1fr;
+  gap:4px 12px;
+  align-items:center;
+  padding:10px 14px;
+  border-right:1px solid rgba(255,255,255,.08);
+}
+.aitx-app .pro-status-card article:last-child{border-right:0}
+.aitx-app .pro-status-card i{
+  grid-row:1/4;
+  width:54px;
+  height:54px;
+  display:grid;
+  place-items:center;
+  border-radius:18px;
+  background:rgba(34,230,243,.08);
+  border:1px solid rgba(34,230,243,.16);
+  color:#22e6f3;
+  font-style:normal;
+  font-size:20px;
+}
+.aitx-app .pro-status-card span{
+  color:#aebbd1;
+}
+.aitx-app .pro-status-card b{
+  font-size:21px;
+}
+.aitx-app .pro-status-card small{
+  color:#aebbd1;
+  line-height:1.3;
+}
+.aitx-app .pro-stat-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:12px;
+  margin-bottom:12px;
+}
+.aitx-app .pro-stat-grid article{
+  border:1px solid rgba(132,177,235,.17);
+  background:rgba(12,30,58,.56);
+  border-radius:20px;
+  padding:15px;
+}
+.aitx-app .pro-stat-grid i{
+  display:block;
+  font-style:normal;
+  color:#22e6f3;
+  font-size:24px;
+  margin-bottom:15px;
+}
+.aitx-app .pro-stat-grid span{
+  display:block;
+  color:#aebbd1;
+}
+.aitx-app .pro-stat-grid b{
+  display:block;
+  margin-top:6px;
+  font-size:22px;
+}
+
+/* KYC */
+.aitx-app .pro-gold-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  height:max-content;
+  color:#f6bd45;
+  border:1px solid rgba(246,189,69,.42);
+  background:rgba(246,189,69,.08);
+  border-radius:999px;
+  padding:10px 14px;
+  font-weight:1000;
+}
+.aitx-app .pro-kyc-steps{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:10px;
+  margin-bottom:12px;
+}
+.aitx-app .pro-kyc-steps article{
+  display:grid;
+  justify-items:center;
+  gap:8px;
+  color:#aebbd1;
+  text-align:center;
+}
+.aitx-app .pro-kyc-steps i{
+  width:38px;
+  height:38px;
+  border-radius:999px;
+  display:grid;
+  place-items:center;
+  border:1px solid rgba(34,230,243,.25);
+  background:rgba(34,230,243,.06);
+  color:#22e6f3;
+  font-style:normal;
+  font-weight:1000;
+}
+.aitx-app .pro-kyc-steps article.done i{
+  background:rgba(33,229,143,.13);
+  color:#21e58f;
+  border-color:rgba(33,229,143,.38);
+}
+.aitx-app .pro-form-actions{
+  display:flex;
+  gap:10px;
+  margin-top:12px;
+}
+.aitx-app .checkbox-line{
+  display:flex!important;
+  align-items:center;
+  gap:10px;
+  color:#dce8fb;
+}
+.aitx-app .checkbox-line input{
+  width:auto!important;
+  min-height:auto!important;
+}
+
+/* Bank */
+.aitx-app .pro-bank-list{
+  display:grid;
+  gap:12px;
+  margin-bottom:12px;
+}
+.aitx-app .pro-bank-card{
+  padding:18px;
+}
+.aitx-app .bank-top{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  margin-bottom:14px;
+}
+.aitx-app .bank-top i{
+  width:56px;
+  height:56px;
+  display:grid;
+  place-items:center;
+  border-radius:18px;
+  color:#22e6f3;
+  background:rgba(34,230,243,.08);
+  font-style:normal;
+  font-size:22px;
+}
+.aitx-app .bank-top h2{
+  margin:0 0 5px;
+}
+.aitx-app .bank-top p{
+  margin:0;
+  color:#aebbd1;
+}
+.aitx-app .bank-top .status-pill{
+  margin-left:auto;
+}
+
+/* Notification */
+.aitx-app .notification-title-row{
+  align-items:center;
+}
+.aitx-app .pro-tabs-wide{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:0;
+  border:1px solid rgba(132,177,235,.17);
+  background:rgba(12,30,58,.56);
+  border-radius:20px;
+  padding:5px;
+  margin-bottom:12px;
+}
+.aitx-app .pro-tabs-wide button{
+  min-height:54px;
+  border:0;
+  border-radius:15px;
+  color:#aebbd1;
+  background:transparent;
+  font-weight:950;
+}
+.aitx-app .pro-tabs-wide button.active{
+  color:#fff;
+  border:1px solid rgba(34,230,243,.48);
+  background:rgba(34,230,243,.08);
+}
+.aitx-app .pro-tabs-wide small{
+  margin-left:5px;
+  color:#22e6f3;
+}
+.aitx-app .pro-notification-list{
+  display:grid;
+  gap:12px;
+}
+.aitx-app .pro-notification-list article{
+  display:grid;
+  grid-template-columns:auto 1fr auto auto;
+  gap:14px;
+  align-items:center;
+  border:1px solid rgba(132,177,235,.17);
+  background:rgba(12,30,58,.56);
+  border-radius:20px;
+  padding:16px;
+}
+.aitx-app .pro-notification-list i{
+  width:56px;
+  height:56px;
+  display:grid;
+  place-items:center;
+  border-radius:999px;
+  background:rgba(34,230,243,.08);
+  color:#22e6f3;
+  font-style:normal;
+  font-size:22px;
+}
+.aitx-app .pro-notification-list b{
+  font-size:18px;
+}
+.aitx-app .pro-notification-list p{
+  margin:6px 0 0;
+  color:#aebbd1;
+}
+.aitx-app .pro-notification-list span{
+  color:#aebbd1;
+  font-size:12px;
+}
+.aitx-app .pro-notification-list button{
+  border:0;
+  background:transparent;
+  color:#22e6f3;
+  font-size:24px;
+}
+
+/* Security & AI */
+.aitx-app .pro-security-hero,
+.aitx-app .pro-ai-hero{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  align-items:center;
+  gap:16px;
+  padding:18px;
+  margin-bottom:12px;
+}
+.aitx-app .pro-ai-hero h2{
+  margin:0 0 5px;
+  font-size:26px;
+}
+.aitx-app .pro-ai-hero p{
+  margin:6px 0 0;
+  color:#aebbd1;
+}
+.aitx-app .pro-settings-list{
+  padding:0;
+  overflow:hidden;
+}
+.aitx-app .pro-setting-row{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  gap:14px;
+  align-items:center;
+  padding:16px;
+  border-bottom:1px solid rgba(255,255,255,.07);
+}
+.aitx-app .pro-setting-row:last-child{border-bottom:0}
+.aitx-app .pro-setting-row b{
+  display:block;
+  font-size:18px;
+}
+.aitx-app .pro-setting-row span{
+  display:block;
+  margin-top:5px;
+  color:#aebbd1;
+}
+.aitx-app .pro-segment{
+  display:flex;
+  border:1px solid rgba(132,177,235,.17);
+  border-radius:14px;
+  overflow:hidden;
+}
+.aitx-app .pro-segment button{
+  min-width:58px;
+  min-height:42px;
+  border:0;
+  border-right:1px solid rgba(255,255,255,.07);
+  background:rgba(255,255,255,.035);
+  color:#c7d4ea;
+}
+.aitx-app .pro-segment button:last-child{border-right:0}
+.aitx-app .pro-segment button.active{
+  color:#22e6f3;
+  background:rgba(34,230,243,.10);
+  box-shadow:inset 0 0 0 1px rgba(34,230,243,.35);
+}
+.aitx-app .pro-switch{
+  width:70px;
+  height:38px;
+  border:0;
+  border-radius:999px;
+  background:rgba(255,255,255,.10);
+  padding:4px;
+}
+.aitx-app .pro-switch em{
+  display:block;
+  width:30px;
+  height:30px;
+  border-radius:999px;
+  background:#fff;
+  transform:translateX(0);
+}
+.aitx-app .pro-switch.on{
+  background:linear-gradient(135deg,#21e58f,#1ca6ff);
+}
+.aitx-app .pro-switch.on em{
+  transform:translateX(32px);
+}
+.aitx-app .pro-progress{
+  min-width:160px;
+}
+.aitx-app .pro-progress b{
+  display:block;
+  text-align:right;
+  color:#dce8fb;
+  margin-bottom:8px;
+}
+.aitx-app .pro-progress span{
+  display:block;
+  height:9px;
+  border-radius:999px;
+  background:rgba(255,255,255,.08);
+  overflow:hidden;
+}
+.aitx-app .pro-progress em{
+  display:block;
+  height:100%;
+  border-radius:999px;
+  background:linear-gradient(90deg,#22e6f3,#1ca6ff);
+}
+.aitx-app .pro-ai-summary{
+  display:grid;
+  grid-template-columns:auto 1fr;
+  gap:14px;
+  align-items:center;
+}
+.aitx-app .pro-ai-summary>i,
+.aitx-app .pro-note-card>i{
+  width:58px;
+  height:58px;
+  border-radius:999px;
+  display:grid;
+  place-items:center;
+  background:rgba(33,229,143,.08);
+  border:1px solid rgba(33,229,143,.22);
+  color:#21e58f;
+  font-style:normal;
+  font-size:24px;
+}
+
+/* Subscription */
+.aitx-app .subscription-current{
+  grid-template-columns:1fr 1fr 1fr;
+}
+.aitx-app .pro-plan-list{
+  display:grid;
+  gap:14px;
+  margin-bottom:12px;
+}
+.aitx-app .pro-plan-card{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  gap:16px;
+  align-items:start;
+  padding:18px;
+  position:relative;
+}
+.aitx-app .pro-plan-card.current{
+  border-color:rgba(34,230,243,.55);
+  box-shadow:0 0 0 1px rgba(34,230,243,.25),0 14px 36px rgba(0,0,0,.24);
+}
+.aitx-app .plan-icon{
+  width:64px;
+  height:64px;
+  display:grid;
+  place-items:center;
+  border-radius:18px;
+  background:rgba(34,230,243,.08);
+  border:1px solid rgba(34,230,243,.18);
+  color:#22e6f3;
+  font-size:26px;
+}
+.aitx-app .pro-plan-card h2{
+  margin:0 0 6px;
+}
+.aitx-app .pro-plan-card p{
+  margin:0 0 12px;
+  color:#aebbd1;
+}
+.aitx-app .pro-plan-card ul{
+  margin:0;
+  padding:0;
+  list-style:none;
+  display:grid;
+  gap:7px;
+  color:#c7d4ea;
+}
+.aitx-app .plan-buy{
+  display:grid;
+  justify-items:end;
+  gap:8px;
+}
+.aitx-app .plan-buy b{
+  font-size:25px;
+}
+.aitx-app .plan-buy span{
+  color:#22e6f3;
+}
+.aitx-app .plan-buy button{
+  border:0;
+  border-radius:13px;
+  padding:11px 16px;
+  background:linear-gradient(135deg,#22e6f3,#1ca6ff);
+  color:#04111f;
+  font-weight:1000;
+}
+.aitx-app .plan-buy button:disabled{
+  opacity:.65;
+}
+
+/* Referral + Support */
+.aitx-app .pro-referral-hero{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.aitx-app .pro-referral-hero>i{
+  font-style:normal;
+  font-size:70px;
+  filter:drop-shadow(0 0 25px rgba(34,230,243,.20));
+}
+.aitx-app .pro-referral-stats{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:0;
+  padding:14px;
+  margin-bottom:12px;
+}
+.aitx-app .pro-referral-stats article{
+  display:grid;
+  justify-items:center;
+  text-align:center;
+  gap:7px;
+  padding:12px;
+  border-right:1px solid rgba(255,255,255,.08);
+}
+.aitx-app .pro-referral-stats article:last-child{border-right:0}
+.aitx-app .pro-referral-stats i{
+  width:58px;
+  height:58px;
+  display:grid;
+  place-items:center;
+  border-radius:999px;
+  background:rgba(34,230,243,.08);
+  border:1px solid rgba(34,230,243,.18);
+  color:#22e6f3;
+  font-style:normal;
+  font-size:22px;
+}
+.aitx-app .pro-referral-stats span{
+  color:#aebbd1;
+}
+.aitx-app .pro-referral-stats b{
+  font-size:22px;
+}
+.aitx-app .pro-support-hero{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  align-items:center;
+  gap:14px;
+  padding:18px;
+  margin-bottom:12px;
+}
+.aitx-app .pro-support-hero h2{
+  margin:0 0 7px;
+}
+.aitx-app .pro-support-hero p{
+  margin:0;
+  color:#aebbd1;
+}
+.aitx-app .pro-support-topics{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:10px;
+  margin-bottom:12px;
+}
+.aitx-app .pro-support-topics article{
+  border:1px solid rgba(132,177,235,.17);
+  background:rgba(12,30,58,.56);
+  border-radius:18px;
+  padding:14px;
+  text-align:center;
+}
+.aitx-app .pro-support-topics i{
+  display:block;
+  color:#22e6f3;
+  font-style:normal;
+  font-size:24px;
+  margin-bottom:10px;
+}
+.aitx-app .pro-support-topics b{
+  font-size:13px;
+}
+.aitx-app .pro-note-card{
+  display:flex;
+  gap:14px;
+  align-items:center;
+}
+.aitx-app .pro-note-card p{
+  margin:0;
+  color:#c7d4ea;
+  line-height:1.5;
+}
+
+@media(max-width:760px){
+  .aitx-app .pro-profile-top{
+    grid-template-columns:auto 1fr;
+  }
+  .aitx-app .pro-profile-top .pro-outline-btn{
+    grid-column:1/-1;
+    width:100%;
+  }
+  .aitx-app .pro-profile-top .avatar{
+    width:92px!important;
+    height:92px!important;
+  }
+  .aitx-app .pro-status-card,
+  .aitx-app .pro-status-card.two,
+  .aitx-app .subscription-current,
+  .aitx-app .pro-referral-stats{
+    grid-template-columns:1fr;
+    gap:8px;
+  }
+  .aitx-app .pro-status-card article,
+  .aitx-app .pro-referral-stats article{
+    border-right:0;
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:16px;
+    background:rgba(255,255,255,.025);
+  }
+  .aitx-app .pro-stat-grid{
+    grid-template-columns:1fr 1fr;
+  }
+  .aitx-app .pro-kyc-steps{
+    grid-template-columns:repeat(4,1fr);
+    gap:5px;
+  }
+  .aitx-app .pro-kyc-steps span{
+    font-size:11px;
+  }
+  .aitx-app .pro-notification-list article{
+    grid-template-columns:auto 1fr auto;
+  }
+  .aitx-app .pro-notification-list span{
+    grid-column:2/3;
+  }
+  .aitx-app .pro-security-hero,
+  .aitx-app .pro-ai-hero,
+  .aitx-app .pro-support-hero{
+    grid-template-columns:auto 1fr;
+  }
+  .aitx-app .pro-security-hero .pro-outline-btn,
+  .aitx-app .pro-ai-hero .ai-power,
+  .aitx-app .pro-support-hero .pro-outline-btn{
+    grid-column:1/-1;
+    width:100%;
+  }
+  .aitx-app .pro-setting-row{
+    grid-template-columns:auto 1fr;
+  }
+  .aitx-app .pro-setting-row>strong,
+  .aitx-app .pro-segment,
+  .aitx-app .pro-progress,
+  .aitx-app .pro-switch,
+  .aitx-app .drawer-status{
+    grid-column:2/3;
+    justify-self:stretch;
+  }
+  .aitx-app .pro-plan-card{
+    grid-template-columns:auto 1fr;
+  }
+  .aitx-app .plan-buy{
+    grid-column:1/-1;
+    justify-items:stretch;
+  }
+  .aitx-app .pro-support-topics{
+    grid-template-columns:1fr 1fr;
+  }
+}
+@media(max-width:420px){
+  .aitx-app .pro-stat-grid,
+  .aitx-app .pro-support-topics,
+  .aitx-app .pro-tabs-wide{
+    grid-template-columns:1fr 1fr;
+  }
+  .aitx-app .pro-detail-list>div{
+    display:grid;
+    gap:5px;
+  }
+  .aitx-app .pro-detail-list b{
+    text-align:left;
+  }
+}

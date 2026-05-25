@@ -1,0 +1,31 @@
+AITradeX Phase 6.9.5 - All Profile/Menu Sections Redesign
+
+Base:
+- AITradeX-Phase6.9.5-LandingPageFixes.zip
+
+Scope:
+- User side profile/menu sections.
+
+Actual layout replacements in user-app.js:
+- Profile
+- KYC
+- Bank Accounts
+- Notifications
+- Security
+- Subscription
+- AI Settings
+- Referral
+- Support
+
+Preserved:
+- Admin side untouched
+- SQL untouched
+- Wallet/trading/AI backend logic untouched
+- KYC submit IDs and flow preserved
+- Bank add IDs and flow preserved
+- Support ticket form IDs and flow preserved
+- Subscription buyPlan flow preserved
+- AI ON/OFF and allocation functions preserved
+- Referral logic preserved
+
+No SQL required.

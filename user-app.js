@@ -2352,40 +2352,32 @@
     const usage = aiDailyUsage();
     const balance = realBalance();
     const tradeAmount = balance * Number(ai.percent || 0) / 100;
+    const usedPct = usage.limit ? Math.min(100, Math.round((usage.used / usage.limit) * 100)) : 0;
 
     shell(`
-      <section class="premium-card auto-card polished-auto-card clean-ai-control-card ai-settings-page-card">
-        <div class="card-row">
-          <div>
-            <p>AI SETTINGS</p>
-            <h2>Auto Trade Control</h2>
-            <h4>Manage AI auto trading and choose how much wallet balance AI can use for future automatic trades.</h4>
-          </div>
-          <button class="ai-power ${ai.enabled ? "on" : ""}" onclick="AITradeXUser.toggleAutoTrade()">${ai.enabled ? "ON" : "OFF"}</button>
-        </div>
-        <div class="percent-grid">
-          ${[25, 50, 75, 100].map(v => `<button class="${ai.percent === v ? "active" : ""}" onclick="AITradeXUser.setAutoPercent(${v})">${v}%</button>`).join("")}
-        </div>
-        <div class="auto-summary">
-          <article><span>Selected</span><b>${ai.percent}%</b></article>
-          <article><span>AI Trade Pool</span><b>${App.money(tradeAmount)}</b></article>
-          <article><span>Daily AI Trades</span><b>${usage.used}/${usage.limit}</b></article>
-        </div>
-        ${!ai.enabled ? `<div class="ai-status-banner off"><b>AI Auto Trading is OFF.</b><span>Turn it ON to receive AI auto trades.</span></div>` : ""}
-        ${ai.enabled && isAiLimitComplete() ? `<div class="ai-status-banner limit"><b>Daily AI trade limit completed.</b><span>Upgrade your plan to unlock more AI auto trades.</span><button onclick="AITradeXUser.go('subscription')">Upgrade Plan</button></div>` : ""}
+      <section class="pro-page-title with-back">
+        <button onclick="AITradeXUser.toggleDrawer()">←</button>
+        <div><h1>AI Settings</h1><p>Configure and manage your AI trading preferences.</p></div>
       </section>
 
-      <section class="premium-card dashboard-action-center ai-settings-help-card">
-        <div>
-          <p>AI CONTROL NOTE</p>
-          <h2>Home stays clean now</h2>
-          <h4>AI settings are kept here, while Home shows only account summary and quick actions.</h4>
-        </div>
-        <button class="ghost-action" onclick="AITradeXUser.go('home')">Back Home</button>
+      <section class="pro-ai-hero">
+        <i>🧠</i>
+        <div><h2>AI Auto Trading</h2><b class="${ai.enabled ? "profit-text" : "loss-text"}">${ai.enabled ? "Active" : "Inactive"}</b><p>AI is analyzing markets and managing trades based on your settings.</p></div>
+        <button class="ai-power ${ai.enabled ? "on" : ""}" onclick="AITradeXUser.toggleAutoTrade()">${ai.enabled ? "Live" : "OFF"}</button>
+      </section>
+
+      <section class="pro-card pro-settings-list">
+        <div class="pro-setting-row"><i>🤖</i><div><b>Auto Trade</b><span>Allow AI to automatically place trades.</span></div><button class="pro-switch ${ai.enabled ? "on" : ""}" onclick="AITradeXUser.toggleAutoTrade()"><em></em></button></div>
+        <div class="pro-setting-row"><i>◔</i><div><b>Capital Allocation</b><span>Set the portion of wallet balance for AI trading.</span></div><div class="pro-segment">${[25,50,75,100].map(v => `<button class="${ai.percent === v ? "active" : ""}" onclick="AITradeXUser.setAutoPercent(${v})">${v}%</button>`).join("")}</div></div>
+        <div class="pro-setting-row"><i>📊</i><div><b>Daily AI Trade Limit</b><span>Maximum number of trades per day.</span></div><div class="pro-progress"><b>${usage.used} / ${usage.limit} used</b><span><em style="width:${usedPct}%"></em></span></div></div>
+        <div class="pro-setting-row"><i>🌐</i><div><b>AI Trade Pool</b><span>Wallet balance available for AI trades.</span></div><strong>${App.money(tradeAmount)}</strong></div>
+      </section>
+
+      <section class="pro-card pro-ai-summary">
+        <i>↗</i><div><h2>AI Strategy Summary</h2><p>${ai.percent}% allocation · ${usage.used}/${usage.limit} trades today · ${ai.enabled ? "AI active" : "AI inactive"}</p></div>
       </section>
     `);
   }
-
   function tradePage() {
     const pair = selectedPairData();
     const balance = currentBalance();
@@ -3028,162 +3020,88 @@
   }
   function kycPage() {
     const kyc = currentKyc();
+    const status = String(kyc.status || "NOT_SUBMITTED").toUpperCase();
+    const approved = status === "APPROVED";
+    const pending = status === "PENDING";
+    const rejected = status === "REJECTED";
+    const timeline = [
+      ["Personal Information", !!kyc.personal?.fullName],
+      ["ID Proof", !!kyc.id?.number && !!kyc.uploads?.frontName && !!kyc.uploads?.backName],
+      ["Selfie Verification", !!kyc.uploads?.selfieName],
+      ["Final Review", approved || pending]
+    ];
 
-    if (kyc.status === "APPROVED") {
+    if (approved || pending || rejected) {
       shell(`
-        <section class="premium-card kyc-result-card approved">
-          <div class="result-icon">✓</div>
-          <p>KYC APPROVED</p>
-          <h2>KYC Approved Successfully</h2>
-          <h4>Your identity verification has been approved. You can now add bank accounts and request withdrawals after approval.</h4>
-          ${statusPill(kyc.status)}
+        <section class="pro-page-title with-back kyc-pro-title">
+          <button onclick="AITradeXUser.toggleDrawer()">←</button>
+          <div><h1>KYC Verification</h1><p>${approved ? "Your identity is verified. You’re good to trade!" : pending ? "Your KYC is under admin review." : "Your KYC was rejected. Please review and resubmit."}</p></div>
+          <span class="pro-gold-badge">${approved ? "KYC Verified" : pending ? "Under Review" : "Rejected"}</span>
         </section>
-        ${kycDetailsGrid(kyc, "VERIFIED DETAILS")}
-      `);
-      return;
-    }
 
-    if (kyc.status === "PENDING") {
-      shell(`
-        <section class="premium-card kyc-result-card pending">
-          <div class="result-icon">⌛</div>
-          <p>KYC SUBMITTED</p>
-          <h2>KYC Submitted Successfully</h2>
-          <h4>Your KYC is under verification. Admin will review your submitted details shortly.</h4>
-          ${statusPill(kyc.status)}
+        <section class="pro-kyc-steps">
+          ${timeline.map(([label, done]) => `<article class="${done || approved ? "done" : ""}"><i>${done || approved ? "✓" : "•"}</i><span>${label}</span></article>`).join("")}
         </section>
-        ${kycDetailsGrid(kyc, "SUBMITTED DETAILS")}
-      `);
-      return;
-    }
 
-    if (kyc.status === "REJECTED") {
-      shell(`
-        <section class="premium-card kyc-result-card rejected">
-          <div class="result-icon">!</div>
-          <p>KYC REJECTED</p>
-          <h2>KYC Verification Rejected</h2>
-          <h4>Your KYC was rejected. Please check the reason and resubmit your details.</h4>
-          ${statusPill(kyc.status)}
-          ${kyc.rejectReason ? `<div class="reject-box">${App.escapeHtml(kyc.rejectReason)}</div>` : ""}
-          <button class="save-profile-btn" onclick="AITradeXUser.resubmitKyc()">Resubmit KYC</button>
+        <section class="pro-status-card two">
+          <article><i>🪪</i><span>Verification Summary</span><b>${approved ? "Verified" : pending ? "Submitted" : "Rejected"}</b><small>${approved ? "All checks completed successfully." : pending ? "Admin will review your details shortly." : App.escapeHtml(kyc.rejectReason || "Please resubmit KYC.")}</small></article>
+          <article><i>🕒</i><span>${approved ? "Verified On" : pending ? "Submitted On" : "Rejected On"}</span><b>${new Date(kyc.approvedAt || kyc.submittedAt || kyc.rejectedAt || Date.now()).toLocaleDateString("en-IN")}</b><small>${new Date(kyc.approvedAt || kyc.submittedAt || kyc.rejectedAt || Date.now()).toLocaleTimeString("en-IN")}</small></article>
         </section>
-        ${kycDetailsGrid(kyc, "REJECTED DETAILS")}
+
+        ${kycDetailsGrid(kyc, approved ? "VERIFIED DETAILS" : "KYC DETAILS")}
+
+        ${rejected ? `<section class="pro-card"><button class="save-profile-btn" onclick="AITradeXUser.resubmitKyc()">Resubmit KYC</button></section>` : ""}
       `);
       return;
     }
 
     shell(`
-      <section class="premium-card kyc-status-card">
-        <div class="card-row">
-          <div>
-            <p>KYC VERIFICATION</p>
-            <h2>Identity Verification</h2>
-            <span class="ticket-mode">Complete KYC before verified withdrawals.</span>
-          </div>
-          ${statusPill(kyc.status)}
-        </div>
+      <section class="pro-page-title with-back kyc-pro-title">
+        <button onclick="AITradeXUser.toggleDrawer()">←</button>
+        <div><h1>KYC Verification</h1><p>Submit your details to unlock secure withdrawals.</p></div>
+        <span class="pro-gold-badge">Step ${kycStep}/4</span>
       </section>
 
-      <section class="kyc-stepper">
-        ${[1, 2, 3, 4].map(step => `
-          <button class="${kycStep === step ? "active" : ""} ${kycStep > step ? "done" : ""}" onclick="AITradeXUser.setKycStep(${step})">
-            <b>${step}</b>
-            <span>${["Personal", "Aadhaar", "Selfie", "Review"][step - 1]}</span>
-          </button>
-        `).join("")}
+      <section class="pro-kyc-steps">
+        ${["Personal Info","ID Proof","Selfie Check","Review"].map((label, index) => `<article class="${kycStep >= index + 1 ? "done" : ""}"><i>${kycStep > index + 1 ? "✓" : index + 1}</i><span>${label}</span></article>`).join("")}
       </section>
 
-      <section class="premium-card kyc-form-card">
+      <section class="pro-card">
         ${kycStep === 1 ? `
-          <p>STEP 1</p>
-          <h2>Personal Details</h2>
-          <div class="form-grid kyc-grid">
-            <label>Full Name as per Document<input id="kycFullName" value="${App.escapeHtml(kyc.personal.fullName || "")}" placeholder="Enter full name"/></label>
+          <div class="pro-card-head"><i>👤</i><h2>Personal Information</h2></div>
+          <div class="form-grid kyc-grid compact-inner-form">
+            <label>Full Name<input id="kycFullName" value="${App.escapeHtml(kyc.personal.fullName || displayName() || "")}" placeholder="Full name"/></label>
             <label>Date of Birth<input id="kycDob" type="date" value="${App.escapeHtml(kyc.personal.dob || "")}"/></label>
-            <label>Gender
-              <select id="kycGender">
-                <option value="">Select gender</option>
-                ${["Male", "Female", "Other"].map(g => `<option value="${g}" ${kyc.personal.gender === g ? "selected" : ""}>${g}</option>`).join("")}
-              </select>
-            </label>
-            <label>Mobile Number<input id="kycMobile" class="readonly-input" value="${App.escapeHtml(kyc.personal.mobile || "")}" readonly/></label>
-            <label>Email Address<input id="kycEmail" class="readonly-input" value="${App.escapeHtml(kyc.personal.email || "")}" readonly/></label>
-            <label>City<input id="kycCity" value="${App.escapeHtml(kyc.personal.city || "")}" placeholder="Enter city"/></label>
-            <label>State
-              <select id="kycState">${stateOptions(kyc.personal.state || "")}</select>
-            </label>
-            <label>Pincode<input id="kycPincode" value="${App.escapeHtml(kyc.personal.pincode || "")}" inputmode="numeric" maxlength="6" placeholder="6 digit pincode" oninput="this.value=this.value.replace(/\D/g,'').slice(0,6)"/></label>
+            <label>Gender<select id="kycGender"><option value="">Select</option><option ${kyc.personal.gender === "Male" ? "selected" : ""}>Male</option><option ${kyc.personal.gender === "Female" ? "selected" : ""}>Female</option><option ${kyc.personal.gender === "Other" ? "selected" : ""}>Other</option></select></label>
+            <label>City<input id="kycCity" value="${App.escapeHtml(kyc.personal.city || "")}" placeholder="City"/></label>
+            <label>State<input id="kycState" value="${App.escapeHtml(kyc.personal.state || "")}" placeholder="State"/></label>
+            <label>Pincode<input id="kycPincode" value="${App.escapeHtml(kyc.personal.pincode || "")}" inputmode="numeric" maxlength="6" placeholder="6 digit pincode" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,6)"/></label>
           </div>
-        ` : ""}
-
-        ${kycStep === 2 ? `
-          <p>STEP 2</p>
-          <h2>Aadhaar Verification</h2>
-          <div class="form-grid kyc-grid">
-            <label>Aadhaar Number<input id="kycAadhaar" value="${App.escapeHtml(kyc.id.number || "")}" inputmode="numeric" maxlength="12" placeholder="12 digit Aadhaar number" oninput="this.value=this.value.replace(/\D/g,'').slice(0,12)"/></label>
-            <label class="upload-box inline-upload">
-              <span>Aadhaar Front Image</span>
-              <input id="kycFront" type="file" accept="image/*,.pdf"/>
-              <b>${App.escapeHtml(uploadStatusText({ name: kyc.uploads.frontName, path: kyc.uploads.frontPath }, "Upload clear front side"))}</b>
-            </label>
-            <label class="upload-box inline-upload">
-              <span>Aadhaar Back Image</span>
-              <input id="kycBack" type="file" accept="image/*,.pdf"/>
-              <b>${App.escapeHtml(uploadStatusText({ name: kyc.uploads.backName, path: kyc.uploads.backPath }, "Upload clear back side"))}</b>
-            </label>
+          <button class="save-profile-btn" onclick="AITradeXUser.saveKycStep()">Save & Continue</button>
+        ` : kycStep === 2 ? `
+          <div class="pro-card-head"><i>🪪</i><h2>ID Proof</h2></div>
+          <div class="form-grid kyc-grid compact-inner-form">
+            <label>Aadhaar Number<input id="kycAadhaar" value="${App.escapeHtml(kyc.id.number || "")}" inputmode="numeric" maxlength="12" placeholder="12 digit Aadhaar" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,12)"/></label>
+            <label>Aadhaar Front<input id="kycFront" type="file" accept="image/*,application/pdf"/></label>
+            <label>Aadhaar Back<input id="kycBack" type="file" accept="image/*,application/pdf"/></label>
           </div>
-          <div class="profile-note">Aadhaar number must be exactly 12 digits. Front and back images upload to Supabase Storage for admin review.</div>
-        ` : ""}
-
-        ${kycStep === 3 ? `
-          <p>STEP 3</p>
-          <h2>Selfie Verification</h2>
-          <div class="upload-grid single-upload-grid">
-            <label class="upload-box">
-              <span>Selfie Image</span>
-              <input id="kycSelfie" type="file" accept="image/*"/>
-              <b>${App.escapeHtml(uploadStatusText({ name: kyc.uploads.selfieName, path: kyc.uploads.selfiePath }, "Upload clear selfie"))}</b>
-            </label>
+          <div class="pro-form-actions"><button class="btn ghost" onclick="AITradeXUser.prevKycStep()">Back</button><button class="save-profile-btn" onclick="AITradeXUser.saveKycStep()">Save & Continue</button></div>
+        ` : kycStep === 3 ? `
+          <div class="pro-card-head"><i>📷</i><h2>Selfie Verification</h2></div>
+          <div class="form-grid compact-inner-form">
+            <label>Selfie Photo<input id="kycSelfie" type="file" accept="image/*"/></label>
+            <label class="checkbox-line"><input id="kycDeclaration" type="checkbox" ${kyc.declarationAccepted ? "checked" : ""}/> I confirm that the selfie and Aadhaar details are mine.</label>
           </div>
-          <label class="kyc-check-row">
-            <input id="kycDeclaration" type="checkbox" ${kyc.declarationAccepted ? "checked" : ""}/>
-            <span>I confirm this selfie and Aadhaar belong to me.</span>
-          </label>
-        ` : ""}
-
-        ${kycStep === 4 ? `
-          <p>STEP 4</p>
-          <h2>Review & Submit</h2>
-          <div class="review-grid">
-            <article><span>Full Name</span><b>${App.escapeHtml(kyc.personal.fullName || "-")}</b></article>
-            <article><span>DOB</span><b>${App.escapeHtml(kyc.personal.dob || "-")}</b></article>
-            <article><span>Gender</span><b>${App.escapeHtml(kyc.personal.gender || "-")}</b></article>
-            <article><span>Mobile</span><b>${App.escapeHtml(kyc.personal.mobile || "-")}</b></article>
-            <article><span>Email</span><b>${App.escapeHtml(kyc.personal.email || "-")}</b></article>
-            <article><span>City</span><b>${App.escapeHtml(kyc.personal.city || "-")}</b></article>
-            <article><span>State</span><b>${App.escapeHtml(kyc.personal.state || "-")}</b></article>
-            <article><span>Pincode</span><b>${App.escapeHtml(kyc.personal.pincode || "-")}</b></article>
-            <article><span>Document</span><b>Aadhaar Card</b></article>
-            <article><span>Aadhaar No.</span><b>${App.escapeHtml(maskAadhaar(kyc.id.number))}</b></article>
-            <article><span>Aadhaar Front</span><b>${App.escapeHtml(kyc.uploads.frontName || "-")}</b></article>
-            <article><span>Aadhaar Back</span><b>${App.escapeHtml(kyc.uploads.backName || "-")}</b></article>
-            <article><span>Selfie</span><b>${App.escapeHtml(kyc.uploads.selfieName || "-")}</b></article>
-          </div>
-          <label class="kyc-check-row review-confirm">
-            <input id="kycFinalConfirm" type="checkbox" ${kyc.finalAccepted ? "checked" : ""}/>
-            <span>I confirm all KYC details are correct and belong to me.</span>
-          </label>
-        ` : ""}
-
-        <div class="wizard-actions">
-          <button class="btn ghost" onclick="AITradeXUser.prevKycStep()" ${kycStep === 1 ? "disabled" : ""}>Back</button>
-          ${kycStep < 4 ? `<button class="btn" onclick="AITradeXUser.saveKycStep()">Save & Next</button>` : `<button class="btn" onclick="AITradeXUser.submitKyc()">Submit KYC</button>`}
-        </div>
+          <div class="pro-form-actions"><button class="btn ghost" onclick="AITradeXUser.prevKycStep()">Back</button><button class="save-profile-btn" onclick="AITradeXUser.saveKycStep()">Save & Continue</button></div>
+        ` : `
+          <div class="pro-card-head"><i>✓</i><h2>Review & Submit</h2></div>
+          ${kycDetailsGrid(kyc, "REVIEW DETAILS")}
+          <label class="checkbox-line"><input id="kycFinalConfirm" type="checkbox"/> I confirm all KYC details are correct.</label>
+          <div class="pro-form-actions"><button class="btn ghost" onclick="AITradeXUser.prevKycStep()">Back</button><button class="save-profile-btn" onclick="AITradeXUser.submitKyc()">Submit KYC</button></div>
+        `}
       </section>
     `);
   }
-
   function bankMethodCard(m) {
     return `
       <article class="bank-slim-card ${String(m.status || "").toLowerCase()}">
@@ -3207,31 +3125,41 @@
     const kycReady = kyc.status === "APPROVED";
     const holder = verifiedKycName();
     const canAddBank = counts.BANK < 2;
+    const bankRow = method => `<article class="pro-bank-card">
+      <div class="bank-top"><i>🏦</i><div><h2>${App.escapeHtml(method.holderName || holder || "Account Holder")}</h2><p>${App.escapeHtml(method.bankName || "Bank")}</p></div>${statusPill(method.status)}</div>
+      <div class="pro-detail-list">
+        <div><span>Account Number</span><b>${App.escapeHtml(method.accountNumber || "-")}</b></div>
+        <div><span>IFSC Code</span><b>${App.escapeHtml(method.ifsc || "-")}</b></div>
+        <div><span>Account Type</span><b>${App.escapeHtml(method.accountType || "Savings")}</b></div>
+        <div><span>Submitted</span><b>${method.createdAt ? new Date(method.createdAt).toLocaleDateString("en-IN") : "-"}</b></div>
+      </div>
+    </article>`;
 
     shell(`
-      <section class="inner-hero-card bank-hero-card">
-        <div>
-          <p>BANK ACCOUNTS</p>
-          <h1>Verified payout methods</h1>
-          <span>Only approved bank accounts can be used for withdrawal requests.</span>
-        </div>
-        ${statusPill(kyc.status)}
+      <section class="pro-page-title with-back">
+        <button onclick="AITradeXUser.toggleDrawer()">←</button>
+        <div><h1>Bank Accounts</h1><p>Manage your bank accounts for secure withdrawals.</p></div>
       </section>
 
-      <section class="inner-status-strip">
-        <article><span>KYC</span><b>${String(kyc.status || "NOT_SUBMITTED").replaceAll("_", " ")}</b></article>
-        <article><span>Approved Banks</span><b>${approvedCount}</b></article>
-        <article><span>Pending Review</span><b>${pendingCount}</b></article>
-        <article><span>Limit</span><b>${counts.BANK}/2</b></article>
+      <section class="pro-status-card">
+        <article><i>🛡</i><span>KYC</span><b>${String(kyc.status || "NOT_SUBMITTED").replaceAll("_"," ")}</b></article>
+        <article><i>✓</i><span>Approved</span><b>${approvedCount}</b></article>
+        <article><i>⌛</i><span>Pending</span><b>${pendingCount}</b></article>
+        <article><i>🏦</i><span>Limit</span><b>${counts.BANK}/2</b></article>
+      </section>
+
+      <section class="pro-bank-list">
+        ${methods.length ? methods.map(bankRow).join("") : `<div class="empty-state">No bank accounts added yet.</div>`}
       </section>
 
       ${!kycReady ? `
-        <section class="premium-card inner-action-card locked">
-          <div><p>KYC REQUIRED</p><h2>Complete KYC before adding bank</h2><span>Your verified name is required for safe bank approval.</span></div>
+        <section class="pro-card">
+          <div class="pro-card-head"><i>ℹ</i><h2>KYC Required</h2></div>
+          <p class="profile-note">Complete KYC before adding bank account.</p>
           <button class="save-profile-btn" onclick="AITradeXUser.go('kyc')">Go to KYC</button>
         </section>` : `
-        <section class="premium-card inner-action-card bank-form-premium">
-          <div class="card-row"><div><p>ADD BANK ACCOUNT</p><h2>Submit bank for approval</h2><span class="ticket-mode">Verified name: ${App.escapeHtml(holder)}</span></div><span class="history-mode">${canAddBank ? "Available" : "Limit Reached"}</span></div>
+        <section class="pro-card">
+          <div class="pro-card-head"><i>＋</i><h2>Add New Bank</h2><span>${canAddBank ? "Available" : "Limit Reached"}</span></div>
           <div class="form-grid kyc-grid compact-inner-form">
             <label>Holder Name<input value="${App.escapeHtml(holder)}" disabled/></label>
             <label>Bank Name<input id="bankNameInput" ${!canAddBank ? "disabled" : ""} placeholder="Bank name"/></label>
@@ -3241,18 +3169,11 @@
             <label>Account Type<select id="bankTypeInput" ${!canAddBank ? "disabled" : ""}><option>Savings</option><option>Current</option></select></label>
           </div>
           <button class="save-profile-btn" onclick="AITradeXUser.addBankMethod()" ${!canAddBank ? "disabled" : ""}>Submit Bank for Verification</button>
-          ${!canAddBank ? `<div class="profile-note">Maximum 2 pending/approved bank accounts allowed.</div>` : ""}
         </section>`}
 
-      <section class="premium-card bank-list-card">
-        <div class="card-row"><div><p>SAVED BANK ACCOUNTS</p><h2>Your bank list</h2></div><span class="history-mode">${methods.length}</span></div>
-        <div class="bank-slim-list">
-          ${methods.length ? methods.map(bankMethodCard).join("") : `<div class="empty-state">No bank accounts added yet.</div>`}
-        </div>
-      </section>
+      <section class="pro-card pro-note-card"><i>ℹ</i><p>Withdrawals can only be made to approved bank accounts in your name. Ensure details are correct.</p></section>
     `);
   }
-
   function subscriptionPage() {
     const u = user();
     const sub = activeSubscription();
@@ -3261,29 +3182,35 @@
     const balance = App.realBalance(u.id);
     const usage = aiDailyUsage();
     const history = subscriptionHistory();
+
     shell(`
-      <section class="subscription-hero-card">
-        <div>
-          <p>SUBSCRIPTION</p>
-          <h1>${App.escapeHtml(plan.name || "Free")}</h1>
-          <span>${usage.used}/${usage.limit} AI auto trades used today · Wallet ${App.money(balance)}</span>
-        </div>
-        <button onclick="AITradeXUser.go('wallet')">Add Balance</button>
+      <section class="pro-page-title">
+        <h1>Subscription</h1>
+        <p>Choose the plan that fits your trading journey.</p>
       </section>
 
-      <section class="compact-grid subscription-summary-grid">
-        <article><span>Current Plan</span><b>${App.escapeHtml(plan.name || "Free")}</b><small>${sub ? "Active" : "Free access"}</small></article>
-        <article><span>Daily AI Trades</span><b>${usage.limit}/day</b><small>${activeSubscription() ? "Plan controlled" : freeAccessText()}</small></article>
-        <article><span>Used Today</span><b>${usage.used}/${usage.limit}</b><small>AI Auto Trades</small></article>
-        <article><span>${sub ? "Expires" : "Free Access"}</span><b>${subscriptionExpiryText(sub)}</b><small>${sub ? "Plan validity" : "Trial + free limit"}</small></article>
+      <section class="pro-status-card subscription-current">
+        <article><i>👑</i><span>Current Plan</span><b>${App.escapeHtml(plan.name || "Free")}</b><small>${sub ? "Active subscription" : "Free access"}</small></article>
+        <article><i>📅</i><span>${sub ? "Expires on" : "Access"}</span><b>${subscriptionExpiryText(sub)}</b><small>${sub ? "Plan validity" : freeAccessText()}</small></article>
+        <article><i>🤖</i><span>AI Trade Limit</span><b>${usage.limit} / day</b><small>${usage.used} used today</small></article>
       </section>
 
-      <section class="subscription-plan-grid">
-        ${plans.map(planCard).join("")}
+      <section class="pro-plan-list">
+        ${plans.length ? plans.map(p => {
+          const current = p.id === plan.id;
+          const price = Number(p.price || 0);
+          const trades = Number(p.signals || p.aiTrades || 0);
+          return `<article class="pro-plan-card ${current ? "current" : ""}">
+            <div class="plan-icon">${current ? "↗" : "✦"}</div>
+            <div><h2>${App.escapeHtml(p.name || "Plan")}</h2><p>${App.escapeHtml(p.description || "AI trading plan")}</p>
+              <ul><li>✓ ${trades || "More"} AI Trades per day</li><li>✓ AI settings access</li><li>✓ Support access</li></ul></div>
+            <div class="plan-buy"><b>${price ? App.money(price) : "Free"}</b><span>${current ? "Current Plan" : ""}</span><button onclick="AITradeXUser.buyPlan('${p.id}')" ${current || !price ? "disabled" : ""}>${current ? "Current" : "Upgrade"}</button></div>
+          </article>`;
+        }).join("") : `<div class="empty-state">No paid plans available right now.</div>`}
       </section>
 
-      <section class="premium-card subscription-history-card">
-        <div class="card-row"><div><p>SUBSCRIPTION HISTORY</p><h2>Plan Purchases</h2></div><span class="history-mode">Wallet</span></div>
+      <section class="premium-card subscription-history-card pro-card">
+        <div class="pro-card-head"><i>🧾</i><h2>Plan Purchases</h2></div>
         ${history.length ? `<div class="subscription-history-list">${history.map(row => `
           <article>
             <div><b>${App.escapeHtml(row.planName || row.planId)}</b><span>${new Date(row.createdAt).toLocaleString("en-IN")}</span></div>
@@ -3293,7 +3220,6 @@
       </section>
     `);
   }
-
   function referralPage() {
     const u = user();
     const settings = App.referralSettings ? App.referralSettings() : (App.state.settings || {});
@@ -3301,121 +3227,118 @@
     const referrals = (App.state.referrals || []).filter(row => row.referrerUserId === u.id).slice().sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0));
     const link = `${window.location.origin}${window.location.pathname}?ref=${encodeURIComponent(u.referralCode || "")}`;
     const shareText = encodeURIComponent(`Join AITradeX with my referral code ${u.referralCode || ""}: ${link}`);
-    const referredCard = row => {
-      const target = (App.state.users || []).find(user => user.id === row.referredUserId) || {};
-      const depositBonus = row.bonuses?.deposit;
-      const subscriptionBonus = row.bonuses?.subscription;
-      return `<article class="referral-user-card">
-        <div>
-          <b>${App.escapeHtml(target.name || "Referred User")}</b>
-          <span>${App.escapeHtml(target.email || "-")}</span>
-          <small>Joined ${row.createdAt ? new Date(row.createdAt).toLocaleString("en-IN") : "-"}</small>
-        </div>
-        <div class="referral-bonus-stack">
-          <span class="${depositBonus?.credited ? "profit-text" : "muted-text"}">Deposit: ${depositBonus?.credited ? App.money(depositBonus.amount) : "Pending"}</span>
-          <span class="${subscriptionBonus?.credited ? "profit-text" : "muted-text"}">Subscription: ${subscriptionBonus?.credited ? App.money(subscriptionBonus.amount) : "Pending"}</span>
-        </div>
-      </article>`;
-    };
 
     shell(`
-      <section class="referral-hero-card">
-        <div>
-          <p>REFERRAL REWARDS</p>
-          <h1>Invite & Earn Automatically</h1>
-          <span>Earn when your referred user completes a first approved deposit or buys a paid subscription.</span>
-        </div>
-        <button type="button" class="copy-action" onclick="AITradeXUser.copyReferral('link', this)">Copy Link</button>
+      <section class="pro-referral-hero">
+        <div><h1>Referral</h1><p>Invite friends and earn rewards</p></div>
+        <i>🎁</i>
       </section>
 
-      <section class="premium-card referral-link-card">
-        <div class="card-row"><div><p>YOUR REFERRAL LINK</p><h2>${App.escapeHtml(u.referralCode || "-")}</h2></div><span class="history-mode">Auto Bonus</span></div>
-        <div class="referral-link-box"><span id="referralLinkText">${App.escapeHtml(link)}</span><button type="button" class="copy-action" onclick="AITradeXUser.copyReferral('link', this)">Copy</button></div>
+      <section class="pro-referral-stats">
+        <article><i>👥</i><span>Total Referrals</span><b>${stats.totalInvited}</b></article>
+        <article><i>₹</i><span>Total Rewards</span><b>${App.money(stats.totalBonus)}</b></article>
+        <article><i>🎫</i><span>Your Code</span><b>${App.escapeHtml(u.referralCode || "-")}</b><button onclick="AITradeXUser.copyReferral('code', this)">Copy</button></article>
+        <article><i>🎁</i><span>Rewards Earned</span><b>${App.money(stats.credited || stats.totalBonus || 0)}</b></article>
+      </section>
+
+      <section class="pro-card">
+        <div class="pro-card-head"><i>👤</i><h2>Invite Friends</h2></div>
+        <p class="profile-note">Share your link and earn rewards when they join and trade.</p>
+        <div class="referral-link-box"><span>${App.escapeHtml(link)}</span><button type="button" class="copy-action" onclick="AITradeXUser.copyReferral('link', this)">Copy Link</button></div>
         <div class="referral-actions">
-          <a class="btn" href="https://wa.me/?text=${shareText}" target="_blank" rel="noopener">Share on WhatsApp</a>
+          <a class="btn" href="https://wa.me/?text=${shareText}" target="_blank" rel="noopener">WhatsApp</a>
           <button type="button" class="btn ghost copy-action" onclick="AITradeXUser.copyReferral('code', this)">Copy Code</button>
         </div>
       </section>
 
-      <section class="compact-grid referral-summary-grid">
-        <article><span>Total Invited</span><b>${stats.totalInvited}</b><small>Registered users</small></article>
-        <article><span>Deposit Bonus</span><b>${App.money(stats.depositBonus)}</b><small>${settings.referralDepositPercent || 0}% auto credit</small></article>
-        <article><span>Subscription Bonus</span><b>${App.money(stats.subscriptionBonus)}</b><small>${settings.referralSubscriptionPercent || 0}% auto credit</small></article>
-        <article><span>Total Earned</span><b>${App.money(stats.totalBonus)}</b><small>Wallet credited</small></article>
-      </section>
-
-      <section class="premium-card">
-        <div class="card-row"><div><p>REFERRAL RULES</p><h2>How rewards work</h2></div></div>
-        <div class="profile-info-grid">
-          <article><span>First Deposit Bonus</span><b>${settings.referralDepositEnabled === false ? "Disabled" : `${Number(settings.referralDepositPercent || 0)}%`}</b></article>
-          <article><span>Subscription Bonus</span><b>${settings.referralSubscriptionEnabled === false ? "Disabled" : `${Number(settings.referralSubscriptionPercent || 0)}%`}</b></article>
-          <article><span>Credit Type</span><b>Automatic</b></article>
-          <article><span>Wallet</span><b>Available Balance</b></article>
+      <section class="pro-card">
+        <div class="pro-card-head"><i>🕒</i><h2>Referral History</h2><button class="ghost-action">View All</button></div>
+        <div class="referral-user-list">
+          ${referrals.length ? referrals.map(row => {
+            const target = (App.state.users || []).find(user => user.id === row.referredUserId) || {};
+            const depositBonus = row.bonuses?.deposit;
+            const subscriptionBonus = row.bonuses?.subscription;
+            const total = Number(depositBonus?.amount || 0) + Number(subscriptionBonus?.amount || 0);
+            return `<article class="referral-user-card">
+              <div><b>${App.escapeHtml(target.name || "Referred User")}</b><span>${App.escapeHtml(target.email || "-")}</span><small>${row.createdAt ? new Date(row.createdAt).toLocaleDateString("en-IN") : "-"}</small></div>
+              <span class="drawer-status ${total ? "good" : "neutral"}">${total ? "Reward Paid" : "Joined"}</span>
+              <strong>${App.money(total)}</strong>
+            </article>`;
+          }).join("") : `<div class="empty-state">No referrals yet.</div>`}
         </div>
       </section>
 
-      <section class="premium-card">
-        <div class="card-row"><div><p>REFERRED USERS</p><h2>Your Referral List</h2></div><span class="history-mode">${referrals.length}</span></div>
-        <div class="referral-user-list">${referrals.length ? referrals.map(referredCard).join("") : `<div class="empty-state">No referred users yet. Share your link to start earning.</div>`}</div>
-      </section>
+      <section class="pro-card pro-note-card"><i>ℹ</i><p>First deposit bonus: ${settings.referralDepositEnabled === false ? "Disabled" : `${Number(settings.referralDepositPercent || 0)}%`} · Subscription bonus: ${settings.referralSubscriptionEnabled === false ? "Disabled" : `${Number(settings.referralSubscriptionPercent || 0)}%`}</p></section>
     `);
   }
-
   function profilePage() {
     const u = user();
     const savedName = displayName();
     const plan = currentPlan();
     const kyc = currentKyc();
     const bankApproved = approvedPaymentMethods().length;
+    const balance = App.realBalance(u.id);
+    const pnl = pnlValue();
+    const totalTrades = (App.state.trades || []).filter(t => t.userId === u.id).length;
+    const closed = (App.state.trades || []).filter(t => t.userId === u.id && String(t.status || "").toUpperCase() === "CLOSED");
+    const wins = closed.filter(t => Number(t.pnl || 0) >= 0).length;
+    const winRate = closed.length ? Math.round((wins / closed.length) * 100) : 0;
 
     shell(`
-      <section class="inner-hero-card profile-hero-card">
-        <div class="profile-hero-left">
+      <section class="pro-page-head profile-pro-head">
+        <div class="pro-profile-top">
           ${avatar(savedName)}
           <div>
-            <p>PROFILE</p>
             <h1>${App.escapeHtml(savedName || "AITradeX User")}</h1>
-            <span>${App.escapeHtml(u.email)} · ${App.escapeHtml(u.mobile || "Mobile not added")}</span>
+            <p>${App.escapeHtml(u.email || "-")}</p>
+            <p>${App.escapeHtml(u.mobile || "Mobile not added")}</p>
           </div>
+          <button class="pro-outline-btn" onclick="document.getElementById('profileNameInput')?.focus()">Edit Profile</button>
         </div>
-        <span class="history-mode">${App.escapeHtml(accountMode)} Account</span>
       </section>
 
-      <section class="inner-status-strip profile-status-strip">
-        <article><span>KYC</span><b>${String(kyc.status || "NOT_SUBMITTED").replaceAll("_", " ")}</b></article>
-        <article><span>Bank</span><b>${bankApproved} Approved</b></article>
-        <article><span>Plan</span><b>${App.escapeHtml(plan?.name || "Free")}</b></article>
-        <article><span>Wallet</span><b>${App.money(App.realBalance(u.id))}</b></article>
+      <section class="pro-status-card two">
+        <article><i>🛡</i><span>Account Status</span><b class="profit-text">${App.escapeHtml(String(u.status || "ACTIVE"))}</b><small>Your account is in good standing.</small></article>
+        <article><i>🪪</i><span>KYC Status</span><b class="${kyc.status === "APPROVED" ? "profit-text" : "warn-text"}">${String(kyc.status || "NOT_SUBMITTED").replaceAll("_"," ")}</b><small>${kyc.approvedAt ? `Verified on ${new Date(kyc.approvedAt).toLocaleDateString("en-IN")}` : "Complete KYC for withdrawals."}</small></article>
       </section>
 
-      <section class="premium-card profile-editor-card compact-profile-editor">
-        <div class="card-row"><div><p>EDIT PROFILE</p><h2>Personal display</h2></div><span class="history-mode">Browser Saved</span></div>
-        <div class="profile-preview">
-          ${avatar(savedName)}
-          <div>
-            <b>${App.escapeHtml(savedName)}</b>
-            <span>${App.escapeHtml(u.email)}</span>
-          </div>
+      <section class="pro-card">
+        <div class="pro-card-head"><i>👤</i><h2>Personal Details</h2></div>
+        <div class="pro-detail-list">
+          <div><span>Full Name</span><b>${App.escapeHtml(savedName || "-")}</b></div>
+          <div><span>Email</span><b>${App.escapeHtml(u.email || "-")}</b></div>
+          <div><span>Mobile</span><b>${App.escapeHtml(u.mobile || "-")}</b></div>
+          <div><span>User ID</span><b>${App.escapeHtml(u.id || "-")}</b></div>
         </div>
+      </section>
+
+      <section class="pro-card">
+        <div class="pro-card-head"><i>💳</i><h2>Account Information</h2></div>
+        <div class="pro-detail-list">
+          <div><span>Current Plan</span><b>${App.escapeHtml(plan?.name || "Free")}</b></div>
+          <div><span>Approved Banks</span><b>${bankApproved}</b></div>
+          <div><span>Account Type</span><b>Standard</b></div>
+          <div><span>Joined</span><b>${u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-IN") : "-"}</b></div>
+        </div>
+      </section>
+
+      <section class="pro-card pro-edit-card">
+        <div class="pro-card-head"><i>✎</i><h2>Edit Profile</h2></div>
         <div class="profile-form compact-inner-form">
-          <label>Display Name<input id="profileNameInput" value="${App.escapeHtml(savedName)}" placeholder="Your display name"/></label>
-          <label>Avatar Image<input id="profileAvatarInput" type="file" accept="image/*"/><small>Uploads to user-avatars bucket when Supabase Storage is ready.</small></label>
+          <label>Display Name<input id="profileNameInput" value="${App.escapeHtml(savedName || "")}" placeholder="Your display name"/></label>
+          <label>Avatar<input id="profileAvatarInput" type="file" accept="image/*"/></label>
           <button class="save-profile-btn" onclick="AITradeXUser.saveProfile()">Save Profile</button>
         </div>
       </section>
 
-      <section class="premium-card profile-account-card">
-        <div class="card-row"><div><p>ACCOUNT DETAILS</p><h2>Basic Information</h2></div><button class="mini-action" onclick="AITradeXUser.copyText('${App.escapeHtml(u.referralCode || "")}', this)">Copy Code</button></div>
-        <div class="profile-info-grid compact-info-grid">
-          <article><span>Email</span><b>${App.escapeHtml(u.email)}</b></article>
-          <article><span>Mobile</span><b>${App.escapeHtml(u.mobile || "-")}</b></article>
-          <article><span>Referral Code</span><b>${App.escapeHtml(u.referralCode || "-")}</b></article>
-        </div>
+      <section class="pro-stat-grid">
+        <article><i>👛</i><span>Total Balance</span><b>${App.money(balance)}</b></article>
+        <article><i>↗</i><span>Total P/L</span><b class="${pnl >= 0 ? "profit-text" : "loss-text"}">${pnl >= 0 ? "+" : ""}${App.money(pnl)}</b></article>
+        <article><i>◔</i><span>Win Rate</span><b>${winRate}%</b></article>
+        <article><i>★</i><span>Total Trades</span><b>${totalTrades}</b></article>
       </section>
     `);
   }
-
-
   function sessionMinutesLeft() {
     const ms = App.sessionTimeLeft ? App.sessionTimeLeft() : 0;
     return Math.max(0, Math.ceil(ms / 60000));
@@ -3435,34 +3358,27 @@
     const u = user();
     const minutes = sessionMinutesLeft();
     const timeline = securityTimelineRows();
+
     shell(`
-      <section class="inner-hero-card security-hero-card">
-        <div>
-          <p>ACCOUNT SECURITY</p>
-          <h1>Keep your AITradeX account safe</h1>
-          <span>Session, password and login protection for this device.</span>
-        </div>
-        <span class="history-mode">${minutes} min left</span>
+      <section class="pro-security-hero">
+        <i>🛡</i>
+        <div><h1>Security</h1><p>Manage your account security settings and keep your assets protected.</p></div>
       </section>
 
-      <section class="inner-status-strip security-status-strip">
-        <article><span>Session</span><b>${minutes} min</b></article>
-        <article><span>Login Lock</span><b>6 Attempts</b></article>
-        <article><span>Account</span><b>${App.escapeHtml(String(u?.status || "ACTIVE"))}</b></article>
+      <section class="pro-status-card two">
+        <article><i>🛡</i><span>Account Security</span><b class="profit-text">Strong</b><small>Your account is well protected.</small></article>
+        <article><i>📈</i><span>Security Score</span><b class="profit-text">92/100</b><small>Session ${minutes} min left</small></article>
       </section>
 
-      <section class="premium-card security-control-card">
-        <div class="card-row"><div><p>SESSION CONTROL</p><h2>Current login session</h2></div><button class="mini-action" onclick="AITradeXUser.extendSession()">Extend Session</button></div>
-        <div class="profile-info-grid compact-info-grid">
-          <article><span>Signed in as</span><b>${App.escapeHtml(u?.email || "-")}</b></article>
-          <article><span>Role</span><b>User</b></article>
-          <article><span>Session time left</span><b>${minutes} min</b></article>
-          <article><span>Auto logout</span><b>After 24 hours</b></article>
-        </div>
+      <section class="pro-card pro-settings-list">
+        <div class="pro-setting-row"><i>🔒</i><div><b>Change Password</b><span>Update your password regularly.</span></div><button class="ghost-action" onclick="document.getElementById('securityCurrentPassword')?.focus()">Open</button></div>
+        <div class="pro-setting-row"><i>2FA</i><div><b>Two-Factor Authentication</b><span>Extra layer of security for your account.</span></div><span class="drawer-status good">Enabled</span></div>
+        <div class="pro-setting-row"><i>💻</i><div><b>Login Devices</b><span>Manage devices that have access to your account.</span></div><strong>This Device</strong></div>
+        <div class="pro-setting-row"><i>🔔</i><div><b>Login Alerts</b><span>Get notified about new logins and security events.</span></div><button class="pro-switch on"><em></em></button></div>
       </section>
 
-      <section class="premium-card security-password-card">
-        <div class="card-row"><div><p>PASSWORD</p><h2>Change password</h2></div><span class="history-mode">Protected</span></div>
+      <section class="pro-card security-password-card">
+        <div class="pro-card-head"><i>🔑</i><h2>Change Password</h2></div>
         <div class="profile-form compact-inner-form security-form-grid">
           <label>Current Password<input id="securityCurrentPassword" type="password" placeholder="Current password" autocomplete="current-password"/></label>
           <label>New Password<input id="securityNewPassword" type="password" placeholder="Minimum 4 characters" autocomplete="new-password"/></label>
@@ -3471,15 +3387,14 @@
         </div>
       </section>
 
-      <section class="premium-card security-timeline-card">
-        <div class="card-row"><div><p>SECURITY TIMELINE</p><h2>Recent account safety</h2></div><button class="ghost-action" onclick="AITradeXUser.logout()">Logout</button></div>
+      <section class="pro-card">
+        <div class="pro-card-head"><i>🕒</i><h2>Recent Security Activity</h2><button class="ghost-action" onclick="AITradeXUser.extendSession()">Extend Session</button></div>
         <div class="security-timeline-list">
           ${timeline.map(row => `<article class="security-timeline-row ${row.tone}"><span>${App.escapeHtml(row.label)}</span><b>${App.escapeHtml(row.value)}</b></article>`).join("")}
         </div>
       </section>
     `);
   }
-
   function supportTicketsForUser() {
     const u = user();
     if (!u) return [];
@@ -3535,48 +3450,34 @@
     const tickets = supportTicketsForUser();
     const openCount = tickets.filter(ticket => String(ticket.status || "OPEN").toUpperCase() !== "CLOSED").length;
     const closedCount = tickets.filter(ticket => String(ticket.status || "OPEN").toUpperCase() === "CLOSED").length;
+
     shell(`
-      <section class="inner-hero-card support-hero-card refined-support-hero">
-        <div>
-          <p>SUPPORT CENTER</p>
-          <h1>Help desk & ticket records</h1>
-          <span>Create official tickets for wallet, withdrawal, trade and account issues.</span>
-        </div>
-        <a class="whatsapp-help-btn" href="${supportWhatsAppLink()}" target="_blank" rel="noopener">WhatsApp Help</a>
+      <section class="pro-page-title">
+        <h1>Support</h1>
+        <p>We’re here to help you 24/7</p>
       </section>
 
-      <section class="inner-status-strip support-status-strip">
-        <article><span>Total Tickets</span><b>${tickets.length}</b></article>
-        <article><span>Open</span><b>${openCount}</b></article>
-        <article><span>Closed</span><b>${closedCount}</b></article>
-        <article><span>Channel</span><b>Ticket + WA</b></article>
+      <section class="pro-support-hero">
+        <i>🎧</i>
+        <div><h2>Need help?</h2><p>Find answers or get in touch with support.</p></div>
+        <a class="pro-outline-btn" href="${supportWhatsAppLink()}" target="_blank" rel="noopener">WhatsApp Help</a>
+      </section>
+
+      <section class="pro-support-topics">
+        ${["Account & Profile","Deposits & Withdrawals","Trading & Orders","Security","Other"].map((t,i)=>`<article><i>${["👛","₹","📈","🛡","…"][i]}</i><b>${t}</b></article>`).join("")}
       </section>
 
       <section class="support-grid refined-support-grid">
-        <form class="premium-card support-form-card form-grid compact-ticket-form" onsubmit="AITradeXUser.createSupportTicket(event)">
-          <div class="card-row"><div><p>NEW TICKET</p><h2>Create Support Ticket</h2></div><span class="history-mode">${openCount} Open</span></div>
-          <label>Category
-            <select id="supportCategory" required>
-              <option value="Deposit">Deposit</option>
-              <option value="Withdrawal">Withdrawal</option>
-              <option value="Trade">Trade</option>
-              <option value="Subscription">Subscription</option>
-              <option value="Referral">Referral</option>
-              <option value="Account">Account</option>
-              <option value="Other">Other</option>
-            </select>
-          </label>
-          <label>Subject
-            <input id="supportSubject" required maxlength="80" placeholder="Example: Withdrawal request not updated"/>
-          </label>
-          <label>Message
-            <textarea id="supportMessage" required rows="4" maxlength="700" placeholder="Write issue with amount, request ID or transaction detail if available."></textarea>
-          </label>
-          <button class="save-profile-btn">Submit Ticket</button>
+        <form class="pro-card support-form-card form-grid compact-ticket-form" onsubmit="AITradeXUser.createSupportTicket(event)">
+          <div class="pro-card-head"><i>＋</i><h2>New Ticket</h2><span>${openCount} Open</span></div>
+          <label>Category<select id="supportCategory" required><option value="Deposit">Deposit</option><option value="Withdrawal">Withdrawal</option><option value="Trade">Trade</option><option value="Subscription">Subscription</option><option value="Referral">Referral</option><option value="Account">Account</option><option value="Other">Other</option></select></label>
+          <label>Subject<input id="supportSubject" required maxlength="80" placeholder="Example: Withdrawal request not updated"/></label>
+          <label>Message<textarea id="supportMessage" required rows="4" maxlength="700" placeholder="Write issue with amount, request ID or transaction detail if available."></textarea></label>
+          <button class="save-profile-btn">Raise Ticket</button>
         </form>
 
-        <section class="premium-card support-list-card refined-ticket-list-card">
-          <div class="card-row"><div><p>YOUR TICKETS</p><h2>Ticket History</h2></div><span class="history-mode">${tickets.length}</span></div>
+        <section class="pro-card">
+          <div class="pro-card-head"><i>💬</i><h2>My Tickets</h2><span>${tickets.length} total</span></div>
           <div class="support-ticket-list compact-ticket-list">
             ${tickets.length ? tickets.map(supportTicketCard).join("") : `<div class="empty-state">No support tickets yet.</div>`}
           </div>
@@ -3584,49 +3485,40 @@
       </section>
     `);
   }
-
   function notificationPage() {
     const rows = userNotifications();
     const unread = rows.filter(n => !n.read).length;
-    const typeCount = type => rows.filter(n => String(n.type || "INFO").toUpperCase() === type).length;
+    const walletCount = rows.filter(n => ["WALLET","DEPOSIT","WITHDRAWAL"].includes(String(n.type || "").toUpperCase())).length;
+    const aiCount = rows.filter(n => String(n.type || "").toUpperCase() === "AI").length;
+    const supportCount = rows.filter(n => String(n.type || "").toUpperCase() === "SUPPORT").length;
+
     shell(`
-      <section class="inner-hero-card notification-hero-card">
-        <div>
-          <p>NOTIFICATIONS</p>
-          <h1>Updates center</h1>
-          <span>Wallet, AI trade, support, plan and account updates in one clean list.</span>
-        </div>
-        <button class="ghost-action" onclick="AITradeXUser.markNotificationsRead()">Mark all read</button>
+      <section class="pro-page-title notification-title-row">
+        <h1>Notifications</h1>
+        <button class="pro-outline-btn" onclick="AITradeXUser.markNotificationsRead()">✓ Mark all read</button>
       </section>
 
-      <section class="notification-filter-strip">
-        <span>All ${rows.length}</span>
-        <span>Unread ${unread}</span>
-        <span>Wallet ${typeCount("WALLET") + typeCount("DEPOSIT") + typeCount("WITHDRAWAL")}</span>
-        <span>AI ${typeCount("AI")}</span>
-        <span>Support ${typeCount("SUPPORT")}</span>
+      <section class="pro-tabs-wide">
+        <button class="active">All <small>${rows.length}</small></button>
+        <button>Wallet <small>${walletCount}</small></button>
+        <button>Trading <small>${aiCount}</small></button>
+        <button>Support <small>${supportCount}</small></button>
       </section>
 
-      <section class="premium-card notification-center-card refined-notification-card">
-        <div class="section-head">
-          <div><h3>Latest Notifications</h3><span>${unread} unread · newest first</span></div>
-          <span class="admin-count-pill">${rows.length} total</span>
-        </div>
-        <div class="notification-list compact-notification-list">
-          ${rows.length ? rows.map(n => `
-            <article class="notification-row ${n.read ? "read" : "unread"}">
-              <div class="notification-icon">${notificationIcon(n.type)}</div>
-              <div>
-                <b>${App.escapeHtml(n.title || "Notification")}</b>
-                <p>${App.escapeHtml(n.message || "")}</p>
-                <small>${n.createdAt ? new Date(n.createdAt).toLocaleString() : ""}</small>
-              </div>
-              ${n.linkPage ? `<button class="mini-action" onclick="AITradeXUser.openNotificationLink('${n.id}', '${n.linkPage}')">Open</button>` : `<button class="ghost-action" onclick="AITradeXUser.markSingleNotification('${n.id}')">Read</button>`}
-            </article>`).join("") : `<div class="empty-state">No notifications yet.</div>`}
-        </div>
-      </section>`);
+      <section class="pro-notification-list">
+        ${rows.length ? rows.map(n => `
+          <article class="${n.read ? "read" : "unread"}">
+            <i>${notificationIcon(n.type)}</i>
+            <div>
+              <b>${App.escapeHtml(n.title || "Notification")}</b>
+              <p>${App.escapeHtml(n.message || "")}</p>
+            </div>
+            <span>${n.createdAt ? new Date(n.createdAt).toLocaleString("en-IN") : ""}</span>
+            ${n.linkPage ? `<button onclick="AITradeXUser.openNotificationLink('${n.id}', '${n.linkPage}')">›</button>` : `<button onclick="AITradeXUser.markSingleNotification('${n.id}')">•</button>`}
+          </article>`).join("") : `<div class="empty-state">No notifications yet.</div>`}
+      </section>
+    `);
   }
-
   function notificationIcon(type) {
     const map = { DEPOSIT: "⬇️", WITHDRAWAL: "⬆️", AI: "🤖", WALLET: "💳", PLAN: "⭐", KYC: "🛡️", SUPPORT: "🎧", USER: "👤" };
     return map[String(type || "INFO").toUpperCase()] || "🔔";
