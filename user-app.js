@@ -1730,16 +1730,37 @@
 
   function appHeader() {
     const u = user();
+    const unread = userUnreadNotifications();
+    const currentTitle = page === "home" ? "Dashboard"
+      : page === "trade" ? "Trade"
+      : page === "positions" || page === "orders" ? "Positions"
+      : page === "wallet" ? "Wallet"
+      : page === "history" ? "History"
+      : page === "ai-settings" ? "AI Settings"
+      : page === "subscription" ? "Subscription"
+      : page === "kyc" ? "KYC"
+      : page === "payments" ? "Bank Accounts"
+      : page === "referral" ? "Referral"
+      : page === "support" ? "Support"
+      : page === "notifications" ? "Notifications"
+      : page === "security" ? "Security"
+      : page === "profile" ? "Profile"
+      : "AITradeX";
     return `
-      <header class="app-topbar compact-header">
-        <button class="menu-btn" onclick="AITradeXUser.toggleDrawer()">☰</button>
-        <div class="app-brand header-brand-text" aria-label="AITradeX">
-          <b>AITradeX</b>
-          <small>Smart trading workspace</small>
+      <header class="app-topbar ux-app-header">
+        <button class="ux-header-menu" onclick="AITradeXUser.toggleDrawer()" aria-label="Open menu">
+          <span></span><span></span><span></span>
+        </button>
+        <div class="ux-header-title">
+          <small>AITradeX</small>
+          <b>${App.escapeHtml(currentTitle)}</b>
         </div>
-        <div class="header-actions">
-          <button class="notification-bell" onclick="AITradeXUser.openNotifications()" aria-label="Notifications">🔔${notificationBadgeHtml()}</button>
-          ${profileNameChip()}
+        <div class="ux-header-actions">
+          <button class="ux-header-bell" onclick="AITradeXUser.openNotifications()" aria-label="Notifications">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.4 9.6a6.4 6.4 0 0 0-12.8 0c0 6.2-2.1 6.5-2.1 7.8h17c0-1.3-2.1-1.6-2.1-7.8Z"/><path d="M9.7 19.2a2.5 2.5 0 0 0 4.6 0"/></svg>
+            ${unread ? `<em>${unread > 9 ? "9+" : unread}</em>` : ""}
+          </button>
+          <button class="ux-header-avatar" onclick="AITradeXUser.go('profile')" aria-label="Profile">${String(displayName() || "A").trim().charAt(0).toUpperCase()}</button>
         </div>
       </header>
       ${drawerOpen ? menuDrawer() : ""}`;
@@ -1822,7 +1843,7 @@
       home: `<svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 11.2 12 4.7l7.5 6.5v7.6a1.7 1.7 0 0 1-1.7 1.7h-3.4v-5.8H9.6v5.8H6.2a1.7 1.7 0 0 1-1.7-1.7v-7.6Z"/><path d="M3 12.4 12 4l9 8.4"/></svg>`,
       trade: `<svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5v14"/><path d="M4.5 7.5 7 5l2.5 2.5"/><path d="M4.5 16.5 7 19l2.5-2.5"/><path d="M17 5v14"/><path d="M14.5 7.5 17 5l2.5 2.5"/><path d="M14.5 16.5 17 19l2.5-2.5"/></svg>`,
       orders: `<svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5h10a2 2 0 0 1 2 2v13H5v-13a2 2 0 0 1 2-2Z"/><path d="M9 3h6v4H9V3Z"/><path d="M8 11h8"/><path d="M8 15h8"/></svg>`,
-      positions: `<svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 6.8h15"/><path d="M7 4v5.5"/><path d="M17 4v5.5"/><path d="M4.5 17.2h15"/><path d="M10 14.5V20"/><path d="M14 14.5V20"/><path d="M8 12h8"/></svg>`,
+      positions: `<svg class="nav-svg positions-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7.2h14a1.7 1.7 0 0 1 1.7 1.7v9.1a1.7 1.7 0 0 1-1.7 1.7H5a1.7 1.7 0 0 1-1.7-1.7V8.9A1.7 1.7 0 0 1 5 7.2Z"/><path d="M8 7.2V5.8A1.8 1.8 0 0 1 9.8 4h4.4A1.8 1.8 0 0 1 16 5.8v1.4"/><path d="M7.2 12h3.2"/><path d="M13.6 12h3.2"/><path d="M7.2 15.7h6.6"/><path d="M16.7 15.7h.1"/></svg>`,
       wallet: `<svg class="nav-svg wallet-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.7h15.2a2 2 0 0 1 2 2v8.1a2 2 0 0 1-2 2H4.8a2 2 0 0 1-2-2V6.9c0-1 .7-1.8 1.7-2l10.7-1.7c1-.2 1.9.6 1.9 1.6v2.9"/><path d="M16.1 12.2h5.1v4.3h-5.1a2.1 2.1 0 1 1 0-4.3Z"/><path d="M16.3 14.4h.1"/><path d="M6.4 7.5 15.1 6"/></svg>`,
       history: `<svg class="nav-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.6 11.2a7.6 7.6 0 1 1 2.2 6.1"/><path d="M4 6.5v4.9h4.9"/><path d="M12 8v4.4l3 1.8"/></svg>`
     };

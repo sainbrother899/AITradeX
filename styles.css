@@ -8243,3 +8243,118 @@ input:focus,select:focus,textarea:focus{
   .ux-position-summary,.ux-history-summary{grid-template-columns:1fr;gap:8px;}
   .ux-position-summary article,.ux-history-summary article{border:1px solid rgba(255,255,255,.08);border-radius:16px;background:rgba(255,255,255,.035);}
 }
+
+
+/* AITradeX Header + Positions Nav Fix */
+.aitx-app .ux-app-header{
+  height:72px!important;
+  padding:10px 14px!important;
+  background:linear-gradient(180deg,rgba(4,13,27,.92),rgba(4,13,27,.74))!important;
+  border-bottom:1px solid rgba(132,177,235,.13)!important;
+  box-shadow:0 10px 28px rgba(0,0,0,.20)!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:12px!important;
+}
+.aitx-app .ux-header-menu{
+  width:48px!important;
+  height:48px!important;
+  border:1px solid rgba(34,230,243,.22)!important;
+  background:rgba(34,230,243,.08)!important;
+  border-radius:16px!important;
+  display:grid!important;
+  place-items:center!important;
+  gap:0!important;
+  padding:0!important;
+  box-shadow:none!important;
+}
+.aitx-app .ux-header-menu span{
+  display:block;
+  width:20px;
+  height:2px;
+  border-radius:99px;
+  background:var(--ux-cyan,#22e6f3);
+  box-shadow:0 0 10px rgba(34,230,243,.45);
+  margin:2px 0;
+}
+.aitx-app .ux-header-title{
+  flex:1;
+  min-width:0;
+  display:grid;
+  line-height:1.05;
+}
+.aitx-app .ux-header-title small{
+  color:var(--ux-muted,#9eafc8);
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.aitx-app .ux-header-title b{
+  margin-top:4px;
+  color:#fff;
+  font-size:22px;
+  font-weight:1000;
+  letter-spacing:-.04em;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.aitx-app .ux-header-actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.aitx-app .ux-header-bell,
+.aitx-app .ux-header-avatar{
+  width:44px;
+  height:44px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(255,255,255,.055);
+  color:#fff;
+  display:grid;
+  place-items:center;
+  position:relative;
+  font-weight:1000;
+  box-shadow:none;
+}
+.aitx-app .ux-header-bell svg{
+  width:21px;
+  height:21px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.aitx-app .ux-header-bell em{
+  position:absolute;
+  right:-2px;
+  top:-3px;
+  min-width:18px;
+  height:18px;
+  padding:0 4px;
+  border-radius:999px;
+  background:#ff4f6c;
+  color:#fff;
+  font-size:10px;
+  line-height:18px;
+  font-style:normal;
+  box-shadow:0 0 0 3px rgba(4,13,27,.95);
+}
+.aitx-app .ux-header-avatar{
+  background:linear-gradient(135deg,var(--ux-cyan,#22e6f3),var(--ux-blue,#4aa8ff));
+  color:#04111f;
+}
+.aitx-app .header-brand-text,
+.aitx-app .header-actions,
+.aitx-app .compact-header .menu-btn{
+  display:none!important;
+}
+.aitx-app .bottom-nav .positions-svg{
+  stroke-width:1.8;
+}
+.aitx-app .bottom-nav button.active .positions-svg path{
+  stroke:var(--ux-cyan,#22e6f3);
+}

@@ -1,0 +1,23 @@
+AITradeX Phase 6.9.5 - Header + Positions Nav Icon Fix
+
+Base:
+- AITradeX-Phase6.9.5-UPIPayeeNameFix.zip
+
+Scope:
+- User top header
+- User bottom nav Positions icon
+
+Changed:
+1. Replaced user top header markup with clean mobile app header:
+   - new menu button
+   - AITradeX label
+   - current page title
+   - notification icon
+   - profile initial avatar
+
+2. Replaced Positions nav icon with clear portfolio/open-position icon.
+
+Not changed:
+- Admin side
+- SQL
+- AI/cron/referral/wallet/trade logic
