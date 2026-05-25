@@ -8588,3 +8588,94 @@ input:focus,select:focus,textarea:focus{
   border-color:rgba(255,82,109,.38)!important;
   color:var(--ux-red,#ff526d)!important;
 }
+
+
+/* Home Hero KYC Badge + Chart Motif Fix */
+.ux-home-hero:after{
+  content:none!important;
+}
+.ux-kyc-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 14px;
+  border-radius:999px;
+  border:1px solid rgba(247,189,69,.42);
+  background:rgba(247,189,69,.10);
+  color:#f6bd44;
+  font-size:14px;
+  font-weight:1000;
+  box-shadow:none;
+}
+.ux-kyc-badge i{
+  width:24px;
+  height:24px;
+  display:grid;
+  place-items:center;
+  border-radius:999px;
+  background:rgba(247,189,69,.18);
+  font-style:normal;
+  font-size:14px;
+  line-height:1;
+}
+.ux-home-chart-mark{
+  position:absolute;
+  right:20px;
+  bottom:18px;
+  width:160px;
+  height:82px;
+  pointer-events:none;
+  opacity:.55;
+}
+.ux-home-chart-mark .bar{
+  position:absolute;
+  bottom:0;
+  width:12px;
+  border-radius:10px 10px 4px 4px;
+  background:linear-gradient(180deg,rgba(34,230,243,.9),rgba(34,230,243,.15));
+  box-shadow:0 0 16px rgba(34,230,243,.18);
+}
+.ux-home-chart-mark .b1{left:8px;height:22px;}
+.ux-home-chart-mark .b2{left:32px;height:38px;}
+.ux-home-chart-mark .b3{left:56px;height:30px;}
+.ux-home-chart-mark .b4{left:80px;height:52px;}
+.ux-home-chart-mark .line{
+  position:absolute;
+  display:block;
+  height:3px;
+  border-radius:999px;
+  background:linear-gradient(90deg,rgba(34,230,243,.35),rgba(34,230,243,.95));
+  transform-origin:left center;
+  box-shadow:0 0 12px rgba(34,230,243,.28);
+}
+.ux-home-chart-mark .l1{
+  left:18px;
+  top:42px;
+  width:48px;
+  transform:rotate(-18deg);
+}
+.ux-home-chart-mark .l2{
+  left:60px;
+  top:31px;
+  width:54px;
+  transform:rotate(24deg);
+}
+@media(max-width:620px){
+  .ux-kyc-badge{
+    padding:8px 12px;
+    font-size:13px;
+  }
+  .ux-home-chart-mark{
+    right:14px;
+    bottom:16px;
+    width:128px;
+    height:70px;
+  }
+  .ux-home-chart-mark .bar{width:10px;}
+  .ux-home-chart-mark .b1{left:4px;height:18px;}
+  .ux-home-chart-mark .b2{left:24px;height:31px;}
+  .ux-home-chart-mark .b3{left:44px;height:24px;}
+  .ux-home-chart-mark .b4{left:64px;height:43px;}
+  .ux-home-chart-mark .l1{left:12px;top:37px;width:40px;}
+  .ux-home-chart-mark .l2{left:48px;top:27px;width:44px;}
+}

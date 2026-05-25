@@ -2228,6 +2228,7 @@
     const plan = currentPlan();
     const subscription = activeSubscription();
     const kyc = currentKyc();
+    const kycApproved = String(kyc.status || "").toUpperCase() === "APPROVED";
     const recentRows = latestUserActivity(3);
 
     shell(`
@@ -2237,11 +2238,19 @@
             <p>AVAILABLE BALANCE</p>
             <h1>${App.money(balance)}</h1>
           </div>
-          <span>${statusPill(kyc.status)}</span>
+          ${kycApproved ? `<span class="ux-kyc-badge"><i>✓</i>KYC Verified</span>` : statusPill(kyc.status)}
         </div>
         <div class="ux-home-pnl">
           <span>Today P/L</span>
           <b class="${pnl >= 0 ? "profit-text" : "loss-text"}">${pnl >= 0 ? "+" : ""}${App.money(pnl)}</b>
+        </div>
+        <div class="ux-home-chart-mark" aria-hidden="true">
+          <span class="bar b1"></span>
+          <span class="bar b2"></span>
+          <span class="bar b3"></span>
+          <span class="bar b4"></span>
+          <em class="line l1"></em>
+          <em class="line l2"></em>
         </div>
       </section>
 

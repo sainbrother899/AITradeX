@@ -1,0 +1,13 @@
+AITradeX Phase 6.9.5 - Home KYC Badge + Chart Motif Fix
+
+Base:
+- AITradeX-Phase6.9.5-CopyNotificationToggleFix.zip
+
+Changes:
+1. Home hero card:
+   - Approved pill replaced by gold 'KYC Verified' badge when KYC status is approved.
+2. Removed X-style decorative mark from hero.
+3. Added chart/graph decorative motif similar to the reference mockup.
+
+No SQL required.
+No admin/AI/cron/referral/trade logic changes.
