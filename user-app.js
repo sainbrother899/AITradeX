@@ -1729,38 +1729,19 @@
   }
 
   function appHeader() {
-    const u = user();
     const unread = userUnreadNotifications();
-    const currentTitle = page === "home" ? "Dashboard"
-      : page === "trade" ? "Trade"
-      : page === "positions" || page === "orders" ? "Positions"
-      : page === "wallet" ? "Wallet"
-      : page === "history" ? "History"
-      : page === "ai-settings" ? "AI Settings"
-      : page === "subscription" ? "Subscription"
-      : page === "kyc" ? "KYC"
-      : page === "payments" ? "Bank Accounts"
-      : page === "referral" ? "Referral"
-      : page === "support" ? "Support"
-      : page === "notifications" ? "Notifications"
-      : page === "security" ? "Security"
-      : page === "profile" ? "Profile"
-      : "AITradeX";
     return `
-      <header class="app-topbar ux-app-header">
-        <button class="ux-header-menu" onclick="AITradeXUser.toggleDrawer()" aria-label="Open menu">
-          <span></span><span></span><span></span>
+      <header class="app-topbar ux-app-header ux-brand-header">
+        <button class="ux-header-brand" onclick="AITradeXUser.go('home')" aria-label="AITradeX Home">
+          <span class="ux-header-logo">X</span>
+          <b>AITrade<span>X</span></b>
         </button>
-        <div class="ux-header-title">
-          <small>AITradeX</small>
-          <b>${App.escapeHtml(currentTitle)}</b>
-        </div>
         <div class="ux-header-actions">
           <button class="ux-header-bell" onclick="AITradeXUser.openNotifications()" aria-label="Notifications">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.4 9.6a6.4 6.4 0 0 0-12.8 0c0 6.2-2.1 6.5-2.1 7.8h17c0-1.3-2.1-1.6-2.1-7.8Z"/><path d="M9.7 19.2a2.5 2.5 0 0 0 4.6 0"/></svg>
             ${unread ? `<em>${unread > 9 ? "9+" : unread}</em>` : ""}
           </button>
-          <button class="ux-header-avatar" onclick="AITradeXUser.go('profile')" aria-label="Profile">${String(displayName() || "A").trim().charAt(0).toUpperCase()}</button>
+          <button class="ux-header-avatar" onclick="AITradeXUser.toggleDrawer()" aria-label="Open profile menu">${String(displayName() || "A").trim().charAt(0).toUpperCase()}</button>
         </div>
       </header>
       ${drawerOpen ? menuDrawer() : ""}`;
@@ -2530,13 +2511,19 @@
 
           <div class="wallet-payment-box">
             ${depositDraft.type === "UPI" ? `
-              <div class="wallet-qr-wrap">
-                ${settings.depositQrImage ? `<img src="${App.escapeHtml(settings.depositQrImage)}" alt="Deposit QR"/>` : `<div class="qr-grid-mark">QR</div>`}
-              </div>
-              <div class="wallet-pay-lines">
-                <div class="copy-row"><b>Payee Name</b><span>${App.escapeHtml(upiPayeeName)}</span><button onclick="AITradeXUser.copyText(${jsArg(upiPayeeName)})">Copy</button></div>
-                <div class="copy-row"><b>UPI ID</b><span>${platformUpi}</span><button onclick="AITradeXUser.copyText(${jsArg(platformUpi)})">Copy</button></div>
-                <div class="copy-row"><b>Amount</b><span>${App.money(depositDraft.amount || 0)}</span><button onclick="AITradeXUser.copyText(${jsArg(depositDraft.amount || 0)})">Copy</button></div>
+              <div class="wallet-payment-box upi-box">
+                <div class="wallet-qr-wrap large">
+                  ${settings.depositQrImage ? `<img src="${App.escapeHtml(settings.depositQrImage)}" alt="Deposit QR"/>` : `<div class="qr-grid-mark">QR</div>`}
+                </div>
+                <div class="wallet-pay-lines upi-lines">
+                  <div class="upi-lines-head">
+                    <p>Payment Details</p>
+                    <button onclick="AITradeXUser.copyText(${jsArg(platformUpi)})">Copy</button>
+                  </div>
+                  <div class="upi-primary-line"><b>UPI ID</b><span>${platformUpi}</span></div>
+                  <div class="upi-secondary-line"><b>Payee Name</b><span>${App.escapeHtml(upiPayeeName)}</span></div>
+                  <small>Scan QR code or send to the UPI ID above.</small>
+                </div>
               </div>
             ` : `
               <div class="wallet-pay-lines bank-lines">

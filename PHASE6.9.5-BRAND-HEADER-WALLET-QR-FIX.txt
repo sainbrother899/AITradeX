@@ -1,0 +1,1 @@
+Header changed to AITradeX + notification + profile avatar (drawer opens from avatar). Wallet UPI panel redesigned with full QR, UPI ID, payee name, no amount copy section. No SQL required.
