@@ -8573,3 +8573,18 @@ input:focus,select:focus,textarea:focus{
     min-width:0!important;
   }
 }
+
+
+/* Copy button + notification toggle polish */
+.aitx-app .copy-row button.copy-success,
+.aitx-app button.copy-success{
+  background:rgba(33,229,143,.16)!important;
+  border-color:rgba(33,229,143,.42)!important;
+  color:var(--ux-green,#21e58f)!important;
+}
+.aitx-app .copy-row button.copy-failed,
+.aitx-app button.copy-failed{
+  background:rgba(255,82,109,.12)!important;
+  border-color:rgba(255,82,109,.38)!important;
+  color:var(--ux-red,#ff526d)!important;
+}

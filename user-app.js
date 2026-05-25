@@ -4,6 +4,7 @@
   const root = document.getElementById("app");
 
   let page = localStorage.getItem("AITradeX_ACTIVE_PAGE") || "home";
+  let notificationReturnPage = localStorage.getItem("AITradeX_NOTIFICATION_RETURN_PAGE") || "home";
   let authMode = "login";
   const referralParam = new URLSearchParams(window.location.search).get("ref") || "";
   let accountMode = "REAL";
@@ -2517,15 +2518,15 @@
                 ${settings.depositQrImage ? `<img src="${App.escapeHtml(settings.depositQrImage)}" alt="Deposit QR"/>` : `<div class="qr-grid-mark">QR</div>`}
               </div>
               <div class="wallet-pay-lines">
-                <div class="copy-row"><b>Payee Name</b><span>${App.escapeHtml(upiPayeeName)}</span><button onclick="AITradeXUser.copyText(${jsArg(upiPayeeName)})">Copy</button></div>
-                <div class="copy-row"><b>UPI ID</b><span>${platformUpi}</span><button onclick="AITradeXUser.copyText(${jsArg(platformUpi)})">Copy</button></div>
+                <div class="copy-row"><b>Payee Name</b><span>${App.escapeHtml(upiPayeeName)}</span><button onclick="AITradeXUser.copyText(${jsArg(upiPayeeName)}, this)">Copy</button></div>
+                <div class="copy-row"><b>UPI ID</b><span>${platformUpi}</span><button onclick="AITradeXUser.copyText(${jsArg(platformUpi)}, this)">Copy</button></div>
               </div>
             ` : `
               <div class="wallet-pay-lines bank-lines">
-                <div class="copy-row"><b>Account Name</b><span>${bankDetails.accountName}</span><button onclick="AITradeXUser.copyText(${jsArg(bankDetails.accountName)})">Copy</button></div>
-                <div class="copy-row"><b>Bank Name</b><span>${bankDetails.bankName}</span><button onclick="AITradeXUser.copyText(${jsArg(bankDetails.bankName)})">Copy</button></div>
-                <div class="copy-row"><b>Account Number</b><span>${bankDetails.accountNumber}</span><button onclick="AITradeXUser.copyText(${jsArg(bankDetails.accountNumber)})">Copy</button></div>
-                <div class="copy-row"><b>IFSC Code</b><span>${bankDetails.ifsc}</span><button onclick="AITradeXUser.copyText(${jsArg(bankDetails.ifsc)})">Copy</button></div>
+                <div class="copy-row"><b>Account Name</b><span>${bankDetails.accountName}</span><button onclick="AITradeXUser.copyText(${jsArg(bankDetails.accountName)}, this)">Copy</button></div>
+                <div class="copy-row"><b>Bank Name</b><span>${bankDetails.bankName}</span><button onclick="AITradeXUser.copyText(${jsArg(bankDetails.bankName)}, this)">Copy</button></div>
+                <div class="copy-row"><b>Account Number</b><span>${bankDetails.accountNumber}</span><button onclick="AITradeXUser.copyText(${jsArg(bankDetails.accountNumber)}, this)">Copy</button></div>
+                <div class="copy-row"><b>IFSC Code</b><span>${bankDetails.ifsc}</span><button onclick="AITradeXUser.copyText(${jsArg(bankDetails.ifsc)}, this)">Copy</button></div>
               </div>
             `}
           </div>
@@ -3636,6 +3637,10 @@
       }
     },
     go(next) {
+      if (next !== "notifications" && page !== "notifications") {
+        notificationReturnPage = page || "home";
+        localStorage.setItem("AITradeX_NOTIFICATION_RETURN_PAGE", notificationReturnPage);
+      }
       page = next;
       drawerOpen = false;
       localStorage.setItem("AITradeX_ACTIVE_PAGE", page);
@@ -3647,7 +3652,13 @@
       render();
     },
     openNotifications() {
-      page = "notifications";
+      if (page === "notifications") {
+        page = notificationReturnPage && notificationReturnPage !== "notifications" ? notificationReturnPage : "home";
+      } else {
+        notificationReturnPage = page || "home";
+        localStorage.setItem("AITradeX_NOTIFICATION_RETURN_PAGE", notificationReturnPage);
+        page = "notifications";
+      }
       drawerOpen = false;
       localStorage.setItem("AITradeX_ACTIVE_PAGE", page);
       render();
@@ -3708,7 +3719,7 @@
           targetButton.classList.remove("copy-success", "copy-failed");
           targetButton.textContent = oldText;
           targetButton.disabled = false;
-        }, 1600);
+        }, 1400);
       };
 
       const fallbackCopy = () => {
@@ -3716,15 +3727,15 @@
         input.value = text;
         input.setAttribute("readonly", "readonly");
         input.style.position = "fixed";
-        input.style.top = "50%";
-        input.style.left = "50%";
-        input.style.width = "1px";
-        input.style.height = "1px";
-        input.style.opacity = "0";
-        input.style.zIndex = "-1";
-        input.style.pointerEvents = "none";
+        input.style.left = "0";
+        input.style.top = "0";
+        input.style.width = "2px";
+        input.style.height = "2px";
+        input.style.opacity = "0.01";
+        input.style.zIndex = "999999";
+        input.style.background = "transparent";
         document.body.appendChild(input);
-        input.focus({ preventScroll: true });
+        input.focus();
         input.select();
         input.setSelectionRange(0, input.value.length);
         let copied = false;
@@ -3739,7 +3750,7 @@
 
       try {
         let copied = false;
-        if (navigator.clipboard?.writeText) {
+        if (window.isSecureContext && navigator.clipboard?.writeText) {
           try {
             await navigator.clipboard.writeText(text);
             copied = true;

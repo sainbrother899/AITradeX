@@ -1,0 +1,15 @@
+AITradeX Phase 6.9.5 - Copy + Notification Toggle Fix
+
+Base:
+- AITradeX-Phase6.9.5-ProfileHeaderQrFix.zip
+
+Fixes:
+1. Wallet payment copy buttons now pass the clicked button into copyText.
+2. copyText fallback improved for mobile browsers.
+3. Copy button now shows Copied ✓ feedback.
+4. Notification icon behavior:
+   - first tap opens Notifications page
+   - second tap returns to previous page/home
+
+No SQL required.
+Admin/AI/cron/referral/trading logic untouched.
