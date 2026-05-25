@@ -1,0 +1,36 @@
+AITradeX Final Clean Baseline
+
+Base:
+- AITradeX-Phase6.9.5-AllProfileSectionsRedesign.zip
+
+This is the single clean baseline ZIP to use going forward.
+
+Included latest updates:
+- Landing page redesign and fixes
+- User dashboard/profile header refinements
+- Wallet clean premium deposit/withdraw records flow
+- UPI payee name display
+- Wallet copy button fix
+- Notification toggle behavior
+- Home KYC Verified badge + chart motif
+- Profile menu refined
+- Profile menu sections redesigned:
+  Profile, KYC, Bank Accounts, Notifications, Security, Subscription, AI Settings, Referral, Support
+
+Preserved:
+- Admin side
+- SQL
+- Supabase/database logic
+- AI live/auto trade logic
+- Cron logic
+- Wallet ledger logic
+- Deposit/withdraw logic
+- Referral logic
+- Subscription purchase logic
+
+Changed for clean baseline:
+- Removed old phase/update note TXT files from ZIP root
+- Updated cache version in HTML files to final-clean-baseline
+- Verified JS syntax with node --check
+
+No SQL required for this ZIP.
