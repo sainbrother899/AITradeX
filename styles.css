@@ -8360,28 +8360,216 @@ input:focus,select:focus,textarea:focus{
 }
 
 
-/* Header brand + wallet UPI visual fix */
-.aitx-app .ux-brand-header{justify-content:space-between!important;}
-.aitx-app .ux-header-brand{display:flex!important;align-items:center!important;gap:12px!important;background:transparent!important;border:0!important;padding:0!important;min-width:0!important;color:#fff!important;}
-.aitx-app .ux-header-logo{width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,#19e4f1,#48a8ff);display:grid;place-items:center;font-size:22px;font-weight:1000;color:#03111f;box-shadow:0 0 18px rgba(34,230,243,.22);}
-.aitx-app .ux-header-brand b{font-size:24px;font-weight:1000;letter-spacing:-.04em;white-space:nowrap;}
-.aitx-app .ux-header-brand b span{color:var(--ux-cyan,#22e6f3);}
-.aitx-app .ux-header-actions{margin-left:auto;}
-.aitx-app .wallet-payment-box.upi-box{grid-template-columns:160px 1fr!important;align-items:stretch!important;gap:14px!important;padding:14px!important;}
-.aitx-app .wallet-qr-wrap.large{width:160px!important;height:160px!important;padding:10px!important;align-self:center!important;justify-self:center!important;border-radius:16px!important;overflow:hidden!important;background:#fff!important;}
-.aitx-app .wallet-qr-wrap.large img{width:100%!important;height:100%!important;object-fit:contain!important;display:block!important;}
-.aitx-app .wallet-pay-lines.upi-lines{display:grid!important;gap:10px!important;align-content:center!important;}
-.aitx-app .upi-lines-head{display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:8px;}
-.aitx-app .upi-lines-head p{margin:0;color:var(--muted);font-size:12px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;}
-.aitx-app .upi-lines-head button{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#fff;border-radius:12px;padding:10px 16px;font-weight:900;}
-.aitx-app .upi-primary-line,.aitx-app .upi-secondary-line{display:grid;gap:3px;}
-.aitx-app .upi-primary-line b,.aitx-app .upi-secondary-line b{font-size:12px;color:var(--muted);font-weight:900;}
-.aitx-app .upi-primary-line span{font-size:18px;font-weight:1000;word-break:break-word;}
-.aitx-app .upi-secondary-line span{font-size:15px;font-weight:850;word-break:break-word;}
-.aitx-app .wallet-pay-lines.upi-lines small{color:var(--muted);font-size:12px;line-height:1.45;border-top:1px solid rgba(255,255,255,.08);padding-top:8px;}
-@media(max-width:760px){
-  .aitx-app .ux-header-logo{width:38px;height:38px;font-size:20px;}
-  .aitx-app .ux-header-brand b{font-size:21px;}
-  .aitx-app .wallet-payment-box.upi-box{grid-template-columns:1fr!important;}
-  .aitx-app .wallet-qr-wrap.large{width:170px!important;height:170px!important;}
+/* ==========================================================================
+   AITradeX Profile Header + Wallet QR Fix
+   - hamburger removed
+   - profile avatar opens drawer/menu
+   - header matches mobile app mockup style
+   - QR displays complete, not cropped
+   ========================================================================== */
+
+.aitx-app .ux-brand-header{
+  height:78px!important;
+  padding:12px 18px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:14px!important;
+  background:rgba(4,13,27,.80)!important;
+  border-bottom:1px solid rgba(132,177,235,.10)!important;
+  box-shadow:none!important;
+}
+.aitx-app .ux-brand-lockup{
+  flex:1;
+  min-width:0;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  cursor:pointer;
+}
+.aitx-app .ux-brand-mark{
+  width:44px;
+  height:44px;
+  display:grid;
+  place-items:center;
+  color:#03111f;
+  font-weight:1000;
+  font-size:28px;
+  letter-spacing:-.09em;
+  border-radius:14px;
+  background:linear-gradient(135deg,#19e2ee 0%,#44a9ff 54%,#f6bd44 56%,#f6bd44 100%);
+  box-shadow:0 0 26px rgba(34,230,243,.18);
+  transform:skew(-8deg);
+}
+.aitx-app .ux-brand-lockup b{
+  color:#fff;
+  font-size:30px;
+  line-height:1;
+  font-weight:1000;
+  letter-spacing:-.055em;
+  white-space:nowrap;
+}
+.aitx-app .ux-brand-actions{
+  display:flex!important;
+  align-items:center!important;
+  gap:12px!important;
+}
+.aitx-app .ux-brand-bell,
+.aitx-app .ux-brand-avatar{
+  width:46px!important;
+  height:46px!important;
+  padding:0!important;
+  border-radius:999px!important;
+  display:grid!important;
+  place-items:center!important;
+  position:relative!important;
+  color:#fff!important;
+  background:rgba(255,255,255,.045)!important;
+  border:1px solid rgba(255,255,255,.08)!important;
+  box-shadow:none!important;
+}
+.aitx-app .ux-brand-avatar{
+  border-color:rgba(247,189,69,.80)!important;
+  background:rgba(255,255,255,.035)!important;
+}
+.aitx-app .ux-brand-bell svg,
+.aitx-app .ux-brand-avatar svg{
+  width:25px;
+  height:25px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.9;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.aitx-app .ux-brand-avatar svg{
+  color:rgba(230,238,255,.90);
+}
+.aitx-app .ux-brand-bell em{
+  position:absolute;
+  right:2px;
+  top:1px;
+  min-width:17px;
+  height:17px;
+  padding:0 4px;
+  border-radius:99px;
+  background:#f6bd44;
+  color:#06111f;
+  font-size:10px;
+  line-height:17px;
+  font-style:normal;
+  font-weight:1000;
+  box-shadow:0 0 0 3px rgba(4,13,27,.92);
+}
+
+/* Hide any older header elements/classes if cached CSS competes */
+.aitx-app .ux-header-menu,
+.aitx-app .ux-header-title,
+.aitx-app .ux-header-actions,
+.aitx-app .header-brand-text,
+.aitx-app .header-actions,
+.aitx-app .compact-header .menu-btn{
+  display:none!important;
+}
+
+/* Drawer is now the profile menu, opened by profile avatar */
+.aitx-app .side-drawer{
+  top:84px!important;
+}
+
+/* Wallet UPI payment card: full QR + payee/UPI only */
+.aitx-app .wallet-payment-box{
+  display:grid!important;
+  grid-template-columns:138px 1fr!important;
+  gap:16px!important;
+  align-items:center!important;
+  padding:14px!important;
+  overflow:visible!important;
+}
+.aitx-app .wallet-qr-wrap{
+  width:138px!important;
+  height:138px!important;
+  min-width:138px!important;
+  border-radius:14px!important;
+  background:#fff!important;
+  padding:8px!important;
+  display:grid!important;
+  place-items:center!important;
+  overflow:hidden!important;
+}
+.aitx-app .wallet-qr-wrap img{
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  object-fit:contain!important;
+  object-position:center!important;
+}
+.aitx-app .wallet-pay-lines{
+  display:grid!important;
+  gap:10px!important;
+  min-width:0!important;
+}
+.aitx-app .wallet-pay-lines .copy-row{
+  min-height:54px!important;
+  border-radius:14px!important;
+  background:rgba(255,255,255,.035)!important;
+}
+.aitx-app .wallet-pay-lines .copy-row b{
+  color:var(--ux-muted,#9eafc8)!important;
+}
+.aitx-app .wallet-pay-lines .copy-row span{
+  font-size:15px!important;
+  font-weight:950!important;
+  color:#fff!important;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.aitx-app .wallet-pay-lines .copy-row button{
+  border-radius:12px!important;
+}
+
+@media(max-width:620px){
+  .aitx-app .ux-brand-header{
+    height:76px!important;
+    padding:11px 14px!important;
+  }
+  .aitx-app .ux-brand-mark{
+    width:42px!important;
+    height:42px!important;
+    font-size:26px!important;
+  }
+  .aitx-app .ux-brand-lockup b{
+    font-size:28px!important;
+  }
+  .aitx-app .ux-brand-bell,
+  .aitx-app .ux-brand-avatar{
+    width:44px!important;
+    height:44px!important;
+  }
+  .aitx-app .wallet-payment-box{
+    grid-template-columns:126px 1fr!important;
+    gap:12px!important;
+    padding:12px!important;
+  }
+  .aitx-app .wallet-qr-wrap{
+    width:126px!important;
+    height:126px!important;
+    min-width:126px!important;
+  }
+}
+@media(max-width:390px){
+  .aitx-app .ux-brand-lockup b{
+    font-size:24px!important;
+  }
+  .aitx-app .ux-brand-actions{
+    gap:8px!important;
+  }
+  .aitx-app .wallet-payment-box{
+    grid-template-columns:1fr!important;
+  }
+  .aitx-app .wallet-qr-wrap{
+    width:100%!important;
+    height:210px!important;
+    min-width:0!important;
+  }
 }

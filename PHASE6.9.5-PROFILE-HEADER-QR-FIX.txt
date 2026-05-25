@@ -1,0 +1,19 @@
+AITradeX Phase 6.9.5 - Profile Header + QR Fix
+
+Base:
+- AITradeX-Phase6.9.5-HeaderNavIconFix.zip
+
+Changes:
+1. Removed hamburger/menu icon from user header.
+2. Header now matches mobile mockup style:
+   - AITradeX brand on left
+   - Notification bell on right
+   - Profile avatar on right
+3. Profile avatar now opens the existing full profile/menu drawer with all sections.
+4. Wallet Deposit UPI card fixed:
+   - QR shows complete, not half/cropped.
+   - Payee Name and UPI ID shown.
+   - Amount copy row removed.
+5. Admin side and logic untouched.
+
+No SQL required.

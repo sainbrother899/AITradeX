@@ -1731,17 +1731,19 @@
   function appHeader() {
     const unread = userUnreadNotifications();
     return `
-      <header class="app-topbar ux-app-header ux-brand-header">
-        <button class="ux-header-brand" onclick="AITradeXUser.go('home')" aria-label="AITradeX Home">
-          <span class="ux-header-logo">X</span>
-          <b>AITrade<span>X</span></b>
-        </button>
-        <div class="ux-header-actions">
-          <button class="ux-header-bell" onclick="AITradeXUser.openNotifications()" aria-label="Notifications">
+      <header class="app-topbar ux-brand-header">
+        <div class="ux-brand-lockup" onclick="AITradeXUser.go('home')" role="button" aria-label="AITradeX Home">
+          <span class="ux-brand-mark">X</span>
+          <b>AITradeX</b>
+        </div>
+        <div class="ux-brand-actions">
+          <button class="ux-brand-bell" onclick="AITradeXUser.openNotifications()" aria-label="Notifications">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.4 9.6a6.4 6.4 0 0 0-12.8 0c0 6.2-2.1 6.5-2.1 7.8h17c0-1.3-2.1-1.6-2.1-7.8Z"/><path d="M9.7 19.2a2.5 2.5 0 0 0 4.6 0"/></svg>
             ${unread ? `<em>${unread > 9 ? "9+" : unread}</em>` : ""}
           </button>
-          <button class="ux-header-avatar" onclick="AITradeXUser.toggleDrawer()" aria-label="Open profile menu">${String(displayName() || "A").trim().charAt(0).toUpperCase()}</button>
+          <button class="ux-brand-avatar" onclick="AITradeXUser.toggleDrawer()" aria-label="Open profile menu">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12.4a4.2 4.2 0 1 0 0-8.4 4.2 4.2 0 0 0 0 8.4Z"/><path d="M4.6 20.2a7.4 7.4 0 0 1 14.8 0"/></svg>
+          </button>
         </div>
       </header>
       ${drawerOpen ? menuDrawer() : ""}`;
@@ -2511,19 +2513,12 @@
 
           <div class="wallet-payment-box">
             ${depositDraft.type === "UPI" ? `
-              <div class="wallet-payment-box upi-box">
-                <div class="wallet-qr-wrap large">
-                  ${settings.depositQrImage ? `<img src="${App.escapeHtml(settings.depositQrImage)}" alt="Deposit QR"/>` : `<div class="qr-grid-mark">QR</div>`}
-                </div>
-                <div class="wallet-pay-lines upi-lines">
-                  <div class="upi-lines-head">
-                    <p>Payment Details</p>
-                    <button onclick="AITradeXUser.copyText(${jsArg(platformUpi)})">Copy</button>
-                  </div>
-                  <div class="upi-primary-line"><b>UPI ID</b><span>${platformUpi}</span></div>
-                  <div class="upi-secondary-line"><b>Payee Name</b><span>${App.escapeHtml(upiPayeeName)}</span></div>
-                  <small>Scan QR code or send to the UPI ID above.</small>
-                </div>
+              <div class="wallet-qr-wrap">
+                ${settings.depositQrImage ? `<img src="${App.escapeHtml(settings.depositQrImage)}" alt="Deposit QR"/>` : `<div class="qr-grid-mark">QR</div>`}
+              </div>
+              <div class="wallet-pay-lines">
+                <div class="copy-row"><b>Payee Name</b><span>${App.escapeHtml(upiPayeeName)}</span><button onclick="AITradeXUser.copyText(${jsArg(upiPayeeName)})">Copy</button></div>
+                <div class="copy-row"><b>UPI ID</b><span>${platformUpi}</span><button onclick="AITradeXUser.copyText(${jsArg(platformUpi)})">Copy</button></div>
               </div>
             ` : `
               <div class="wallet-pay-lines bank-lines">
@@ -2531,7 +2526,6 @@
                 <div class="copy-row"><b>Bank Name</b><span>${bankDetails.bankName}</span><button onclick="AITradeXUser.copyText(${jsArg(bankDetails.bankName)})">Copy</button></div>
                 <div class="copy-row"><b>Account Number</b><span>${bankDetails.accountNumber}</span><button onclick="AITradeXUser.copyText(${jsArg(bankDetails.accountNumber)})">Copy</button></div>
                 <div class="copy-row"><b>IFSC Code</b><span>${bankDetails.ifsc}</span><button onclick="AITradeXUser.copyText(${jsArg(bankDetails.ifsc)})">Copy</button></div>
-                <div class="copy-row"><b>Amount</b><span>${App.money(depositDraft.amount || 0)}</span><button onclick="AITradeXUser.copyText(${jsArg(depositDraft.amount || 0)})">Copy</button></div>
               </div>
             `}
           </div>
