@@ -386,6 +386,7 @@
       demoBalance: 100000,
       platformName: "AITradeX",
       depositUpiId: "aitradex@upi",
+      depositUpiName: "AITradeX Private Wallet",
       depositQrImage: "",
       depositUpiEnabled: true,
       depositBankEnabled: true,
@@ -2694,6 +2695,10 @@
             </div>
 
             <p>UPI / QR DETAILS</p>
+            <label>UPI Holder Name
+              <input id="settingUpiName" value="${esc(settings.depositUpiName || settings.depositAccountName || "AITradeX Private Wallet")}" placeholder="UPI holder / payee name" required/>
+              <small>This name will be shown to users with the UPI ID.</small>
+            </label>
             <label>UPI ID
               <input id="settingUpiId" value="${esc(settings.depositUpiId)}" placeholder="aitradex@upi" required/>
             </label>
@@ -2733,7 +2738,8 @@
               <div class="upi-pay-info">
                 <p>PAY VIA UPI</p>
                 <h2>${esc(settings.depositUpiId)}</h2>
-                <span>This is what users will see inside the deposit panel.</span>
+                <span>Payee: ${esc(settings.depositUpiName || settings.depositAccountName || "AITradeX Private Wallet")}</span>
+                <small>This is what users will see inside the deposit panel.</small>
               </div>
             </div>
             <div class="premium-bank-card">
@@ -3921,6 +3927,7 @@
         App.state.settings = {
           ...settings,
           depositUpiId: inputValue("settingUpiId") || "aitradex@upi",
+          depositUpiName: inputValue("settingUpiName") || inputValue("settingAccountName") || "AITradeX Private Wallet",
           depositQrImage: qrImage ?? (settings.depositQrImage || ""),
           depositUpiEnabled: document.getElementById("settingUpiEnabled")?.value !== "false",
           depositBankEnabled: document.getElementById("settingBankEnabled")?.value !== "false",
@@ -3929,7 +3936,7 @@
           depositAccountNumber: inputValue("settingAccountNumber") || "123456789012",
           depositIfsc: inputValue("settingIfsc").toUpperCase() || "AITX0001234"
         };
-        logAdminAction("PAYMENT_METHODS_UPDATE", "SETTINGS", "paymentMethods", { upiEnabled: App.state.settings.depositUpiEnabled, bankEnabled: App.state.settings.depositBankEnabled, upiId: App.state.settings.depositUpiId, bankName: App.state.settings.depositBankName });
+        logAdminAction("PAYMENT_METHODS_UPDATE", "SETTINGS", "paymentMethods", { upiEnabled: App.state.settings.depositUpiEnabled, bankEnabled: App.state.settings.depositBankEnabled, upiId: App.state.settings.depositUpiId, upiName: App.state.settings.depositUpiName, bankName: App.state.settings.depositBankName });
         await persistSettings("payment methods settings");
         App.saveState();
         App.toast("Payment methods saved.");

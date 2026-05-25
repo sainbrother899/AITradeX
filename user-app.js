@@ -1405,6 +1405,7 @@
       minDeposit: 500,
       minWithdrawal: 1000,
       depositUpiId: "aitradex@upi",
+      depositUpiName: "AITradeX Private Wallet",
       depositQrImage: "",
       depositUpiEnabled: true,
       depositBankEnabled: true,
@@ -2426,6 +2427,7 @@
     const maxWithdrawal = Number(settings.maxWithdrawal || 500000);
     const selectedWithdrawalMethod = approvedMethods.find(m => m.id === withdrawalDraft.methodId) || approvedMethods[0] || null;
     const platformUpi = settings.depositUpiId || "aitradex@upi";
+    const upiPayeeName = settings.depositUpiName || settings.depositAccountName || "AITradeX Private Wallet";
     const bankDetails = {
       accountName: settings.depositAccountName || "AITradeX Private Wallet",
       bankName: settings.depositBankName || "AITradeX Bank",
@@ -2511,6 +2513,7 @@
                 ${settings.depositQrImage ? `<img src="${App.escapeHtml(settings.depositQrImage)}" alt="Deposit QR"/>` : `<div class="qr-grid-mark">QR</div>`}
               </div>
               <div class="wallet-pay-lines">
+                <div class="copy-row"><b>Payee Name</b><span>${App.escapeHtml(upiPayeeName)}</span><button onclick="AITradeXUser.copyText(${jsArg(upiPayeeName)})">Copy</button></div>
                 <div class="copy-row"><b>UPI ID</b><span>${platformUpi}</span><button onclick="AITradeXUser.copyText(${jsArg(platformUpi)})">Copy</button></div>
                 <div class="copy-row"><b>Amount</b><span>${App.money(depositDraft.amount || 0)}</span><button onclick="AITradeXUser.copyText(${jsArg(depositDraft.amount || 0)})">Copy</button></div>
               </div>

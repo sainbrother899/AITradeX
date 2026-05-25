@@ -1,0 +1,27 @@
+AITradeX Phase 6.9.5 - UPI Payee Name Fix
+
+Base:
+- AITradeX-Phase6.9.5-UserAppStructuralRedesignPreview.zip
+
+Scope:
+- Admin payment method settings
+- User wallet deposit UPI details
+
+Changes:
+1. Admin → Payment Methods now has UPI Holder Name field.
+2. Saved setting key: settings.depositUpiName.
+3. User deposit page shows:
+   - Payee Name
+   - UPI ID
+   - Amount
+4. Admin payment preview also shows UPI payee name.
+5. Existing bank Account Holder Name remains unchanged.
+
+No SQL required:
+- This setting is stored in app_settings/settings JSON like other platform settings.
+
+Files changed:
+- admin-app.js
+- user-app.js
+- index.html cache version
+- admin.html cache version
