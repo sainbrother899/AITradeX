@@ -1758,10 +1758,11 @@
     const active = page === pageKey ? "active" : "";
     const badgeHtml = badge ? drawerStatusBadge(badge.label, badge.tone || tone) : "";
     return `
-      <button onclick="AITradeXUser.go('${pageKey}')" class="drawer-item rich ${active}">
-        <i>${icon}</i>
-        <span><b>${App.escapeHtml(title)}</b><small>${App.escapeHtml(subtitle)}</small></span>
+      <button onclick="AITradeXUser.go('${pageKey}')" class="drawer-item refined ${active}">
+        <i class="drawer-icon">${icon}</i>
+        <span class="drawer-copy"><b>${App.escapeHtml(title)}</b><small>${App.escapeHtml(subtitle)}</small></span>
         ${badgeHtml}
+        <u class="drawer-arrow">›</u>
       </button>`;
   }
 
@@ -1773,51 +1774,58 @@
     const openTickets = supportTicketsForUser().filter(ticket => String(ticket.status || "OPEN").toUpperCase() !== "CLOSED").length;
     const unread = userUnreadNotifications();
     const wallet = App.realBalance(u?.id || "");
-    const kycBadge = kyc.status === "APPROVED" ? { label: "Approved", tone: "good" } : kyc.status === "PENDING" ? { label: "Pending", tone: "warn" } : kyc.status === "REJECTED" ? { label: "Rejected", tone: "bad" } : { label: "Start", tone: "warn" };
+    const kycBadge = kyc.status === "APPROVED" ? { label: "Verified", tone: "good" } : kyc.status === "PENDING" ? { label: "Pending", tone: "warn" } : kyc.status === "REJECTED" ? { label: "Rejected", tone: "bad" } : { label: "Start", tone: "warn" };
     const bankBadge = bankApproved ? { label: `${bankApproved} Ready`, tone: "good" } : { label: "Add", tone: "warn" };
     const planBadge = { label: plan?.name || "Free", tone: activeSubscription() ? "good" : "neutral" };
-
     return `
       <div class="drawer-backdrop" onclick="AITradeXUser.toggleDrawer(false)"></div>
-      <aside class="side-drawer premium-drawer refined-drawer">
-        <div class="drawer-profile-card">
-          <div class="drawer-profile-top">
-            ${avatar(displayName())}
-            <div>
-              <b>${App.escapeHtml(displayName() || "AITradeX User")}</b>
-              <span>${App.escapeHtml(u?.email || u?.mobile || "User account")}</span>
+      <aside class="side-drawer premium-drawer refined-drawer profile-refined-drawer">
+        <div class="profile-drawer-shell">
+          <div class="profile-drawer-top">
+            <div class="profile-drawer-user">
+              ${avatar(displayName())}
+              <div>
+                <b>${App.escapeHtml(displayName() || "AITradeX User")}</b>
+                <span>${App.escapeHtml(u?.email || u?.mobile || "User account")}</span>
+              </div>
             </div>
+            <button class="drawer-close" onclick="AITradeXUser.toggleDrawer(false)" aria-label="Close menu">×</button>
           </div>
-          <div class="drawer-mini-grid">
-            <article><span>Mode</span><b>${App.escapeHtml(accountMode)}</b></article>
-            <article><span>Plan</span><b>${App.escapeHtml(plan?.name || "Free")}</b></article>
+
+          <div class="profile-drawer-strip">
             <article><span>Wallet</span><b>${App.money(wallet)}</b></article>
+            <article><span>Plan</span><b>${App.escapeHtml(plan?.name || "Free")}</b></article>
+            <article><span>KYC</span><b>${String(kyc.status || "PENDING").replace(/_/g,' ')}</b></article>
           </div>
-        </div>
 
-        <div class="drawer-group rich-group">
-          <span>Account</span>
-          ${drawerItem({ pageKey: "profile", icon: "👤", title: "Profile", subtitle: "Name, avatar and account details" })}
-          ${drawerItem({ pageKey: "kyc", icon: "🛡️", title: "KYC Verification", subtitle: "Required for verified withdrawals", badge: kycBadge })}
-          ${drawerItem({ pageKey: "payments", icon: "🏦", title: "Bank Accounts", subtitle: "Approved payout methods", badge: bankBadge })}
-          ${drawerItem({ pageKey: "notifications", icon: "🔔", title: "Notifications", subtitle: "Wallet, AI and support updates", badge: unread ? { label: `${unread} New`, tone: "warn" } : { label: "Clear", tone: "good" } })}
-          ${drawerItem({ pageKey: "security", icon: "🔐", title: "Security", subtitle: "Session, password and login safety", badge: { label: "Protected", tone: "good" } })}
-        </div>
+          <div class="profile-drawer-group">
+            <h4>Account</h4>
+            ${drawerItem({ pageKey: "profile", icon: "👤", title: "Profile", subtitle: "Personal details and account info" })}
+            ${drawerItem({ pageKey: "kyc", icon: "✔", title: "KYC Verification", subtitle: "Identity verification status", badge: kycBadge })}
+            ${drawerItem({ pageKey: "payments", icon: "🏦", title: "Bank Accounts", subtitle: "Approved payout accounts", badge: bankBadge })}
+            ${drawerItem({ pageKey: "notifications", icon: "🔔", title: "Notifications", subtitle: "Wallet, support and trade updates", badge: unread ? { label: `${unread} New`, tone: "warn" } : { label: "Clear", tone: "good" } })}
+            ${drawerItem({ pageKey: "security", icon: "🔐", title: "Security", subtitle: "Password and session safety", badge: { label: "Safe", tone: "good" } })}
+          </div>
 
-        <div class="drawer-group rich-group">
-          <span>Growth</span>
-          ${drawerItem({ pageKey: "subscription", icon: "⭐", title: "Subscription", subtitle: "AI trade limit and plan control", badge: planBadge })}
-          ${drawerItem({ pageKey: "ai-settings", icon: "🤖", title: "AI Settings", subtitle: "Auto trade amount and AI controls" })}
-          ${drawerItem({ pageKey: "referral", icon: "🎁", title: "Referral", subtitle: "Invite friends and earn credits" })}
-        </div>
+          <div class="profile-drawer-group">
+            <h4>Trading Tools</h4>
+            ${drawerItem({ pageKey: "subscription", icon: "★", title: "Subscription", subtitle: "Plan and AI trade limits", badge: planBadge })}
+            ${drawerItem({ pageKey: "ai-settings", icon: "🤖", title: "AI Settings", subtitle: "Auto trade amount and controls" })}
+            ${drawerItem({ pageKey: "referral", icon: "🎁", title: "Referral", subtitle: "Invite friends and earn credits" })}
+          </div>
 
-        <div class="drawer-group rich-group">
-          <span>Help</span>
-          ${drawerItem({ pageKey: "support", icon: "🎧", title: "Support", subtitle: "Raise tickets and check replies", badge: openTickets ? { label: `${openTickets} Open`, tone: "warn" } : { label: "Ready", tone: "good" } })}
-        </div>
+          <div class="profile-drawer-group">
+            <h4>Help</h4>
+            ${drawerItem({ pageKey: "support", icon: "🎧", title: "Support", subtitle: "Tickets, replies and help center", badge: openTickets ? { label: `${openTickets} Open`, tone: "warn" } : { label: "Ready", tone: "good" } })}
+          </div>
 
-        <div class="drawer-bottom-zone">
-          <button onclick="AITradeXUser.logout()" class="drawer-item danger rich"><i>🚪</i><span><b>Logout</b><small>Sign out from this device</small></span></button>
+          <div class="profile-drawer-bottom">
+            <button onclick="AITradeXUser.logout()" class="drawer-item refined danger">
+              <i class="drawer-icon">↪</i>
+              <span class="drawer-copy"><b>Logout</b><small>Sign out from this device</small></span>
+              <u class="drawer-arrow">›</u>
+            </button>
+          </div>
         </div>
       </aside>`;
   }

@@ -1,0 +1,12 @@
+AITradeX Phase 6.9.5 - Profile Menu Refined
+
+Base: AITradeX-Phase6.9.5-HomeKycChartFix.zip
+
+Changes:
+- Rebuilt profile drawer/menu layout in a cleaner mobile-app style.
+- Kept all menu sections: Profile, KYC, Bank Accounts, Notifications, Security, Subscription, AI Settings, Referral, Support, Logout.
+- Added cleaner top profile card and mini stats strip.
+- Improved item row styling and active/hover states.
+
+No SQL required.
+Admin/logic/trading untouched.

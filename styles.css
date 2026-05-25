@@ -8679,3 +8679,52 @@ input:focus,select:focus,textarea:focus{
   .ux-home-chart-mark .l1{left:12px;top:37px;width:40px;}
   .ux-home-chart-mark .l2{left:48px;top:27px;width:44px;}
 }
+
+
+/* Profile drawer refined - clean mobile app style */
+.aitx-app .profile-refined-drawer{
+  width:min(360px,92vw)!important;
+  top:84px!important;
+  left:auto!important;
+  right:14px!important;
+  bottom:14px!important;
+  padding:0!important;
+  border-radius:30px!important;
+  background:linear-gradient(180deg,rgba(8,18,34,.98),rgba(5,12,24,.98))!important;
+  border:1px solid rgba(255,255,255,.10)!important;
+  box-shadow:0 28px 80px rgba(0,0,0,.58)!important;
+  overflow:hidden!important;
+}
+.aitx-app .profile-drawer-shell{padding:14px;height:100%;overflow-y:auto;overscroll-behavior:contain;}
+.aitx-app .profile-drawer-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;}
+.aitx-app .profile-drawer-user{display:flex;align-items:center;gap:12px;min-width:0;}
+.aitx-app .profile-drawer-user .avatar{width:52px;height:52px;border-radius:18px;background:linear-gradient(135deg,#19e2ee,#44a9ff 58%,#f6bd44 58% 100%);font-size:18px;box-shadow:none;}
+.aitx-app .profile-drawer-user b{display:block;font-size:18px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.aitx-app .profile-drawer-user span{display:block;margin-top:4px;color:rgba(221,231,247,.66);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;}
+.aitx-app .drawer-close{width:42px;height:42px;border-radius:14px;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.045);color:#fff;font-size:22px;line-height:1;}
+.aitx-app .profile-drawer-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
+.aitx-app .profile-drawer-strip article{padding:12px 10px;border-radius:18px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035);}
+.aitx-app .profile-drawer-strip span{display:block;color:rgba(221,231,247,.56);font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;}
+.aitx-app .profile-drawer-strip b{display:block;margin-top:6px;color:#fff;font-size:14px;line-height:1.25;word-break:break-word;}
+.aitx-app .profile-drawer-group{margin-bottom:16px;}
+.aitx-app .profile-drawer-group h4{margin:0 0 8px;padding:0 4px;color:#8ea2c2;font-size:12px;font-weight:1000;letter-spacing:.10em;text-transform:uppercase;}
+.aitx-app .drawer-item.refined{width:100%;display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:10px;min-height:62px;padding:10px 12px;border:1px solid rgba(255,255,255,.08);border-radius:18px;background:rgba(255,255,255,.035);margin:7px 0;color:#fff;text-align:left;box-shadow:none;}
+.aitx-app .drawer-item.refined.active,.aitx-app .drawer-item.refined:hover{background:rgba(25,226,238,.08);border-color:rgba(25,226,238,.22);}
+.aitx-app .drawer-item.refined.danger{color:#ffd5db;background:rgba(255,82,109,.06);border-color:rgba(255,82,109,.18);}
+.aitx-app .drawer-icon{width:40px;height:40px;border-radius:14px;display:grid;place-items:center;background:rgba(25,226,238,.09);color:#22e6f3;font-style:normal;font-size:18px;}
+.aitx-app .drawer-item.refined.danger .drawer-icon{background:rgba(255,82,109,.12);color:#ff8396;}
+.aitx-app .drawer-copy{min-width:0;display:block;}
+.aitx-app .drawer-copy b{display:block;font-size:14px;color:#fff;line-height:1.2;}
+.aitx-app .drawer-copy small{display:block;margin-top:3px;color:rgba(226,232,255,.58);font-size:11px;line-height:1.25;}
+.aitx-app .drawer-item.refined .drawer-status{margin-left:0;}
+.aitx-app .drawer-arrow{font-style:normal;text-decoration:none;color:rgba(226,232,255,.48);font-size:22px;line-height:1;}
+.aitx-app .profile-drawer-bottom{margin-top:2px;padding-top:2px;}
+@media(max-width:620px){
+  .aitx-app .profile-refined-drawer{right:10px!important;top:80px!important;bottom:10px!important;width:min(348px,94vw)!important;}
+  .aitx-app .profile-drawer-strip{grid-template-columns:1fr 1fr 1fr;}
+}
+@media(max-width:390px){
+  .aitx-app .drawer-item.refined{grid-template-columns:auto 1fr auto;}
+  .aitx-app .drawer-arrow{display:none;}
+  .aitx-app .profile-drawer-user span{max-width:165px;}
+}
