@@ -935,13 +935,16 @@
 
   function updateTradeAmountPreviewDom() {
     const margin = Math.max(0, Number(tradeAmountPreview || 0));
-    const leverage = Math.max(1, Number(tradeLeveragePreview || 1));
+    const maxLeverage = Math.max(1, Number(platformSettings()?.maxLeverage || 2000));
+    const leverage = Math.max(1, Math.min(maxLeverage, Number(tradeLeveragePreview || 1)));
     const positionSize = margin * leverage;
     const marginEl = document.querySelector("[data-trade-preview-margin]");
     const positionEl = document.querySelector("[data-trade-preview-position]");
+    const leverageEl = document.querySelector("[data-trade-preview-leverage]");
     const summaryEl = document.querySelector("[data-trade-preview-summary]");
     if (marginEl) marginEl.textContent = App.money(margin);
     if (positionEl) positionEl.textContent = App.money(positionSize);
+    if (leverageEl) leverageEl.textContent = `${leverage}x`;
     if (summaryEl) summaryEl.textContent = `${selectedMarket} · ${selectedPair} · ${accountMode} · Margin ${App.money(margin)} · Position ${App.money(positionSize)}`;
   }
 
@@ -951,10 +954,10 @@
 
   function resetTradeTicketAfterOrder(message, detail = "") {
     tradeAmountPreview = "";
-    tradeLeveragePreview = 1;
+    tradeLeveragePreview = 10;
     tradeLimitPrice = "";
     localStorage.removeItem("AITradeX_TRADE_AMOUNT_PREVIEW");
-    localStorage.setItem("AITradeX_TRADE_LEVERAGE_PREVIEW", "1");
+    localStorage.setItem("AITradeX_TRADE_LEVERAGE_PREVIEW", "10");
     localStorage.removeItem("AITradeX_TRADE_LIMIT_PRICE");
     tradeOrderNotice = {
       title: message || "Order placed successfully",
@@ -2549,8 +2552,15 @@
   function tradePage() {
     const pair = selectedPairData();
     const balance = currentBalance();
+    const settings = platformSettings();
+    const maxLeverage = Math.max(1, Number(settings.maxLeverage || 2000));
+    const allowedLeverageOptions = leverageOptions.filter(x => x <= maxLeverage);
+    if (!allowedLeverageOptions.includes(Number(tradeLeveragePreview || 0))) {
+      tradeLeveragePreview = allowedLeverageOptions.includes(10) ? 10 : allowedLeverageOptions[0] || 1;
+      localStorage.setItem("AITradeX_TRADE_LEVERAGE_PREVIEW", String(tradeLeveragePreview));
+    }
     const marginValue = Number(tradeAmountPreview || 0);
-    const leverageValue = Math.max(1, Number(tradeLeveragePreview || 1));
+    const leverageValue = Math.max(1, Math.min(maxLeverage, Number(tradeLeveragePreview || 1)));
     const positionSize = marginValue * leverageValue;
     const tradeIsActive = isTradeActivePair(pair.pair);
     const marginWarning = tradeIsActive && marginValue > balance;
@@ -2613,17 +2623,22 @@
         ` : `<div class="coming-soon-trade-bar compact"><b>Market Coming Soon</b><span>This market will be available after data integration.</span></div>`}
 
         <div class="ux-order-stats">
-          <span><b>Margin</b>${App.money(tradeAmountPreview)}</span>
-          <span><b>Position</b>${App.money(positionSize)}</span>
-          <span><b>Leverage</b>${leverageValue}x</span>
+          <span><b>Margin</b><em data-trade-preview-margin>${App.money(tradeAmountPreview)}</em></span>
+          <span><b>Position</b><em data-trade-preview-position>${App.money(positionSize)}</em></span>
+          <span><b>Leverage</b><em data-trade-preview-leverage>${leverageValue}x</em></span>
           <span><b>Available</b>${App.money(balance)}</span>
         </div>
 
         ${marginWarning ? `<div class="order-warning-bar compact">Insufficient balance. Please reduce the amount or add funds.</div>` : ""}
 
-        <div class="ux-order-fields">
+        <div class="ux-order-fields leverage-enabled-fields">
           <label>Amount
             <input type="number" value="${App.escapeHtml(String(tradeAmountPreview || ""))}" min="1" oninput="AITradeXUser.setTradeAmount(this.value)" placeholder="Margin INR"/>
+          </label>
+          <label>Leverage
+            <select onchange="AITradeXUser.setTradeLeverage(this.value)">
+              ${allowedLeverageOptions.map(x => `<option value="${x}" ${leverageValue === x ? "selected" : ""}>${x}x</option>`).join("")}
+            </select>
           </label>
           <label>Order Type
             <select onchange="AITradeXUser.setTradeOrderType(this.value)">
@@ -2631,6 +2646,15 @@
               <option value="LIMIT" ${tradeOrderType === "LIMIT" ? "selected" : ""}>Limit</option>
             </select>
           </label>
+        </div>
+
+        <div class="trade-leverage-quick-row">
+          ${allowedLeverageOptions.slice(0, 8).map(x => `<button type="button" class="${leverageValue === x ? "active" : ""}" onclick="AITradeXUser.setTradeLeverage(${x})">${x}x</button>`).join("")}
+          ${allowedLeverageOptions.length > 8 ? `<button type="button" onclick="AITradeXUser.openSheet('leverage')">More</button>` : ""}
+        </div>
+
+        <div class="trade-position-summary" data-trade-preview-summary>
+          ${selectedMarket} · ${selectedPair} · ${accountMode} · Margin ${App.money(marginValue)} · Position ${App.money(positionSize)}
         </div>
 
         ${tradeOrderType === "LIMIT" ? `
@@ -4542,8 +4566,11 @@
     },
     setTradeLeverage(value) {
       clearTradeOrderNotice();
-      tradeLeveragePreview = Math.max(1, Number(String(value).replace("x", "") || 1));
+      const maxLeverage = Math.max(1, Number(platformSettings()?.maxLeverage || 2000));
+      const cleaned = Number(String(value).replace(/[^0-9.]/g, "") || 1);
+      tradeLeveragePreview = Math.max(1, Math.min(maxLeverage, cleaned));
       localStorage.setItem("AITradeX_TRADE_LEVERAGE_PREVIEW", String(tradeLeveragePreview));
+      updateTradeAmountPreviewDom();
       render();
     },
     setMarket(market) {

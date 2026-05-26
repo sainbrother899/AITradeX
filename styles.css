@@ -10802,3 +10802,51 @@ body,
     grid-template-columns:1fr;
   }
 }
+
+
+/* Manual Trade Margin/Leverage Fix */
+.ux-order-stats span em{
+  display:block;
+  margin-top:6px;
+  color:#fff;
+  font-style:normal;
+  font-weight:950;
+}
+.leverage-enabled-fields{
+  grid-template-columns:1fr 1fr 1fr!important;
+}
+.trade-leverage-quick-row{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin:12px 0 0;
+}
+.trade-leverage-quick-row button{
+  min-height:38px;
+  padding:0 12px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(255,255,255,.04);
+  color:#c7d4ea;
+  font-weight:900;
+}
+.trade-leverage-quick-row button.active{
+  color:#04111f;
+  background:linear-gradient(135deg,#22e6f3,#1ca6ff);
+  border-color:transparent;
+}
+.trade-position-summary{
+  margin-top:12px;
+  padding:12px 14px;
+  border:1px solid rgba(34,230,243,.18);
+  background:rgba(34,230,243,.055);
+  border-radius:15px;
+  color:#aebbd1;
+  font-size:13px;
+  line-height:1.4;
+}
+@media(max-width:620px){
+  .leverage-enabled-fields{
+    grid-template-columns:1fr!important;
+  }
+}

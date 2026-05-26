@@ -1,0 +1,16 @@
+AITradeX Manual Trade Margin/Leverage Fix
+
+Base:
+- AITradeX-Final-PolicyPages(1).zip
+
+Fixed:
+- Trade page leverage was not clearly selectable and appeared fixed at 1x.
+- Added visible Leverage dropdown in the order ticket.
+- Added quick leverage buttons on the trade page.
+- Margin, Position and Leverage preview now update clearly.
+- Reset after order now returns leverage to 10x instead of 1x.
+- Leverage is capped by admin maxLeverage setting.
+
+No SQL required.
+No admin logic changes.
+No wallet/AI/referral/subscription logic changes.
