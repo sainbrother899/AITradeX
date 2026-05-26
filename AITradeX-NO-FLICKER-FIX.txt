@@ -1,0 +1,18 @@
+AITradeX No Flicker / No Blink Fix
+
+Base:
+- AITradeX-Final-NewUserTracking.zip
+
+Reason:
+- Mobile/low-power browsers can show screen light blinking due to repeated repaint from glow, shimmer, background effects, chart iframe reload/repaint, and decorative animations.
+
+Fix:
+- Disabled non-essential animations.
+- Reduced heavy glow/shadow.
+- Stabilized chart/iframe repaint background.
+- Disabled decorative flashing/shimmer effects.
+- Added reduced-motion safety CSS.
+
+No logic changes.
+No SQL required.
+Admin/user functionality unchanged.

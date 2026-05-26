@@ -10591,3 +10591,123 @@ input:focus,select:focus,textarea:focus{
     grid-template-columns:1fr 1fr;
   }
 }
+
+
+/* ==========================================================================
+   AITradeX No Flicker / No Blink Visual Stability Fix
+   Purpose: reduce mobile light blinking caused by glow, shimmer, animations,
+   iframe repainting and heavy animated decorative effects.
+   ========================================================================== */
+
+/* Stop non-essential animation repaint on app surfaces */
+.aitx-app *,
+.admin-shell *,
+.lp-page *{
+  animation-duration:0s!important;
+  animation-iteration-count:1!important;
+  transition-duration:.12s!important;
+  scroll-behavior:auto!important;
+}
+
+/* Disable bright glow pulse / shimmer / decorative flicker */
+.ux-home-chart-mark,
+.ux-home-chart-mark *,
+.lp-growth-line::before,
+.lp-growth-line i,
+.lp-chart-line::before,
+.ai-score-circle,
+.ai-score-circle::before,
+.ux-brand-mark,
+.lp-brand span,
+.admin-dashboard-hero::before,
+.admin-dashboard-hero::after,
+.chart-spinner{
+  animation:none!important;
+  filter:none!important;
+}
+
+/* Reduce heavy light glow that looks like screen blinking on mobile */
+.ux-home-hero,
+.ux-trade-market-card,
+.ux-chart-card,
+.ux-order-card,
+.ux-position-summary,
+.ux-history-summary,
+.ux-history-card,
+.ux-activity-card,
+.ux-plan-strip,
+.wallet-clean-hero,
+.wallet-clean-card,
+.pro-card,
+.pro-status-card,
+.pro-ai-hero,
+.pro-bank-card,
+.pro-referral-stats,
+.pro-support-hero,
+.pro-plan-card,
+.panel-card,
+.metric-card,
+.ai-briefing-card,
+.ai-score-card-pro,
+.ai-history-score-strip,
+.new-user-tracker-panel{
+  box-shadow:0 10px 26px rgba(0,0,0,.22)!important;
+}
+
+/* Prevent TradingView / iframe white flash during repaint */
+iframe,
+.tradingview-widget-frame,
+.tradingview-chart-container,
+.native-chart-frame,
+.responsive-chart,
+.lp-tradingview-frame,
+.landing-tradingview-chart-container{
+  background:#050814!important;
+  backface-visibility:hidden!important;
+  transform:translateZ(0)!important;
+  will-change:auto!important;
+  contain:paint!important;
+}
+
+/* Keep page background stable */
+body,
+.app-root,
+.aitx-app,
+.admin-shell,
+.lp-page{
+  background-attachment:scroll!important;
+}
+
+/* Disable text/box neon flashing effect but keep premium look */
+.ux-brand-bell,
+.ux-brand-avatar,
+.ux-header-bell,
+.ux-header-avatar,
+.menu-btn,
+.save-profile-btn,
+.lp-primary,
+.ai-execute-btn{
+  box-shadow:none!important;
+}
+
+/* Respect users/devices that prefer reduced motion */
+@media (prefers-reduced-motion: reduce){
+  *,
+  *::before,
+  *::after{
+    animation:none!important;
+    transition:none!important;
+    scroll-behavior:auto!important;
+  }
+}
+
+/* Very small devices: remove decorative overlays that repaint often */
+@media(max-width:620px){
+  .ux-home-chart-mark,
+  .lp-growth-line::before,
+  .admin-dashboard-hero::before,
+  .admin-dashboard-hero::after{
+    opacity:.28!important;
+    filter:none!important;
+  }
+}
