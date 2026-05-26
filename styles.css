@@ -10164,3 +10164,300 @@ input:focus,select:focus,textarea:focus{
     text-align:left;
   }
 }
+
+
+/* ==========================================================================
+   AITradeX Final - AI Intelligence Pack
+   Scope: AI confidence, risk shield, journal, score cards
+   ========================================================================== */
+.ai-briefing-card,
+.ai-score-card-pro,
+.ai-history-score-strip{
+  border:1px solid rgba(34,230,243,.18);
+  background:
+    radial-gradient(circle at 100% 0,rgba(34,230,243,.13),transparent 35%),
+    linear-gradient(145deg,rgba(12,30,58,.72),rgba(5,15,31,.90));
+  border-radius:24px;
+  box-shadow:0 14px 36px rgba(0,0,0,.24);
+}
+.ai-briefing-card{
+  display:grid;
+  grid-template-columns:1fr auto;
+  align-items:center;
+  gap:14px;
+  padding:16px;
+  margin-bottom:12px;
+  cursor:pointer;
+}
+.ai-briefing-card p,
+.ai-score-copy p{
+  margin:0;
+  color:#22e6f3;
+  font-size:11px;
+  font-weight:1000;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+.ai-briefing-card h2,
+.ai-score-copy h2{
+  margin:6px 0 5px;
+  font-size:22px;
+  letter-spacing:-.035em;
+}
+.ai-briefing-card span,
+.ai-score-copy span{
+  color:#aebbd1;
+  line-height:1.45;
+}
+.ai-briefing-card article{
+  min-width:98px;
+  text-align:center;
+  border:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.035);
+  border-radius:18px;
+  padding:13px;
+}
+.ai-briefing-card article span{
+  display:block;
+  font-size:11px;
+  color:#aebbd1;
+}
+.ai-briefing-card article b{
+  display:block;
+  margin-top:5px;
+  font-size:22px;
+  color:#22e6f3;
+}
+.ai-score-card-pro{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  gap:18px;
+  align-items:center;
+  padding:18px;
+  margin-bottom:12px;
+}
+.ai-score-circle{
+  width:108px;
+  height:108px;
+  border-radius:999px;
+  display:grid;
+  place-items:center;
+  text-align:center;
+  background:
+    conic-gradient(from 0deg,#22e6f3 0 78%,rgba(255,255,255,.08) 78% 100%);
+  box-shadow:0 0 28px rgba(34,230,243,.16);
+  position:relative;
+  overflow:hidden;
+}
+.ai-score-circle:before{
+  content:"";
+  position:absolute;
+  inset:9px;
+  border-radius:999px;
+  background:#081528;
+}
+.ai-score-circle b,
+.ai-score-circle span{
+  position:relative;
+  z-index:1;
+}
+.ai-score-circle b{
+  font-size:25px;
+}
+.ai-score-circle span{
+  display:block;
+  margin-top:-22px;
+  color:#aebbd1;
+  font-size:11px;
+  font-weight:900;
+}
+.ai-score-mini{
+  display:grid;
+  gap:8px;
+  min-width:160px;
+}
+.ai-score-mini article{
+  border:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.035);
+  border-radius:16px;
+  padding:12px;
+}
+.ai-score-mini span{
+  display:block;
+  color:#aebbd1;
+  font-size:12px;
+}
+.ai-score-mini b{
+  display:block;
+  margin-top:4px;
+  font-size:17px;
+}
+.ai-intel-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
+}
+.ai-intel-grid article{
+  border:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.035);
+  border-radius:16px;
+  padding:14px;
+}
+.ai-intel-grid b{
+  display:block;
+  color:#fff;
+  margin-bottom:6px;
+}
+.ai-intel-grid span{
+  color:#aebbd1;
+  line-height:1.42;
+}
+.orders-app-row.ai-intel-row{
+  grid-template-columns:1fr auto auto;
+  align-items:start;
+}
+.orders-row-extra{
+  grid-column:1/-1;
+  display:grid;
+  grid-template-columns:1fr 1.2fr 1fr;
+  gap:10px;
+  margin-top:12px;
+  padding-top:12px;
+  border-top:1px solid rgba(255,255,255,.08);
+}
+.type-badge.ai.confidence{
+  color:#22e6f3;
+  background:rgba(34,230,243,.09);
+  border-color:rgba(34,230,243,.22);
+}
+.ai-confidence-meter,
+.ai-risk-shield,
+.ai-journal-note{
+  border:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.030);
+  border-radius:16px;
+  padding:12px;
+}
+.ai-confidence-meter>div{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+}
+.ai-confidence-meter span,
+.ai-risk-shield span,
+.ai-journal-note span,
+.shield-grid span{
+  color:#aebbd1;
+  font-size:12px;
+  font-weight:850;
+}
+.ai-confidence-meter b{
+  color:#22e6f3;
+}
+.ai-confidence-meter em,
+.shield-grid em{
+  display:block;
+  height:8px;
+  border-radius:999px;
+  background:rgba(255,255,255,.08);
+  overflow:hidden;
+  margin:9px 0 7px;
+}
+.ai-confidence-meter em i,
+.shield-grid em i{
+  display:block;
+  height:100%;
+  border-radius:999px;
+  background:linear-gradient(90deg,#22e6f3,#21e58f);
+}
+.ai-confidence-meter small{
+  color:#dce8fb;
+  font-weight:850;
+}
+.shield-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  margin-bottom:10px;
+}
+.shield-head b{
+  color:#f6bd45;
+}
+.shield-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.shield-grid article{
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:12px;
+  padding:9px;
+  background:rgba(255,255,255,.025);
+}
+.shield-grid b{
+  display:block;
+  margin-top:4px;
+  font-size:14px;
+}
+.ai-journal-note b{
+  color:#fff;
+}
+.ai-journal-note p{
+  margin:6px 0 8px;
+  color:#c7d4ea;
+  line-height:1.42;
+  font-size:13px;
+}
+.history-expanded-grid + .ai-journal-note{
+  margin-top:10px;
+}
+.ai-history-score-strip{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:0;
+  padding:12px;
+  margin-bottom:12px;
+}
+.ai-history-score-strip article{
+  padding:10px 14px;
+  border-right:1px solid rgba(255,255,255,.08);
+}
+.ai-history-score-strip article:last-child{
+  border-right:0;
+}
+.ai-history-score-strip span{
+  display:block;
+  color:#aebbd1;
+  font-size:12px;
+}
+.ai-history-score-strip b{
+  display:block;
+  margin-top:4px;
+  font-size:18px;
+}
+@media(max-width:760px){
+  .ai-briefing-card,
+  .ai-score-card-pro{
+    grid-template-columns:1fr;
+  }
+  .ai-score-mini{
+    grid-template-columns:1fr 1fr;
+    min-width:0;
+  }
+  .ai-intel-grid,
+  .orders-row-extra,
+  .ai-history-score-strip{
+    grid-template-columns:1fr;
+  }
+  .ai-history-score-strip{
+    gap:8px;
+  }
+  .ai-history-score-strip article{
+    border-right:0;
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:14px;
+    background:rgba(255,255,255,.025);
+  }
+}

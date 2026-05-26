@@ -1,0 +1,28 @@
+AITradeX AI Intelligence Pack
+
+Base:
+- AITradeX-Final-Clean-Baseline.zip
+
+Added professionally:
+1. AI Confidence Meter
+   - Automatic confidence score per AI trade.
+   - Displayed on AI live position cards and AI history.
+
+2. Smart Risk Shield
+   - Shows target tracking and max loss protection on AI live positions.
+   - Uses existing AI live target/margin data.
+
+3. AI Trade Journal
+   - Automatic AI entry/close explanation shown on AI live positions and history expansion.
+   - Uses existing trade fields when available, otherwise generates a safe explanation.
+
+4. AI Score Card
+   - AI settings page now shows avg confidence, AI win ratio, active AI positions, best AI pair, net AI P/L and risk score.
+
+5. Daily AI Market Brief
+   - Home dashboard shows automatic daily AI brief and AI score.
+
+No SQL required.
+No admin-side change.
+No AI close/cron backend logic changed.
+No wallet/referral/subscription logic changed.
