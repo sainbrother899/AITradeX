@@ -1,0 +1,14 @@
+AITradeX Realistic Landing - No Plans Section
+
+Base:
+- AITradeX-Final-RealisticLandingFix.zip
+
+Changed:
+- Removed Available Plans section from public landing page.
+- Added dashboard-first CTA section:
+  "Explore the platform first, choose a plan inside your account."
+- Subscription page remains unchanged.
+- Admin dynamic plan management remains unchanged.
+
+No SQL required.
+No admin/wallet/trade/AI/referral/subscription logic changes.

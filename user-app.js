@@ -2073,32 +2073,6 @@
   }
 
   function landing() {
-    const activePlans = (App.state.plans || [])
-      .filter(p => String(p.status || "ACTIVE").toUpperCase() === "ACTIVE")
-      .slice(0, 4);
-
-    const planCards = activePlans.length ? activePlans.map((plan, index) => {
-      const signals = Number(plan.signals || plan.aiTrades || plan.dailyAiTrades || 0);
-      const price = Number(plan.price || 0);
-      const features = [
-        signals ? `${signals} AI trades/day` : "AI trade access",
-        plan.description || plan.note || "Wallet + KYC flow",
-        "Support access"
-      ];
-      return `
-        <article class="lp-plan-card realistic ${index === 1 ? "popular" : ""}">
-          ${index === 1 ? `<em>Popular</em>` : ""}
-          <h3>${App.escapeHtml(plan.name || "Plan")}</h3>
-          <h2>${price ? App.money(price) : "Free"} <small>/ month</small></h2>
-          <ul>${features.slice(0, 4).map(feature => `<li>✓ ${App.escapeHtml(feature)}</li>`).join("")}</ul>
-        </article>`;
-    }).join("") : `
-        <article class="lp-plan-card realistic">
-          <h3>Free Trial</h3>
-          <h2>Free <small>/ month</small></h2>
-          <ul><li>✓ AI trade access</li><li>✓ Wallet + KYC flow</li><li>✓ Support access</li></ul>
-        </article>`;
-
     root.innerHTML = `
       <main class="lp-page realistic-landing">
         <nav class="lp-nav realistic-nav">
@@ -2196,10 +2170,13 @@
           </div>
         </section>
 
-        <section id="plans" class="lp-plans real-plans">
-          <h2>Available Plans</h2>
-          <p class="real-section-note">Plans are loaded from admin settings. Update them from admin panel anytime.</p>
-          <div class="lp-plan-grid">${planCards}</div>
+        <section class="real-dashboard-first">
+          <div>
+            <span>Dashboard-first experience</span>
+            <h2>Explore the platform first, choose a plan inside your account.</h2>
+            <p>Landing page is kept simple and trustworthy. After login, users can view AI settings, wallet, market chart and subscription options from the dashboard.</p>
+          </div>
+          <button onclick="AITradeXUser.setAuthMode('register')">Create Account</button>
         </section>
 
         <section id="authBox" class="lp-auth realistic-auth">

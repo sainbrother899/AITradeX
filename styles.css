@@ -11081,3 +11081,58 @@ body,
     display:none;
   }
 }
+
+
+/* Landing no-plans replacement */
+.real-dashboard-first{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:18px;
+  align-items:center;
+  border:1px solid rgba(132,177,235,.17);
+  background:
+    radial-gradient(circle at 100% 0,rgba(34,230,243,.10),transparent 38%),
+    linear-gradient(145deg,rgba(12,30,58,.72),rgba(5,15,31,.88));
+  border-radius:24px;
+  box-shadow:0 10px 26px rgba(0,0,0,.22);
+  padding:24px;
+  margin:30px 0;
+}
+.real-dashboard-first span{
+  display:inline-flex;
+  color:#22e6f3;
+  font-size:12px;
+  font-weight:1000;
+  letter-spacing:.10em;
+  text-transform:uppercase;
+  margin-bottom:10px;
+}
+.real-dashboard-first h2{
+  margin:0;
+  font-size:30px;
+  letter-spacing:-.04em;
+  line-height:1.15;
+}
+.real-dashboard-first p{
+  margin:10px 0 0;
+  color:#aebbd1;
+  line-height:1.55;
+  max-width:760px;
+}
+.real-dashboard-first button{
+  border:0;
+  border-radius:14px;
+  padding:14px 20px;
+  color:#04111f;
+  font-weight:1000;
+  background:linear-gradient(135deg,#22e6f3,#1ca6ff);
+  white-space:nowrap;
+}
+@media(max-width:760px){
+  .real-dashboard-first{
+    grid-template-columns:1fr;
+  }
+  .real-dashboard-first button{
+    width:100%;
+  }
+}
