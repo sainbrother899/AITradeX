@@ -1,0 +1,16 @@
+AITradeX Policy Pages
+
+Base:
+- AITradeX-Final-NoFlickerFix.zip
+
+Added:
+- Public Privacy Policy page
+- Public Terms & Conditions page
+- Public Risk Disclaimer page
+- Landing page legal footer links
+- Signup/auth risk note
+- Logged-in profile menu links for policy/terms/risk pages
+
+No SQL required.
+No admin logic changes.
+No wallet/trading/AI/referral logic changes.

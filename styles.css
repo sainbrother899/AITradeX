@@ -10711,3 +10711,94 @@ body,
     filter:none!important;
   }
 }
+
+
+/* Policy / Terms / Risk pages */
+.lp-risk-note{
+  display:block;
+  margin-top:14px;
+  color:#f6bd45;
+  font-size:13px;
+  line-height:1.45;
+  font-weight:850;
+}
+.lp-legal-links,
+.policy-footer-links{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:10px;
+  padding:22px 0 8px;
+}
+.lp-legal-links button,
+.policy-footer-links button{
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(255,255,255,.035);
+  color:#aebbd1;
+  border-radius:999px;
+  padding:10px 14px;
+  font-weight:850;
+}
+.policy-page{
+  padding-bottom:48px;
+}
+.policy-hero{
+  display:grid;
+  grid-template-columns:auto 1fr;
+  align-items:center;
+  gap:18px;
+  padding:28px 0 20px;
+}
+.policy-hero i{
+  width:74px;
+  height:74px;
+  display:grid;
+  place-items:center;
+  border-radius:24px;
+  background:rgba(34,230,243,.08);
+  border:1px solid rgba(34,230,243,.20);
+  font-style:normal;
+  font-size:34px;
+}
+.policy-hero h1{
+  margin:0;
+  font-size:clamp(36px,6vw,62px);
+  letter-spacing:-.055em;
+}
+.policy-hero p{
+  margin:8px 0 0;
+  color:#aebbd1;
+  line-height:1.5;
+}
+.policy-content-card,
+.app-legal-card{
+  border:1px solid rgba(132,177,235,.17);
+  background:linear-gradient(145deg,rgba(12,30,58,.72),rgba(5,15,31,.88));
+  border-radius:24px;
+  box-shadow:0 10px 26px rgba(0,0,0,.22);
+  padding:20px;
+}
+.policy-content-card article{
+  padding:18px 0;
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.policy-content-card article:last-child{
+  border-bottom:0;
+}
+.policy-content-card h2{
+  margin:0 0 8px;
+  font-size:22px;
+  letter-spacing:-.03em;
+}
+.policy-content-card p,
+.app-legal-card p{
+  margin:0 0 12px;
+  color:#c7d4ea;
+  line-height:1.65;
+}
+@media(max-width:620px){
+  .policy-hero{
+    grid-template-columns:1fr;
+  }
+}

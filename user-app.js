@@ -1941,6 +1941,9 @@
           <div class="profile-drawer-group">
             <h4>Help</h4>
             ${drawerItem({ pageKey: "support", icon: "🎧", title: "Support", subtitle: "Tickets, replies and help center", badge: openTickets ? { label: `${openTickets} Open`, tone: "warn" } : { label: "Ready", tone: "good" } })}
+            ${drawerItem({ pageKey: "privacy", icon: "🔐", title: "Privacy Policy", subtitle: "How data is handled" })}
+            ${drawerItem({ pageKey: "terms", icon: "📄", title: "Terms & Conditions", subtitle: "Platform rules and terms" })}
+            ${drawerItem({ pageKey: "risk", icon: "⚠️", title: "Risk Disclaimer", subtitle: "Trading risk information" })}
           </div>
 
           <div class="profile-drawer-bottom">
@@ -2193,6 +2196,7 @@
           <div>
             <h2>Ready to Grow Your Wealth?</h2>
             <p>Join AITradeX and manage wallet, AI trading, positions and withdrawals from one clean dashboard.</p>
+            <small class="lp-risk-note">Trading involves risk. AI tools do not guarantee profit.</small>
           </div>
           <div class="auth-card lp-auth-card">
             <div class="auth-tabs"><button class="${authMode === "login" ? "active" : ""}" onclick="AITradeXUser.setAuthMode('login')">Login</button><button class="${authMode === "register" ? "active" : ""}" onclick="AITradeXUser.setAuthMode('register')">Register</button></div>
@@ -2204,6 +2208,11 @@
           <span>🔒 256-Bit SSL Encryption</span>
           <span>🛡 KYC Verified</span>
           <span>🏦 Bank-Grade Security</span>
+        </section>
+        <section class="lp-legal-links">
+          <button onclick="AITradeXUser.showPolicy('privacy')">Privacy Policy</button>
+          <button onclick="AITradeXUser.showPolicy('terms')">Terms & Conditions</button>
+          <button onclick="AITradeXUser.showPolicy('risk')">Risk Disclaimer</button>
         </section>
       </main>`;
     setTimeout(renderLandingTradingViewChart, 120);
@@ -3694,6 +3703,108 @@
     return map[String(type || "INFO").toUpperCase()] || "🔔";
   }
 
+
+  function publicPolicyShell(type = "privacy") {
+    const data = {
+      privacy: {
+        title: "Privacy Policy",
+        subtitle: "How AITradeX handles account, KYC, wallet and trading information.",
+        icon: "🔐",
+        sections: [
+          ["Information We Collect", "We may collect your name, email, mobile number, login details, KYC information, uploaded documents/images, bank account details for withdrawals, transaction details, support messages and app usage data."],
+          ["How We Use Information", "We use this information to create and secure your account, process deposits/withdrawals, verify KYC, provide AI trading tools, send notifications, prevent misuse and improve platform reliability."],
+          ["KYC & Payment Data", "KYC documents, payment screenshots and bank details are used only for verification, compliance, wallet processing and security checks."],
+          ["Data Sharing", "We do not sell user data. Data may be processed by service providers such as hosting/database/payment/communication providers where required to operate the platform."],
+          ["Security", "We use reasonable technical and organizational measures to protect user data. No online system is completely risk-free."],
+          ["User Control", "Users can contact support for account, data or correction requests. Some records may be retained where required for security, audit or legal obligations."],
+          ["Contact", "For privacy questions, contact the AITradeX support team from the app support section."]
+        ]
+      },
+      terms: {
+        title: "Terms & Conditions",
+        subtitle: "Rules for using AITradeX services and app features.",
+        icon: "📄",
+        sections: [
+          ["Account Use", "You are responsible for keeping your login details secure and for all activity under your account."],
+          ["Wallet & Transactions", "Deposits, withdrawals and wallet updates are subject to verification and admin approval where applicable. Incorrect payment details may delay processing."],
+          ["AI Trading Tools", "AITradeX provides AI-assisted trading tools, signals, position management and risk controls. These tools are informational/technology features and must not be treated as guaranteed results."],
+          ["User Responsibilities", "You must provide accurate KYC/payment details, follow platform rules and avoid misuse, fraud, duplicate KYC or unauthorized access."],
+          ["Service Changes", "AITradeX may update features, plans, pricing, limits, security rules and operational processes when needed."],
+          ["Limitations", "Market data, charts, AI signals and trading tools may be delayed, unavailable or inaccurate due to external services, connectivity or system limitations."],
+          ["Termination", "Accounts may be restricted or blocked for suspicious activity, policy violations, fraud, misuse or security risk."]
+        ]
+      },
+      risk: {
+        title: "Risk Disclaimer",
+        subtitle: "Important information before using AI trading tools.",
+        icon: "⚠️",
+        sections: [
+          ["Trading Risk", "Trading and market-related activity involves risk. Prices can move quickly and losses may occur."],
+          ["No Guaranteed Profit", "AI tools, signals, confidence scores, risk shields, charts and market briefings do not guarantee profit or fixed returns."],
+          ["AI Limitations", "AI systems can be wrong. Market conditions, volatility, liquidity, delays and technical issues can affect outcomes."],
+          ["User Decision", "You should use your own judgment and only trade with amounts you can afford to risk."],
+          ["Auto-Close & Risk Shield", "Auto-close/risk controls are designed to help manage risk, but they may depend on data, backend jobs, connectivity and system timing."],
+          ["External Market Data", "Charts and market prices may come from third-party sources and may be delayed or temporarily unavailable."],
+          ["Acknowledgement", "By using AITradeX, you understand that trading outcomes are not guaranteed and you accept the associated risks."]
+        ]
+      }
+    }[type] || {};
+    root.innerHTML = `
+      <main class="lp-page policy-page">
+        <nav class="lp-nav">
+          <div class="lp-brand"><b>AITradeX</b></div>
+          <div class="lp-nav-actions">
+            <button class="lp-login" onclick="AITradeXUser.showLanding()">Home</button>
+            <button class="lp-primary small" onclick="AITradeXUser.setAuthMode('register')">Create Account</button>
+          </div>
+        </nav>
+        <section class="policy-hero">
+          <i>${data.icon}</i>
+          <div><h1>${data.title}</h1><p>${data.subtitle}</p></div>
+        </section>
+        <section class="policy-content-card">
+          ${data.sections.map(([title, body]) => `
+            <article>
+              <h2>${App.escapeHtml(title)}</h2>
+              <p>${App.escapeHtml(body)}</p>
+            </article>
+          `).join("")}
+        </section>
+        <section class="policy-footer-links">
+          <button onclick="AITradeXUser.showPolicy('privacy')">Privacy Policy</button>
+          <button onclick="AITradeXUser.showPolicy('terms')">Terms & Conditions</button>
+          <button onclick="AITradeXUser.showPolicy('risk')">Risk Disclaimer</button>
+        </section>
+      </main>`;
+  }
+
+  function legalPage(type = "privacy") {
+    shell(`
+      <section class="pro-page-title with-back">
+        <button onclick="AITradeXUser.toggleDrawer()">←</button>
+        <div><h1>${type === "terms" ? "Terms & Conditions" : type === "risk" ? "Risk Disclaimer" : "Privacy Policy"}</h1><p>Important platform information and user safety notes.</p></div>
+      </section>
+      <section class="pro-card app-legal-card">
+        ${type === "privacy" ? `
+          <div class="pro-card-head"><i>🔐</i><h2>Privacy Policy</h2></div>
+          <p>AITradeX may collect account details, KYC information, uploaded documents, wallet/deposit/withdrawal details, support messages and usage data to operate and secure the platform.</p>
+          <p>We do not sell user data. Data may be processed by trusted service providers where required for hosting, database, payments, security or communication.</p>
+          <p>Users can contact support for data correction or account questions. Some records may be retained for audit, security or legal obligations.</p>
+        ` : type === "terms" ? `
+          <div class="pro-card-head"><i>📄</i><h2>Terms & Conditions</h2></div>
+          <p>You are responsible for account security, accurate KYC/payment details and lawful use of the platform.</p>
+          <p>Deposits, withdrawals, plans and wallet changes may be subject to verification and admin approval.</p>
+          <p>AITradeX may update features, limits, plans, pricing, security rules and service processes when needed.</p>
+        ` : `
+          <div class="pro-card-head"><i>⚠️</i><h2>Risk Disclaimer</h2></div>
+          <p>Trading involves risk. AI tools, signals, confidence scores and risk shields do not guarantee profit or fixed returns.</p>
+          <p>Market data, charts and automation can be affected by delays, volatility, connectivity and technical limitations.</p>
+          <p>Use your own judgment and only trade with amounts you can afford to risk.</p>
+        `}
+      </section>
+    `);
+  }
+
   function render() {
     if (App.reloadState) App.reloadState();
     reconcileUserAiLiveMarginLocks().catch(err => console.warn("User AI live margin reconcile failed", err));
@@ -3719,6 +3830,9 @@
     if (page === "security") return securityPage();
     if (page === "support") return supportPage();
     if (page === "notifications") return notificationPage();
+    if (page === "privacy") return legalPage("privacy");
+    if (page === "terms") return legalPage("terms");
+    if (page === "risk") return legalPage("risk");
     return homePage();
   }
 
@@ -3727,6 +3841,13 @@
       authMode = mode;
       landing();
       setTimeout(() => document.getElementById("authBox")?.scrollIntoView({ behavior: "smooth" }), 50);
+    },
+    showLanding() {
+      landing();
+    },
+    showPolicy(type) {
+      publicPolicyShell(type);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     },
     scrollAuth() {
       document.getElementById("authBox")?.scrollIntoView({ behavior: "smooth" });
