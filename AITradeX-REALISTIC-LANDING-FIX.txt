@@ -1,0 +1,16 @@
+AITradeX Realistic Landing Fix
+
+Base:
+- AITradeX-Final-PolicyPages-MarginLeverageFix.zip
+
+Changed:
+- Replaced fake wallet/balance hero with realistic app preview.
+- Removed fake balance, fake pending withdrawal and static fake market price focus.
+- Kept real TradingView chart section.
+- Added app/product-style feature explanation.
+- Kept admin dynamic plans.
+- Kept privacy/terms/risk links and risk note.
+- Landing now feels more honest and professional.
+
+No SQL required.
+No admin/wallet/trade/AI/referral logic changes.

@@ -10850,3 +10850,234 @@ body,
     grid-template-columns:1fr!important;
   }
 }
+
+
+/* Realistic Landing Fix - remove fake wallet/price feel */
+.realistic-landing .lp-nav{
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.real-hero{
+  display:grid;
+  grid-template-columns:1fr .95fr;
+  gap:30px;
+  align-items:center;
+  padding:34px 0 28px;
+}
+.real-kicker{
+  display:inline-flex;
+  margin-bottom:14px;
+  color:#22e6f3;
+  border:1px solid rgba(34,230,243,.25);
+  background:rgba(34,230,243,.06);
+  border-radius:999px;
+  padding:9px 13px;
+  font-weight:1000;
+  letter-spacing:.08em;
+  font-size:12px;
+  text-transform:uppercase;
+}
+.real-hero-copy h1{
+  margin:0;
+  color:#fff;
+  font-size:clamp(42px,6vw,70px);
+  line-height:1.02;
+  letter-spacing:-.06em;
+}
+.real-hero-copy p{
+  margin:18px 0 22px;
+  color:#b8c5dc;
+  font-size:18px;
+  line-height:1.58;
+  max-width:580px;
+}
+.real-hero-actions{
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+.real-outline{
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.04);
+  color:#fff;
+  border-radius:12px;
+  padding:14px 20px;
+  font-weight:950;
+}
+.real-app-preview-card,
+.real-chart-card,
+.real-feature-strip article{
+  border:1px solid rgba(132,177,235,.17);
+  background:linear-gradient(145deg,rgba(12,30,58,.72),rgba(5,15,31,.88));
+  border-radius:24px;
+  box-shadow:0 10px 26px rgba(0,0,0,.22);
+}
+.real-app-preview-card{
+  padding:18px;
+}
+.real-preview-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:14px;
+  margin-bottom:14px;
+}
+.real-preview-top span{
+  display:block;
+  color:#aebbd1;
+  font-size:13px;
+}
+.real-preview-top b{
+  display:block;
+  margin-top:5px;
+  color:#fff;
+  font-size:24px;
+  letter-spacing:-.035em;
+}
+.real-preview-top em{
+  color:#21e58f;
+  background:rgba(33,229,143,.08);
+  border:1px solid rgba(33,229,143,.22);
+  border-radius:999px;
+  padding:7px 11px;
+  font-style:normal;
+  font-weight:1000;
+  font-size:12px;
+}
+.real-preview-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+.real-preview-grid article{
+  border:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.035);
+  border-radius:18px;
+  padding:15px;
+}
+.real-preview-grid i{
+  display:block;
+  font-style:normal;
+  font-size:26px;
+  margin-bottom:13px;
+}
+.real-preview-grid span{
+  display:block;
+  color:#aebbd1;
+  font-size:12px;
+}
+.real-preview-grid b{
+  display:block;
+  margin-top:5px;
+  color:#fff;
+}
+.real-preview-flow{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  flex-wrap:wrap;
+  margin-top:14px;
+  border:1px solid rgba(34,230,243,.14);
+  background:rgba(34,230,243,.045);
+  border-radius:18px;
+  padding:13px;
+}
+.real-preview-flow span{
+  color:#dce8fb;
+  font-size:12px;
+  font-weight:900;
+}
+.real-preview-flow i{
+  flex:1;
+  min-width:22px;
+  height:2px;
+  background:linear-gradient(90deg,rgba(34,230,243,.2),rgba(34,230,243,.8));
+}
+.real-feature-strip{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:12px;
+  margin:4px 0 28px;
+}
+.real-feature-strip article{
+  padding:18px;
+}
+.real-feature-strip b{
+  color:#22e6f3;
+  font-size:12px;
+  letter-spacing:.10em;
+}
+.real-feature-strip h3{
+  margin:10px 0 8px;
+  font-size:21px;
+}
+.real-feature-strip p{
+  margin:0;
+  color:#aebbd1;
+  line-height:1.5;
+}
+.real-market-section{
+  margin-top:28px;
+}
+.real-chart-card{
+  display:grid;
+  grid-template-columns:1fr 310px;
+  gap:0;
+  overflow:hidden;
+}
+.real-chart-side{
+  border-left:1px solid rgba(255,255,255,.08);
+  padding:22px;
+}
+.real-chart-side h3{
+  margin:0 0 14px;
+  font-size:22px;
+}
+.real-chart-side ul{
+  margin:0;
+  padding:0;
+  list-style:none;
+  display:grid;
+  gap:12px;
+  color:#c7d4ea;
+}
+.real-section-note{
+  text-align:center;
+  margin:-8px auto 18px;
+  max-width:600px;
+  color:#aebbd1;
+}
+.lp-plan-card.realistic{
+  min-height:220px;
+}
+.realistic-auth{
+  margin-top:34px;
+}
+@media(max-width:900px){
+  .real-hero,
+  .real-chart-card{
+    grid-template-columns:1fr;
+  }
+  .real-chart-side{
+    border-left:0;
+    border-top:1px solid rgba(255,255,255,.08);
+  }
+}
+@media(max-width:620px){
+  .real-hero{
+    padding-top:22px;
+  }
+  .real-hero-copy h1{
+    font-size:42px;
+  }
+  .real-hero-copy p{
+    font-size:16px;
+  }
+  .real-feature-strip,
+  .real-preview-grid{
+    grid-template-columns:1fr;
+  }
+  .real-preview-flow i{
+    display:none;
+  }
+}

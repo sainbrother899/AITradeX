@@ -2086,22 +2086,22 @@
         "Support access"
       ];
       return `
-        <article class="lp-plan-card ${index === 1 ? "popular" : ""}">
-          ${index === 1 ? `<em>Most Popular</em>` : ""}
+        <article class="lp-plan-card realistic ${index === 1 ? "popular" : ""}">
+          ${index === 1 ? `<em>Popular</em>` : ""}
           <h3>${App.escapeHtml(plan.name || "Plan")}</h3>
           <h2>${price ? App.money(price) : "Free"} <small>/ month</small></h2>
           <ul>${features.slice(0, 4).map(feature => `<li>✓ ${App.escapeHtml(feature)}</li>`).join("")}</ul>
         </article>`;
     }).join("") : `
-        <article class="lp-plan-card">
+        <article class="lp-plan-card realistic">
           <h3>Free Trial</h3>
           <h2>Free <small>/ month</small></h2>
           <ul><li>✓ AI trade access</li><li>✓ Wallet + KYC flow</li><li>✓ Support access</li></ul>
         </article>`;
 
     root.innerHTML = `
-      <main class="lp-page">
-        <nav class="lp-nav">
+      <main class="lp-page realistic-landing">
+        <nav class="lp-nav realistic-nav">
           <div class="lp-brand"><b>AITradeX</b></div>
           <div class="lp-nav-actions">
             <button class="lp-login" onclick="AITradeXUser.setAuthMode('login')">Login</button>
@@ -2109,58 +2109,51 @@
           </div>
         </nav>
 
-        <section class="lp-hero">
-          <div class="lp-hero-copy">
-            <h1>AI-Powered<br/>Smart <strong>Trading</strong></h1>
-            <p>Automated trading, simple deposits & withdrawals, and a secure wallet experience—built for you.</p>
-            <div class="lp-trust-row">
-              <span>🛡️ KYC Verified</span>
-              <span>🔒 Bank-Grade Security</span>
-              <span>🔐 256-Bit SSL Encryption</span>
+        <section class="real-hero">
+          <div class="real-hero-copy">
+            <span class="real-kicker">AI Trading Dashboard</span>
+            <h1>Trade smarter with a clean AI-powered app.</h1>
+            <p>AITradeX gives users a simple dashboard for market charts, wallet activity, KYC, AI trade tools, positions, history and support — all in one mobile-friendly platform.</p>
+            <div class="real-hero-actions">
+              <button class="lp-primary" onclick="AITradeXUser.setAuthMode('register')">Start Now</button>
+              <button class="real-outline" onclick="document.getElementById('realChartSection')?.scrollIntoView({behavior:'smooth'})">View Live Chart</button>
             </div>
+            <small class="lp-risk-note">Trading involves risk. AI tools do not guarantee profit.</small>
           </div>
-          <div class="lp-balance-preview">
-            <div class="lp-balance-top">
-              <div><span>Available Balance</span><h2>₹ 2,48,750.45</h2></div>
-              <b>🛡 KYC Verified</b>
-            </div>
-            <div class="lp-growth-line">
-              <i></i><i></i><i></i><i></i><i></i><i></i>
-            </div>
-            <div class="lp-balance-bottom">
-              <article><span>Pending Deposit</span><b>₹ 0</b></article>
-              <article><span>Pending Withdrawal</span><b>₹ 5,000</b></article>
-            </div>
-          </div>
-        </section>
 
-        <section class="lp-action-strip">
-          <button onclick="AITradeXUser.setAuthMode('register')"><i>↓</i><b>Deposit</b><span>Add funds</span></button>
-          <button onclick="AITradeXUser.setAuthMode('register')"><i>↑</i><b>Withdraw</b><span>Withdraw funds</span></button>
-          <button onclick="AITradeXUser.setAuthMode('register')"><i>▥</i><b>Trade</b><span>Start trading</span></button>
-          <button onclick="AITradeXUser.setAuthMode('register')"><i>◔</i><b>Positions</b><span>View positions</span></button>
-        </section>
-
-        <section class="lp-section">
-          <h2>Why Traders Choose <strong>AITradeX</strong></h2>
-          <div class="lp-feature-grid">
-            <article><i>🤖</i><h3>AI Auto Trading</h3><p>Advanced algorithms analyze the market 24/7 and trade for you.</p></article>
-            <article><i>🛡️</i><h3>Secure Wallet</h3><p>Your funds are protected with bank-grade security and approvals.</p></article>
-            <article><i>📊</i><h3>Live Insights</h3><p>Real-time market data and AI-driven insights to stay ahead.</p></article>
-            <article><i>⚡</i><h3>Fast Withdrawals</h3><p>Withdrawals are processed quickly and securely after approval.</p></article>
+          <div class="real-app-preview-card">
+            <div class="real-preview-top">
+              <div><span>AITradeX App Preview</span><b>Everything in one dashboard</b></div>
+              <em>LIVE</em>
+            </div>
+            <div class="real-preview-grid">
+              <article><i>📊</i><span>Market Chart</span><b>TradingView</b></article>
+              <article><i>🤖</i><span>AI Tools</span><b>Confidence + Shield</b></article>
+              <article><i>👛</i><span>Wallet</span><b>Deposit / Withdraw</b></article>
+              <article><i>🛡️</i><span>Security</span><b>KYC + Risk Notes</b></article>
+            </div>
+            <div class="real-preview-flow">
+              <span>Register</span><i></i><span>KYC</span><i></i><span>Add Funds</span><i></i><span>Use AI Tools</span>
+            </div>
           </div>
         </section>
 
-        <section class="lp-market">
-          <div class="lp-section-head"><h2>Market Overview</h2><button onclick="AITradeXUser.setAuthMode('register')">View All Markets →</button></div>
-          <div class="lp-market-card">
+        <section class="real-feature-strip">
+          <article><b>01</b><h3>Clear Wallet</h3><p>Deposit, withdrawal and request status in a clean way.</p></article>
+          <article><b>02</b><h3>AI Trade View</h3><p>Confidence meter, risk shield, positions and history.</p></article>
+          <article><b>03</b><h3>Admin Verified</h3><p>KYC, bank approval, plans and support controlled from admin.</p></article>
+        </section>
+
+        <section id="realChartSection" class="lp-market real-market-section">
+          <div class="lp-section-head"><h2>Live Market Chart</h2><button onclick="AITradeXUser.setAuthMode('register')">Open Dashboard →</button></div>
+          <div class="real-chart-card">
             <div class="lp-market-main lp-real-chart-main">
               <div class="lp-market-chart-head">
                 <div>
-                  <span>₿ BTC / USDT <em>LIVE</em></span>
-                  <h2>Real Market Chart</h2>
+                  <span>BTC / USDT <em>LIVE</em></span>
+                  <h2>Real chart powered by TradingView</h2>
                 </div>
-                <small>Powered by TradingView</small>
+                <small>No fake profit numbers shown</small>
               </div>
               <div class="lp-tradingview-frame">
                 <div id="landing_tradingview_chart_container" class="landing-tradingview-chart-container">
@@ -2172,34 +2165,48 @@
                 </div>
               </div>
             </div>
-            <div class="lp-market-list">
-              <article><b>BTC / USDT</b><span>$66,452.18</span><em>+1.35%</em></article>
-              <article><b>ETH / USDT</b><span>$3,245.67</span><em>+0.85%</em></article>
-              <article><b>BNB / USDT</b><span>$601.23</span><em class="red">-0.23%</em></article>
-              <article><b>XRP / USDT</b><span>$0.5412</span><em>+2.14%</em></article>
-            </div>
+            <aside class="real-chart-side">
+              <h3>What users get</h3>
+              <ul>
+                <li>✓ Real market chart view</li>
+                <li>✓ Manual trade order ticket</li>
+                <li>✓ AI live positions section</li>
+                <li>✓ Risk disclaimer and support</li>
+              </ul>
+            </aside>
           </div>
         </section>
 
-        <section id="how" class="lp-how">
-          <h2>How <strong>AITradeX</strong> Works</h2>
+        <section class="lp-section real-why">
+          <h2>Built for <strong>mobile-first</strong> users</h2>
+          <div class="lp-feature-grid">
+            <article><i>🤖</i><h3>AI Tools</h3><p>AI confidence, risk shield and trade journal designed for better tracking.</p></article>
+            <article><i>👛</i><h3>Wallet Flow</h3><p>Deposit, withdrawal, ledger and request status are easy to understand.</p></article>
+            <article><i>🛡️</i><h3>KYC System</h3><p>Verification flow, bank approval and account safety in one place.</p></article>
+            <article><i>🎧</i><h3>Support</h3><p>Support ticket and notification system for user communication.</p></article>
+          </div>
+        </section>
+
+        <section id="how" class="lp-how realistic-how">
+          <h2>How AITradeX Works</h2>
           <div class="lp-how-strip">
-            <article><b>1</b><i>↓</i><h3>Deposit</h3><p>Add funds easily via UPI or Bank transfer.</p></article>
-            <article><b>2</b><i>🤖</i><h3>AI Trades</h3><p>Our AI analyzes markets and executes smart trades.</p></article>
-            <article><b>3</b><i>↑</i><h3>Withdraw</h3><p>Withdraw settled balance to your bank account.</p></article>
+            <article><b>1</b><i>👤</i><h3>Create Account</h3><p>Register and complete your profile/KYC.</p></article>
+            <article><b>2</b><i>👛</i><h3>Manage Wallet</h3><p>Add funds, track requests and manage withdrawals.</p></article>
+            <article><b>3</b><i>📊</i><h3>Use Dashboard</h3><p>View market chart, positions, history and AI tools.</p></article>
           </div>
         </section>
 
-        <section id="plans" class="lp-plans">
-          <h2>Choose the Plan That Suits You</h2>
+        <section id="plans" class="lp-plans real-plans">
+          <h2>Available Plans</h2>
+          <p class="real-section-note">Plans are loaded from admin settings. Update them from admin panel anytime.</p>
           <div class="lp-plan-grid">${planCards}</div>
         </section>
 
-        <section id="authBox" class="lp-auth">
+        <section id="authBox" class="lp-auth realistic-auth">
           <div>
-            <h2>Ready to Grow Your Wealth?</h2>
-            <p>Join AITradeX and manage wallet, AI trading, positions and withdrawals from one clean dashboard.</p>
-            <small class="lp-risk-note">Trading involves risk. AI tools do not guarantee profit.</small>
+            <h2>Start with AITradeX</h2>
+            <p>Create your account to access dashboard, wallet, AI tools, market chart and support.</p>
+            <small class="lp-risk-note">Trading involves risk. AI tools, signals and confidence scores do not guarantee profit.</small>
           </div>
           <div class="auth-card lp-auth-card">
             <div class="auth-tabs"><button class="${authMode === "login" ? "active" : ""}" onclick="AITradeXUser.setAuthMode('login')">Login</button><button class="${authMode === "register" ? "active" : ""}" onclick="AITradeXUser.setAuthMode('register')">Register</button></div>
@@ -2208,9 +2215,9 @@
         </section>
 
         <section class="lp-footer-security">
-          <span>🔒 256-Bit SSL Encryption</span>
-          <span>🛡 KYC Verified</span>
-          <span>🏦 Bank-Grade Security</span>
+          <span>🔒 Secure Account Flow</span>
+          <span>🛡 Risk Disclaimer</span>
+          <span>🏦 Wallet + KYC System</span>
         </section>
         <section class="lp-legal-links">
           <button onclick="AITradeXUser.showPolicy('privacy')">Privacy Policy</button>
