@@ -1,0 +1,24 @@
+AITradeX New User Tracking
+
+Base:
+- AITradeX-Final-SingleUserAITrade.zip
+
+Added:
+- Admin dashboard New User Tracking panel.
+- Shows recent/new users with:
+  - Join time
+  - KYC status
+  - First deposit status/amount
+  - Wallet balance
+  - AI ON/OFF and daily limit use
+  - AI pool
+  - Open live positions
+  - AI readiness label
+- Open User button jumps directly to Users page with that user searched.
+
+Important:
+- No welcome trade automation added.
+- No auto trade trigger added.
+- No SQL required.
+- User side unchanged.
+- Existing AI batch and single-user AI trade logic unchanged.

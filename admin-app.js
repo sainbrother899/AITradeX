@@ -815,6 +815,130 @@
       </article>`).join("") : `<div class="empty-state">No recent activity yet.</div>`;
   }
 
+
+  function userCreatedTime(user) {
+    const candidates = [user.createdAt, user.created_at, user.registeredAt, user.joinedAt, user.signupAt, user.updatedAt].filter(Boolean);
+    const parsed = candidates.map(v => Date.parse(v)).find(v => Number.isFinite(v) && v > 0);
+    if (parsed) return parsed;
+    const idMatch = String(user.id || "").match(/(\d{10,})/);
+    if (idMatch) {
+      const n = Number(idMatch[1]);
+      if (Number.isFinite(n)) return n > 999999999999 ? n : n * 1000;
+    }
+    return 0;
+  }
+
+  function userCreatedLabel(user) {
+    const t = userCreatedTime(user);
+    return t ? new Date(t).toLocaleString("en-IN") : "Unknown";
+  }
+
+  function userAgeLabel(user) {
+    const t = userCreatedTime(user);
+    if (!t) return "Unknown";
+    const diff = Math.max(0, Date.now() - t);
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return `${mins || 1} min ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs} hour${hrs > 1 ? "s" : ""} ago`;
+    const days = Math.floor(hrs / 24);
+    return `${days} day${days > 1 ? "s" : ""} ago`;
+  }
+
+  function firstDepositForUser(userId) {
+    return (App.state.depositRequests || [])
+      .filter(r => r.userId === userId)
+      .sort((a, b) => Date.parse(a.createdAt || 0) - Date.parse(b.createdAt || 0))[0] || null;
+  }
+
+  function latestDepositForUser(userId) {
+    return (App.state.depositRequests || [])
+      .filter(r => r.userId === userId)
+      .sort((a, b) => Date.parse(b.createdAt || 0) - Date.parse(a.createdAt || 0))[0] || null;
+  }
+
+  function newUserTrackingRows(limit = 8) {
+    const now = Date.now();
+    return allUsers()
+      .map(u => {
+        const createdTime = userCreatedTime(u);
+        const daysOld = createdTime ? ((now - createdTime) / 86400000) : 9999;
+        const kyc = kycFor(u);
+        const firstDeposit = firstDepositForUser(u.id);
+        const latestDeposit = latestDepositForUser(u.id);
+        const plan = App.currentPlan ? App.currentPlan(u.id) : {};
+        const balance = App.realBalance(u.id);
+        const liveOpen = aiLivePositions().filter(pos => pos.userId === u.id).length;
+        const used = App.aiTradesToday(u.id);
+        const limitToday = App.aiDailyLimit(u.id);
+        const aiPool = App.aiAllowedAmount(u);
+        const isNew = daysOld <= 7;
+        const priority = [
+          isNew ? 100 : 0,
+          !firstDeposit ? 30 : 0,
+          String(kyc.status || "").toUpperCase() === "PENDING" ? 20 : 0,
+          u.aiTradeOn ? 10 : 0,
+          balance > 0 ? 8 : 0,
+          aiPool > 0 ? 5 : 0
+        ].reduce((a, b) => a + b, 0);
+        return { user: u, createdTime, daysOld, kyc, firstDeposit, latestDeposit, plan, balance, liveOpen, used, limitToday, aiPool, isNew, priority };
+      })
+      .sort((a, b) => {
+        const diff = b.priority - a.priority;
+        if (diff) return diff;
+        return (b.createdTime || 0) - (a.createdTime || 0);
+      })
+      .slice(0, limit);
+  }
+
+  function newUserTrackingHtml(limit = 8) {
+    const rows = newUserTrackingRows(limit);
+    const today = rows.filter(r => r.createdTime && new Date(r.createdTime).toISOString().slice(0,10) === new Date().toISOString().slice(0,10)).length;
+    const sevenDays = allUsers().filter(u => {
+      const t = userCreatedTime(u);
+      return t && (Date.now() - t) <= 7 * 86400000;
+    }).length;
+    return `
+      <section class="panel-card new-user-tracker-panel">
+        <div class="section-head">
+          <div><h3>New User Tracking</h3><span>Track new users, KYC, first deposit, AI status and wallet readiness. No auto trade trigger added.</span></div>
+          <span class="admin-count-pill">${today} today · ${sevenDays} in 7 days</span>
+        </div>
+        <div class="new-user-tracker-list">
+          ${rows.length ? rows.map(row => {
+            const u = row.user;
+            const firstDepositText = row.firstDeposit ? `${String(row.firstDeposit.status || "PENDING").toUpperCase()} · ${App.money(row.firstDeposit.amount || 0)}` : "No deposit yet";
+            const kycStatus = String(row.kyc.status || "NOT_SUBMITTED").toUpperCase();
+            const readyText = row.balance > 0 && row.aiPool > 0 && u.aiTradeOn ? "AI Ready" : "Watch";
+            return `
+              <article class="new-user-track-card">
+                <div class="new-user-left">
+                  ${avatar(displayNameFor(u))}
+                  <div>
+                    <b>${esc(displayNameFor(u))}</b>
+                    <span>${esc(u.email || u.mobile || "-")}</span>
+                    <small>Joined ${esc(userAgeLabel(u))} · ${esc(userCreatedLabel(u))}</small>
+                  </div>
+                </div>
+                <div class="new-user-stats">
+                  <span>KYC <b class="${kycStatus === "APPROVED" ? "profit-text" : kycStatus === "PENDING" ? "warn-text" : ""}">${esc(kycStatus.replace(/_/g, " "))}</b></span>
+                  <span>First Deposit <b>${esc(firstDepositText)}</b></span>
+                  <span>Wallet <b>${App.money(row.balance)}</b></span>
+                  <span>AI <b>${u.aiTradeOn ? "ON" : "OFF"} · ${row.used}/${row.limitToday}</b></span>
+                  <span>AI Pool <b>${App.money(row.aiPool)}</b></span>
+                  <span>Live <b>${row.liveOpen}</b></span>
+                </div>
+                <div class="new-user-actions">
+                  <span class="drawer-status ${readyText === "AI Ready" ? "good" : "neutral"}">${readyText}</span>
+                  <button class="ghost-action" onclick="AITradeXAdmin.focusUser('${esc(u.email || u.mobile || displayNameFor(u))}')">Open User</button>
+                </div>
+              </article>`;
+          }).join("") : `<div class="empty-state">No users found.</div>`}
+        </div>
+      </section>`;
+  }
+
+
   function dashboardPage() {
     const users = allUsers();
     const kycRequests = users.map(u => ({ user: u, kyc: kycFor(u) })).filter(x => x.kyc.status === "PENDING");
@@ -830,6 +954,8 @@
         </div>
         <button class="mini-action" onclick="AITradeXAdmin.go('dashboard')">Refresh</button>
       </section>
+
+      ${newUserTrackingHtml(8)}
 
       <section class="metrics-grid dashboard-analytics-grid admin-dashboard-primary-metrics">
         ${metric("👥", "Total Users", stats.users.length)}
@@ -3559,6 +3685,17 @@
     },
     go(next) {
       page = next;
+      localStorage.setItem("AITradeX_ADMIN_PAGE", page);
+      render();
+    },
+    focusUser(query) {
+      usersSearch = String(query || "").trim();
+      usersStatusFilter = "ALL";
+      usersPageNo = 1;
+      localStorage.setItem("AITradeX_ADMIN_USERS_SEARCH", usersSearch);
+      localStorage.setItem("AITradeX_ADMIN_USERS_STATUS", usersStatusFilter);
+      localStorage.setItem("AITradeX_ADMIN_USERS_PAGE", "1");
+      page = "users";
       localStorage.setItem("AITradeX_ADMIN_PAGE", page);
       render();
     },
