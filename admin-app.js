@@ -1908,6 +1908,87 @@
     return { report, totalMargin: Number(totalMargin.toFixed(2)), totalExposure: Number(totalExposure.toFixed(2)) };
   }
 
+
+  function aiLiveSingleUserValidation(userId, minBalance = 0) {
+    const u = (App.state.users || []).find(row => row.id === userId);
+    const reasons = [];
+    if (!u) return { ok: false, user: null, reasons: ["User not found"], margin: 0, exposure: 0 };
+    const settings = platformSettings();
+    const status = userStatus(u);
+    const balance = App.realBalance(u.id);
+    const allowedPool = App.aiAllowedAmount(u);
+    const used = App.aiTradesToday(u.id);
+    const limit = App.aiDailyLimit(u.id);
+    const maxOpen = Math.max(1, Number(settings?.maxOpenPositionsPerUser || App.state.settings?.maxOpenPositionsPerUser || 10));
+    const openLiveCount = aiLivePositions().filter(pos => pos.userId === u.id).length;
+    if (status !== "ACTIVE") reasons.push("Inactive / suspended / blocked");
+    if (!u.aiTradeOn) reasons.push("AI Live Trading OFF");
+    if (used >= limit) reasons.push("Daily AI trade limit completed");
+    if (openLiveCount >= maxOpen) reasons.push("Maximum open live positions reached");
+    if (balance < Number(minBalance || 0)) reasons.push("Below minimum balance");
+    if (allowedPool <= 0) reasons.push("No live position pool available");
+    const margin = Math.min(balance, allowedPool, Number(settings.maxAiTrade || 250000));
+    if (!margin || margin < Number(settings.minAiTrade || 100)) reasons.push("AI trade amount below minimum");
+    return {
+      ok: reasons.length === 0,
+      user: u,
+      reasons,
+      balance,
+      allowedPool,
+      used,
+      limit,
+      remaining: Math.max(0, Number(limit || 0) - Number(used || 0)),
+      openLiveCount,
+      margin: Number(Math.max(0, margin || 0).toFixed(2)),
+      exposure: 0
+    };
+  }
+
+  function aiLiveSingleUserOptions(selectedId = "") {
+    const eligible = sortedAiEligibleUsers(aiLiveEligibilityReport(0).eligible || [], "live");
+    const all = eligible.length ? eligible : sortedAiEligibleUsers(allUsers().filter(u => userStatus(u) === "ACTIVE"), "live");
+    return all.map(u => {
+      const balance = App.realBalance(u.id);
+      const pool = App.aiAllowedAmount(u);
+      const remaining = aiRemainingForUser(u.id);
+      const label = `${displayNameFor(u)} · Wallet ${App.money(balance)} · Pool ${App.money(pool)} · Rem ${remaining}/${App.aiDailyLimit(u.id)}`;
+      return `<option value="${esc(u.id)}" ${selectedId === u.id ? "selected" : ""}>${esc(label)}</option>`;
+    }).join("");
+  }
+
+  function aiSingleLiveUserPanelHtml(previewReport) {
+    const sorted = sortedAiEligibleUsers(previewReport?.eligible || [], "live");
+    const selectedId = sorted[0]?.id || "";
+    const preview = selectedId ? aiLiveSingleUserValidation(selectedId, 0) : null;
+    return `
+      <section class="panel-card ai-single-user-panel">
+        <div class="section-head ai-desk-head">
+          <div><h3>Single User Live AI Position</h3><span>Use the same batch logic, but open the live AI position for only one selected user.</span></div>
+          <span class="admin-count-pill">Per-user mode</span>
+        </div>
+        <form class="admin-grid-two ai-single-user-grid" onsubmit="AITradeXAdmin.openLiveAiPositionForUser(event)">
+          <label>Select User
+            <select id="aiLiveSingleUserId" required onchange="AITradeXAdmin.updateAiLiveSinglePreview()">
+              ${selectedId ? aiLiveSingleUserOptions(selectedId) : `<option value="">No eligible user found</option>`}
+            </select>
+          </label>
+          <label>Use Same Form Settings
+            <input value="Pair, side, leverage, target and note from New Live Position form" readonly/>
+          </label>
+          <div class="review-grid compact-review ai-single-preview">
+            <article><span>Status</span><b id="aiSinglePreviewStatus">${preview?.ok ? "Eligible" : "Select user"}</b></article>
+            <article><span>Wallet</span><b id="aiSinglePreviewWallet">${preview ? App.money(preview.balance) : "-"}</b></article>
+            <article><span>AI Amount</span><b id="aiSinglePreviewMargin">${preview ? App.money(preview.margin) : "-"}</b></article>
+            <article><span>Remaining Limit</span><b id="aiSinglePreviewLimit">${preview ? `${preview.remaining}/${preview.limit}` : "-"}</b></article>
+          </div>
+          <div class="premium-bank-card ai-last-card ai-single-note">
+            <div class="copy-row"><b>Single mode</b><span id="aiSinglePreviewReason">${preview?.ok ? "Ready for selected user only." : (preview?.reasons || ["No eligible user selected"]).join(" · ")}</span><button type="button">Safe</button></div>
+          </div>
+          <button class="save-profile-btn ai-execute-btn">Open For Selected User</button>
+        </form>
+      </section>`;
+  }
+
   function aiLiveRunningHtml() {
     const batches = aiLiveBatches();
     return `
@@ -2214,6 +2295,8 @@
       ${aiLiveRunningHtml()}
 
       ${aiValidationOverviewHtml(previewReport, "live")}
+
+      ${aiSingleLiveUserPanelHtml(previewReport)}
 
       <section class="panel-card ai-desk-panel ai-live-open-panel">
         <div class="section-head ai-desk-head">
@@ -4225,6 +4308,183 @@
       setText("aiLivePreviewDuration", "Target/Admin");
       setText("aiLivePreviewLimitCheck", (stats.report.reasons.limit || stats.report.reasons.maxOpen) ? `${stats.report.reasons.limit || 0} limit · ${stats.report.reasons.maxOpen || 0} max-open blocked` : "Passed");
       setText("aiLivePreviewWalletCheck", (stats.report.reasons.lowBalance || stats.report.reasons.noPool) ? "Needs review" : "Passed");
+    },
+    updateAiLiveSinglePreview() {
+      const userId = inputValue("aiLiveSingleUserId");
+      const leverage = normalizeAdminLeverage(inputValue("aiLiveLeverage") || 1);
+      const minBalance = Math.max(0, Number(inputValue("aiLiveMinBalance") || 0));
+      const preview = aiLiveSingleUserValidation(userId, minBalance);
+      const exposure = Number((Number(preview.margin || 0) * leverage).toFixed(2));
+      const setText = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
+      setText("aiSinglePreviewStatus", preview.ok ? "Eligible" : "Blocked");
+      setText("aiSinglePreviewWallet", preview.user ? App.money(preview.balance) : "-");
+      setText("aiSinglePreviewMargin", preview.user ? App.money(preview.margin) : "-");
+      setText("aiSinglePreviewLimit", preview.user ? `${preview.remaining}/${preview.limit}` : "-");
+      setText("aiSinglePreviewReason", preview.ok ? `Ready. Exposure ${App.money(exposure)} for selected user only.` : preview.reasons.join(" · "));
+    },
+    async openLiveAiPositionForUser(event) {
+      event.preventDefault();
+      const settings = platformSettings();
+      if (settings.aiTradingEnabled === false) { App.toast("AI trading is disabled in App Settings."); return; }
+      const userId = inputValue("aiLiveSingleUserId");
+      const validation = aiLiveSingleUserValidation(userId, Math.max(0, Number(inputValue("aiLiveMinBalance") || 0)));
+      if (!validation.ok) {
+        App.toast(validation.reasons.join(" · ") || "Selected user is not eligible.");
+        this.updateAiLiveSinglePreview();
+        return;
+      }
+      const target = validation.user;
+      const selectedPairData = pairDataByPair(inputValue("aiLivePair") || "BTC/USDT");
+      const market = selectedPairData.market || "CRYPTO";
+      const pair = String(selectedPairData.pair || "BTC/USDT").toUpperCase();
+      if (market !== "CRYPTO") {
+        App.toast("Live AI Position currently supports crypto pairs only.");
+        return;
+      }
+      const side = document.querySelector('input[name="aiLiveSide"]:checked')?.value || "BUY";
+      const leverage = Math.min(Number(settings.maxLeverage || 2000), normalizeAdminLeverage(inputValue("aiLiveLeverage") || 1));
+      const targetType = document.querySelector('input[name="aiLiveTargetType"]:checked')?.value || "PROFIT";
+      const targetPercent = Math.max(0.01, Number(inputValue("aiLiveTargetPercent") || 0));
+      const minBalance = Math.max(0, Number(inputValue("aiLiveMinBalance") || 0));
+      const note = inputValue("aiLiveNote") || "AI live position opened for selected user";
+      let priceRow;
+      try {
+        priceRow = await App.getLivePairPrice(pair);
+      } catch (error) {
+        priceRow = App.getCachedPairPrice ? App.getCachedPairPrice(pair) : null;
+      }
+      const entryPrice = Number(priceRow?.price || 0);
+      if (!Number.isFinite(entryPrice) || entryPrice <= 0) {
+        App.toast("Live entry price unavailable. AI live position not opened.");
+        return;
+      }
+
+      const batchId = App.uid("ai_live_single");
+      const openedAt = new Date().toISOString();
+      const balanceBefore = App.realBalance(target.id);
+      const recheck = aiLiveSingleUserValidation(target.id, minBalance);
+      if (!recheck.ok) {
+        App.toast(recheck.reasons.join(" · ") || "Selected user is no longer eligible.");
+        this.updateAiLiveSinglePreview();
+        return;
+      }
+      const margin = Math.min(balanceBefore, App.aiAllowedAmount(target), Number(settings.maxAiTrade || 250000));
+      const exposure = margin * leverage;
+      const positionId = App.uid("ai_live");
+      const liveBatchDraft = {
+        id: batchId,
+        batchType: "LIVE_SINGLE",
+        market,
+        pair,
+        side,
+        entryPrice,
+        entryPriceDisplay: priceRow?.display || String(entryPrice),
+        priceSource: priceRow?.source || "Live Market",
+        leverage,
+        targetType,
+        targetPercent,
+        minBalance,
+        note,
+        userId: target.id,
+        userName: displayNameFor(target),
+        appliedCount: 0,
+        skippedCount: 0,
+        totalMargin: 0,
+        totalExposure: 0,
+        status: "OPENING",
+        createdAt: openedAt
+      };
+      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeAiBatch) await window.AITradeXDB.writeAiBatch(liveBatchDraft); }
+      catch (err) { App.toast(`Single user AI live init save failed: ${err.message || err}`); return; }
+
+      const position = {
+        id: positionId,
+        batchId,
+        userId: target.id,
+        tradeType: "AI_LIVE",
+        accountType: "REAL",
+        market,
+        pair,
+        side,
+        entryPrice,
+        entryPriceDisplay: priceRow?.display || String(entryPrice),
+        priceSource: priceRow?.source || "Live Market",
+        priceSourceType: priceRow?.sourceType || "LIVE_MARKET",
+        priceLockedAt: priceRow?.fetchedAt || openedAt,
+        leverage,
+        marginAmount: Number(margin.toFixed(2)),
+        marginLocked: true,
+        positionSize: Number(exposure.toFixed(2)),
+        targetType,
+        targetPercent,
+        status: "OPEN",
+        source: "ADMIN_AI_LIVE_SINGLE_USER",
+        note,
+        aiPercent: Number(target.aiTradePercent || 75),
+        openedAt,
+        createdAt: openedAt,
+        createdDate: App.todayKey(),
+        balanceBefore: Number(balanceBefore.toFixed(2))
+      };
+
+      try {
+        const marginLockRow = App.isDatabaseMode?.() && App.addLedgerAsync ? await App.addLedgerAsync({
+          userId: position.userId,
+          accountType: "REAL",
+          type: "AI_LIVE_MARGIN_LOCK",
+          amount: -Number(position.marginAmount || 0),
+          referenceId: position.id,
+          note: `${position.pair} AI live ${position.side || "BUY"} amount locked`
+        }) : App.addLedger({
+          userId: position.userId,
+          accountType: "REAL",
+          type: "AI_LIVE_MARGIN_LOCK",
+          amount: -Number(position.marginAmount || 0),
+          referenceId: position.id,
+          note: `${position.pair} AI live ${position.side || "BUY"} amount locked`
+        });
+        if (marginLockRow === false && !aiLiveMarginLockExists(position)) throw new Error("AI amount lock was not applied");
+        position.marginLocked = true;
+        position.balanceBefore = Number(balanceBefore.toFixed(2));
+        position.balanceAfterOpen = Number(App.realBalance(position.userId).toFixed(2));
+        position.marginLockedAt = position.marginLockedAt || new Date().toISOString();
+      } catch (error) {
+        App.toast(error.message || "AI amount lock failed.");
+        return;
+      }
+
+      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeTrade) await window.AITradeXDB.writeTrade(position); }
+      catch (err) {
+        try { await (App.addLedgerAsync ? App.addLedgerAsync({ userId: target.id, accountType: "REAL", type: "AI_LIVE_MARGIN_LOCK_ROLLBACK", amount: Number(position.marginAmount || 0), referenceId: `${position.id}_rollback`, note: `Rollback: ${pair} AI live position save failed` }) : App.addLedger({ userId: target.id, accountType: "REAL", type: "AI_LIVE_MARGIN_LOCK_ROLLBACK", amount: Number(position.marginAmount || 0), referenceId: `${position.id}_rollback`, note: `Rollback: ${pair} AI live position save failed` })); } catch {}
+        App.toast(`Single user live trade DB save failed: ${err.message || err}`);
+        return;
+      }
+
+      App.state.trades.unshift(position);
+      const liveBatch = {
+        ...liveBatchDraft,
+        appliedCount: 1,
+        skippedCount: 0,
+        skipReasons: {},
+        totalMargin: Number(margin.toFixed(2)),
+        totalExposure: Number(exposure.toFixed(2)),
+        status: "OPEN",
+        createdAt: openedAt
+      };
+      try { if (App.isDatabaseMode?.() && window.AITradeXDB?.writeAiBatch) await window.AITradeXDB.writeAiBatch(liveBatch); }
+      catch (err) {
+        liveBatch.status = "SAVE_FAILED";
+        liveBatch.errorMessage = err.message || String(err);
+      }
+      if (!App.state.aiLiveBatches) App.state.aiLiveBatches = [];
+      App.state.aiLiveBatches.unshift(liveBatch);
+      await (App.addNotificationAsync ? App.addNotificationAsync({ audience: "USER", userId: target.id, title: "AI live position opened", message: `${pair} ${side} opened with ${App.money(position.marginAmount)} AI amount at ${leverage}x.`, type: "AI", linkPage: "orders", referenceId: `live_single_${position.id}` }) : App.addNotification?.({ audience: "USER", userId: target.id, title: "AI live position opened", message: `${pair} ${side} opened with ${App.money(position.marginAmount)} AI amount at ${leverage}x.`, type: "AI", linkPage: "orders", referenceId: `live_single_${position.id}` }));
+      await (App.addNotificationAsync ? App.addNotificationAsync({ audience: "ADMIN", title: "Single user live AI opened", message: `${pair} ${side} opened for ${displayNameFor(target)}. Locked ${App.money(margin)}.`, type: "AI", linkPage: "liveAi", referenceId: batchId }) : App.addNotification?.({ audience: "ADMIN", title: "Single user live AI opened", message: `${pair} ${side} opened for ${displayNameFor(target)}. Locked ${App.money(margin)}.`, type: "AI", linkPage: "liveAi", referenceId: batchId }));
+      await (typeof logAdminActionAsync === "function" ? logAdminActionAsync("AI_LIVE_SINGLE_USER_OPEN", "AI_BATCH", batchId, { userId: target.id, userName: displayNameFor(target), pair, side, leverage, totalMargin: Number(margin.toFixed(2)), totalExposure: Number(exposure.toFixed(2)) }) : logAdminAction("AI_LIVE_SINGLE_USER_OPEN", "AI_BATCH", batchId, { userId: target.id, userName: displayNameFor(target), pair, side, leverage, totalMargin: Number(margin.toFixed(2)), totalExposure: Number(exposure.toFixed(2)) }));
+      App.saveState();
+      App.toast(`Live AI position opened for ${displayNameFor(target)} only.`);
+      triggerAiLiveAutoCloseCheckSoon(1200);
+      render();
     },
     async openLiveAiPosition(event) {
       event.preventDefault();

@@ -10461,3 +10461,42 @@ input:focus,select:focus,textarea:focus{
     background:rgba(255,255,255,.025);
   }
 }
+
+
+/* Single User AI Live Trade */
+.ai-single-user-panel{
+  border-color:rgba(21,229,211,.20)!important;
+}
+.ai-single-user-grid{
+  align-items:start;
+}
+.ai-single-user-grid label{
+  display:grid;
+  gap:8px;
+  color:#9fb1cc;
+  font-weight:850;
+}
+.ai-single-user-grid select,
+.ai-single-user-grid input{
+  min-height:52px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:16px;
+  background:rgba(5,12,24,.72);
+  color:#fff;
+  padding:0 14px;
+  outline:0;
+}
+.ai-single-preview{
+  grid-column:1/-1;
+}
+.ai-single-note{
+  grid-column:1/-1;
+}
+.ai-single-user-grid .ai-execute-btn{
+  grid-column:1/-1;
+}
+@media(max-width:760px){
+  .ai-single-user-grid{
+    grid-template-columns:1fr!important;
+  }
+}

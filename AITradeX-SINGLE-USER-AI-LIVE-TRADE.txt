@@ -1,0 +1,15 @@
+AITradeX Single User AI Live Trade
+
+Base:
+- AITradeX-Final-AI-Intelligence-Pack.zip
+
+Added:
+- Admin Live AI page now has a Single User Live AI Position panel.
+- Admin can select one eligible user and open AI live position only for that user.
+- Uses same pair, side, leverage, target, min balance, note, wallet lock, trade save, notification, batch record, auto-close trigger logic as existing batch live AI.
+- Batch mode remains unchanged.
+
+No SQL required.
+User side unchanged.
+AI close/cron logic unchanged.
+Wallet/referral/subscription logic unchanged.
