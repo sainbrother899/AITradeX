@@ -1,0 +1,19 @@
+AITradeX Landing Same Reference Style
+
+Base:
+- AITradeX-Final-RealisticLanding-NoPlans.zip
+
+Changed:
+- Replaced public landing page with AI Auto Trading style UI matching the provided reference.
+- Added hero section: AI Auto Trading That Works While You Track.
+- Added phone mockup preview.
+- Added How AITradeX Works steps.
+- Added feature cards.
+- Added trust/security section.
+- Kept auth/login/register section.
+- Kept Privacy/Terms/Risk links.
+- Removed plans from landing page.
+- Subscription page/admin plans untouched.
+
+No SQL required.
+No admin/wallet/trade/AI/referral/subscription logic changes.
