@@ -2175,7 +2175,7 @@
           </div>
         </section>
 
-        <section class="ref-risk-bar">🛡 Trading involves risk. AI tools do not guarantee profit.<br/><small>Support: support@aitradex.com</small></section>
+        <section class="ref-risk-bar">🛡 AITradeX provides AI-assisted dashboard tools. Market risk applies. No profit is guaranteed.<br/><small>Support: support@aitradex.com</small></section>
 
         <section class="lp-legal-links">
           <button onclick="AITradeXUser.showPolicy('privacy')">Privacy Policy</button>
