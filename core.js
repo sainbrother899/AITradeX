@@ -267,25 +267,10 @@ App.deleteNotification=(id)=>{
 App.logoHtml=(variant="full",className="")=>{
   const mode=String(variant||"full").toLowerCase();
   const cls=esc(className||"");
-  const id=uid("logo").replace(/[^a-zA-Z0-9_]/g,"");
-  const blue=`${id}_blue`,green=`${id}_green`,dark=`${id}_dark`,glow=`${id}_glow`;
-  const defs=`<defs>
-    <linearGradient id="${blue}" x1="0" x2="1" y1="1" y2="0"><stop offset="0" stop-color="#1d5cff"/><stop offset=".52" stop-color="#15e5d3"/><stop offset="1" stop-color="#6fff35"/></linearGradient>
-    <linearGradient id="${green}" x1="0" x2="1" y1="1" y2="0"><stop offset="0" stop-color="#15e5d3"/><stop offset="1" stop-color="#9dff32"/></linearGradient>
-    <linearGradient id="${dark}" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#10233d"/><stop offset="1" stop-color="#06101f"/></linearGradient>
-    <filter id="${glow}" x="-35%" y="-35%" width="170%" height="170%"><feGaussianBlur stdDeviation="1.55" result="blur"/><feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.08 0 0 0 0 0.88 0 0 0 0 0.82 0 0 0 .38 0"/><feBlend in="SourceGraphic"/></filter>
-  </defs>`;
-  const icon=`<g class="aitx-logo-mark">
-    <rect x="7" y="7" width="50" height="50" rx="17" fill="url(#${dark})" stroke="rgba(255,255,255,.16)" stroke-width="1.2"/>
-    <path d="M16.5 47.5 28.6 17.8c1.45-3.55 5.35-3.55 6.8 0l12.1 29.7" fill="none" stroke="url(#${blue})" stroke-width="5.6" stroke-linecap="round" stroke-linejoin="round" filter="url(#${glow})"/>
-    <path d="M24.1 35.1h15.8" fill="none" stroke="#f5f8ff" stroke-width="3.6" stroke-linecap="round" opacity=".92"/>
-    <path d="M38.2 25.4 49.6 14M41.1 14h8.5v8.5" fill="none" stroke="url(#${green})" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round" filter="url(#${glow})"/>
-    <rect x="18" y="42" width="5.6" height="8" rx="2.8" fill="#1d5cff" opacity=".94"/>
-    <rect x="28.8" y="38" width="5.6" height="12" rx="2.8" fill="#15e5d3" opacity=".94"/>
-    <rect x="39.6" y="33" width="5.6" height="17" rx="2.8" fill="#6fff35" opacity=".94"/>
-  </g>`;
-  if(mode==="icon")return `<span class="aitx-logo-wrap aitx-logo-icon-wrap ${cls}" aria-label="AITradeX logo"><svg class="aitx-logo-svg" viewBox="0 0 64 64" role="img" aria-hidden="true">${defs}${icon}</svg></span>`;
-  return `<span class="aitx-logo-wrap aitx-logo-full-wrap ${cls}" aria-label="AITradeX logo"><svg class="aitx-logo-svg" viewBox="0 0 286 64" role="img" aria-hidden="true">${defs}${icon}<text x="72" y="43" font-family="Inter,Arial Black,system-ui,-apple-system,Segoe UI,Arial,sans-serif" font-size="35" font-weight="1000" letter-spacing="-2.15" paint-order="stroke fill" stroke="rgba(5,8,20,.42)" stroke-width="1.05" stroke-linejoin="round"><tspan fill="url(#${blue})">AI</tspan><tspan fill="#ffffff">Trade</tspan><tspan fill="url(#${green})">X</tspan></text></svg></span>`;
+  const isIcon=mode==="icon";
+  const src=isIcon ? "aitradex-logo-icon.png" : "aitradex-logo-full.png";
+  const label=isIcon ? "AITradeX icon" : "AITradeX logo";
+  return `<span class="aitx-logo-wrap ${isIcon ? "aitx-logo-icon-wrap" : "aitx-logo-full-wrap"} ${cls}" aria-label="${label}"><img class="aitx-logo-img" src="${src}" alt="${label}" loading="eager" decoding="async"/></span>`;
 };
 if(!Array.isArray(App.state.adminActionLogs))App.state.adminActionLogs=[];
 App.state.settings={freeAiTradesPerDay:5,postTrialFreeAiTradesPerDay:1,freeTrialDays:7,usdtInrRate:Number(C.USDT_INR_RATE||95),...(App.state.settings||{})};

@@ -11747,3 +11747,24 @@ body,
     font-size:14px;
   }
 }
+
+
+/* AITradeX real logo replacement - flat upload safe */
+.aitx-logo-wrap{display:inline-flex;align-items:center;justify-content:center;line-height:0;flex:0 0 auto;background:transparent!important;border:0!important;box-shadow:none!important;transform:none!important;overflow:visible!important}
+.aitx-logo-img{display:block;max-width:100%;height:auto;object-fit:contain}
+.aitx-logo-full-wrap{width:184px;max-width:42vw}
+.aitx-logo-icon-wrap{width:48px;height:48px;border-radius:14px;overflow:hidden!important;background:#050814!important}
+.aitx-logo-icon-wrap .aitx-logo-img{width:100%;height:100%;object-fit:contain}
+.ref-brand.logo-brand-real{gap:0;min-width:0}
+.ref-brand.logo-brand-real .ref-logo-full{width:230px;max-width:54vw}
+.ref-brand.logo-brand-real span{width:auto;height:auto;padding:0;border-radius:0;background:transparent;transform:none}
+.ref-brand.logo-brand-real b,.ref-brand.logo-brand-real b::after{display:none!important;content:none!important}
+.aitx-app .ux-brand-lockup{gap:10px}
+.aitx-app .ux-brand-image-mark{width:46px;height:46px;border-radius:14px;background:#050814!important;box-shadow:0 0 24px rgba(34,230,243,.16)!important}
+.aitx-app .ux-brand-image-full{width:152px;max-width:45vw}
+.aitx-app .ux-brand-mark{display:none!important}
+.aitx-app .ux-brand-lockup>b{display:none!important}
+.aitx-admin-logo .aitx-logo-full-wrap,.aitx-login-logo .aitx-logo-full-wrap{width:190px;max-width:100%}
+.side-brand.brand.aitx-admin-logo{justify-content:flex-start;gap:0}
+.brand.center.aitx-login-logo{justify-content:center;gap:0}
+@media(max-width:560px){.ref-nav{padding:0 18px}.ref-brand.logo-brand-real .ref-logo-full{width:178px;max-width:50vw}.aitx-app .ux-brand-image-full{width:118px}.aitx-app .ux-brand-image-mark{width:42px;height:42px}.aitx-logo-full-wrap{width:160px}}

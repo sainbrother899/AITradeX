@@ -1861,8 +1861,8 @@
     return `
       <header class="app-topbar ux-brand-header">
         <div class="ux-brand-lockup" onclick="AITradeXUser.go('home')" role="button" aria-label="AITradeX Home">
-          <span class="ux-brand-mark">X</span>
-          <b>AITradeX</b>
+          ${App.logoHtml("icon", "ux-brand-image-mark")}
+          ${App.logoHtml("full", "ux-brand-image-full")}
         </div>
         <div class="ux-brand-actions">
           <button class="ux-brand-bell" onclick="AITradeXUser.openNotifications()" aria-label="Notifications">
@@ -2076,7 +2076,7 @@
     root.innerHTML = `
       <main class="lp-page ref-landing">
         <nav class="ref-nav">
-          <div class="ref-brand"><span>AX</span><b>AITradeX</b></div>
+          <div class="ref-brand logo-brand-real">${App.logoHtml("full", "ref-logo-full")}</div>
           <div class="ref-nav-actions">
             <button class="ref-login" onclick="AITradeXUser.setAuthMode('login')">Login</button>
             <button class="ref-primary small" onclick="AITradeXUser.setAuthMode('register')">Create Account</button>
