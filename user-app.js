@@ -2085,8 +2085,8 @@
 
         <section class="ref-hero">
           <div class="ref-hero-copy">
-            <h1>AI Auto Trading<br/><strong>That Works</strong><br/><strong>While You Track</strong></h1>
-            <p>Create an account, complete KYC, add funds. AI monitors the market 24/7, places trades based on market conditions, and you can monitor positions and request withdrawals anytime.</p>
+            <h1>AI-Powered Trading<br/><strong>Dashboard</strong><br/><strong>Built for Control</strong></h1>
+            <p>Create your account, complete KYC and access AI-assisted market tools, live charts, wallet tracking and trade controls in one clear dashboard.</p>
 
             <div class="ref-hero-actions">
               <button class="ref-primary" onclick="AITradeXUser.setAuthMode('register')">Start Now <span>→</span></button>
@@ -2094,7 +2094,7 @@
             </div>
 
             <div class="ref-trust-row">
-              <article><i>🛡</i><span>Bank-grade<br/>Security</span></article>
+              <article><i>🛡</i><span>Secure<br/>Dashboard</span></article>
               <article><i>🛡</i><span>KYC<br/>Verified</span></article>
               <article><i>◷</i><span>24/7 AI<br/>Monitoring</span></article>
             </div>
@@ -2104,13 +2104,13 @@
             <div class="ref-phone">
               <div class="ref-phone-top"><b>AITradeX</b><span>⌁</span></div>
               <div class="ref-balance-card">
-                <span>Total Balance</span>
-                <b>Wallet + AI Dashboard</b>
-                <em>Track everything clearly</em>
+                <span>Dashboard Overview</span>
+                <b>Wallet + AI Tools</b>
+                <em>Track markets clearly</em>
               </div>
               <div class="ref-ai-status">
                 <i>🧠</i>
-                <div><span>AI Status</span><b>ACTIVE</b><small>Scanning markets<br/>Executing trades</small></div>
+                <div><span>AI Status</span><b>ACTIVE</b><small>Scanning markets<br/>Signal monitoring</small></div>
                 <u></u>
               </div>
               <div class="ref-live-chart">
@@ -2122,10 +2122,10 @@
                 </svg>
               </div>
               <div class="ref-open-positions">
-                <div><b>Open Positions</b><a>View All</a></div>
-                <article><span>₿ BTC/USDT</span><em>Long</em><b>+1.82%</b></article>
-                <article><span>◆ ETH/USDT</span><em>Long</em><b>+2.31%</b></article>
-                <article><span>◎ SOL/USDT</span><em class="short">Short</em><b class="red">-0.73%</b></article>
+                <div><b>Market Watch</b><a>View All</a></div>
+                <article><span>₿ BTC/USDT</span><em>Active</em><b>Live</b></article>
+                <article><span>◆ ETH/USDT</span><em>Monitoring</em><b>Signal</b></article>
+                <article><span>◎ SOL/USDT</span><em class="short">Risk Watch</em><b class="red">Volatile</b></article>
               </div>
             </div>
           </div>
@@ -2137,7 +2137,7 @@
             <article><u>1</u><i>👤</i><h3>Create Account</h3><p>Sign up in seconds and set up your profile.</p></article>
             <article><u>2</u><i>🛡</i><h3>Complete KYC</h3><p>Verify your identity to keep your account secure.</p></article>
             <article><u>3</u><i>👛</i><h3>Add Funds</h3><p>Deposit funds securely using supported methods.</p></article>
-            <article><u>4</u><i>🧠</i><h3>AI Trades Automatically</h3><p>AI scans markets 24/7 and places trades based on conditions.</p></article>
+            <article><u>4</u><i>🧠</i><h3>AI Tools Monitor</h3><p>AI-assisted tools scan markets and support trade decisions.</p></article>
             <article><u>5</u><i>🏦</i><h3>Track & Withdraw</h3><p>Monitor positions and withdraw your funds anytime.</p></article>
           </div>
         </section>
@@ -2145,7 +2145,7 @@
         <section class="ref-features">
           <h2>Powerful Features Built for Smart Traders</h2>
           <div class="ref-feature-grid">
-            <article><i>🧠</i><div><h3>AI Auto Trading</h3><p>Advanced AI tools analyze market trends and support automated trade decisions.</p></div></article>
+            <article><i>🧠</i><div><h3>AI Signal Dashboard</h3><p>Advanced AI tools analyze market trends and support smarter trade decisions.</p></div></article>
             <article><i>📈</i><div><h3>Live Chart</h3><p>Real-time charts and market view to track movements clearly.</p></div></article>
             <article><i>78%</i><div><h3>AI Confidence Meter</h3><p>See AI confidence levels for each trade decision in real time.</p></div></article>
             <article><i>🛡</i><div><h3>Risk Shield</h3><p>Smart risk management view helps track target and loss protection.</p></div></article>
@@ -2175,7 +2175,7 @@
           </div>
         </section>
 
-        <section class="ref-risk-bar">🛡 Trading involves risk. AI tools do not guarantee profit.</section>
+        <section class="ref-risk-bar">🛡 Trading involves risk. AI tools do not guarantee profit.<br/><small>Support: support@aitradex.com</small></section>
 
         <section class="lp-legal-links">
           <button onclick="AITradeXUser.showPolicy('privacy')">Privacy Policy</button>

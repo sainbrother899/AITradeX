@@ -11768,3 +11768,12 @@ body,
 .side-brand.brand.aitx-admin-logo{justify-content:flex-start;gap:0}
 .brand.center.aitx-login-logo{justify-content:center;gap:0}
 @media(max-width:560px){.ref-nav{padding:0 18px}.ref-brand.logo-brand-real .ref-logo-full{width:178px;max-width:50vw}.aitx-app .ux-brand-image-full{width:118px}.aitx-app .ux-brand-image-mark{width:42px;height:42px}.aitx-logo-full-wrap{width:160px}}
+
+
+/* Landing text polish + safer real-platform presentation */
+.ref-phone-top b:before{content:""!important}
+.ref-open-positions article b{font-size:12px;color:#d7e8ff;background:rgba(34,230,243,.08);border:1px solid rgba(34,230,243,.14);border-radius:7px;padding:4px 8px;text-align:center}
+.ref-open-positions article b.red{color:#ff8ea2;background:rgba(255,82,109,.10);border-color:rgba(255,82,109,.18)}
+.ref-risk-bar small{display:block;margin-top:8px;color:#d7e8ff;font-size:13px;letter-spacing:.01em}
+.ref-brand.logo-brand-real .ref-logo-full{width:210px;max-width:48vw}
+@media(max-width:560px){.ref-brand.logo-brand-real .ref-logo-full{width:156px;max-width:46vw}.ref-nav-actions{gap:6px}.ref-primary.small{padding:0 10px}}
