@@ -1814,6 +1814,71 @@
     };
   }
 
+  function aiInstantTargetOptions(selected = "") {
+    const users = allUsers()
+      .slice()
+      .sort((a, b) => displayNameFor(a).localeCompare(displayNameFor(b)));
+    return [`<option value="">Select one user</option>`].concat(users.map(u => {
+      const label = `${displayNameFor(u)} · ${u.mobile || u.email || "No contact"} · ${userStatus(u)} · ${App.money(App.realBalance(u.id))}`;
+      return `<option value="${esc(u.id)}" ${String(selected) === String(u.id) ? "selected" : ""}>${esc(label)}</option>`;
+    })).join("");
+  }
+
+  function instantTargetReport(minBalance = 0, targetMode = "ALL", targetUserId = "") {
+    const base = aiEligibilityReport(minBalance);
+    if (String(targetMode || "ALL").toUpperCase() !== "SINGLE") return base;
+    const reasons = { inactive: 0, aiOff: 0, limit: 0, lowBalance: 0, noPool: 0 };
+    const user = allUsers().find(u => String(u.id) === String(targetUserId || ""));
+    if (!user) return { eligible: [], skipped: [], reasons };
+    const eligible = base.eligible.find(u => String(u.id) === String(user.id));
+    if (eligible) return { eligible: [eligible], skipped: [], reasons };
+    const skipped = base.skipped.find(row => String(row.userId) === String(user.id)) || { userId: user.id, reason: "Selected user is not eligible" };
+    const reasonText = String(skipped.reason || "").toLowerCase();
+    if (reasonText.includes("inactive") || reasonText.includes("suspended") || reasonText.includes("blocked")) reasons.inactive = 1;
+    else if (reasonText.includes("off")) reasons.aiOff = 1;
+    else if (reasonText.includes("limit")) reasons.limit = 1;
+    else if (reasonText.includes("balance")) reasons.lowBalance = 1;
+    else reasons.noPool = 1;
+    return { eligible: [], skipped: [skipped], reasons };
+  }
+
+  function aiInstantPreviewStats(resultPercent = 2, leverage = 1, minBalance = 0, resultType = "PROFIT", targetMode = "ALL", targetUserId = "") {
+    const percent = Math.max(0, Number(resultPercent || 0));
+    const lev = normalizeAdminLeverage(leverage || 1);
+    const report = instantTargetReport(Math.max(0, Number(minBalance || 0)), targetMode, targetUserId);
+    let totalMargin = 0;
+    let totalExposure = 0;
+    let totalPnl = 0;
+
+    report.eligible.forEach(user => {
+      const balance = App.realBalance(user.id);
+      const margin = Math.min(balance, App.aiAllowedAmount(user));
+      if (!margin || margin <= 0) return;
+      const exposure = margin * lev;
+      let pnl = exposure * percent / 100;
+      if (String(resultType || "PROFIT").toUpperCase() === "LOSS") pnl = -Math.min(balance, pnl);
+      if (balance + pnl < 0) pnl = -balance;
+      totalMargin += margin;
+      totalExposure += exposure;
+      totalPnl += pnl;
+    });
+
+    const perOneThousand = (1000 * lev * percent / 100) * (String(resultType || "PROFIT").toUpperCase() === "LOSS" ? -1 : 1);
+    const perTenThousand = (10000 * lev * percent / 100) * (String(resultType || "PROFIT").toUpperCase() === "LOSS" ? -1 : 1);
+
+    return {
+      report,
+      totalMargin: Number(totalMargin.toFixed(2)),
+      totalExposure: Number(totalExposure.toFixed(2)),
+      totalPnl: Number(totalPnl.toFixed(2)),
+      perOneThousand: Number(perOneThousand.toFixed(2)),
+      perTenThousand: Number(perTenThousand.toFixed(2)),
+      leverage: lev,
+      percent
+    };
+  }
+
+
 
 
   function aiTradeTypeOf(row) {
@@ -2280,7 +2345,7 @@
 
   function instantAiPage() {
     const settings = App.state.settings || {};
-    const initialStats = aiPreviewStats(2, 1, 0, "PROFIT");
+    const initialStats = aiInstantPreviewStats(2, 1, 0, "PROFIT", "ALL", "");
     const previewReport = initialStats.report;
     const aiOnCount = allUsers().filter(u => u.aiTradeOn && userStatus(u) === "ACTIVE").length;
     const eligibleNow = previewReport.eligible.length;
@@ -2320,8 +2385,25 @@
               </label>
             </div>
 
+            <div class="ai-step-card">
+              <div class="ai-step-label"><b>2</b><span>Apply to users</span></div>
+              <label>Trade Apply Mode
+                <select id="aiInstantTargetMode" onchange="AITradeXAdmin.updateAiPreview()">
+                  <option value="ALL">All eligible users</option>
+                  <option value="SINGLE">Selected user only</option>
+                </select>
+                <small>Use selected user mode when you want Instant AI trade for only one user.</small>
+              </label>
+              <label>Selected User
+                <select id="aiInstantSingleUserId" onchange="AITradeXAdmin.updateAiPreview()">
+                  ${aiInstantTargetOptions("")}
+                </select>
+                <small>Ignored when Apply Mode is All eligible users.</small>
+              </label>
+            </div>
+
             <div class="ai-step-card live-entry-card">
-              <div class="ai-step-label"><b>2</b><span>Entry price</span></div>
+              <div class="ai-step-label"><b>3</b><span>Entry price</span></div>
               <div class="entry-price-box">
                 <div><span>Selected Entry</span><b id="aiEntryPriceValue">${aiPairPriceView("BTC/USDT").price}</b><small id="aiEntryPriceSource">${aiPairPriceView("BTC/USDT").source}</small></div>
                 <button type="button" onclick="AITradeXAdmin.fetchAiEntryPrice()">Fetch Price</button>
@@ -2335,7 +2417,7 @@
             </div>
 
             <div class="ai-step-card">
-              <div class="ai-step-label"><b>3</b><span>Choose side</span></div>
+              <div class="ai-step-label"><b>4</b><span>Choose side</span></div>
               <div class="ai-toggle-grid two">
                 <label class="ai-radio-card buy"><input type="radio" name="aiTradeSide" value="BUY" checked onchange="AITradeXAdmin.updateAiPreview()"/><span>BUY</span><small>Long / upward trade</small></label>
                 <label class="ai-radio-card sell"><input type="radio" name="aiTradeSide" value="SELL" onchange="AITradeXAdmin.updateAiPreview()"/><span>SELL</span><small>Short / downward trade</small></label>
@@ -2343,7 +2425,7 @@
             </div>
 
             <div class="ai-step-card">
-              <div class="ai-step-label"><b>4</b><span>Result & leverage up to 2000x</span></div>
+              <div class="ai-step-label"><b>5</b><span>Result & leverage up to 2000x</span></div>
               <div class="ai-toggle-grid two">
                 <label class="ai-radio-card profit"><input type="radio" name="aiTradeResultType" value="PROFIT" checked onchange="AITradeXAdmin.updateAiPreview()"/><span>Profit</span><small>Add P/L to wallet</small></label>
                 <label class="ai-radio-card loss"><input type="radio" name="aiTradeResultType" value="LOSS" onchange="AITradeXAdmin.updateAiPreview()"/><span>Loss</span><small>Deduct P/L from wallet</small></label>
@@ -2361,7 +2443,7 @@
             </div>
 
             <div class="ai-step-card">
-              <div class="ai-step-label"><b>5</b><span>Final check</span></div>
+              <div class="ai-step-label"><b>6</b><span>Final check</span></div>
               <label>Minimum Available Balance
                 <input id="aiTradeMinBalance" type="number" min="0" value="0" oninput="AITradeXAdmin.updateAiPreview()"/>
                 <small>Users below this balance will be skipped. Keep 0 for all valid users.</small>
@@ -4215,7 +4297,9 @@
       const resultPercent = Math.max(0, Number(inputValue("aiTradeResultPercent") || 0));
       const leverage = Math.min(Number(settings.maxLeverage || 2000), normalizeAdminLeverage(inputValue("aiTradeLeverage") || 1));
       const minBalance = Math.max(0, Number(inputValue("aiTradeMinBalance") || 0));
-      const stats = aiPreviewStats(resultPercent, leverage, minBalance, resultType);
+      const targetMode = inputValue("aiInstantTargetMode") || "ALL";
+      const targetUserId = inputValue("aiInstantSingleUserId") || "";
+      const stats = aiInstantPreviewStats(resultPercent, leverage, minBalance, resultType, targetMode, targetUserId);
       const setText = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
       const setMoney = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = App.money(value || 0); };
       const setPnl = (id, value) => {
@@ -4251,6 +4335,12 @@
       const resultPercent = Math.max(0, Number(inputValue("aiTradeResultPercent") || 0));
       const minBalance = Math.max(0, Number(inputValue("aiTradeMinBalance") || 0));
       const note = inputValue("aiTradeNote") || "Expert AI auto trade executed";
+      const targetMode = String(inputValue("aiInstantTargetMode") || "ALL").toUpperCase();
+      const targetUserId = inputValue("aiInstantSingleUserId") || "";
+      if (targetMode === "SINGLE" && !targetUserId) {
+        App.toast("Select one user for Instant AI trade.");
+        return;
+      }
       let priceRow;
       try {
         priceRow = await this.fetchAiEntryPrice(false);
@@ -4260,7 +4350,7 @@
       }
 
       const batchId = App.uid("ai_batch");
-      const report = aiEligibilityReport(minBalance);
+      const report = instantTargetReport(minBalance, targetMode, targetUserId);
       // Instant AI must use the instant eligibility rules: daily AI trade limit + AI ON + wallet pool.
       // Live Position eligibility is separate and should only be used in openLiveAiPosition().
       let appliedCount = 0;
@@ -4283,6 +4373,8 @@
         resultType,
         resultPercent,
         minBalance,
+        targetMode,
+        targetUserId: targetMode === "SINGLE" ? targetUserId : "",
         note,
         status: "PROCESSING",
         appliedCount: 0,
@@ -4402,6 +4494,8 @@
         resultType,
         resultPercent,
         minBalance,
+        targetMode,
+        targetUserId: targetMode === "SINGLE" ? targetUserId : "",
         note,
         totalMargin: Number(totalMargin.toFixed(2)),
         totalExposure: Number(totalExposure.toFixed(2)),
@@ -4423,10 +4517,10 @@
         return;
       }
       App.state.aiTradeBatches.unshift(instantBatch);
-      await (App.addNotificationAsync ? App.addNotificationAsync({ audience: "ADMIN", title: "Instant AI trade applied", message: `${pair} ${side} applied to ${appliedCount} user(s). Total P/L ${totalPnl >= 0 ? "+" : ""}${App.money(totalPnl)}.`, type: "AI", linkPage: "instantAi", referenceId: batchId }) : App.addNotification?.({ audience: "ADMIN", title: "Instant AI trade applied", message: `${pair} ${side} applied to ${appliedCount} user(s). Total P/L ${totalPnl >= 0 ? "+" : ""}${App.money(totalPnl)}.`, type: "AI", linkPage: "instantAi", referenceId: batchId }));
-      await (typeof logAdminActionAsync === "function" ? logAdminActionAsync("AI_INSTANT_TRADE", "AI_BATCH", batchId, { pair, side, leverage, appliedCount, skippedCount: report.skipped.length, totalPnl: Number(totalPnl.toFixed(2)) }) : logAdminAction("AI_INSTANT_TRADE", "AI_BATCH", batchId, { pair, side, leverage, appliedCount, skippedCount: report.skipped.length, totalPnl: Number(totalPnl.toFixed(2)) }));
+      await (App.addNotificationAsync ? App.addNotificationAsync({ audience: "ADMIN", title: "Instant AI trade applied", message: `${pair} ${side} applied to ${appliedCount} ${targetMode === "SINGLE" ? "selected user" : "user(s)"}. Total P/L ${totalPnl >= 0 ? "+" : ""}${App.money(totalPnl)}.`, type: "AI", linkPage: "instantAi", referenceId: batchId }) : App.addNotification?.({ audience: "ADMIN", title: "Instant AI trade applied", message: `${pair} ${side} applied to ${appliedCount} ${targetMode === "SINGLE" ? "selected user" : "user(s)"}. Total P/L ${totalPnl >= 0 ? "+" : ""}${App.money(totalPnl)}.`, type: "AI", linkPage: "instantAi", referenceId: batchId }));
+      await (typeof logAdminActionAsync === "function" ? logAdminActionAsync("AI_INSTANT_TRADE", "AI_BATCH", batchId, { pair, side, leverage, targetMode, targetUserId: targetMode === "SINGLE" ? targetUserId : "", appliedCount, skippedCount: report.skipped.length, totalPnl: Number(totalPnl.toFixed(2)) }) : logAdminAction("AI_INSTANT_TRADE", "AI_BATCH", batchId, { pair, side, leverage, appliedCount, skippedCount: report.skipped.length, totalPnl: Number(totalPnl.toFixed(2)) }));
       App.saveState();
-      App.toast(appliedCount ? `AI trade applied to ${appliedCount} valid user(s). ${report.skipped.length} skipped.` : "No valid AI users found. Trade was not applied.");
+      App.toast(appliedCount ? `AI trade applied to ${appliedCount} ${targetMode === "SINGLE" ? "selected user" : "valid user(s)"}. ${report.skipped.length} skipped.` : "No valid AI users found. Trade was not applied.");
       render();
     },
 
